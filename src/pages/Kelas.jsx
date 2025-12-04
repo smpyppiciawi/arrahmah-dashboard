@@ -1,0 +1,212 @@
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Edit2, Trash2, Building, Users } from "lucide-react";
+import { motion } from "framer-motion";
+
+export default function Kelas() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingKelas, setEditingKelas] = useState(null);
+  const queryClient = useQueryClient();
+
+  const [formData, setFormData] = useState({
+    nama_kelas: '', tingkat: '', wali_kelas: '', tahun_ajaran: ''
+  });
+
+  const { data: kelasList = [], isLoading } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
+  const { data: siswaList = [] } = useQuery({
+    queryKey: ['siswa'],
+    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (data) => base44.entities.Kelas.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      resetForm();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Kelas.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      resetForm();
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => base44.entities.Kelas.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kelas'] }),
+  });
+
+  const resetForm = () => {
+    setFormData({ nama_kelas: '', tingkat: '', wali_kelas: '', tahun_ajaran: '' });
+    setEditingKelas(null);
+    setIsOpen(false);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (editingKelas) {
+      updateMutation.mutate({ id: editingKelas.id, data: formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (kelas) => {
+    setEditingKelas(kelas);
+    setFormData(kelas);
+    setIsOpen(true);
+  };
+
+  const getSiswaCount = (kelasId) => {
+    return siswaList.filter(s => s.kelas_id === kelasId).length;
+  };
+
+  const tingkatColors = {
+    '7': 'from-blue-500 to-blue-600',
+    '8': 'from-emerald-500 to-emerald-600',
+    '9': 'from-purple-500 to-purple-600',
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+              <Building className="w-8 h-8 text-purple-500" />
+              Data Kelas
+            </h1>
+            <p className="text-slate-500 mt-1">Kelola kelas dan wali kelas</p>
+          </div>
+          
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-purple-600 hover:bg-purple-700">
+                <Plus className="w-4 h-4 mr-2" /> Tambah Kelas
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingKelas ? 'Edit Kelas' : 'Tambah Kelas Baru'}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Nama Kelas</Label>
+                    <Input 
+                      value={formData.nama_kelas} 
+                      onChange={(e) => setFormData({...formData, nama_kelas: e.target.value})} 
+                      placeholder="Contoh: 7A"
+                      required 
+                    />
+                  </div>
+                  <div>
+                    <Label>Tingkat</Label>
+                    <Select value={formData.tingkat} onValueChange={(v) => setFormData({...formData, tingkat: v})}>
+                      <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">Kelas 7</SelectItem>
+                        <SelectItem value="8">Kelas 8</SelectItem>
+                        <SelectItem value="9">Kelas 9</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div>
+                  <Label>Wali Kelas</Label>
+                  <Input 
+                    value={formData.wali_kelas} 
+                    onChange={(e) => setFormData({...formData, wali_kelas: e.target.value})} 
+                    placeholder="Nama wali kelas"
+                  />
+                </div>
+                <div>
+                  <Label>Tahun Ajaran</Label>
+                  <Input 
+                    value={formData.tahun_ajaran} 
+                    onChange={(e) => setFormData({...formData, tahun_ajaran: e.target.value})} 
+                    placeholder="Contoh: 2024/2025"
+                  />
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
+                  <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
+                    {editingKelas ? 'Simpan' : 'Tambah'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Kelas Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {kelasList.map((kelas, index) => (
+            <motion.div
+              key={kelas.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+            >
+              <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+                <div className={`h-2 bg-gradient-to-r ${tingkatColors[kelas.tingkat] || 'from-slate-400 to-slate-500'}`} />
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-800">{kelas.nama_kelas}</h3>
+                      <p className="text-sm text-slate-500 mt-1">Tingkat {kelas.tingkat}</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full">
+                      <Users className="w-4 h-4 text-slate-500" />
+                      <span className="text-sm font-medium text-slate-600">{getSiswaCount(kelas.id)}</span>
+                    </div>
+                  </div>
+                  
+                  {kelas.wali_kelas && (
+                    <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                      <p className="text-xs text-slate-400 mb-1">Wali Kelas</p>
+                      <p className="text-sm font-medium text-slate-700">{kelas.wali_kelas}</p>
+                    </div>
+                  )}
+
+                  {kelas.tahun_ajaran && (
+                    <p className="text-xs text-slate-400 mt-3">TA {kelas.tahun_ajaran}</p>
+                  )}
+
+                  <div className="flex gap-2 mt-4 pt-4 border-t">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
+                      <Edit2 className="w-4 h-4 mr-1" /> Edit
+                    </Button>
+                    <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(kelas.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+
+          {kelasList.length === 0 && !isLoading && (
+            <div className="col-span-full text-center py-12 text-slate-400">
+              Belum ada data kelas. Klik "Tambah Kelas" untuk memulai.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
