@@ -105,17 +105,7 @@ export default function Absensi() {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
-  const getStatusIcon = (status) => {
-    const icons = {
-      'Hadir': CheckCircle,
-      'Sakit': AlertCircle,
-      'Izin': FileText,
-      'Alfa': UserX,
-      'Terlambat': Clock,
-    };
-    const Icon = icons[status] || CheckCircle;
-    return <Icon className="w-4 h-4" />;
-  };
+
 
   // Stats
   const stats = {
@@ -181,20 +171,36 @@ export default function Absensi() {
         {/* Stats */}
         {selectedKelas && siswaList.length > 0 && (
           <div className="grid grid-cols-5 gap-3 mb-6">
-            {[
-              { label: 'Hadir', value: stats.hadir, color: 'emerald' },
-              { label: 'Sakit', value: stats.sakit, color: 'amber' },
-              { label: 'Izin', value: stats.izin, color: 'blue' },
-              { label: 'Alfa', value: stats.alfa, color: 'red' },
-              { label: 'Terlambat', value: stats.terlambat, color: 'orange' },
-            ].map(stat => (
-              <Card key={stat.label} className={`border-0 shadow-sm bg-${stat.color}-50`}>
-                <CardContent className="p-3 text-center">
-                  <p className={`text-2xl font-bold text-${stat.color}-600`}>{stat.value}</p>
-                  <p className="text-xs text-slate-500">{stat.label}</p>
-                </CardContent>
-              </Card>
-            ))}
+            <Card className="border-0 shadow-sm bg-emerald-50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-emerald-600">{stats.hadir}</p>
+                <p className="text-xs text-slate-500">Hadir</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-amber-50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-amber-600">{stats.sakit}</p>
+                <p className="text-xs text-slate-500">Sakit</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-blue-50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-blue-600">{stats.izin}</p>
+                <p className="text-xs text-slate-500">Izin</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-red-50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-red-600">{stats.alfa}</p>
+                <p className="text-xs text-slate-500">Alfa</p>
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm bg-orange-50">
+              <CardContent className="p-3 text-center">
+                <p className="text-2xl font-bold text-orange-600">{stats.terlambat}</p>
+                <p className="text-xs text-slate-500">Terlambat</p>
+              </CardContent>
+            </Card>
           </div>
         )}
 
@@ -222,20 +228,31 @@ export default function Absensi() {
                         <TableCell>{siswa.nama}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {['Hadir', 'Sakit', 'Izin', 'Alfa', 'Terlambat'].map(status => (
-                              <Badge 
-                                key={status}
-                                className={`cursor-pointer transition-all ${
-                                  absensiData[siswa.id]?.status === status 
-                                    ? getStatusColor(status) 
-                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                                }`}
-                                onClick={() => handleStatusChange(siswa.id, status)}
-                              >
-                                {getStatusIcon(status)}
-                                <span className="ml-1 hidden sm:inline">{status}</span>
-                              </Badge>
-                            ))}
+                            {['Hadir', 'Sakit', 'Izin', 'Alfa', 'Terlambat'].map(status => {
+                              const isActive = absensiData[siswa.id]?.status === status;
+                              const StatusIcon = {
+                                'Hadir': CheckCircle,
+                                'Sakit': AlertCircle,
+                                'Izin': FileText,
+                                'Alfa': UserX,
+                                'Terlambat': Clock,
+                              }[status];
+                              return (
+                                <button 
+                                  key={status}
+                                  type="button"
+                                  className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium cursor-pointer transition-all ${
+                                    isActive 
+                                      ? getStatusColor(status) 
+                                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                  }`}
+                                  onClick={() => handleStatusChange(siswa.id, status)}
+                                >
+                                  <StatusIcon className="w-3 h-3" />
+                                  <span className="ml-1 hidden sm:inline">{status}</span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </TableCell>
                         <TableCell>
