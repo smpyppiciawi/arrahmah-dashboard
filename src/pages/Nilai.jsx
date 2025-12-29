@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +22,23 @@ export default function Nilai() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [filterMapel, setFilterMapel] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'guru'].includes(userRole);
 
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
@@ -141,12 +157,13 @@ export default function Nilai() {
             <p className="text-slate-500 mt-1">Kelola nilai dan ketuntasan siswa</p>
           </div>
           
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-amber-600 hover:bg-amber-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Nilai
-              </Button>
-            </DialogTrigger>
+          {canEdit && (
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-amber-600 hover:bg-amber-700">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Nilai
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Nilai' : 'Input Nilai Baru'}</DialogTitle>
@@ -261,6 +278,7 @@ export default function Nilai() {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Stats */}
@@ -363,14 +381,18 @@ export default function Nilai() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}>
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(item.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {canEdit ? (
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}>
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(item.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

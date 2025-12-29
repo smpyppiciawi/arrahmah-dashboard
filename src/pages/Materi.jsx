@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,7 +28,23 @@ export default function Materi() {
   const [filterTingkat, setFilterTingkat] = useState('all');
   const [filterMapel, setFilterMapel] = useState('all');
   const [uploading, setUploading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'guru'].includes(userRole);
 
   const [formData, setFormData] = useState({
     judul: '', mapel: '', tingkat_kelas: '', semester: '',
@@ -150,12 +166,13 @@ export default function Materi() {
             <p className="text-slate-500 mt-1">Kelola materi pembelajaran</p>
           </div>
           
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Materi
-              </Button>
-            </DialogTrigger>
+          {canEdit && (
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-indigo-600 hover:bg-indigo-700">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Materi
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Materi' : 'Tambah Materi Baru'}</DialogTitle>
@@ -285,6 +302,7 @@ export default function Materi() {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Filters */}
@@ -378,12 +396,16 @@ export default function Materi() {
                                   </a>
                                 </Button>
                               )}
-                              <Button size="sm" variant="ghost" onClick={() => handleEdit(materi)}>
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(materi.id)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {canEdit && (
+                                <>
+                                  <Button size="sm" variant="ghost" onClick={() => handleEdit(materi)}>
+                                    <Edit2 className="w-4 h-4" />
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(materi.id)}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </>
+                              )}
                             </div>
                           </CardContent>
                         </Card>
