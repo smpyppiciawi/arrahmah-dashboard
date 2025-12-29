@@ -1,27 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School } from
+  School, LogOut } from
 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { base44 } from '@/api/base44Client';
+import { Badge } from "@/components/ui/badge";
 
-const menuItems = [
-{ name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
-{ name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-{ name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-{ name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
-{ name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-{ name: 'Keuangan', icon: Wallet, page: 'Keuangan', color: 'text-teal-500' },
-{ name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-{ name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' }];
-
+const allMenuItems = [
+  { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500', roles: ['admin', 'kepsek', 'bendahara', 'guru'] },
+  { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500', roles: ['admin', 'kepsek'] },
+  { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500', roles: ['admin'] },
+  { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500', roles: ['admin', 'kepsek'] },
+  { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500', roles: ['admin', 'kepsek', 'guru'] },
+  { name: 'Keuangan', icon: Wallet, page: 'Keuangan', color: 'text-teal-500', roles: ['admin', 'kepsek', 'bendahara'] },
+  { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500', roles: ['admin', 'kepsek', 'guru'] },
+  { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500', roles: ['admin', 'guru'] }
+];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+
+  const getRoleBadgeColor = (role) => {
+    const colors = {
+      admin: 'bg-red-100 text-red-700',
+      kepsek: 'bg-purple-100 text-purple-700',
+      bendahara: 'bg-teal-100 text-teal-700',
+      guru: 'bg-blue-100 text-blue-700'
+    };
+    return colors[role] || 'bg-slate-100 text-slate-700';
+  };
+
+  const getRoleLabel = (role) => {
+    const labels = {
+      admin: 'Admin',
+      kepsek: 'Kepala Sekolah',
+      bendahara: 'Bendahara',
+      guru: 'Guru'
+    };
+    return labels[role] || 'User';
+  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -92,8 +130,31 @@ export default function Layout({ children, currentPageName }) {
             </div>
           </nav>
 
-          {/* Footer */}
-          <div className="px-4 py-4 border-t">
+          {/* User Profile & Footer */}
+          <div className="px-4 py-4 border-t space-y-3">
+            {currentUser && (
+              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                    {currentUser.full_name?.charAt(0) || 'U'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-800 truncate">{currentUser.full_name}</p>
+                    <Badge className={`text-xs ${getRoleBadgeColor(userRole)}`}>
+                      {getRoleLabel(userRole)}
+                    </Badge>
+                  </div>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-xs text-red-600 hover:bg-red-50"
+                  onClick={() => base44.auth.logout()}
+                >
+                  <LogOut className="w-3 h-3 mr-1" /> Logout
+                </Button>
+              </div>
+            )}
             <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl">
               <p className="text-xs text-slate-500 text-center">
                 © {new Date().getFullYear()} SIS Sekolah
