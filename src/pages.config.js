@@ -1,23 +1,25 @@
-import Dashboard from './pages/Dashboard';
-import Siswa from './pages/Siswa';
-import Kelas from './pages/Kelas';
 import Absensi from './pages/Absensi';
-import Keuangan from './pages/Keuangan';
-import Nilai from './pages/Nilai';
-import Materi from './pages/Materi';
+import Dashboard from './pages/Dashboard';
 import Guru from './pages/Guru';
+import Home from './pages/Home';
+import Kelas from './pages/Kelas';
+import Keuangan from './pages/Keuangan';
+import Materi from './pages/Materi';
+import Nilai from './pages/Nilai';
+import Siswa from './pages/Siswa';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Dashboard": Dashboard,
-    "Siswa": Siswa,
-    "Kelas": Kelas,
     "Absensi": Absensi,
-    "Keuangan": Keuangan,
-    "Nilai": Nilai,
-    "Materi": Materi,
+    "Dashboard": Dashboard,
     "Guru": Guru,
+    "Home": Home,
+    "Kelas": Kelas,
+    "Keuangan": Keuangan,
+    "Materi": Materi,
+    "Nilai": Nilai,
+    "Siswa": Siswa,
 }
 
 export const pagesConfig = {
