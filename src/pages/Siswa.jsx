@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,23 @@ export default function Siswa() {
   const [editingSiswa, setEditingSiswa] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'kepsek'].includes(userRole);
 
   const [formData, setFormData] = useState({
     nis: '', nama: '', jenis_kelamin: '', kelas_id: '', nama_kelas: '',
@@ -106,12 +122,13 @@ export default function Siswa() {
             <p className="text-slate-500 mt-1">Kelola data siswa sekolah</p>
           </div>
           
-          <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
-              </Button>
-            </DialogTrigger>
+          {canEdit && (
+            <Dialog open={isOpen} onOpenChange={setIsOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-blue-600 hover:bg-blue-700">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
+                </Button>
+              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingSiswa ? 'Edit Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
@@ -189,6 +206,7 @@ export default function Siswa() {
               </form>
             </DialogContent>
           </Dialog>
+          )}
         </div>
 
         {/* Filters */}
@@ -255,14 +273,18 @@ export default function Siswa() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(siswa)}>
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(siswa.id)}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+                        {canEdit ? (
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(siswa)}>
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(siswa.id)}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-400">-</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
