@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -16,7 +16,23 @@ export default function Absensi() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedKelas, setSelectedKelas] = useState('');
   const [absensiData, setAbsensiData] = useState({});
+  const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await base44.auth.me();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'guru'].includes(userRole);
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
@@ -155,15 +171,17 @@ export default function Absensi() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-end">
-                <Button 
-                  onClick={handleSaveAll} 
-                  className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
-                  disabled={!selectedKelas || siswaList.length === 0}
-                >
-                  <Save className="w-4 h-4 mr-2" /> Simpan Absensi
-                </Button>
-              </div>
+              {canEdit && (
+                <div className="flex items-end">
+                  <Button 
+                    onClick={handleSaveAll} 
+                    className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
+                    disabled={!selectedKelas || siswaList.length === 0}
+                  >
+                    <Save className="w-4 h-4 mr-2" /> Simpan Absensi
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -246,7 +264,8 @@ export default function Absensi() {
                                       ? getStatusColor(status) 
                                       : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
                                   }`}
-                                  onClick={() => handleStatusChange(siswa.id, status)}
+                                  onClick={() => canEdit && handleStatusChange(siswa.id, status)}
+                                  disabled={!canEdit}
                                 >
                                   <StatusIcon className="w-3 h-3" />
                                   <span className="ml-1 hidden sm:inline">{status}</span>
@@ -264,6 +283,7 @@ export default function Absensi() {
                               [siswa.id]: { ...absensiData[siswa.id], jam_masuk: e.target.value }
                             })}
                             className="w-28"
+                            disabled={!canEdit}
                           />
                         </TableCell>
                         <TableCell>
@@ -275,6 +295,7 @@ export default function Absensi() {
                               [siswa.id]: { ...absensiData[siswa.id], keterangan: e.target.value }
                             })}
                             className="w-40"
+                            disabled={!canEdit}
                           />
                         </TableCell>
                       </TableRow>
