@@ -72,6 +72,8 @@ export default function Layout({ children, currentPageName }) {
     fetchUser();
   }, []);
 
+  const userRole = currentUser?.role || 'guru';
+
   const handleGroupClick = (group) => {
     if (unlockedGroups[group.id]) {
       setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }));
