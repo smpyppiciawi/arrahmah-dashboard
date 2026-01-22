@@ -4,27 +4,61 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut } from
+  School, LogOut, Lock, ChevronDown } from
 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { Badge } from "@/components/ui/badge";
 
-const allMenuItems = [
-  { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500', roles: ['admin', 'kepsek', 'bendahara', 'guru'] },
-  { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500', roles: ['admin', 'kepsek'] },
-  { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500', roles: ['admin'] },
-  { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500', roles: ['admin', 'kepsek'] },
-  { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500', roles: ['admin', 'kepsek', 'guru'] },
-  { name: 'Keuangan', icon: Wallet, page: 'Keuangan', color: 'text-teal-500', roles: ['admin', 'kepsek', 'bendahara'] },
-  { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500', roles: ['admin', 'kepsek', 'guru'] },
-  { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500', roles: ['admin', 'guru'] }
+const menuGroups = [
+  {
+    id: 'admin',
+    name: 'MENU ADMIN',
+    icon: Users,
+    color: 'text-red-500',
+    password: 'Y@pis20200721',
+    items: [
+      { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+      { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+      { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' }
+    ]
+  },
+  {
+    id: 'guru',
+    name: 'MENU GURU',
+    icon: GraduationCap,
+    color: 'text-green-500',
+    password: '20200721',
+    items: [
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' }
+    ]
+  },
+  {
+    id: 'bendahara',
+    name: 'MENU BENDAHARA',
+    icon: Wallet,
+    color: 'text-teal-500',
+    password: 'Y@pis20200721',
+    items: [
+      { name: 'Keuangan', icon: Wallet, page: 'Keuangan', color: 'text-teal-500' }
+    ]
+  }
 ];
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [unlockedGroups, setUnlockedGroups] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -38,8 +72,29 @@ export default function Layout({ children, currentPageName }) {
     fetchUser();
   }, []);
 
-  const userRole = currentUser?.role || 'guru';
-  const menuItems = allMenuItems.filter(item => item.roles.includes(userRole));
+  const handleGroupClick = (group) => {
+    if (unlockedGroups[group.id]) {
+      setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }));
+    } else {
+      setSelectedGroup(group);
+      setPasswordInput('');
+      setPasswordError('');
+      setShowPasswordDialog(true);
+    }
+  };
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (passwordInput === selectedGroup.password) {
+      setUnlockedGroups(prev => ({ ...prev, [selectedGroup.id]: true }));
+      setExpandedGroups(prev => ({ ...prev, [selectedGroup.id]: true }));
+      setShowPasswordDialog(false);
+      setPasswordInput('');
+      setPasswordError('');
+    } else {
+      setPasswordError('Password salah!');
+    }
+  };
 
   const getRoleBadgeColor = (role) => {
     const colors = {
@@ -100,35 +155,126 @@ export default function Layout({ children, currentPageName }) {
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 overflow-y-auto">
             <div className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive = currentPageName === item.page;
-                const Icon = item.icon;
-
-                return (
-                  <Link
-                    key={item.page}
-                    to={createPageUrl(item.page)}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                      ${isActive ?
+              {/* Dashboard - Always Visible */}
+              <Link
+                to={createPageUrl('Dashboard')}
+                onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                  ${currentPageName === 'Dashboard' ?
                     'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm' :
                     'text-slate-600 hover:bg-slate-50'}
-                    `
-                    }>
+                `}
+              >
+                <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Dashboard' ? 'text-blue-600' : 'text-blue-500'}`} />
+                <span className={`font-medium ${currentPageName === 'Dashboard' ? 'text-blue-600' : ''}`}>
+                  Dashboard
+                </span>
+                {currentPageName === 'Dashboard' && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
+              </Link>
 
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
-                    <span className={`font-medium ${isActive ? 'text-blue-600' : ''}`}>
-                      {item.name}
-                    </span>
-                    {isActive &&
-                    <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />
-                    }
-                  </Link>);
+              <div className="my-2 border-t border-slate-200" />
 
+              {/* Menu Groups */}
+              {menuGroups.map((group) => {
+                const GroupIcon = group.icon;
+                const isUnlocked = unlockedGroups[group.id];
+                const isExpanded = expandedGroups[group.id];
+
+                return (
+                  <div key={group.id} className="mb-2">
+                    <button
+                      onClick={() => handleGroupClick(group)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
+                    >
+                      <GroupIcon className={`w-5 h-5 ${group.color}`} />
+                      <span className="flex-1 text-left text-sm">{group.name}</span>
+                      {isUnlocked ? (
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      ) : (
+                        <Lock className="w-4 h-4 text-slate-400" />
+                      )}
+                    </button>
+
+                    {/* Submenu Items */}
+                    {isUnlocked && isExpanded && (
+                      <div className="ml-4 mt-1 space-y-1">
+                        {group.items.map((item) => {
+                          const isActive = currentPageName === item.page;
+                          const Icon = item.icon;
+
+                          return (
+                            <Link
+                              key={item.page}
+                              to={createPageUrl(item.page)}
+                              onClick={() => setSidebarOpen(false)}
+                              className={`
+                                flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200
+                                ${isActive ?
+                                  'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600' :
+                                  'text-slate-600 hover:bg-slate-50'}
+                              `}
+                            >
+                              <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : item.color}`} />
+                              <span className={`text-sm ${isActive ? 'font-medium text-blue-600' : ''}`}>
+                                {item.name}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
               })}
             </div>
           </nav>
+
+          {/* Password Dialog */}
+          <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-amber-500" />
+                  Masukkan Password
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div>
+                  <p className="text-sm text-slate-600 mb-3">
+                    Masukkan password untuk membuka <span className="font-semibold">{selectedGroup?.name}</span>
+                  </p>
+                  <Input
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      setPasswordError('');
+                    }}
+                    placeholder="Masukkan password"
+                    className={passwordError ? 'border-red-500' : ''}
+                    autoFocus
+                  />
+                  {passwordError && (
+                    <p className="text-xs text-red-500 mt-1">{passwordError}</p>
+                  )}
+                </div>
+                <div className="flex gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowPasswordDialog(false)}
+                    className="flex-1"
+                  >
+                    Batal
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                    Buka
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           {/* User Profile & Footer */}
           <div className="px-4 py-4 border-t space-y-3">
