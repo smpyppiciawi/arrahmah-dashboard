@@ -73,6 +73,17 @@ export default function Siswa() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['siswa'] }),
   });
 
+  const downloadSiswaTemplate = () => {
+    const csvContent = "nis,nama,jenis_kelamin,nama_kelas,tanggal_lahir,alamat,nama_ortu,no_telp_ortu\n12345,Ahmad Budi,Laki-laki,7A,2010-01-15,Jl. Merdeka No. 10,Budi Santoso,081234567890\n12346,Siti Nurhaliza,Perempuan,7A,2010-03-20,Jl. Sudirman No. 5,Ahmad Yani,081298765432";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_siswa.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleCsvImport = async () => {
     if (!csvFile) return;
     
@@ -97,8 +108,7 @@ export default function Siswa() {
                   tanggal_lahir: { type: "string" },
                   alamat: { type: "string" },
                   nama_ortu: { type: "string" },
-                  no_telp_ortu: { type: "string" },
-                  status: { type: "string" }
+                  no_telp_ortu: { type: "string" }
                 }
               }
             }
@@ -120,7 +130,7 @@ export default function Siswa() {
           }
         });
         
-        // Check existing classes and create new ones
+        // Check and create new classes
         const existingClasses = kelasList.map(k => k.nama_kelas);
         const newClasses = Array.from(classMap.values()).filter(
           k => !existingClasses.includes(k.nama_kelas)
@@ -130,14 +140,21 @@ export default function Siswa() {
           await base44.entities.Kelas.bulkCreate(newClasses);
         }
         
-        // Refresh class list to get IDs
+        // Refresh class list
         const updatedKelasList = await base44.entities.Kelas.list();
         
         // Map students with kelas_id
         const studentsWithKelasId = importedData.map(siswa => ({
-          ...siswa,
+          nis: siswa.nis || '',
+          nama: siswa.nama || '',
+          jenis_kelamin: siswa.jenis_kelamin || '',
+          nama_kelas: siswa.nama_kelas || '',
           kelas_id: updatedKelasList.find(k => k.nama_kelas === siswa.nama_kelas)?.id || '',
-          status: siswa.status || 'Aktif'
+          tanggal_lahir: siswa.tanggal_lahir || '',
+          alamat: siswa.alamat || '',
+          nama_ortu: siswa.nama_ortu || '',
+          no_telp_ortu: siswa.no_telp_ortu || '',
+          status: 'Aktif'
         }));
         
         await base44.entities.Siswa.bulkCreate(studentsWithKelasId);
@@ -147,6 +164,7 @@ export default function Siswa() {
       }
     } catch (error) {
       console.error('Import error:', error);
+      alert('Gagal import data. Pastikan format CSV sesuai dengan template.');
     } finally {
       setImporting(false);
     }
@@ -217,6 +235,19 @@ export default function Siswa() {
                     <DialogTitle>Import Data Siswa dari CSV</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm font-semibold text-blue-800 mb-2">Format CSV yang diperlukan:</p>
+                      <p className="text-xs text-blue-600">nis, nama, jenis_kelamin, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu</p>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        size="sm" 
+                        onClick={downloadSiswaTemplate}
+                        className="text-blue-600 p-0 h-auto mt-2"
+                      >
+                        Download Template CSV
+                      </Button>
+                    </div>
                     <div>
                       <Label>Upload File CSV</Label>
                       <Input 
@@ -226,7 +257,7 @@ export default function Siswa() {
                         disabled={importing}
                       />
                       <p className="text-xs text-slate-500 mt-2">
-                        Format: nis, nama, jenis_kelamin, kelas_id, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu, status
+                        Kolom kosong akan diisi otomatis. Kelas baru akan dibuat otomatis.
                       </p>
                     </div>
                     <div className="flex gap-3">

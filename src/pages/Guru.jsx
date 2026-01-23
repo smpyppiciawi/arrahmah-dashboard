@@ -74,38 +74,66 @@ export default function Guru() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guru'] }),
   });
 
+  const downloadGuruTemplate = () => {
+    const csvContent = "nama,jenis_kelamin,no_telp,email\nAhmad Santoso,Laki-laki,081234567890,ahmad@email.com\nSiti Fatimah,Perempuan,081298765432,siti@email.com";
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template_guru.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleCsvImport = async () => {
     if (!csvFile) return;
     
-    setImporting(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
-    
-    const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-      file_url,
-      json_schema: {
-        type: "array",
-        items: {
+    try {
+      setImporting(true);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
+      
+      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: {
           type: "object",
           properties: {
-            nip: { type: "string" },
-            nama: { type: "string" },
-            jenis_kelamin: { type: "string" },
-            mapel: { type: "array", items: { type: "string" } },
-            no_telp: { type: "string" },
-            email: { type: "string" },
-            status: { type: "string" }
+            data: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  nama: { type: "string" },
+                  jenis_kelamin: { type: "string" },
+                  no_telp: { type: "string" },
+                  email: { type: "string" }
+                }
+              }
+            }
           }
         }
-      }
-    });
+      });
 
-    if (result.status === 'success' && result.output) {
-      await base44.entities.Guru.bulkCreate(result.output);
-      queryClient.invalidateQueries({ queryKey: ['guru'] });
-      setCsvDialogOpen(false);
-      setCsvFile(null);
+      if (result.status === 'success' && result.output?.data) {
+        const guruData = result.output.data.map(guru => ({
+          nama: guru.nama || '',
+          jenis_kelamin: guru.jenis_kelamin || '',
+          no_telp: guru.no_telp || '',
+          email: guru.email || '',
+          mapel: [],
+          status: 'Aktif'
+        }));
+        
+        await base44.entities.Guru.bulkCreate(guruData);
+        queryClient.invalidateQueries({ queryKey: ['guru'] });
+        setCsvDialogOpen(false);
+        setCsvFile(null);
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Gagal import data. Pastikan format CSV sesuai dengan template.');
+    } finally {
+      setImporting(false);
     }
-    setImporting(false);
   };
 
   const resetForm = () => {
@@ -173,6 +201,19 @@ export default function Guru() {
                     <DialogTitle>Import Data Guru dari CSV</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4">
+                    <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-3">
+                      <p className="text-sm font-semibold text-violet-800 mb-2">Format CSV yang diperlukan:</p>
+                      <p className="text-xs text-violet-600">nama, jenis_kelamin, no_telp, email</p>
+                      <Button 
+                        type="button" 
+                        variant="link" 
+                        size="sm" 
+                        onClick={downloadGuruTemplate}
+                        className="text-violet-600 p-0 h-auto mt-2"
+                      >
+                        Download Template CSV
+                      </Button>
+                    </div>
                     <div>
                       <Label>Upload File CSV</Label>
                       <Input 
@@ -182,7 +223,7 @@ export default function Guru() {
                         disabled={importing}
                       />
                       <p className="text-xs text-slate-500 mt-2">
-                        Format: nip, nama, jenis_kelamin, mapel (array), no_telp, email, status
+                        Data lain seperti NIP dan Mata Pelajaran dapat ditambahkan manual setelah import.
                       </p>
                     </div>
                     <div className="flex gap-3">
