@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, Plus, Search, Edit2, Trash2, Mail, Phone } from "lucide-react";
+import { GraduationCap, Plus, Search, Edit2, Trash2, Mail, Phone, Upload } from "lucide-react";
 
 const MAPEL_LIST = [
   'Bahasa Indonesia', 'Matematika', 'IPA', 'IPS', 'Bahasa Inggris',
@@ -289,6 +289,7 @@ export default function Guru() {
               </form>
             </DialogContent>
           </Dialog>
+            </div>
           )}
         </div>
 
