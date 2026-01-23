@@ -18,7 +18,8 @@ import { motion } from "framer-motion";
 
 const MAPEL_LIST = [
   'Bahasa Indonesia', 'Matematika', 'IPA', 'IPS', 'Bahasa Inggris',
-  'PKn', 'Pendidikan Agama', 'PJOK', 'Seni Budaya', 'Prakarya', 'TIK'
+  'PKn', 'Pendidikan Agama', 'PJOK', 'Seni Budaya', 'Prakarya', 'TIK',
+  'Bahasa Sunda', 'Seni Rupa', 'Seni Musik', 'BTAQ', 'Akidah Akhlak'
 ];
 
 export default function Materi() {
@@ -56,6 +57,15 @@ export default function Materi() {
     queryKey: ['materi'],
     queryFn: () => base44.entities.Materi.list('-created_date'),
   });
+
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+  });
+
+  const filteredGuruList = formData.mapel 
+    ? guruList.filter(guru => guru.mapel?.includes(formData.mapel))
+    : guruList;
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Materi.create(data),
@@ -257,10 +267,14 @@ export default function Materi() {
                   </div>
                   <div>
                     <Label>Guru Pengampu</Label>
-                    <Input 
-                      value={formData.guru_pengampu} 
-                      onChange={(e) => setFormData({...formData, guru_pengampu: e.target.value})}
-                    />
+                    <Select value={formData.guru_pengampu} onValueChange={(v) => setFormData({...formData, guru_pengampu: v})}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
+                      <SelectContent>
+                        {filteredGuruList.map(guru => (
+                          <SelectItem key={guru.id} value={guru.nama}>{guru.nama}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>

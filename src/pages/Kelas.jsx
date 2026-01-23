@@ -29,6 +29,11 @@ export default function Kelas() {
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
   });
 
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Kelas.create(data),
     onSuccess: () => {
@@ -128,11 +133,14 @@ export default function Kelas() {
                 </div>
                 <div>
                   <Label>Wali Kelas</Label>
-                  <Input 
-                    value={formData.wali_kelas} 
-                    onChange={(e) => setFormData({...formData, wali_kelas: e.target.value})} 
-                    placeholder="Nama wali kelas"
-                  />
+                  <Select value={formData.wali_kelas} onValueChange={(v) => setFormData({...formData, wali_kelas: v})}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
+                    <SelectContent>
+                      {guruList.map(guru => (
+                        <SelectItem key={guru.id} value={guru.nama}>{guru.nama}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Tahun Ajaran</Label>

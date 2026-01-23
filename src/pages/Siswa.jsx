@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, Users } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Users, Upload } from "lucide-react";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +17,9 @@ export default function Siswa() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [currentUser, setCurrentUser] = useState(null);
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [importing, setImporting] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -69,6 +72,43 @@ export default function Siswa() {
     mutationFn: (id) => base44.entities.Siswa.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['siswa'] }),
   });
+
+  const handleCsvImport = async () => {
+    if (!csvFile) return;
+    
+    setImporting(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
+    
+    const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+      file_url,
+      json_schema: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            nis: { type: "string" },
+            nama: { type: "string" },
+            jenis_kelamin: { type: "string" },
+            kelas_id: { type: "string" },
+            nama_kelas: { type: "string" },
+            tanggal_lahir: { type: "string" },
+            alamat: { type: "string" },
+            nama_ortu: { type: "string" },
+            no_telp_ortu: { type: "string" },
+            status: { type: "string" }
+          }
+        }
+      }
+    });
+
+    if (result.status === 'success' && result.output) {
+      await base44.entities.Siswa.bulkCreate(result.output);
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      setCsvDialogOpen(false);
+      setCsvFile(null);
+    }
+    setImporting(false);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -123,12 +163,48 @@ export default function Siswa() {
           </div>
           
           {canEdit && (
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Upload className="w-4 h-4 mr-2" /> Import CSV
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Import Data Siswa dari CSV</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Upload File CSV</Label>
+                      <Input 
+                        type="file" 
+                        accept=".csv"
+                        onChange={(e) => setCsvFile(e.target.files[0])}
+                        disabled={importing}
+                      />
+                      <p className="text-xs text-slate-500 mt-2">
+                        Format: nis, nama, jenis_kelamin, kelas_id, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu, status
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button type="button" variant="outline" onClick={() => setCsvDialogOpen(false)} className="flex-1">
+                        Batal
+                      </Button>
+                      <Button onClick={handleCsvImport} disabled={!csvFile || importing} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                        {importing ? 'Mengimport...' : 'Import'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-blue-600 hover:bg-blue-700">
+                    <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
+                  </Button>
+                </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingSiswa ? 'Edit Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
@@ -206,8 +282,9 @@ export default function Siswa() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
           )}
-        </div>
+          </div>
 
         {/* Filters */}
         <Card className="mb-6 border-0 shadow-sm">

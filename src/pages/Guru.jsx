@@ -13,7 +13,8 @@ import { GraduationCap, Plus, Search, Edit2, Trash2, Mail, Phone } from "lucide-
 
 const MAPEL_LIST = [
   'Bahasa Indonesia', 'Matematika', 'IPA', 'IPS', 'Bahasa Inggris',
-  'PKn', 'Pendidikan Agama', 'PJOK', 'Seni Budaya', 'Prakarya', 'TIK'
+  'PKn', 'Pendidikan Agama', 'PJOK', 'Seni Budaya', 'Prakarya', 'TIK',
+  'Bahasa Sunda', 'Seni Rupa', 'Seni Musik', 'BTAQ', 'Akidah Akhlak'
 ];
 
 export default function Guru() {
@@ -22,6 +23,9 @@ export default function Guru() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMapel, setSelectedMapel] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState(null);
+  const [importing, setImporting] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -69,6 +73,40 @@ export default function Guru() {
     mutationFn: (id) => base44.entities.Guru.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guru'] }),
   });
+
+  const handleCsvImport = async () => {
+    if (!csvFile) return;
+    
+    setImporting(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
+    
+    const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+      file_url,
+      json_schema: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            nip: { type: "string" },
+            nama: { type: "string" },
+            jenis_kelamin: { type: "string" },
+            mapel: { type: "array", items: { type: "string" } },
+            no_telp: { type: "string" },
+            email: { type: "string" },
+            status: { type: "string" }
+          }
+        }
+      }
+    });
+
+    if (result.status === 'success' && result.output) {
+      await base44.entities.Guru.bulkCreate(result.output);
+      queryClient.invalidateQueries({ queryKey: ['guru'] });
+      setCsvDialogOpen(false);
+      setCsvFile(null);
+    }
+    setImporting(false);
+  };
 
   const resetForm = () => {
     setFormData({
@@ -123,12 +161,48 @@ export default function Guru() {
           </div>
           
           {canEdit && (
-            <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-violet-600 hover:bg-violet-700">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Guru
-                </Button>
-              </DialogTrigger>
+            <div className="flex gap-2">
+              <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Upload className="w-4 h-4 mr-2" /> Import CSV
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Import Data Guru dari CSV</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Upload File CSV</Label>
+                      <Input 
+                        type="file" 
+                        accept=".csv"
+                        onChange={(e) => setCsvFile(e.target.files[0])}
+                        disabled={importing}
+                      />
+                      <p className="text-xs text-slate-500 mt-2">
+                        Format: nip, nama, jenis_kelamin, mapel (array), no_telp, email, status
+                      </p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button type="button" variant="outline" onClick={() => setCsvDialogOpen(false)} className="flex-1">
+                        Batal
+                      </Button>
+                      <Button onClick={handleCsvImport} disabled={!csvFile || importing} className="flex-1 bg-violet-600 hover:bg-violet-700">
+                        {importing ? 'Mengimport...' : 'Import'}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isOpen} onOpenChange={setIsOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-violet-600 hover:bg-violet-700">
+                    <Plus className="w-4 h-4 mr-2" /> Tambah Guru
+                  </Button>
+                </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Guru' : 'Tambah Guru Baru'}</DialogTitle>
