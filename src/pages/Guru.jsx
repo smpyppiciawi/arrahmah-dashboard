@@ -203,7 +203,7 @@ export default function Guru() {
                     <Plus className="w-4 h-4 mr-2" /> Tambah Guru
                   </Button>
                 </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Guru' : 'Tambah Guru Baru'}</DialogTitle>
               </DialogHeader>
@@ -287,8 +287,8 @@ export default function Guru() {
                   </Button>
                 </div>
               </form>
-            </DialogContent>
-          </Dialog>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
