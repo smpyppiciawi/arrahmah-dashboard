@@ -102,6 +102,32 @@ export default function Siswa() {
     });
 
     if (result.status === 'success' && result.output) {
+      // Extract unique classes from imported data
+      const uniqueClasses = [];
+      const classMap = new Map();
+      
+      result.output.forEach(siswa => {
+        if (siswa.nama_kelas && !classMap.has(siswa.nama_kelas)) {
+          classMap.set(siswa.nama_kelas, {
+            nama_kelas: siswa.nama_kelas,
+            tingkat: siswa.nama_kelas.charAt(0) // Extract first character as tingkat (7A -> 7)
+          });
+        }
+      });
+      
+      // Check existing classes
+      const existingClasses = kelasList.map(k => k.nama_kelas);
+      const newClasses = Array.from(classMap.values()).filter(
+        k => !existingClasses.includes(k.nama_kelas)
+      );
+      
+      // Auto-create new classes
+      if (newClasses.length > 0) {
+        await base44.entities.Kelas.bulkCreate(newClasses);
+        queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      }
+      
+      // Import students
       await base44.entities.Siswa.bulkCreate(result.output);
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       setCsvDialogOpen(false);
