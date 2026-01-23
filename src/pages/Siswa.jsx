@@ -76,64 +76,80 @@ export default function Siswa() {
   const handleCsvImport = async () => {
     if (!csvFile) return;
     
-    setImporting(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
-    
-    const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-      file_url,
-      json_schema: {
-        type: "array",
-        items: {
+    try {
+      setImporting(true);
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: csvFile });
+      
+      const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
+        file_url,
+        json_schema: {
           type: "object",
           properties: {
-            nis: { type: "string" },
-            nama: { type: "string" },
-            jenis_kelamin: { type: "string" },
-            kelas_id: { type: "string" },
-            nama_kelas: { type: "string" },
-            tanggal_lahir: { type: "string" },
-            alamat: { type: "string" },
-            nama_ortu: { type: "string" },
-            no_telp_ortu: { type: "string" },
-            status: { type: "string" }
+            data: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  nis: { type: "string" },
+                  nama: { type: "string" },
+                  jenis_kelamin: { type: "string" },
+                  nama_kelas: { type: "string" },
+                  tanggal_lahir: { type: "string" },
+                  alamat: { type: "string" },
+                  nama_ortu: { type: "string" },
+                  no_telp_ortu: { type: "string" },
+                  status: { type: "string" }
+                }
+              }
+            }
           }
         }
-      }
-    });
-
-    if (result.status === 'success' && result.output) {
-      // Extract unique classes from imported data
-      const uniqueClasses = [];
-      const classMap = new Map();
-      
-      result.output.forEach(siswa => {
-        if (siswa.nama_kelas && !classMap.has(siswa.nama_kelas)) {
-          classMap.set(siswa.nama_kelas, {
-            nama_kelas: siswa.nama_kelas,
-            tingkat: siswa.nama_kelas.charAt(0) // Extract first character as tingkat (7A -> 7)
-          });
-        }
       });
-      
-      // Check existing classes
-      const existingClasses = kelasList.map(k => k.nama_kelas);
-      const newClasses = Array.from(classMap.values()).filter(
-        k => !existingClasses.includes(k.nama_kelas)
-      );
-      
-      // Auto-create new classes
-      if (newClasses.length > 0) {
-        await base44.entities.Kelas.bulkCreate(newClasses);
-        queryClient.invalidateQueries({ queryKey: ['kelas'] });
+
+      if (result.status === 'success' && result.output?.data) {
+        const importedData = result.output.data;
+        const classMap = new Map();
+        
+        // Extract unique classes
+        importedData.forEach(siswa => {
+          if (siswa.nama_kelas && !classMap.has(siswa.nama_kelas)) {
+            classMap.set(siswa.nama_kelas, {
+              nama_kelas: siswa.nama_kelas,
+              tingkat: siswa.nama_kelas.charAt(0)
+            });
+          }
+        });
+        
+        // Check existing classes and create new ones
+        const existingClasses = kelasList.map(k => k.nama_kelas);
+        const newClasses = Array.from(classMap.values()).filter(
+          k => !existingClasses.includes(k.nama_kelas)
+        );
+        
+        if (newClasses.length > 0) {
+          await base44.entities.Kelas.bulkCreate(newClasses);
+        }
+        
+        // Refresh class list to get IDs
+        const updatedKelasList = await base44.entities.Kelas.list();
+        
+        // Map students with kelas_id
+        const studentsWithKelasId = importedData.map(siswa => ({
+          ...siswa,
+          kelas_id: updatedKelasList.find(k => k.nama_kelas === siswa.nama_kelas)?.id || '',
+          status: siswa.status || 'Aktif'
+        }));
+        
+        await base44.entities.Siswa.bulkCreate(studentsWithKelasId);
+        queryClient.invalidateQueries({ queryKey: ['siswa', 'kelas'] });
+        setCsvDialogOpen(false);
+        setCsvFile(null);
       }
-      
-      // Import students
-      await base44.entities.Siswa.bulkCreate(result.output);
-      queryClient.invalidateQueries({ queryKey: ['siswa'] });
-      setCsvDialogOpen(false);
-      setCsvFile(null);
+    } catch (error) {
+      console.error('Import error:', error);
+    } finally {
+      setImporting(false);
     }
-    setImporting(false);
   };
 
   const resetForm = () => {
