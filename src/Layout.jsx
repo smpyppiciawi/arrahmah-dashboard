@@ -176,6 +176,24 @@ export default function Layout({ children, currentPageName }) {
                 {currentPageName === 'Dashboard' && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
               </Link>
 
+              {/* Menu Kepsek - Locked */}
+              <Link
+                to={createPageUrl('Kepsek')}
+                onClick={() => setSidebarOpen(false)}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                  ${currentPageName === 'Kepsek' ?
+                    'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 shadow-sm' :
+                    'text-slate-600 hover:bg-slate-50'}
+                `}
+              >
+                <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Kepsek' ? 'text-indigo-600' : 'text-indigo-500'}`} />
+                <span className={`font-medium ${currentPageName === 'Kepsek' ? 'text-indigo-600' : ''}`}>
+                  Menu Kepsek
+                </span>
+                {currentPageName === 'Kepsek' && <ChevronRight className="w-4 h-4 ml-auto text-indigo-400" />}
+              </Link>
+
               <div className="my-2 border-t border-slate-200" />
 
               {/* Menu Groups */}
