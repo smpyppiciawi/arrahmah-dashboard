@@ -7,6 +7,7 @@ import Keuangan from './pages/Keuangan';
 import Materi from './pages/Materi';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
+import CatatanSiswa from './pages/CatatanSiswa';
 import __Layout from './Layout.jsx';
 
 
@@ -20,6 +21,7 @@ export const PAGES = {
     "Materi": Materi,
     "Nilai": Nilai,
     "Siswa": Siswa,
+    "CatatanSiswa": CatatanSiswa,
 }
 
 export const pagesConfig = {

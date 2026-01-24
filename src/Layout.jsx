@@ -4,7 +4,7 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, Lock, ChevronDown } from
+  School, LogOut, Lock, ChevronDown, ClipboardList } from
 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,8 @@ const menuGroups = [
     items: [
       { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' }
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' }
     ]
   },
   {
