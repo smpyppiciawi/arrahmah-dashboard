@@ -94,6 +94,11 @@ export default function Layout({ children, currentPageName }) {
       setShowPasswordDialog(false);
       setPasswordInput('');
       setPasswordError('');
+      
+      // If kepsek, redirect to page
+      if (selectedGroup.id === 'kepsek') {
+        window.location.href = createPageUrl('Kepsek');
+      }
     } else {
       setPasswordError('Password salah!');
     }
@@ -176,23 +181,34 @@ export default function Layout({ children, currentPageName }) {
                 {currentPageName === 'Dashboard' && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
               </Link>
 
-              {/* Menu Kepsek - Locked */}
-              <Link
-                to={createPageUrl('Kepsek')}
-                onClick={() => setSidebarOpen(false)}
+              {/* KEPSEK - Locked */}
+              <button
+                onClick={() => {
+                  const group = { id: 'kepsek', name: 'KEPSEK', password: 'Y@pis20200721' };
+                  if (unlockedGroups['kepsek']) {
+                    window.location.href = createPageUrl('Kepsek');
+                    setSidebarOpen(false);
+                  } else {
+                    setSelectedGroup(group);
+                    setPasswordInput('');
+                    setPasswordError('');
+                    setShowPasswordDialog(true);
+                  }
+                }}
                 className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full
                   ${currentPageName === 'Kepsek' ?
                     'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 shadow-sm' :
                     'text-slate-600 hover:bg-slate-50'}
                 `}
               >
                 <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Kepsek' ? 'text-indigo-600' : 'text-indigo-500'}`} />
-                <span className={`font-medium ${currentPageName === 'Kepsek' ? 'text-indigo-600' : ''}`}>
-                  Menu Kepsek
+                <span className={`font-semibold ${currentPageName === 'Kepsek' ? 'text-indigo-600' : ''}`}>
+                  KEPSEK
                 </span>
+                {!unlockedGroups['kepsek'] && <Lock className="w-4 h-4 ml-auto text-slate-400" />}
                 {currentPageName === 'Kepsek' && <ChevronRight className="w-4 h-4 ml-auto text-indigo-400" />}
-              </Link>
+              </button>
 
               <div className="my-2 border-t border-slate-200" />
 

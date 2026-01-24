@@ -246,6 +246,30 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="text-center">
+                      <p className="text-sm text-slate-600">Total Hadir</p>
+                      <p className="text-2xl font-bold text-emerald-600">{attendanceSummary.reduce((sum, item) => sum + item.hadir, 0)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-slate-600">Total Sakit</p>
+                      <p className="text-2xl font-bold text-blue-600">{attendanceSummary.reduce((sum, item) => sum + item.sakit, 0)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-slate-600">Total Izin</p>
+                      <p className="text-2xl font-bold text-amber-600">{attendanceSummary.reduce((sum, item) => sum + item.izin, 0)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-slate-600">Total Alfa</p>
+                      <p className="text-2xl font-bold text-red-600">{attendanceSummary.reduce((sum, item) => sum + item.alfa, 0)}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm text-slate-600">Total Siswa</p>
+                      <p className="text-2xl font-bold text-slate-800">{attendanceSummary.reduce((sum, item) => sum + item.totalSiswa, 0)}</p>
+                    </div>
+                  </div>
+                </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
