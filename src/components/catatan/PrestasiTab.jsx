@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Edit2, Trash2, Trophy, Upload } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { DataTable } from "@/components/ui/data-table";
 
 export default function PrestasiTab() {
   const [isOpen, setIsOpen] = useState(false);
@@ -119,13 +120,6 @@ export default function PrestasiTab() {
     }
   };
 
-  const filteredData = prestasiList.filter(item => {
-    const matchSearch = item.nama_siswa?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       item.nama_prestasi?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchKelas = filterKelas === 'all' || item.kelas_id === filterKelas;
-    return matchSearch && matchKelas;
-  });
-
   const categoryColors = {
     'Juara 1': 'bg-yellow-100 text-yellow-800',
     'Juara 2': 'bg-slate-100 text-slate-800',
@@ -133,6 +127,32 @@ export default function PrestasiTab() {
     'Finalis': 'bg-blue-100 text-blue-800',
     'Peserta': 'bg-emerald-100 text-emerald-800'
   };
+
+  const prestasiColumns = [
+    { key: 'tanggal', label: 'Tanggal' },
+    { key: 'nama_siswa', label: 'Siswa' },
+    { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge variant="secondary" className="bg-blue-100 text-blue-700">{row.nama_kelas}</Badge> },
+    { key: 'nama_prestasi', label: 'Prestasi' },
+    { key: 'jenis_prestasi', label: 'Jenis', render: (row) => <Badge className={row.jenis_prestasi === 'Akademik' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}>{row.jenis_prestasi}</Badge> },
+    { key: 'kategori', label: 'Kategori', render: (row) => <Badge className={categoryColors[row.kategori]}>{row.kategori}</Badge> },
+    { key: 'tingkat', label: 'Tingkat' },
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      sortable: false,
+      filterable: false,
+      render: (row) => (
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+            <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-6">
@@ -153,95 +173,13 @@ export default function PrestasiTab() {
         </CardHeader>
       </Card>
 
-      {/* Filters */}
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <Input 
-                placeholder="Cari siswa atau prestasi..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={filterKelas} onValueChange={setFilterKelas}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter Kelas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kelas</SelectItem>
-                {kelasList.map(kelas => (
-                  <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Table */}
       <Card className="border-0 shadow-sm">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead>Tanggal</TableHead>
-                  <TableHead>Siswa</TableHead>
-                  <TableHead>Kelas</TableHead>
-                  <TableHead>Prestasi</TableHead>
-                  <TableHead>Jenis</TableHead>
-                  <TableHead>Kategori</TableHead>
-                  <TableHead>Tingkat</TableHead>
-                  <TableHead className="text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredData.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.tanggal}</TableCell>
-                    <TableCell className="font-medium">{item.nama_siswa}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                        {item.nama_kelas}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{item.nama_prestasi}</TableCell>
-                    <TableCell>
-                      <Badge className={item.jenis_prestasi === 'Akademik' ? 'bg-purple-100 text-purple-700' : 'bg-indigo-100 text-indigo-700'}>
-                        {item.jenis_prestasi}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={categoryColors[item.kategori]}>
-                        {item.kategori}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{item.tingkat}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}>
-                          <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(item.id)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {filteredData.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-slate-400">
-                      Belum ada data prestasi
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+        <CardHeader>
+          <CardTitle>Data Prestasi Siswa</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DataTable columns={prestasiColumns} data={prestasiList} pageSize={5} />
         </CardContent>
       </Card>
 
