@@ -52,11 +52,17 @@ export default function Keuangan() {
     nis: '',
     nama_siswa: '',
     kelas: '',
+    guru_id: '',
+    nip_pegawai: '',
+    nama_pegawai: '',
+    jabatan_pegawai: '',
     sumber_rekening: '',
     pic: '',
     status_bayar: 'Lunas',
     rencana_belanja_id: ''
   });
+
+  const [jenisTransaksi, setJenisTransaksi] = useState('siswa'); // 'siswa' or 'pegawai'
 
   const [rencanaForm, setRencanaForm] = useState({
     nama_rencana: '',
@@ -75,6 +81,11 @@ export default function Keuangan() {
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+  });
+
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.filter({ status: 'Aktif' }),
   });
 
   const { data: rencanaList = [] } = useQuery({
@@ -149,6 +160,10 @@ export default function Keuangan() {
       nis: '',
       nama_siswa: '',
       kelas: '',
+      guru_id: '',
+      nip_pegawai: '',
+      nama_pegawai: '',
+      jabatan_pegawai: '',
       sumber_rekening: '',
       pic: '',
       status_bayar: 'Lunas',
@@ -156,6 +171,7 @@ export default function Keuangan() {
     });
     setEditingData(null);
     setIsOpen(false);
+    setJenisTransaksi('siswa');
   };
 
   const resetRencanaForm = () => {
@@ -209,7 +225,28 @@ export default function Keuangan() {
         siswa_id: siswa.id,
         nis: siswa.nis,
         nama_siswa: siswa.nama,
-        kelas: siswa.nama_kelas
+        kelas: siswa.nama_kelas,
+        guru_id: '',
+        nip_pegawai: '',
+        nama_pegawai: '',
+        jabatan_pegawai: ''
+      }));
+    }
+  };
+
+  const handleGuruChange = (guruId) => {
+    const guru = guruList.find(g => g.id === guruId);
+    if (guru) {
+      setFormData(prev => ({
+        ...prev,
+        guru_id: guru.id,
+        nip_pegawai: guru.nip,
+        nama_pegawai: guru.nama,
+        jabatan_pegawai: guru.jabatan,
+        siswa_id: '',
+        nis: '',
+        nama_siswa: '',
+        kelas: ''
       }));
     }
   };
@@ -355,7 +392,15 @@ export default function Keuangan() {
     },
     { key: 'tipe_transaksi', label: 'Tipe', render: (row) => row.tipe_transaksi || '-' },
     { key: 'kategori', label: 'Kategori' },
-    { key: 'nama_siswa', label: 'Siswa', render: (row) => row.nama_siswa || '-' },
+    { 
+      key: 'penerima', 
+      label: 'Siswa/Pegawai', 
+      render: (row) => {
+        if (row.nama_siswa) return <span className="text-blue-600">{row.nama_siswa} ({row.nis})</span>;
+        if (row.nama_pegawai) return <span className="text-purple-600">{row.nama_pegawai} - {row.jabatan_pegawai}</span>;
+        return '-';
+      }
+    },
     { key: 'uraian', label: 'Uraian', render: (row) => <span className="max-w-xs truncate block">{row.uraian}</span> },
     { 
       key: 'jumlah', 
@@ -541,6 +586,30 @@ export default function Keuangan() {
               <DialogTitle>{editingData ? 'Edit Transaksi' : 'Tambah Transaksi'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Jenis Transaksi Toggle */}
+              {!editingData && (
+                <div>
+                  <Label>Jenis Transaksi</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Button
+                      type="button"
+                      variant={jenisTransaksi === 'siswa' ? 'default' : 'outline'}
+                      onClick={() => setJenisTransaksi('siswa')}
+                      className="flex-1"
+                    >
+                      Transaksi Siswa
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={jenisTransaksi === 'pegawai' ? 'default' : 'outline'}
+                      onClick={() => setJenisTransaksi('pegawai')}
+                      className="flex-1"
+                    >
+                      Transaksi Pegawai
+                    </Button>
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Tanggal</Label>
