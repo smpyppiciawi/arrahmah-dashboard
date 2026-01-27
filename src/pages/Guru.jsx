@@ -56,6 +56,8 @@ export default function Guru() {
   const { data: guruList = [], isLoading } = useQuery({
     queryKey: ['guru'],
     queryFn: () => base44.entities.Guru.list('nama'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({

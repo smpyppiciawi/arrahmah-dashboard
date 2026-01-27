@@ -76,21 +76,29 @@ export default function Keuangan() {
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
     queryFn: () => base44.entities.Keuangan.list('-tanggal'),
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
     queryFn: () => base44.entities.Guru.filter({ status: 'Aktif' }),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: rencanaList = [] } = useQuery({
     queryKey: ['rencana-belanja'],
     queryFn: () => base44.entities.RencanaBelanja.list('-created_date'),
+    staleTime: 3 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({
