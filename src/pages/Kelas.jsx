@@ -16,7 +16,7 @@ export default function Kelas() {
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
-    nama_kelas: '', tingkat: '', wali_kelas: '', tahun_ajaran: ''
+    wali_kelas: '', tahun_ajaran: ''
   });
 
   const { data: kelasList = [], isLoading } = useQuery({
@@ -62,7 +62,7 @@ export default function Kelas() {
   });
 
   const resetForm = () => {
-    setFormData({ nama_kelas: '', tingkat: '', wali_kelas: '', tahun_ajaran: '' });
+    setFormData({ wali_kelas: '', tahun_ajaran: '' });
     setEditingKelas(null);
     setIsOpen(false);
   };
@@ -78,7 +78,7 @@ export default function Kelas() {
 
   const handleEdit = (kelas) => {
     setEditingKelas(kelas);
-    setFormData(kelas);
+    setFormData({ wali_kelas: kelas.wali_kelas || '', tahun_ajaran: kelas.tahun_ajaran || '' });
     setIsOpen(true);
   };
 
@@ -105,38 +105,11 @@ export default function Kelas() {
           </div>
           
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Kelas
-              </Button>
-            </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>{editingKelas ? 'Edit Kelas' : 'Tambah Kelas Baru'}</DialogTitle>
+                <DialogTitle>Edit Kelas {editingKelas?.nama_kelas}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Nama Kelas</Label>
-                    <Input 
-                      value={formData.nama_kelas} 
-                      onChange={(e) => setFormData({...formData, nama_kelas: e.target.value})} 
-                      placeholder="Contoh: 7A"
-                      required 
-                    />
-                  </div>
-                  <div>
-                    <Label>Tingkat</Label>
-                    <Select value={formData.tingkat} onValueChange={(v) => setFormData({...formData, tingkat: v})}>
-                      <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="7">Kelas 7</SelectItem>
-                        <SelectItem value="8">Kelas 8</SelectItem>
-                        <SelectItem value="9">Kelas 9</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
                 <div>
                   <Label>Wali Kelas</Label>
                   <Select value={formData.wali_kelas} onValueChange={(v) => setFormData({...formData, wali_kelas: v})}>
@@ -159,7 +132,7 @@ export default function Kelas() {
                 <div className="flex gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
                   <Button type="submit" className="flex-1 bg-purple-600 hover:bg-purple-700">
-                    {editingKelas ? 'Simpan' : 'Tambah'}
+                    Simpan
                   </Button>
                 </div>
               </form>

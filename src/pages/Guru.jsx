@@ -12,9 +12,9 @@ import { DataTable } from "@/components/ui/data-table";
 import { GraduationCap, Plus, Edit2, Trash2, Download, Upload } from "lucide-react";
 
 const MAPEL_LIST = [
-  "Matematika", "Bahasa Indonesia", "Bahasa Inggris", "IPA", "IPS",
-  "Pendidikan Agama Islam", "PJOK", "Seni Budaya", "Prakarya",
-  "Bahasa Arab", "Al-Qur'an Hadist", "Akidah Akhlak", "Fiqih", "SKI"
+  "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
+  "Bahasa Inggris", "PJOK", "Seni Musik", "Seni Rupa",
+  "Bahasa Indonesia", "Akidah Akhlak", "BTAQ"
 ];
 
 export default function Guru() {
@@ -23,6 +23,8 @@ export default function Guru() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMapel, setFilterMapel] = useState('all');
   const [selectedMapel, setSelectedMapel] = useState([]);
+  const [newMapel, setNewMapel] = useState('');
+  const [customMapelList, setCustomMapelList] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [csvImporting, setCsvImporting] = useState(false);
   const queryClient = useQueryClient();
@@ -151,6 +153,14 @@ export default function Guru() {
     setSelectedMapel(prev =>
       prev.includes(mapel) ? prev.filter(m => m !== mapel) : [...prev, mapel]
     );
+  };
+
+  const handleAddNewMapel = () => {
+    if (newMapel.trim() && !customMapelList.includes(newMapel.trim())) {
+      setCustomMapelList(prev => [...prev, newMapel.trim()]);
+      setSelectedMapel(prev => [...prev, newMapel.trim()]);
+      setNewMapel('');
+    }
   };
 
   const guruColumns = [
@@ -325,7 +335,7 @@ export default function Guru() {
               {formData.jabatan === 'Guru Mata Pelajaran' && (
                 <div>
                   <Label>Mata Pelajaran yang Diampu</Label>
-                  <div className="border rounded-lg p-3 max-h-48 overflow-y-auto">
+                  <div className="border rounded-lg p-3 max-h-64 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-2">
                       {MAPEL_LIST.map(mapel => (
                         <label key={mapel} className="flex items-center gap-2 cursor-pointer">
@@ -338,6 +348,31 @@ export default function Guru() {
                           <span className="text-sm">{mapel}</span>
                         </label>
                       ))}
+                      {customMapelList.map(mapel => (
+                        <label key={mapel} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedMapel.includes(mapel)}
+                            onChange={() => handleMapelToggle(mapel)}
+                            className="rounded"
+                          />
+                          <span className="text-sm">{mapel}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t">
+                      <Label className="text-xs text-slate-500">Tambah Mata Pelajaran Baru</Label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          value={newMapel}
+                          onChange={(e) => setNewMapel(e.target.value)}
+                          placeholder="Nama Mapel..."
+                          className="text-sm"
+                        />
+                        <Button type="button" size="sm" onClick={handleAddNewMapel} className="bg-slate-600">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
