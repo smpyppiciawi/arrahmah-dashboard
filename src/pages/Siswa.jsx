@@ -151,8 +151,23 @@ export default function Siswa() {
     setIsOpen(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Auto-create kelas if it doesn't exist
+    if (!editingData && formData.kelas_id && formData.nama_kelas) {
+      const existingClass = kelasList.find(k => k.id === formData.kelas_id);
+      if (!existingClass) {
+        const tingkat = formData.nama_kelas.charAt(0);
+        await base44.entities.Kelas.create({
+          nama_kelas: formData.nama_kelas,
+          tingkat: tingkat,
+          tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
+        });
+        queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      }
+    }
+    
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: formData });
     } else {
@@ -298,14 +313,34 @@ export default function Siswa() {
                 </div>
                 <div>
                   <Label>Kelas</Label>
-                  <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
-                    <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                    <SelectContent>
-                      {kelasList.map(kelas => (
-                        <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {editingData ? (
+                    <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
+                      <SelectContent>
+                        {kelasList.map(kelas => (
+                          <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div>
+                      <Input 
+                        value={formData.nama_kelas} 
+                        onChange={(e) => {
+                          const nama_kelas = e.target.value;
+                          const tingkat = nama_kelas.charAt(0);
+                          setFormData({
+                            ...formData, 
+                            nama_kelas,
+                            kelas_id: `kelas_${nama_kelas.toLowerCase().replace(/\s/g, '_')}`
+                          });
+                        }}
+                        placeholder="Contoh: 7A, 8B, 9C"
+                        required
+                      />
+                      <p className="text-xs text-slate-500 mt-1">Kelas otomatis dibuat jika belum ada</p>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
