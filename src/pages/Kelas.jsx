@@ -22,16 +22,22 @@ export default function Kelas() {
   const { data: kelasList = [], isLoading } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
     queryFn: () => base44.entities.Guru.list('nama'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({
