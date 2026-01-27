@@ -6,20 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, Users, Upload } from "lucide-react";
+import { DataTable } from "@/components/ui/data-table";
+import { Users, Plus, Download, Upload, Edit2, Trash2 } from "lucide-react";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
-  const [editingSiswa, setEditingSiswa] = useState(null);
+  const [editingData, setEditingData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [currentUser, setCurrentUser] = useState(null);
-  const [csvDialogOpen, setCsvDialogOpen] = useState(false);
-  const [csvFile, setCsvFile] = useState(null);
-  const [importing, setImporting] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -35,21 +33,29 @@ export default function Siswa() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'kepsek'].includes(userRole);
+  const canEdit = ['admin'].includes(userRole);
 
   const [formData, setFormData] = useState({
-    nis: '', nama: '', jenis_kelamin: '', kelas_id: '', nama_kelas: '',
-    tanggal_lahir: '', alamat: '', nama_ortu: '', no_telp_ortu: '', status: 'Aktif'
+    nis: '',
+    nama: '',
+    jenis_kelamin: 'Laki-laki',
+    kelas_id: '',
+    nama_kelas: '',
+    tanggal_lahir: '',
+    alamat: '',
+    nama_ortu: '',
+    no_telp_ortu: '',
+    status: 'Aktif'
   });
 
   const { data: siswaList = [], isLoading } = useQuery({
     queryKey: ['siswa'],
-    queryFn: () => base44.entities.Siswa.list('-created_date'),
+    queryFn: () => base44.entities.Siswa.list('nama'),
   });
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
-    queryFn: () => base44.entities.Kelas.list(),
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
   const createMutation = useMutation({
@@ -73,135 +79,147 @@ export default function Siswa() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['siswa'] }),
   });
 
-  const downloadSiswaTemplate = () => {
-    const csvContent = "nis,nama,jenis_kelamin,nama_kelas,tanggal_lahir,alamat,nama_ortu,no_telp_ortu\n12345,Ahmad Budi,Laki-laki,7A,2010-01-15,Jl. Merdeka No. 10,Budi Santoso,081234567890\n12346,Siti Nurhaliza,Perempuan,7A,2010-03-20,Jl. Sudirman No. 5,Ahmad Yani,081298765432";
+  const handleDownloadTemplate = () => {
+    const headers = ['NIS', 'Nama', 'Jenis Kelamin', 'Kelas', 'Tanggal Lahir', 'Alamat', 'Nama Orang Tua', 'No Telp Orang Tua'];
+    const csvContent = headers.join(',') + '\n' + '12345,Contoh Siswa,Laki-laki,7A,2010-01-01,Jl. Contoh,Nama Ortu,08123456789';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = 'template_siswa.csv';
     a.click();
-    window.URL.revokeObjectURL(url);
   };
 
-  const handleCsvImport = async () => {
-    if (!csvFile) return;
-    
-    try {
-      setImporting(true);
-      
-      // Read CSV file directly
-      const text = await csvFile.text();
-      const lines = text.split('\n').filter(line => line.trim());
-      
-      if (lines.length < 2) {
-        alert('File CSV kosong atau tidak valid');
-        setImporting(false);
-        return;
-      }
-      
-      const headers = lines[0].split(',').map(h => h.trim());
-      const data = [];
-      
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        data.push(row);
-      }
-      
-      // Extract unique classes
-      const classMap = new Map();
-      data.forEach(siswa => {
-        if (siswa.nama_kelas && !classMap.has(siswa.nama_kelas)) {
-          classMap.set(siswa.nama_kelas, {
-            nama_kelas: siswa.nama_kelas,
-            tingkat: siswa.nama_kelas.charAt(0)
+  const handleImportCSV = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setCsvImporting(true);
+    const text = await file.text();
+    const rows = text.split('\n').slice(1).filter(row => row.trim());
+
+    const classMap = new Map();
+
+    for (const row of rows) {
+      const [nis, nama, jenis_kelamin, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu] = row.split(',').map(s => s.trim());
+
+      if (!classMap.has(nama_kelas)) {
+        const existingClass = kelasList.find(k => k.nama_kelas === nama_kelas);
+        if (existingClass) {
+          classMap.set(nama_kelas, existingClass.id);
+        } else {
+          const newClass = await base44.entities.Kelas.create({
+            nama_kelas,
+            tingkat: nama_kelas.charAt(0),
+            tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
           });
+          classMap.set(nama_kelas, newClass.id);
         }
-      });
-      
-      // Check and create new classes
-      const existingClasses = kelasList.map(k => k.nama_kelas);
-      const newClasses = Array.from(classMap.values()).filter(
-        k => !existingClasses.includes(k.nama_kelas)
-      );
-      
-      if (newClasses.length > 0) {
-        await base44.entities.Kelas.bulkCreate(newClasses);
       }
-      
-      // Refresh class list
-      const updatedKelasList = await base44.entities.Kelas.list();
-      
-      // Map students with kelas_id
-      const studentsWithKelasId = data.map(siswa => ({
-        nis: siswa.nis || '',
-        nama: siswa.nama || '',
-        jenis_kelamin: siswa.jenis_kelamin || '',
-        nama_kelas: siswa.nama_kelas || '',
-        kelas_id: updatedKelasList.find(k => k.nama_kelas === siswa.nama_kelas)?.id || '',
-        tanggal_lahir: siswa.tanggal_lahir || '',
-        alamat: siswa.alamat || '',
-        nama_ortu: siswa.nama_ortu || '',
-        no_telp_ortu: siswa.no_telp_ortu || '',
+
+      await createMutation.mutateAsync({
+        nis, nama, jenis_kelamin, nama_kelas,
+        kelas_id: classMap.get(nama_kelas),
+        tanggal_lahir, alamat, nama_ortu, no_telp_ortu,
         status: 'Aktif'
-      }));
-      
-      await base44.entities.Siswa.bulkCreate(studentsWithKelasId);
-      queryClient.invalidateQueries({ queryKey: ['siswa', 'kelas'] });
-      setCsvDialogOpen(false);
-      setCsvFile(null);
-      alert(`Berhasil import ${studentsWithKelasId.length} siswa!`);
-    } catch (error) {
-      console.error('Import error:', error);
-      alert('Gagal import data: ' + error.message);
-    } finally {
-      setImporting(false);
+      });
     }
+
+    setCsvImporting(false);
+    queryClient.invalidateQueries({ queryKey: ['siswa'] });
+    queryClient.invalidateQueries({ queryKey: ['kelas'] });
   };
 
   const resetForm = () => {
     setFormData({
-      nis: '', nama: '', jenis_kelamin: '', kelas_id: '', nama_kelas: '',
-      tanggal_lahir: '', alamat: '', nama_ortu: '', no_telp_ortu: '', status: 'Aktif'
+      nis: '',
+      nama: '',
+      jenis_kelamin: 'Laki-laki',
+      kelas_id: '',
+      nama_kelas: '',
+      tanggal_lahir: '',
+      alamat: '',
+      nama_ortu: '',
+      no_telp_ortu: '',
+      status: 'Aktif'
     });
-    setEditingSiswa(null);
+    setEditingData(null);
     setIsOpen(false);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (editingSiswa) {
-      updateMutation.mutate({ id: editingSiswa.id, data: formData });
+    if (editingData) {
+      updateMutation.mutate({ id: editingData.id, data: formData });
     } else {
       createMutation.mutate(formData);
     }
   };
 
   const handleEdit = (siswa) => {
-    setEditingSiswa(siswa);
+    setEditingData(siswa);
     setFormData(siswa);
     setIsOpen(true);
   };
 
   const handleKelasChange = (kelasId) => {
     const kelas = kelasList.find(k => k.id === kelasId);
-    setFormData({
-      ...formData,
-      kelas_id: kelasId,
-      nama_kelas: kelas?.nama_kelas || ''
-    });
+    if (kelas) {
+      setFormData({ ...formData, kelas_id: kelasId, nama_kelas: kelas.nama_kelas });
+    }
   };
 
-  const filteredSiswa = siswaList.filter(siswa => {
-    const matchSearch = siswa.nama?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                       siswa.nis?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchKelas = filterKelas === 'all' || siswa.kelas_id === filterKelas;
-    return matchSearch && matchKelas;
-  });
+  const siswaColumns = [
+    { key: 'nis', label: 'NIS' },
+    { key: 'nama', label: 'Nama Siswa' },
+    { 
+      key: 'nama_kelas', 
+      label: 'Kelas',
+      render: (row) => (
+        <Badge className={
+          row.nama_kelas?.startsWith('7') ? 'bg-blue-100 text-blue-700' :
+          row.nama_kelas?.startsWith('8') ? 'bg-purple-100 text-purple-700' :
+          'bg-emerald-100 text-emerald-700'
+        }>
+          {row.nama_kelas}
+        </Badge>
+      )
+    },
+    { key: 'jenis_kelamin', label: 'JK' },
+    { key: 'nama_ortu', label: 'Nama Orang Tua', render: (row) => row.nama_ortu || '-' },
+    { key: 'no_telp_ortu', label: 'No. Telp', render: (row) => row.no_telp_ortu || '-' },
+    { 
+      key: 'status', 
+      label: 'Status',
+      render: (row) => (
+        <Badge className={
+          row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' :
+          row.status === 'Lulus' ? 'bg-blue-100 text-blue-700' :
+          'bg-slate-100 text-slate-700'
+        }>
+          {row.status}
+        </Badge>
+      )
+    },
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      sortable: false,
+      filterable: false,
+      render: (row) => canEdit ? (
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+            <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      ) : (
+        <span className="text-xs text-slate-400">-</span>
+      )
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
@@ -212,120 +230,84 @@ export default function Siswa() {
               <Users className="w-8 h-8 text-blue-500" />
               Data Siswa
             </h1>
-            <p className="text-slate-500 mt-1">Kelola data siswa sekolah</p>
+            <p className="text-slate-500 mt-1">Kelola data siswa aktif</p>
           </div>
           
           {canEdit && (
             <div className="flex gap-2">
-              <Dialog open={csvDialogOpen} onOpenChange={setCsvDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Upload className="w-4 h-4 mr-2" /> Import CSV
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Import Data Siswa dari CSV</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
-                      <p className="text-sm font-semibold text-blue-800 mb-2">Format CSV yang diperlukan:</p>
-                      <p className="text-xs text-blue-600">nis, nama, jenis_kelamin, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu</p>
-                      <Button 
-                        type="button" 
-                        variant="link" 
-                        size="sm" 
-                        onClick={downloadSiswaTemplate}
-                        className="text-blue-600 p-0 h-auto mt-2"
-                      >
-                        Download Template CSV
-                      </Button>
-                    </div>
-                    <div>
-                      <Label>Upload File CSV</Label>
-                      <Input 
-                        type="file" 
-                        accept=".csv"
-                        onChange={(e) => setCsvFile(e.target.files[0])}
-                        disabled={importing}
-                      />
-                      <p className="text-xs text-slate-500 mt-2">
-                        Kolom kosong akan diisi otomatis. Kelas baru akan dibuat otomatis.
-                      </p>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button type="button" variant="outline" onClick={() => setCsvDialogOpen(false)} className="flex-1">
-                        Batal
-                      </Button>
-                      <Button onClick={handleCsvImport} disabled={!csvFile || importing} className="flex-1 bg-blue-600 hover:bg-blue-700">
-                        {importing ? 'Mengimport...' : 'Import'}
-                      </Button>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+              <Button onClick={handleDownloadTemplate} variant="outline">
+                <Download className="w-4 h-4 mr-2" /> Template
+              </Button>
+              <label>
+                <Button variant="outline" disabled={csvImporting} asChild>
+                  <span>
+                    <Upload className="w-4 h-4 mr-2" /> 
+                    {csvImporting ? 'Importing...' : 'Import CSV'}
+                  </span>
+                </Button>
+                <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+              </label>
+              <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
+              </Button>
+            </div>
+          )}
+        </div>
 
-              <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogTrigger asChild>
-                  <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="w-4 h-4 mr-2" /> Tambah Siswa
-                  </Button>
-                </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingSiswa ? 'Edit Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>NIS</Label>
-                    <Input value={formData.nis} onChange={(e) => setFormData({...formData, nis: e.target.value})} required />
-                  </div>
-                  <div>
-                    <Label>Nama Lengkap</Label>
-                    <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
-                  </div>
+        {/* Table with DataTable */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle>Data Siswa</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
+          </CardContent>
+        </Card>
+
+        {/* Dialog Form */}
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingData ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>NIS</Label>
+                  <Input value={formData.nis} onChange={(e) => setFormData({...formData, nis: e.target.value})} required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Jenis Kelamin</Label>
-                    <Select value={formData.jenis_kelamin} onValueChange={(v) => setFormData({...formData, jenis_kelamin: v})}>
-                      <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                        <SelectItem value="Perempuan">Perempuan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Kelas</Label>
-                    <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
-                      <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                      <SelectContent>
-                        {kelasList.map(kelas => (
-                          <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div>
+                  <Label>Nama Lengkap</Label>
+                  <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Jenis Kelamin</Label>
+                  <Select value={formData.jenis_kelamin} onValueChange={(v) => setFormData({...formData, jenis_kelamin: v})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Laki-laki">Laki-laki</SelectItem>
+                      <SelectItem value="Perempuan">Perempuan</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Kelas</Label>
+                  <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
+                    <SelectContent>
+                      {kelasList.map(kelas => (
+                        <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Tanggal Lahir</Label>
                   <Input type="date" value={formData.tanggal_lahir} onChange={(e) => setFormData({...formData, tanggal_lahir: e.target.value})} />
-                </div>
-                <div>
-                  <Label>Alamat</Label>
-                  <Input value={formData.alamat} onChange={(e) => setFormData({...formData, alamat: e.target.value})} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Nama Orang Tua/Wali</Label>
-                    <Input value={formData.nama_ortu} onChange={(e) => setFormData({...formData, nama_ortu: e.target.value})} />
-                  </div>
-                  <div>
-                    <Label>No. Telp Orang Tua</Label>
-                    <Input value={formData.no_telp_ortu} onChange={(e) => setFormData({...formData, no_telp_ortu: e.target.value})} />
-                  </div>
                 </div>
                 <div>
                   <Label>Status</Label>
@@ -339,110 +321,30 @@ export default function Siswa() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
-                  <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                    {editingSiswa ? 'Simpan Perubahan' : 'Tambah Siswa'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-          </div>
-          )}
-          </div>
-
-        {/* Filters */}
-        <Card className="mb-6 border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  placeholder="Cari nama atau NIS..." 
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
               </div>
-              <Select value={filterKelas} onValueChange={setFilterKelas}>
-                <SelectTrigger className="w-full md:w-48">
-                  <SelectValue placeholder="Filter Kelas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Kelas</SelectItem>
-                  {kelasList.map(kelas => (
-                    <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Table */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>NIS</TableHead>
-                    <TableHead>Nama</TableHead>
-                    <TableHead>Kelas</TableHead>
-                    <TableHead>Jenis Kelamin</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSiswa.map((siswa) => (
-                    <TableRow key={siswa.id} className="hover:bg-slate-50">
-                      <TableCell className="font-medium">{siswa.nis}</TableCell>
-                      <TableCell>{siswa.nama}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                          {siswa.nama_kelas}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{siswa.jenis_kelamin}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          siswa.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' :
-                          siswa.status === 'Lulus' ? 'bg-blue-100 text-blue-700' :
-                          'bg-slate-100 text-slate-700'
-                        }>
-                          {siswa.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {canEdit ? (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(siswa)}>
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(siswa.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredSiswa.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-slate-400">
-                        {isLoading ? 'Memuat data...' : 'Belum ada data siswa'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label>Alamat</Label>
+                <Input value={formData.alamat} onChange={(e) => setFormData({...formData, alamat: e.target.value})} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Nama Orang Tua/Wali</Label>
+                  <Input value={formData.nama_ortu} onChange={(e) => setFormData({...formData, nama_ortu: e.target.value})} />
+                </div>
+                <div>
+                  <Label>No. Telp Orang Tua</Label>
+                  <Input value={formData.no_telp_ortu} onChange={(e) => setFormData({...formData, no_telp_ortu: e.target.value})} />
+                </div>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
+                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
+                  {editingData ? 'Simpan Perubahan' : 'Tambah Siswa'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
