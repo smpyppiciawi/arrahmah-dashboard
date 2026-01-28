@@ -9,10 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Edit2, Trash2, Building, Users } from "lucide-react";
 import { motion } from "framer-motion";
+import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 export default function Kelas() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingKelas, setEditingKelas] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -58,8 +61,23 @@ export default function Kelas() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Kelas.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['kelas'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      setDeleteConfirmOpen(false);
+      setDeleteId(null);
+    },
   });
+
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
+  };
 
   const resetForm = () => {
     setFormData({ wali_kelas: '', tahun_ajaran: '' });
@@ -178,7 +196,7 @@ export default function Kelas() {
                     <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
                       <Edit2 className="w-4 h-4 mr-1" /> Edit
                     </Button>
-                    <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => deleteMutation.mutate(kelas.id)}>
+                    <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -194,6 +212,14 @@ export default function Kelas() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title="Hapus Data Kelas"
+        description="Apakah Anda yakin ingin menghapus kelas ini? Data akan dihapus secara permanen."
+      />
     </div>
   );
 }

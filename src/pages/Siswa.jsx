@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { Users, Plus, Download, Upload, Edit2, Trash2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +19,8 @@ export default function Siswa() {
   const [filterKelas, setFilterKelas] = useState('all');
   const [currentUser, setCurrentUser] = useState(null);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -80,8 +83,23 @@ export default function Siswa() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Siswa.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['siswa'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      setDeleteConfirmOpen(false);
+      setDeleteId(null);
+    },
   });
+
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
+  };
 
   const handleDownloadTemplate = () => {
     const headers = ['NIS', 'Nama', 'Jenis Kelamin', 'Kelas', 'Tanggal Lahir', 'Alamat', 'Nama Orang Tua', 'No Telp Orang Tua'];
@@ -151,23 +169,8 @@ export default function Siswa() {
     setIsOpen(false);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    
-    // Auto-create kelas if it doesn't exist
-    if (!editingData && formData.kelas_id && formData.nama_kelas) {
-      const existingClass = kelasList.find(k => k.id === formData.kelas_id);
-      if (!existingClass) {
-        const tingkat = formData.nama_kelas.charAt(0);
-        await base44.entities.Kelas.create({
-          nama_kelas: formData.nama_kelas,
-          tingkat: tingkat,
-          tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
-        });
-        queryClient.invalidateQueries({ queryKey: ['kelas'] });
-      }
-    }
-    
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: formData });
     } else {
@@ -230,7 +233,7 @@ export default function Siswa() {
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
             <Edit2 className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -241,6 +244,15 @@ export default function Siswa() {
   ];
 
   return (
+    <>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title="Hapus Data Siswa"
+        description="Apakah Anda yakin ingin menghapus data siswa ini? Data akan dihapus secara permanen."
+      />
+      
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -313,33 +325,16 @@ export default function Siswa() {
                 </div>
                 <div>
                   <Label>Kelas</Label>
-                  {editingData ? (
-                    <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
-                      <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                      <SelectContent>
-                        {kelasList.map(kelas => (
-                          <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <div>
-                      <Input 
-                        value={formData.nama_kelas} 
-                        onChange={(e) => {
-                          const nama_kelas = e.target.value;
-                          const tingkat = nama_kelas.charAt(0);
-                          setFormData({
-                            ...formData, 
-                            nama_kelas,
-                            kelas_id: `kelas_${nama_kelas.toLowerCase().replace(/\s/g, '_')}`
-                          });
-                        }}
-                        placeholder="Contoh: 7A, 8B, 9C"
-                        required
-                      />
-                      <p className="text-xs text-slate-500 mt-1">Kelas otomatis dibuat jika belum ada</p>
-                    </div>
+                  <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
+                    <SelectContent>
+                      {kelasList.map(kelas => (
+                        <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {!editingData && (
+                    <p className="text-xs text-slate-500 mt-1">Pilih kelas yang tersedia. Tambah kelas di Menu Kelas.</p>
                   )}
                 </div>
               </div>
@@ -386,5 +381,6 @@ export default function Siswa() {
         </Dialog>
       </div>
     </div>
+    </>
   );
 }

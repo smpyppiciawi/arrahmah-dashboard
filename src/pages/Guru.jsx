@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { GraduationCap, Plus, Edit2, Trash2, Download, Upload } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 const MAPEL_LIST = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
@@ -27,6 +28,8 @@ export default function Guru() {
   const [customMapelList, setCustomMapelList] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [csvImporting, setCsvImporting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -62,6 +65,13 @@ export default function Guru() {
     refetchOnWindowFocus: false,
   });
 
+  const { data: mapelList = [] } = useQuery({
+    queryKey: ['mapel'],
+    queryFn: () => base44.entities.Mapel.list('nama'),
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Guru.create(data),
     onSuccess: () => {
@@ -80,8 +90,23 @@ export default function Guru() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Guru.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['guru'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['guru'] });
+      setDeleteConfirmOpen(false);
+      setDeleteId(null);
+    },
   });
+
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
+  };
 
   const handleDownloadTemplate = () => {
     const headers = ['NIP', 'Nama', 'Jenis Kelamin', 'Jabatan', 'Mata Pelajaran', 'No Telp', 'Email'];
@@ -155,10 +180,18 @@ export default function Guru() {
     );
   };
 
-  const handleAddNewMapel = () => {
-    if (newMapel.trim() && !customMapelList.includes(newMapel.trim())) {
-      setCustomMapelList(prev => [...prev, newMapel.trim()]);
-      setSelectedMapel(prev => [...prev, newMapel.trim()]);
+  const handleAddNewMapel = async () => {
+    const mapelName = newMapel.trim();
+    if (mapelName && !customMapelList.includes(mapelName) && !MAPEL_LIST.includes(mapelName)) {
+      // Save to global Mapel database
+      const existingMapel = mapelList.find(m => m.nama === mapelName);
+      if (!existingMapel) {
+        await base44.entities.Mapel.create({ nama: mapelName });
+        queryClient.invalidateQueries({ queryKey: ['mapel'] });
+      }
+      
+      setCustomMapelList(prev => [...prev, mapelName]);
+      setSelectedMapel(prev => [...prev, mapelName]);
       setNewMapel('');
     }
   };
@@ -222,7 +255,7 @@ export default function Guru() {
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
             <Edit2 className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)}>
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -233,6 +266,15 @@ export default function Guru() {
   ];
 
   return (
+    <>
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={setDeleteConfirmOpen}
+        onConfirm={confirmDelete}
+        title="Hapus Data Guru/Pegawai"
+        description="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+      />
+      
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -400,5 +442,6 @@ export default function Guru() {
         </Dialog>
       </div>
     </div>
+    </>
   );
 }
