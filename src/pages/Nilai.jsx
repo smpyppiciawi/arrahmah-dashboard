@@ -10,11 +10,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { DataTable } from "@/components/ui/data-table";
+import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 const MAPEL_LIST = [
-  'Bahasa Indonesia', 'Matematika', 'IPA', 'IPS', 'Bahasa Inggris',
-  'PKn', 'Pendidikan Agama', 'PJOK', 'Seni Budaya', 'Prakarya', 'TIK',
-  'Bahasa Sunda', 'Seni Rupa', 'Seni Musik', 'BTAQ', 'Akidah Akhlak'
+  "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
+  "Bahasa Inggris", "PJOK", "Seni Musik", "Seni Rupa",
+  "Akidah Akhlak", "BTAQ"
 ];
 
 export default function Nilai() {
@@ -23,12 +25,16 @@ export default function Nilai() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [filterMapel, setFilterMapel] = useState('all');
+  const [filterJenisPenilaian, setFilterJenisPenilaian] = useState('all');
+  const [filterKelasInput, setFilterKelasInput] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteId, setDeleteId] = useState(null);
   const [inputMode, setInputMode] = useState('perSiswa'); // 'perSiswa' or 'perKelas'
   const [kelasInputOpen, setKelasInputOpen] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
     kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', 
-    semester: '', tahun_ajaran: '', kkm: 75
+    semester: '', tahun_ajaran: '', kkm: 75, nama_guru: ''
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
   const queryClient = useQueryClient();
@@ -69,6 +75,11 @@ export default function Nilai() {
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Nilai.create(data),
     onSuccess: () => {
@@ -87,8 +98,23 @@ export default function Nilai() {
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.Nilai.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['nilai'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nilai'] });
+      setDeleteConfirmOpen(false);
+      setDeleteId(null);
+    },
   });
+
+  const handleDeleteClick = (id) => {
+    setDeleteId(id);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteId) {
+      deleteMutation.mutate(deleteId);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -147,11 +173,12 @@ export default function Nilai() {
 
   const handleKelasChange = (kelasId) => {
     const kelas = kelasList.find(k => k.id === kelasId);
-    const siswaInKelas = siswaList.filter(s => s.kelas_id === kelasId);
+    const siswaInKelas = siswaList.filter(s => s.kelas_id === kelasId).sort((a, b) => a.nama.localeCompare(b.nama));
     
     setKelasFormData({
       ...kelasFormData,
-      kelas_id: kelasId
+      kelas_id: kelasId,
+      tahun_ajaran: kelas?.tahun_ajaran || ''
     });
     
     setKelasNilaiData(siswaInKelas.map(siswa => ({
@@ -161,6 +188,18 @@ export default function Nilai() {
       nama_kelas: kelas?.nama_kelas || '',
       nilai: 0
     })));
+  };
+
+  const handleMapelChange = (mapel) => {
+    setKelasFormData({ ...kelasFormData, mapel });
+    
+    // Auto-fill guru name based on mapel
+    const guru = guruList.find(g => g.mapel && g.mapel.includes(mapel));
+    if (guru) {
+      setKelasFormData(prev => ({ ...prev, mapel, nama_guru: guru.nama }));
+    } else {
+      setKelasFormData(prev => ({ ...prev, mapel }));
+    }
   };
 
   const handleKelasNilaiChange = (siswaId, nilai) => {
@@ -205,13 +244,19 @@ export default function Nilai() {
                        item.nis?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchKelas = filterKelas === 'all' || item.kelas_id === filterKelas;
     const matchMapel = filterMapel === 'all' || item.mapel === filterMapel;
-    return matchSearch && matchKelas && matchMapel;
+    const matchJenis = filterJenisPenilaian === 'all' || item.jenis_penilaian === filterJenisPenilaian;
+    return matchSearch && matchKelas && matchMapel && matchJenis;
   });
 
-  // Stats
-  const totalTuntas = nilaiList.filter(n => n.status_ketuntasan === 'Tuntas').length;
-  const totalBelumTuntas = nilaiList.filter(n => n.status_ketuntasan === 'Belum Tuntas').length;
-  const persentaseTuntas = nilaiList.length > 0 ? ((totalTuntas / nilaiList.length) * 100).toFixed(1) : 0;
+  // Stats - Real-time filtered
+  const totalSiswa = filteredData.length;
+  const totalTuntas = filteredData.filter(n => n.status_ketuntasan === 'Tuntas').length;
+  const totalBelumTuntas = filteredData.filter(n => n.status_ketuntasan === 'Belum Tuntas').length;
+  const persentaseTuntas = totalSiswa > 0 ? ((totalTuntas / totalSiswa) * 100).toFixed(1) : 0;
+
+  const filteredSiswaForInput = filterKelasInput 
+    ? siswaList.filter(s => s.kelas_id === filterKelasInput).sort((a, b) => a.nama.localeCompare(b.nama))
+    : siswaList.sort((a, b) => a.nama.localeCompare(b.nama));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
@@ -251,15 +296,15 @@ export default function Nilai() {
                         </Select>
                       </div>
                       <div>
-                        <Label>Mata Pelajaran</Label>
-                        <Select value={kelasFormData.mapel} onValueChange={(v) => setKelasFormData({...kelasFormData, mapel: v})}>
-                          <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
-                          <SelectContent>
-                            {MAPEL_LIST.map(mapel => (
-                              <SelectItem key={mapel} value={mapel}>{mapel}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                       <Label>Mata Pelajaran</Label>
+                       <Select value={kelasFormData.mapel} onValueChange={handleMapelChange}>
+                         <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
+                         <SelectContent>
+                           {MAPEL_LIST.map(mapel => (
+                             <SelectItem key={mapel} value={mapel}>{mapel}</SelectItem>
+                           ))}
+                         </SelectContent>
+                       </Select>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
@@ -291,14 +336,25 @@ export default function Nilai() {
                         <Input type="number" value={kelasFormData.kkm} onChange={(e) => setKelasFormData({...kelasFormData, kkm: e.target.value})} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label>Nama Guru</Label>
+                        <Input value={kelasFormData.nama_guru} onChange={(e) => setKelasFormData({...kelasFormData, nama_guru: e.target.value})} placeholder="Otomatis dari Mapel" />
+                      </div>
                       <div>
                         <Label>Kompetensi/Bab</Label>
                         <Input value={kelasFormData.kompetensi_bab} onChange={(e) => setKelasFormData({...kelasFormData, kompetensi_bab: e.target.value})} />
                       </div>
                       <div>
                         <Label>Tahun Ajaran</Label>
-                        <Input value={kelasFormData.tahun_ajaran} onChange={(e) => setKelasFormData({...kelasFormData, tahun_ajaran: e.target.value})} placeholder="2024/2025" />
+                        <Select value={kelasFormData.tahun_ajaran} onValueChange={(v) => setKelasFormData({...kelasFormData, tahun_ajaran: v})}>
+                          <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
+                          <SelectContent>
+                            {[...new Set(kelasList.map(k => k.tahun_ajaran).filter(Boolean))].map(ta => (
+                              <SelectItem key={ta} value={ta}>{ta}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
@@ -344,11 +400,23 @@ export default function Nilai() {
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
+                  <Label>Filter Kelas</Label>
+                  <Select value={filterKelasInput} onValueChange={setFilterKelasInput}>
+                    <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={null}>Semua Kelas</SelectItem>
+                      {kelasList.map(kelas => (
+                        <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Siswa</Label>
                   <Select value={formData.siswa_id} onValueChange={handleSiswaChange}>
                     <SelectTrigger><SelectValue placeholder="Pilih Siswa" /></SelectTrigger>
                     <SelectContent>
-                      {siswaList.map(siswa => (
+                      {filteredSiswaForInput.map(siswa => (
                         <SelectItem key={siswa.id} value={siswa.id}>
                           {siswa.nama} - {siswa.nama_kelas}
                         </SelectItem>
@@ -456,8 +524,14 @@ export default function Nilai() {
           )}
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        {/* Stats - Real-time Filtered */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <Card className="border-0 shadow-sm bg-blue-50">
+            <CardContent className="p-4 text-center">
+              <p className="text-2xl font-bold text-blue-700">{totalSiswa}</p>
+              <p className="text-sm text-blue-600">Total Siswa</p>
+            </CardContent>
+          </Card>
           <Card className="border-0 shadow-sm bg-emerald-50">
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-emerald-700">{totalTuntas}</p>
@@ -470,10 +544,10 @@ export default function Nilai() {
               <p className="text-sm text-red-600">Belum Tuntas</p>
             </CardContent>
           </Card>
-          <Card className="border-0 shadow-sm bg-blue-50">
+          <Card className="border-0 shadow-sm bg-indigo-50">
             <CardContent className="p-4 text-center">
-              <p className="text-2xl font-bold text-blue-700">{persentaseTuntas}%</p>
-              <p className="text-sm text-blue-600">Ketuntasan</p>
+              <p className="text-2xl font-bold text-indigo-700">{persentaseTuntas}%</p>
+              <p className="text-sm text-indigo-600">% Ketuntasan</p>
             </CardContent>
           </Card>
         </div>
@@ -509,80 +583,77 @@ export default function Nilai() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={filterJenisPenilaian} onValueChange={setFilterJenisPenilaian}>
+                <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Jenis Penilaian" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Jenis</SelectItem>
+                  <SelectItem value="Ulangan Harian">Ulangan Harian</SelectItem>
+                  <SelectItem value="Tugas">Tugas</SelectItem>
+                  <SelectItem value="PTS">PTS</SelectItem>
+                  <SelectItem value="PAS">PAS</SelectItem>
+                  <SelectItem value="Praktik">Praktik</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
 
-        {/* Table */}
+        {/* Table with DataTable */}
         <Card className="border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead>Siswa</TableHead>
-                    <TableHead>Kelas</TableHead>
-                    <TableHead>Mapel</TableHead>
-                    <TableHead>Jenis</TableHead>
-                    <TableHead className="text-center">Nilai</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Aksi</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredData.map((item) => (
-                    <TableRow key={item.id} className="hover:bg-slate-50">
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{item.nama_siswa}</p>
-                          <p className="text-xs text-slate-400">{item.nis}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                          {item.nama_kelas}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{item.mapel}</TableCell>
-                      <TableCell className="text-sm text-slate-500">{item.jenis_penilaian}</TableCell>
-                      <TableCell className="text-center">
-                        <span className={`font-bold ${item.nilai >= (item.kkm || 75) ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {item.nilai}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={item.status_ketuntasan === 'Tuntas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
-                          {item.status_ketuntasan}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {canEdit ? (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}>
-                              <Edit2 className="w-4 h-4" />
-                            </Button>
-                            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(item.id)}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400">-</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredData.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-slate-400">
-                        {isLoading ? 'Memuat data...' : 'Belum ada data nilai'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
+          <CardContent className="p-4">
+            <DataTable 
+              columns={[
+                { key: 'nama_siswa', label: 'Siswa', render: (row) => (
+                  <div>
+                    <p className="font-medium">{row.nama_siswa}</p>
+                    <p className="text-xs text-slate-400">{row.nis}</p>
+                  </div>
+                )},
+                { key: 'nama_kelas', label: 'Kelas', render: (row) => (
+                  <Badge className="bg-blue-100 text-blue-700">{row.nama_kelas}</Badge>
+                )},
+                { key: 'mapel', label: 'Mapel' },
+                { key: 'jenis_penilaian', label: 'Jenis' },
+                { key: 'nilai', label: 'Nilai', render: (row) => (
+                  <span className={`font-bold ${row.nilai >= (row.kkm || 75) ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {row.nilai}
+                  </span>
+                )},
+                { key: 'status_ketuntasan', label: 'Status', render: (row) => (
+                  <Badge className={row.status_ketuntasan === 'Tuntas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                    {row.status_ketuntasan}
+                  </Badge>
+                )},
+                { 
+                  key: 'aksi', 
+                  label: 'Aksi', 
+                  sortable: false,
+                  filterable: false,
+                  render: (row) => canEdit ? (
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ) : <span className="text-xs text-slate-400">-</span>
+                }
+              ]} 
+              data={filteredData} 
+              pageSize={10} 
+            />
           </CardContent>
         </Card>
+
+        <ConfirmDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          onConfirm={confirmDelete}
+          title="Hapus Data Nilai"
+          description="Apakah Anda yakin ingin menghapus data nilai ini?"
+        />
       </div>
     </div>
   );
