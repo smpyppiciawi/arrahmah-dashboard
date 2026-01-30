@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,17 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, AlertCircle } from "lucide-react";
+import { Plus, Edit2, Trash2, AlertCircle, Check, Calendar } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { format, addDays } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
 
 export default function PelanggaranTab() {
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterKelas, setFilterKelas] = useState('all');
+  const [selectedKelas, setSelectedKelas] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
 
@@ -25,14 +26,14 @@ export default function PelanggaranTab() {
     tanggal: new Date().toISOString().split('T')[0],
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
     jenis_pelanggaran: 'Ringan', kategori: 'Keterlambatan', uraian: '',
-    poin: 5, sanksi: '', pelapor: '', status: 'Proses'
+    poin: 5, sanksi: '', durasi_sanksi: 0, satuan_durasi: 'Hari',
+    progress_sanksi: [], pelapor_id: '', pelapor: '', status: 'Proses'
   });
 
   useEffect(() => {
     const fetchUser = async () => {
       const user = await base44.auth.me();
       setCurrentUser(user);
-      setFormData(prev => ({ ...prev, pelapor: user.full_name }));
     };
     fetchUser();
   }, []);
@@ -49,8 +50,21 @@ export default function PelanggaranTab() {
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
-    queryFn: () => base44.entities.Kelas.list(),
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
+
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+  });
+
+  // Filter siswa berdasarkan kelas yang dipilih, urut abjad
+  const filteredSiswa = useMemo(() => {
+    if (!selectedKelas) return [];
+    return siswaList
+      .filter(s => s.kelas_id === selectedKelas)
+      .sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [siswaList, selectedKelas]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Pelanggaran.create(data),
@@ -78,10 +92,52 @@ export default function PelanggaranTab() {
       tanggal: new Date().toISOString().split('T')[0],
       siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
       jenis_pelanggaran: 'Ringan', kategori: 'Keterlambatan', uraian: '',
-      poin: 5, sanksi: '', pelapor: currentUser?.full_name || '', status: 'Proses'
+      poin: 5, sanksi: '', durasi_sanksi: 0, satuan_durasi: 'Hari',
+      progress_sanksi: [], pelapor_id: '', pelapor: '', status: 'Proses'
     });
+    setSelectedKelas('');
     setEditing(null);
     setIsOpen(false);
+  };
+
+  // Generate progress sanksi berdasarkan durasi
+  const generateProgressSanksi = (durasi, satuan, startDate) => {
+    const totalDays = satuan === 'Bulan' ? durasi * 30 : durasi;
+    const progress = [];
+    for (let i = 1; i <= totalDays; i++) {
+      const date = addDays(new Date(startDate), i - 1);
+      progress.push({
+        hari_ke: i,
+        tanggal: format(date, 'yyyy-MM-dd'),
+        selesai: false
+      });
+    }
+    return progress;
+  };
+
+  const handleDurasiChange = (durasi) => {
+    const numDurasi = Number(durasi) || 0;
+    const progress = generateProgressSanksi(numDurasi, formData.satuan_durasi, formData.tanggal);
+    setFormData({
+      ...formData,
+      durasi_sanksi: numDurasi,
+      progress_sanksi: progress
+    });
+  };
+
+  const handleSatuanChange = (satuan) => {
+    const progress = generateProgressSanksi(formData.durasi_sanksi, satuan, formData.tanggal);
+    setFormData({
+      ...formData,
+      satuan_durasi: satuan,
+      progress_sanksi: progress
+    });
+  };
+
+  const handleProgressCheck = (index, checked) => {
+    const newProgress = [...formData.progress_sanksi];
+    newProgress[index] = { ...newProgress[index], selesai: checked };
+    setFormData({ ...formData, progress_sanksi: newProgress });
   };
 
   const handleSubmit = (e) => {
@@ -95,8 +151,18 @@ export default function PelanggaranTab() {
 
   const handleEdit = (item) => {
     setEditing(item);
+    setSelectedKelas(item.kelas_id);
     setFormData(item);
     setIsOpen(true);
+  };
+
+  const handleKelasChange = (kelasId) => {
+    setSelectedKelas(kelasId);
+    setFormData({
+      ...formData,
+      siswa_id: '', nis: '', nama_siswa: '', kelas_id: kelasId,
+      nama_kelas: kelasList.find(k => k.id === kelasId)?.nama_kelas || ''
+    });
   };
 
   const handleSiswaChange = (siswaId) => {
@@ -109,6 +175,17 @@ export default function PelanggaranTab() {
         nama_siswa: siswa.nama,
         kelas_id: siswa.kelas_id,
         nama_kelas: siswa.nama_kelas
+      });
+    }
+  };
+
+  const handlePelaporChange = (guruId) => {
+    const guru = guruList.find(g => g.id === guruId);
+    if (guru) {
+      setFormData({
+        ...formData,
+        pelapor_id: guru.id,
+        pelapor: guru.nama
       });
     }
   };
@@ -148,7 +225,32 @@ export default function PelanggaranTab() {
         </Badge>
       )
     },
-    { key: 'uraian', label: 'Uraian', render: (row) => <span className="max-w-xs truncate block">{row.uraian}</span> },
+    { key: 'sanksi', label: 'Sanksi', render: (row) => <span className="max-w-xs truncate block">{row.sanksi || '-'}</span> },
+    { 
+      key: 'durasi_sanksi', 
+      label: 'Durasi',
+      render: (row) => row.durasi_sanksi ? `${row.durasi_sanksi} ${row.satuan_durasi || 'Hari'}` : '-'
+    },
+    { 
+      key: 'progress', 
+      label: 'Progress',
+      render: (row) => {
+        if (!row.progress_sanksi || row.progress_sanksi.length === 0) return '-';
+        const completed = row.progress_sanksi.filter(p => p.selesai).length;
+        const total = row.progress_sanksi.length;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="w-16 h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-emerald-500 transition-all"
+                style={{ width: `${(completed / total) * 100}%` }}
+              />
+            </div>
+            <span className="text-xs text-slate-500">{completed}/{total}</span>
+          </div>
+        );
+      }
+    },
     { key: 'poin', label: 'Poin', render: (row) => <Badge className="bg-slate-100 text-slate-700">{row.poin} poin</Badge> },
     { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>{row.status}</Badge> },
     {
@@ -211,19 +313,34 @@ export default function PelanggaranTab() {
                 <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
               </div>
               <div>
-                <Label>Pilih Siswa</Label>
-                <Select value={formData.siswa_id} onValueChange={handleSiswaChange}>
-                  <SelectTrigger><SelectValue placeholder="Pilih Siswa" /></SelectTrigger>
+                <Label>Pilih Kelas</Label>
+                <Select value={selectedKelas} onValueChange={handleKelasChange}>
+                  <SelectTrigger><SelectValue placeholder="Pilih Kelas Dulu" /></SelectTrigger>
                   <SelectContent>
-                    {siswaList.map(siswa => (
-                      <SelectItem key={siswa.id} value={siswa.id}>
-                        {siswa.nama} - {siswa.nama_kelas}
+                    {kelasList.map(kelas => (
+                      <SelectItem key={kelas.id} value={kelas.id}>
+                        {kelas.nama_kelas}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            <div>
+              <Label>Pilih Siswa</Label>
+              <Select value={formData.siswa_id} onValueChange={handleSiswaChange} disabled={!selectedKelas}>
+                <SelectTrigger><SelectValue placeholder={selectedKelas ? "Pilih Siswa" : "Pilih kelas terlebih dahulu"} /></SelectTrigger>
+                <SelectContent>
+                  {filteredSiswa.map(siswa => (
+                    <SelectItem key={siswa.id} value={siswa.id}>
+                      {siswa.nama}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Jenis Pelanggaran</Label>
@@ -251,10 +368,12 @@ export default function PelanggaranTab() {
                 </Select>
               </div>
             </div>
+
             <div>
               <Label>Uraian Pelanggaran</Label>
               <Textarea value={formData.uraian} onChange={(e) => setFormData({...formData, uraian: e.target.value})} required />
             </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Poin</Label>
@@ -271,14 +390,84 @@ export default function PelanggaranTab() {
                 </Select>
               </div>
             </div>
+
             <div>
               <Label>Sanksi</Label>
-              <Textarea value={formData.sanksi} onChange={(e) => setFormData({...formData, sanksi: e.target.value})} />
+              <Input 
+                value={formData.sanksi} 
+                onChange={(e) => setFormData({...formData, sanksi: e.target.value})} 
+                placeholder="Masukkan sanksi yang diberikan"
+              />
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Durasi Sanksi</Label>
+                <Input 
+                  type="number" 
+                  min="0"
+                  value={formData.durasi_sanksi} 
+                  onChange={(e) => handleDurasiChange(e.target.value)}
+                  placeholder="Angka"
+                />
+              </div>
+              <div>
+                <Label>Satuan Durasi</Label>
+                <Select value={formData.satuan_durasi} onValueChange={handleSatuanChange}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Hari">Hari</SelectItem>
+                    <SelectItem value="Bulan">Bulan</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Dynamic Checkbox Progress Sanksi */}
+            {formData.progress_sanksi && formData.progress_sanksi.length > 0 && (
+              <div className="border rounded-lg p-4 bg-slate-50">
+                <Label className="text-sm font-semibold flex items-center gap-2 mb-3">
+                  <Calendar className="w-4 h-4" />
+                  Monitoring Progress Sanksi ({formData.progress_sanksi.filter(p => p.selesai).length}/{formData.progress_sanksi.length} hari selesai)
+                </Label>
+                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 max-h-48 overflow-y-auto">
+                  {formData.progress_sanksi.map((item, index) => (
+                    <div 
+                      key={index} 
+                      className={`flex flex-col items-center p-2 rounded-lg border transition-all cursor-pointer ${
+                        item.selesai ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                      onClick={() => handleProgressCheck(index, !item.selesai)}
+                    >
+                      <Checkbox 
+                        checked={item.selesai}
+                        onCheckedChange={(checked) => handleProgressCheck(index, checked)}
+                        className="mb-1"
+                      />
+                      <span className="text-xs font-medium">Hari {item.hari_ke}</span>
+                      <span className="text-[10px] text-slate-400">
+                        {format(new Date(item.tanggal), 'dd/MM')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
-              <Label>Pelapor</Label>
-              <Input value={formData.pelapor} onChange={(e) => setFormData({...formData, pelapor: e.target.value})} />
+              <Label>Pelapor (Guru/Pegawai)</Label>
+              <Select value={formData.pelapor_id} onValueChange={handlePelaporChange}>
+                <SelectTrigger><SelectValue placeholder="Pilih Guru Pelapor" /></SelectTrigger>
+                <SelectContent>
+                  {guruList.map(guru => (
+                    <SelectItem key={guru.id} value={guru.id}>
+                      {guru.nama} - {guru.jabatan || 'Guru'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+
             <div className="flex gap-3 pt-4">
               <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
               <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,17 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, Edit2, Trash2, Trophy, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, Trophy, Upload } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 
 export default function PrestasiTab() {
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterKelas, setFilterKelas] = useState('all');
+  const [selectedKelas, setSelectedKelas] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const queryClient = useQueryClient();
 
@@ -48,8 +46,16 @@ export default function PrestasiTab() {
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
-    queryFn: () => base44.entities.Kelas.list(),
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
+
+  // Filter siswa berdasarkan kelas yang dipilih, urut abjad
+  const filteredSiswa = useMemo(() => {
+    if (!selectedKelas) return [];
+    return siswaList
+      .filter(s => s.kelas_id === selectedKelas)
+      .sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [siswaList, selectedKelas]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Prestasi.create(data),
@@ -87,6 +93,7 @@ export default function PrestasiTab() {
       jenis_prestasi: 'Akademik', kategori: 'Juara 1', nama_prestasi: '',
       tingkat: 'Sekolah', penyelenggara: '', keterangan: '', file_sertifikat: ''
     });
+    setSelectedKelas('');
     setEditing(null);
     setIsOpen(false);
   };
@@ -102,8 +109,18 @@ export default function PrestasiTab() {
 
   const handleEdit = (item) => {
     setEditing(item);
+    setSelectedKelas(item.kelas_id);
     setFormData(item);
     setIsOpen(true);
+  };
+
+  const handleKelasChange = (kelasId) => {
+    setSelectedKelas(kelasId);
+    setFormData({
+      ...formData,
+      siswa_id: '', nis: '', nama_siswa: '', kelas_id: kelasId,
+      nama_kelas: kelasList.find(k => k.id === kelasId)?.nama_kelas || ''
+    });
   };
 
   const handleSiswaChange = (siswaId) => {
@@ -196,19 +213,34 @@ export default function PrestasiTab() {
                 <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({...formData, tanggal: e.target.value})} required />
               </div>
               <div>
-                <Label>Pilih Siswa</Label>
-                <Select value={formData.siswa_id} onValueChange={handleSiswaChange}>
-                  <SelectTrigger><SelectValue placeholder="Pilih Siswa" /></SelectTrigger>
+                <Label>Pilih Kelas</Label>
+                <Select value={selectedKelas} onValueChange={handleKelasChange}>
+                  <SelectTrigger><SelectValue placeholder="Pilih Kelas Dulu" /></SelectTrigger>
                   <SelectContent>
-                    {siswaList.map(siswa => (
-                      <SelectItem key={siswa.id} value={siswa.id}>
-                        {siswa.nama} - {siswa.nama_kelas}
+                    {kelasList.map(kelas => (
+                      <SelectItem key={kelas.id} value={kelas.id}>
+                        {kelas.nama_kelas}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
+
+            <div>
+              <Label>Pilih Siswa</Label>
+              <Select value={formData.siswa_id} onValueChange={handleSiswaChange} disabled={!selectedKelas}>
+                <SelectTrigger><SelectValue placeholder={selectedKelas ? "Pilih Siswa" : "Pilih kelas terlebih dahulu"} /></SelectTrigger>
+                <SelectContent>
+                  {filteredSiswa.map(siswa => (
+                    <SelectItem key={siswa.id} value={siswa.id}>
+                      {siswa.nama}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Jenis Prestasi</Label>
