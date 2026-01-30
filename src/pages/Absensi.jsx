@@ -17,6 +17,7 @@ export default function Absensi() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [absensiData, setAbsensiData] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
+  const [bulkJamMasuk, setBulkJamMasuk] = useState('');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -82,6 +83,21 @@ export default function Absensi() {
       [siswaId]: { ...absensiData[siswaId], status }
     });
   };
+
+  // Bulk set jam masuk untuk semua siswa
+  const handleBulkJamMasuk = () => {
+    if (!bulkJamMasuk) return;
+    const newData = { ...absensiData };
+    siswaList.forEach(siswa => {
+      if (newData[siswa.id]) {
+        newData[siswa.id] = { ...newData[siswa.id], jam_masuk: bulkJamMasuk };
+      }
+    });
+    setAbsensiData(newData);
+  };
+
+  // Sort siswa alphabetically
+  const sortedSiswaList = [...siswaList].sort((a, b) => a.nama.localeCompare(b.nama));
 
   const handleSaveAll = async () => {
     const kelas = kelasList.find(k => k.id === selectedKelas);
@@ -172,7 +188,24 @@ export default function Absensi() {
                 </Select>
               </div>
               {canEdit && (
-                <div className="flex items-end">
+                <div className="flex items-end gap-2">
+                  <div className="flex items-center gap-2">
+                    <Input 
+                      type="time"
+                      value={bulkJamMasuk}
+                      onChange={(e) => setBulkJamMasuk(e.target.value)}
+                      className="w-28"
+                      placeholder="Jam Masuk"
+                    />
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={handleBulkJamMasuk}
+                      disabled={!selectedKelas || !bulkJamMasuk}
+                    >
+                      <Clock className="w-4 h-4 mr-1" /> Set Semua
+                    </Button>
+                  </div>
                   <Button 
                     onClick={handleSaveAll} 
                     className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
@@ -239,7 +272,7 @@ export default function Absensi() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {siswaList.map((siswa, index) => (
+                    {sortedSiswaList.map((siswa, index) => (
                       <TableRow key={siswa.id} className="hover:bg-slate-50">
                         <TableCell className="text-slate-500">{index + 1}</TableCell>
                         <TableCell className="font-medium">{siswa.nis}</TableCell>
