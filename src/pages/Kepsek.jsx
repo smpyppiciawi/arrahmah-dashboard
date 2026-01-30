@@ -303,11 +303,36 @@ export default function Kepsek() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>NIS</TableHead>
-                      <TableHead>Nama</TableHead>
-                      <TableHead>Kelas</TableHead>
-                      <TableHead>JK</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nis'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        NIS {sortBy === 'nis' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Nama {sortBy === 'nama' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_kelas'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Kelas {sortBy === 'nama_kelas' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('jenis_kelamin'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        JK {sortBy === 'jenis_kelamin' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('status'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -335,12 +360,42 @@ export default function Kepsek() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Siswa</TableHead>
-                      <TableHead>Kelas</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Poin</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('tanggal'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Tanggal {sortBy === 'tanggal' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_siswa'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Siswa {sortBy === 'nama_siswa' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_kelas'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Kelas {sortBy === 'nama_kelas' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('kategori'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Kategori {sortBy === 'kategori' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('poin'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Poin {sortBy === 'poin' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('status'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -369,11 +424,36 @@ export default function Kepsek() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Siswa</TableHead>
-                      <TableHead>Prestasi</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Tingkat</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('tanggal'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Tanggal {sortBy === 'tanggal' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_siswa'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Siswa {sortBy === 'nama_siswa' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_prestasi'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Prestasi {sortBy === 'nama_prestasi' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('kategori'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Kategori {sortBy === 'kategori' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('tingkat'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Tingkat {sortBy === 'tingkat' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -401,11 +481,36 @@ export default function Kepsek() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Siswa</TableHead>
-                      <TableHead>Keluhan</TableHead>
-                      <TableHead>Jam Masuk</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('tanggal'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Tanggal {sortBy === 'tanggal' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('nama_siswa'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Siswa {sortBy === 'nama_siswa' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('keluhan'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Keluhan {sortBy === 'keluhan' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('jam_masuk'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Jam Masuk {sortBy === 'jam_masuk' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('status'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -457,11 +562,36 @@ export default function Kepsek() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tanggal</TableHead>
-                      <TableHead>Jenis</TableHead>
-                      <TableHead>Kategori</TableHead>
-                      <TableHead>Uraian</TableHead>
-                      <TableHead className="text-right">Jumlah</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('tanggal'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Tanggal {sortBy === 'tanggal' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('jenis'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Jenis {sortBy === 'jenis' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('kategori'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Kategori {sortBy === 'kategori' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100"
+                        onClick={() => { setSortBy('uraian'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Uraian {sortBy === 'uraian' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover:bg-slate-100 text-right"
+                        onClick={() => { setSortBy('jumlah'); setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc'); }}
+                      >
+                        Jumlah {sortBy === 'jumlah' && (sortOrder === 'asc' ? '↑' : '↓')}
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

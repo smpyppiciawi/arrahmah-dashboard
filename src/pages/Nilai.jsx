@@ -463,11 +463,14 @@ export default function Nilai() {
                   </div>
                   <div>
                     <Label>Tahun Ajaran</Label>
-                    <Input 
-                      value={formData.tahun_ajaran} 
-                      onChange={(e) => setFormData({...formData, tahun_ajaran: e.target.value})}
-                      placeholder="2024/2025"
-                    />
+                    <Select value={formData.tahun_ajaran} onValueChange={(v) => setFormData({...formData, tahun_ajaran: v})}>
+                      <SelectTrigger><SelectValue placeholder="Pilih Tahun Ajaran" /></SelectTrigger>
+                      <SelectContent>
+                        {[...new Set(kelasList.map(k => k.tahun_ajaran).filter(Boolean))].map(ta => (
+                          <SelectItem key={ta} value={ta}>{ta}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div>
