@@ -120,28 +120,29 @@ export default function Siswa() {
     const text = await file.text();
     const rows = text.split('\n').slice(1).filter(row => row.trim());
 
+    // Ambil data kelas terbaru
+    const currentKelas = await base44.entities.Kelas.list('nama_kelas');
     const classMap = new Map();
+    currentKelas.forEach(k => classMap.set(k.nama_kelas, k.id));
 
     for (const row of rows) {
       const [nis, nama, jenis_kelamin, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu] = row.split(',').map(s => s.trim());
 
-      if (!classMap.has(nama_kelas)) {
-        const existingClass = kelasList.find(k => k.nama_kelas === nama_kelas);
-        if (existingClass) {
-          classMap.set(nama_kelas, existingClass.id);
-        } else {
-          const newClass = await base44.entities.Kelas.create({
-            nama_kelas,
-            tingkat: nama_kelas.charAt(0),
-            tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
-          });
-          classMap.set(nama_kelas, newClass.id);
-        }
+      // Jika kelas belum ada, buat otomatis
+      if (nama_kelas && !classMap.has(nama_kelas)) {
+        // Ekstrak tingkat dari nama kelas (misal: "7A" -> "7", "8B" -> "8")
+        const tingkat = nama_kelas.match(/\d+/)?.[0] || '7';
+        const newClass = await base44.entities.Kelas.create({
+          nama_kelas,
+          tingkat,
+          tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
+        });
+        classMap.set(nama_kelas, newClass.id);
       }
 
       await createMutation.mutateAsync({
         nis, nama, jenis_kelamin, nama_kelas,
-        kelas_id: classMap.get(nama_kelas),
+        kelas_id: classMap.get(nama_kelas) || '',
         tanggal_lahir, alamat, nama_ortu, no_telp_ortu,
         status: 'Aktif'
       });
