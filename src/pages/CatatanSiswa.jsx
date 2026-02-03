@@ -1,22 +1,36 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ClipboardList, Award, AlertTriangle, Heart } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ClipboardList, Award, AlertTriangle, Heart, Search } from "lucide-react";
 import PrestasiTab from '../components/catatan/PrestasiTab';
 import PelanggaranTab from '../components/catatan/PelanggaranTab';
 import UKSTab from '../components/catatan/UKSTab';
+import CariRecordSiswa from '../components/catatan/CariRecordSiswa';
 
 export default function CatatanSiswa() {
+  const [showCariRecord, setShowCariRecord] = useState(false);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
-            <ClipboardList className="w-8 h-8 text-indigo-500" />
-            Catatan Siswa
-          </h1>
-          <p className="text-slate-500 mt-1">Kelola catatan prestasi, pelanggaran, dan kesehatan siswa</p>
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
+              <ClipboardList className="w-8 h-8 text-indigo-500" />
+              Catatan Siswa
+            </h1>
+            <p className="text-slate-500 mt-1">Kelola catatan prestasi, pelanggaran, dan kesehatan siswa</p>
+          </div>
+          <Button 
+            onClick={() => setShowCariRecord(true)} 
+            className="bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Search className="w-4 h-4 mr-2" /> Cari Record Siswa
+          </Button>
         </div>
+
+        <CariRecordSiswa open={showCariRecord} onOpenChange={setShowCariRecord} />
 
         <Tabs defaultValue="prestasi" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">

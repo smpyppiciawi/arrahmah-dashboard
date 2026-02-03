@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Trophy, Upload } from "lucide-react";
+import { Plus, Edit2, Trash2, Trophy, Upload, Filter } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 
@@ -17,6 +17,8 @@ export default function PrestasiTab() {
   const [editing, setEditing] = useState(null);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -56,6 +58,15 @@ export default function PrestasiTab() {
       .filter(s => s.kelas_id === selectedKelas)
       .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [siswaList, selectedKelas]);
+
+  // Filter prestasi berdasarkan tanggal
+  const filteredPrestasiList = useMemo(() => {
+    return prestasiList.filter(p => {
+      if (filterDateFrom && p.tanggal < filterDateFrom) return false;
+      if (filterDateTo && p.tanggal > filterDateTo) return false;
+      return true;
+    });
+  }, [prestasiList, filterDateFrom, filterDateTo]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Prestasi.create(data),
@@ -188,6 +199,32 @@ export default function PrestasiTab() {
             </Button>
           </div>
         </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <Filter className="w-4 h-4 text-slate-500" />
+            <span className="text-sm text-slate-600">Filter Tanggal:</span>
+            <Input 
+              type="date" 
+              value={filterDateFrom} 
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="w-40"
+              placeholder="Dari"
+            />
+            <span className="text-slate-400">s/d</span>
+            <Input 
+              type="date" 
+              value={filterDateTo} 
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="w-40"
+              placeholder="Sampai"
+            />
+            {(filterDateFrom || filterDateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}>
+                Reset
+              </Button>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Table */}
@@ -196,7 +233,7 @@ export default function PrestasiTab() {
           <CardTitle>Data Prestasi Siswa</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable columns={prestasiColumns} data={prestasiList} pageSize={5} />
+          <DataTable columns={prestasiColumns} data={filteredPrestasiList} pageSize={5} />
         </CardContent>
       </Card>
 
