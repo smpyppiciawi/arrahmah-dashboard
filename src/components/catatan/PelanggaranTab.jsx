@@ -8,24 +8,31 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, AlertCircle, Check, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, AlertCircle, Check, Calendar, Search, Filter } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function PelanggaranTab() {
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedKelas, setSelectedKelas] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
+  const [openPelanggaranSearch, setOpenPelanggaranSearch] = useState(false);
+  const [searchPelanggaran, setSearchPelanggaran] = useState('');
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
     tanggal: new Date().toISOString().split('T')[0],
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
     jenis_pelanggaran: 'Ringan', kategori: 'Keterlambatan', uraian: '',
+    kode_pelanggaran: '',
     poin: 5, sanksi: '', durasi_sanksi: 0, satuan_durasi: 'Hari',
     progress_sanksi: [], pelapor_id: '', pelapor: '', status: 'Proses'
   });
@@ -57,6 +64,30 @@ export default function PelanggaranTab() {
     queryKey: ['guru'],
     queryFn: () => base44.entities.Guru.list('nama'),
   });
+
+  const { data: kodePelanggaranList = [] } = useQuery({
+    queryKey: ['kode-pelanggaran'],
+    queryFn: () => base44.entities.KodePelanggaran.list('kode'),
+  });
+
+  // Filter pelanggaran berdasarkan tanggal
+  const filteredPelanggaranList = useMemo(() => {
+    return pelanggaranList.filter(p => {
+      if (filterDateFrom && p.tanggal < filterDateFrom) return false;
+      if (filterDateTo && p.tanggal > filterDateTo) return false;
+      return true;
+    });
+  }, [pelanggaranList, filterDateFrom, filterDateTo]);
+
+  // Search kode pelanggaran
+  const filteredKodePelanggaran = useMemo(() => {
+    if (!searchPelanggaran) return kodePelanggaranList;
+    const search = searchPelanggaran.toLowerCase();
+    return kodePelanggaranList.filter(k => 
+      k.kode.toLowerCase().includes(search) || 
+      k.uraian.toLowerCase().includes(search)
+    );
+  }, [kodePelanggaranList, searchPelanggaran]);
 
   // Filter siswa berdasarkan kelas yang dipilih, urut abjad
   const filteredSiswa = useMemo(() => {
@@ -92,12 +123,30 @@ export default function PelanggaranTab() {
       tanggal: new Date().toISOString().split('T')[0],
       siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
       jenis_pelanggaran: 'Ringan', kategori: 'Keterlambatan', uraian: '',
+      kode_pelanggaran: '',
       poin: 5, sanksi: '', durasi_sanksi: 0, satuan_durasi: 'Hari',
       progress_sanksi: [], pelapor_id: '', pelapor: '', status: 'Proses'
     });
     setSelectedKelas('');
+    setSearchPelanggaran('');
     setEditing(null);
     setIsOpen(false);
+  };
+
+  // Handle pilih kode pelanggaran
+  const handleSelectKodePelanggaran = (kode) => {
+    const selected = kodePelanggaranList.find(k => k.kode === kode);
+    if (selected) {
+      setFormData({
+        ...formData,
+        kode_pelanggaran: selected.kode,
+        uraian: selected.uraian,
+        jenis_pelanggaran: selected.tingkatan,
+        poin: selected.poin
+      });
+      setOpenPelanggaranSearch(false);
+      setSearchPelanggaran('');
+    }
   };
 
   // Generate progress sanksi berdasarkan durasi
@@ -288,6 +337,32 @@ export default function PelanggaranTab() {
             </Button>
           </div>
         </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <Filter className="w-4 h-4 text-slate-500" />
+            <span className="text-sm text-slate-600">Filter Tanggal:</span>
+            <Input 
+              type="date" 
+              value={filterDateFrom} 
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              className="w-40"
+              placeholder="Dari"
+            />
+            <span className="text-slate-400">s/d</span>
+            <Input 
+              type="date" 
+              value={filterDateTo} 
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              className="w-40"
+              placeholder="Sampai"
+            />
+            {(filterDateFrom || filterDateTo) && (
+              <Button variant="ghost" size="sm" onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}>
+                Reset
+              </Button>
+            )}
+          </div>
+        </CardContent>
       </Card>
 
       {/* Table */}
@@ -296,7 +371,7 @@ export default function PelanggaranTab() {
           <CardTitle>Data Pelanggaran Siswa</CardTitle>
         </CardHeader>
         <CardContent>
-          <DataTable columns={pelanggaranColumns} data={pelanggaranList} pageSize={5} />
+          <DataTable columns={pelanggaranColumns} data={filteredPelanggaranList} pageSize={5} />
         </CardContent>
       </Card>
 
@@ -341,6 +416,60 @@ export default function PelanggaranTab() {
               </Select>
             </div>
 
+            {/* Cari Pelanggaran */}
+            <div>
+              <Label>Cari Pelanggaran</Label>
+              <Popover open={openPelanggaranSearch} onOpenChange={setOpenPelanggaranSearch}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <Search className="w-4 h-4 mr-2 text-slate-400" />
+                    {formData.kode_pelanggaran 
+                      ? `[${formData.kode_pelanggaran}] ${formData.uraian?.substring(0, 40)}...` 
+                      : "Ketik untuk mencari pelanggaran..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[500px] p-0" align="start">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Cari kode atau uraian pelanggaran..." 
+                      value={searchPelanggaran}
+                      onValueChange={setSearchPelanggaran}
+                    />
+                    <CommandList>
+                      <CommandEmpty>Tidak ditemukan.</CommandEmpty>
+                      <CommandGroup heading="Daftar Pelanggaran">
+                        {filteredKodePelanggaran.slice(0, 20).map(kode => (
+                          <CommandItem 
+                            key={kode.id} 
+                            value={kode.kode}
+                            onSelect={() => handleSelectKodePelanggaran(kode.kode)}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex-1">
+                                <span className="font-mono text-xs bg-slate-100 px-1 rounded mr-2">{kode.kode}</span>
+                                <span className="text-sm">{kode.uraian}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Badge className={
+                                  kode.tingkatan === 'Sangat Berat' ? 'bg-red-600 text-white' :
+                                  kode.tingkatan === 'Berat' ? 'bg-red-100 text-red-700' :
+                                  kode.tingkatan === 'Sedang' ? 'bg-orange-100 text-orange-700' :
+                                  'bg-yellow-100 text-yellow-700'
+                                }>
+                                  {kode.poin} poin
+                                </Badge>
+                              </div>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Jenis Pelanggaran</Label>
@@ -350,6 +479,7 @@ export default function PelanggaranTab() {
                     <SelectItem value="Ringan">Ringan</SelectItem>
                     <SelectItem value="Sedang">Sedang</SelectItem>
                     <SelectItem value="Berat">Berat</SelectItem>
+                    <SelectItem value="Sangat Berat">Sangat Berat</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -377,7 +507,7 @@ export default function PelanggaranTab() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Poin</Label>
-                <Input type="number" value={formData.poin} onChange={(e) => setFormData({...formData, poin: parseInt(e.target.value)})} required />
+                <Input type="number" value={formData.poin} onChange={(e) => setFormData({...formData, poin: parseInt(e.target.value)})} required readOnly className="bg-slate-50" />
               </div>
               <div>
                 <Label>Status</Label>
