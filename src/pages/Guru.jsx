@@ -52,6 +52,7 @@ export default function Guru() {
     nama: '',
     jenis_kelamin: 'Laki-laki',
     jabatan: 'Guru Mata Pelajaran',
+    tugas_tambahan: '',
     mapel: [],
     no_telp: '',
     email: '',
@@ -147,6 +148,7 @@ export default function Guru() {
       nama: '',
       jenis_kelamin: 'Laki-laki',
       jabatan: 'Guru Mata Pelajaran',
+      tugas_tambahan: '',
       mapel: [],
       no_telp: '',
       email: '',
@@ -212,6 +214,13 @@ export default function Guru() {
           {row.jabatan || 'Guru Mata Pelajaran'}
         </Badge>
       )
+    },
+    { 
+      key: 'tugas_tambahan', 
+      label: 'Tugas Tambahan',
+      render: (row) => row.tugas_tambahan ? (
+        <Badge className="bg-indigo-100 text-indigo-700">{row.tugas_tambahan}</Badge>
+      ) : <span className="text-slate-400 text-xs">-</span>
     },
     { 
       key: 'mapel', 
@@ -370,6 +379,20 @@ export default function Guru() {
                     <SelectItem value="DKM">DKM</SelectItem>
                     <SelectItem value="Madrasah">Madrasah</SelectItem>
                     <SelectItem value="Lainnya">Lainnya</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Tugas Tambahan</Label>
+                <Select value={formData.tugas_tambahan} onValueChange={(v) => setFormData({...formData, tugas_tambahan: v})}>
+                  <SelectTrigger><SelectValue placeholder="Pilih jika ada" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>Tidak Ada</SelectItem>
+                    <SelectItem value="Waka Kurikulum">Waka Kurikulum</SelectItem>
+                    <SelectItem value="Waka Kesiswaan">Waka Kesiswaan</SelectItem>
+                    <SelectItem value="Pembina Osis">Pembina Osis</SelectItem>
+                    <SelectItem value="BP/BK">BP/BK</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
