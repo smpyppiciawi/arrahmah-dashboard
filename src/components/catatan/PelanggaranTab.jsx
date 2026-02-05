@@ -79,13 +79,14 @@ export default function PelanggaranTab() {
     });
   }, [pelanggaranList, filterDateFrom, filterDateTo]);
 
-  // Search kode pelanggaran
+  // Search kode pelanggaran - cari berdasarkan kode atau uraian
   const filteredKodePelanggaran = useMemo(() => {
     if (!searchPelanggaran) return kodePelanggaranList;
-    const search = searchPelanggaran.toLowerCase();
+    const search = searchPelanggaran.toLowerCase().trim();
     return kodePelanggaranList.filter(k => 
-      k.kode.toLowerCase().includes(search) || 
-      k.uraian.toLowerCase().includes(search)
+      k.kode?.toLowerCase().includes(search) || 
+      k.uraian?.toLowerCase().includes(search) ||
+      k.tingkatan?.toLowerCase().includes(search)
     );
   }, [kodePelanggaranList, searchPelanggaran]);
 
@@ -184,9 +185,11 @@ export default function PelanggaranTab() {
   };
 
   const handleProgressCheck = (index, checked) => {
-    const newProgress = [...formData.progress_sanksi];
-    newProgress[index] = { ...newProgress[index], selesai: checked };
-    setFormData({ ...formData, progress_sanksi: newProgress });
+    const newProgress = formData.progress_sanksi ? [...formData.progress_sanksi] : [];
+    if (newProgress[index]) {
+      newProgress[index] = { ...newProgress[index], selesai: Boolean(checked) };
+      setFormData({ ...formData, progress_sanksi: newProgress });
+    }
   };
 
   const handleSubmit = (e) => {
@@ -435,31 +438,36 @@ export default function PelanggaranTab() {
                       value={searchPelanggaran}
                       onValueChange={setSearchPelanggaran}
                     />
-                    <CommandList>
-                      <CommandEmpty>Tidak ditemukan.</CommandEmpty>
-                      <CommandGroup heading="Daftar Pelanggaran">
-                        {filteredKodePelanggaran.slice(0, 20).map(kode => (
+                    <CommandList className="max-h-80">
+                      <CommandEmpty>Tidak ditemukan. Coba kata kunci lain.</CommandEmpty>
+                      <CommandGroup heading={`Daftar Pelanggaran (${filteredKodePelanggaran.length} hasil)`}>
+                        {filteredKodePelanggaran.map(kode => (
                           <CommandItem 
                             key={kode.id} 
-                            value={kode.kode}
+                            value={`${kode.kode} ${kode.uraian} ${kode.tingkatan}`}
                             onSelect={() => handleSelectKodePelanggaran(kode.kode)}
-                            className="cursor-pointer"
+                            className="cursor-pointer py-2"
                           >
-                            <div className="flex items-center justify-between w-full">
-                              <div className="flex-1">
-                                <span className="font-mono text-xs bg-slate-100 px-1 rounded mr-2">{kode.kode}</span>
-                                <span className="text-sm">{kode.uraian}</span>
+                            <div className="flex items-center justify-between w-full gap-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs bg-slate-200 px-1.5 py-0.5 rounded shrink-0">{kode.kode}</span>
+                                  <Badge className={
+                                    kode.tingkatan === 'Sangat Berat' ? 'bg-red-600 text-white text-[10px]' :
+                                    kode.tingkatan === 'Berat' ? 'bg-red-100 text-red-700 text-[10px]' :
+                                    kode.tingkatan === 'Sedang' ? 'bg-orange-100 text-orange-700 text-[10px]' :
+                                    kode.tingkatan === 'Ringan' ? 'bg-yellow-100 text-yellow-700 text-[10px]' :
+                                    kode.tingkatan === 'Sangat Ringan' ? 'bg-green-100 text-green-700 text-[10px]' :
+                                    'bg-purple-100 text-purple-700 text-[10px]'
+                                  }>
+                                    {kode.tingkatan}
+                                  </Badge>
+                                </div>
+                                <p className="text-sm text-slate-600 mt-1 line-clamp-2">{kode.uraian}</p>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Badge className={
-                                  kode.tingkatan === 'Sangat Berat' ? 'bg-red-600 text-white' :
-                                  kode.tingkatan === 'Berat' ? 'bg-red-100 text-red-700' :
-                                  kode.tingkatan === 'Sedang' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-yellow-100 text-yellow-700'
-                                }>
-                                  {kode.poin} poin
-                                </Badge>
-                              </div>
+                              <Badge className="bg-slate-700 text-white shrink-0">
+                                {kode.poin} poin
+                              </Badge>
                             </div>
                           </CommandItem>
                         ))}
@@ -472,16 +480,13 @@ export default function PelanggaranTab() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Jenis Pelanggaran</Label>
-                <Select value={formData.jenis_pelanggaran} onValueChange={(v) => setFormData({...formData, jenis_pelanggaran: v})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Ringan">Ringan</SelectItem>
-                    <SelectItem value="Sedang">Sedang</SelectItem>
-                    <SelectItem value="Berat">Berat</SelectItem>
-                    <SelectItem value="Sangat Berat">Sangat Berat</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Jenis/Tingkat Pelanggaran</Label>
+                <Input 
+                  value={formData.jenis_pelanggaran} 
+                  readOnly 
+                  className="bg-slate-50"
+                  placeholder="Otomatis dari kode pelanggaran"
+                />
               </div>
               <div>
                 <Label>Kategori</Label>
@@ -554,32 +559,41 @@ export default function PelanggaranTab() {
             </div>
 
             {/* Dynamic Checkbox Progress Sanksi */}
-            {formData.progress_sanksi && formData.progress_sanksi.length > 0 && (
+            {formData.progress_sanksi && Array.isArray(formData.progress_sanksi) && formData.progress_sanksi.length > 0 && (
               <div className="border rounded-lg p-4 bg-slate-50">
                 <Label className="text-sm font-semibold flex items-center gap-2 mb-3">
                   <Calendar className="w-4 h-4" />
-                  Monitoring Progress Sanksi ({formData.progress_sanksi.filter(p => p.selesai).length}/{formData.progress_sanksi.length} hari selesai)
+                  Monitoring Progress Sanksi ({formData.progress_sanksi.filter(p => p && p.selesai).length}/{formData.progress_sanksi.length} hari selesai)
                 </Label>
                 <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2 max-h-48 overflow-y-auto">
-                  {formData.progress_sanksi.map((item, index) => (
-                    <div 
-                      key={index} 
-                      className={`flex flex-col items-center p-2 rounded-lg border transition-all cursor-pointer ${
-                        item.selesai ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'
-                      }`}
-                      onClick={() => handleProgressCheck(index, !item.selesai)}
-                    >
-                      <Checkbox 
-                        checked={item.selesai}
-                        onCheckedChange={(checked) => handleProgressCheck(index, checked)}
-                        className="mb-1"
-                      />
-                      <span className="text-xs font-medium">Hari {item.hari_ke}</span>
-                      <span className="text-[10px] text-slate-400">
-                        {format(new Date(item.tanggal), 'dd/MM')}
-                      </span>
-                    </div>
-                  ))}
+                  {formData.progress_sanksi.map((item, index) => {
+                    if (!item || !item.tanggal) return null;
+                    const isSelesai = Boolean(item.selesai);
+                    return (
+                      <div 
+                        key={index} 
+                        className={`flex flex-col items-center p-2 rounded-lg border transition-all cursor-pointer ${
+                          isSelesai ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleProgressCheck(index, !isSelesai);
+                        }}
+                      >
+                        <Checkbox 
+                          checked={isSelesai}
+                          onCheckedChange={(checked) => handleProgressCheck(index, checked)}
+                          className="mb-1"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <span className="text-xs font-medium">Hari {item.hari_ke}</span>
+                        <span className="text-[10px] text-slate-400">
+                          {format(new Date(item.tanggal), 'dd/MM')}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
