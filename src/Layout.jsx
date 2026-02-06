@@ -222,8 +222,9 @@ export default function Layout({ children, currentPageName }) {
                 const isExpanded = expandedGroups[group.id];
 
                 return (
-                  <div key={group.id} className="mb-2">
-                    {group.separated && <div className="my-2 border-t border-slate-200" />}
+                  <React.Fragment key={group.id}>
+                    {group.separated && <div className="my-3 border-t border-slate-200" />}
+                    <div className="mb-2">
                     <button
                       onClick={() => handleGroupClick(group)}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
@@ -265,11 +266,12 @@ export default function Layout({ children, currentPageName }) {
                         })}
                       </div>
                     )}
-                  </div>
-                );
-              })}
-            </div>
-          </nav>
+                    </div>
+                    </React.Fragment>
+                    );
+                    })}
+                    </div>
+                    </nav>
 
           {/* Password Dialog */}
           <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>

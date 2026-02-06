@@ -54,7 +54,6 @@ import Guru from './pages/Guru';
 import Home from './pages/Home';
 import Kelas from './pages/Kelas';
 import Kepsek from './pages/Kepsek';
-import Keuangan from './pages/Keuangan';
 import Materi from './pages/Materi';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
@@ -72,7 +71,6 @@ export const PAGES = {
     "Home": Home,
     "Kelas": Kelas,
     "Kepsek": Kepsek,
-    "Keuangan": Keuangan,
     "Materi": Materi,
     "Nilai": Nilai,
     "Siswa": Siswa,
