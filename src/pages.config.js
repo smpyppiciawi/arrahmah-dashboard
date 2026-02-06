@@ -53,13 +53,12 @@ import Dashboard from './pages/Dashboard';
 import Guru from './pages/Guru';
 import Home from './pages/Home';
 import Kelas from './pages/Kelas';
-import Kepsek from './pages/Kepsek';
+import KelolaDataKeuangan from './pages/KelolaDataKeuangan';
+import LaporanKeuangan from './pages/LaporanKeuangan';
 import Materi from './pages/Materi';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
 import Transaksi from './pages/Transaksi';
-import LaporanKeuangan from './pages/LaporanKeuangan';
-import KelolaDataKeuangan from './pages/KelolaDataKeuangan';
 import __Layout from './Layout.jsx';
 
 
@@ -70,13 +69,12 @@ export const PAGES = {
     "Guru": Guru,
     "Home": Home,
     "Kelas": Kelas,
-    "Kepsek": Kepsek,
+    "KelolaDataKeuangan": KelolaDataKeuangan,
+    "LaporanKeuangan": LaporanKeuangan,
     "Materi": Materi,
     "Nilai": Nilai,
     "Siswa": Siswa,
     "Transaksi": Transaksi,
-    "LaporanKeuangan": LaporanKeuangan,
-    "KelolaDataKeuangan": KelolaDataKeuangan,
 }
 
 export const pagesConfig = {
