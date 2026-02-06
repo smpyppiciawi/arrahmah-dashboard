@@ -58,6 +58,9 @@ import Keuangan from './pages/Keuangan';
 import Materi from './pages/Materi';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
+import Transaksi from './pages/Transaksi';
+import LaporanKeuangan from './pages/LaporanKeuangan';
+import KelolaDataKeuangan from './pages/KelolaDataKeuangan';
 import __Layout from './Layout.jsx';
 
 
@@ -73,6 +76,9 @@ export const PAGES = {
     "Materi": Materi,
     "Nilai": Nilai,
     "Siswa": Siswa,
+    "Transaksi": Transaksi,
+    "LaporanKeuangan": LaporanKeuangan,
+    "KelolaDataKeuangan": KelolaDataKeuangan,
 }
 
 export const pagesConfig = {

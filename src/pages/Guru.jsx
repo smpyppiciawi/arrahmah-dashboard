@@ -12,11 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { GraduationCap, Plus, Edit2, Trash2, Download, Upload } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
-const MAPEL_LIST = [
-  "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
-  "Bahasa Inggris", "PJOK", "Seni Musik", "Seni Rupa",
-  "Bahasa Indonesia", "Akidah Akhlak", "BTAQ"
-];
+// Default Mapel list - akan diambil dari database
 
 export default function Guru() {
   const [isOpen, setIsOpen] = useState(false);
@@ -184,15 +180,14 @@ export default function Guru() {
 
   const handleAddNewMapel = async () => {
     const mapelName = newMapel.trim();
-    if (mapelName && !customMapelList.includes(mapelName) && !MAPEL_LIST.includes(mapelName)) {
-      // Save to global Mapel database
-      const existingMapel = mapelList.find(m => m.nama === mapelName);
+    if (mapelName) {
+      // Cek apakah sudah ada di database
+      const existingMapel = mapelList.find(m => m.nama.toLowerCase() === mapelName.toLowerCase());
       if (!existingMapel) {
-        await base44.entities.Mapel.create({ nama: mapelName });
+        await base44.entities.Mapel.create({ nama: mapelName, is_default: false });
         queryClient.invalidateQueries({ queryKey: ['mapel'] });
       }
       
-      setCustomMapelList(prev => [...prev, mapelName]);
       setSelectedMapel(prev => [...prev, mapelName]);
       setNewMapel('');
     }
@@ -402,26 +397,15 @@ export default function Guru() {
                   <Label>Mata Pelajaran yang Diampu</Label>
                   <div className="border rounded-lg p-3 max-h-64 overflow-y-auto">
                     <div className="grid grid-cols-2 gap-2">
-                      {MAPEL_LIST.map(mapel => (
-                        <label key={mapel} className="flex items-center gap-2 cursor-pointer">
+                      {mapelList.map(mapel => (
+                        <label key={mapel.id} className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={selectedMapel.includes(mapel)}
-                            onChange={() => handleMapelToggle(mapel)}
+                            checked={selectedMapel.includes(mapel.nama)}
+                            onChange={() => handleMapelToggle(mapel.nama)}
                             className="rounded"
                           />
-                          <span className="text-sm">{mapel}</span>
-                        </label>
-                      ))}
-                      {customMapelList.map(mapel => (
-                        <label key={mapel} className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={selectedMapel.includes(mapel)}
-                            onChange={() => handleMapelToggle(mapel)}
-                            className="rounded"
-                          />
-                          <span className="text-sm">{mapel}</span>
+                          <span className="text-sm">{mapel.nama}</span>
                         </label>
                       ))}
                     </div>
