@@ -15,18 +15,6 @@ import { Badge } from "@/components/ui/badge";
 
 const menuGroups = [
   {
-    id: 'admin',
-    name: 'MENU ADMIN',
-    icon: Users,
-    color: 'text-red-500',
-    password: 'Y@pis20200721',
-    items: [
-      { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-      { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-      { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' }
-    ]
-  },
-  {
     id: 'guru',
     name: 'MENU GURU',
     icon: GraduationCap,
@@ -46,8 +34,23 @@ const menuGroups = [
     color: 'text-teal-500',
     password: 'Y@pis20200721',
     items: [
-      { name: 'Keuangan', icon: Wallet, page: 'Keuangan', color: 'text-teal-500' }
+      { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
+      { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
+      { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' }
     ]
+  },
+  {
+    id: 'admin',
+    name: 'MENU ADMIN',
+    icon: Users,
+    color: 'text-red-500',
+    password: 'Y@pis20200721',
+    items: [
+      { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+      { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+      { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' }
+    ],
+    separated: true
   }
 ];
 
@@ -220,6 +223,7 @@ export default function Layout({ children, currentPageName }) {
 
                 return (
                   <div key={group.id} className="mb-2">
+                    {group.separated && <div className="my-2 border-t border-slate-200" />}
                     <button
                       onClick={() => handleGroupClick(group)}
                       className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
