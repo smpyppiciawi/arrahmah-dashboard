@@ -59,6 +59,7 @@ import Materi from './pages/Materi';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
 import Transaksi from './pages/Transaksi';
+import Kepsek from './pages/Kepsek';
 import __Layout from './Layout.jsx';
 
 
@@ -75,6 +76,7 @@ export const PAGES = {
     "Nilai": Nilai,
     "Siswa": Siswa,
     "Transaksi": Transaksi,
+    "Kepsek": Kepsek,
 }
 
 export const pagesConfig = {
