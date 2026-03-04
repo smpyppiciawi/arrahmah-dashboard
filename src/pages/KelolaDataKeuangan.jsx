@@ -38,31 +38,6 @@ export default function KelolaDataKeuangan() {
     queryFn: () => base44.entities.SumberDana.list('nama'),
   });
 
-  // Auto-populate default data jika kosong
-  React.useEffect(() => {
-    const populateDefaults = async () => {
-      if (kategoriList.length === 0) {
-        for (const item of defaultKategori) {
-          await base44.entities.KategoriTransaksi.create(item);
-        }
-        queryClient.invalidateQueries({ queryKey: ['kategori-transaksi'] });
-      }
-      if (tipeTransaksiList.length === 0) {
-        for (const item of defaultTipeTransaksi) {
-          await base44.entities.TipeTransaksi.create(item);
-        }
-        queryClient.invalidateQueries({ queryKey: ['tipe-transaksi'] });
-      }
-      if (sumberDanaList.length === 0) {
-        for (const item of defaultSumberDana) {
-          await base44.entities.SumberDana.create(item);
-        }
-        queryClient.invalidateQueries({ queryKey: ['sumber-dana'] });
-      }
-    };
-    populateDefaults();
-  }, [kategoriList.length, tipeTransaksiList.length, sumberDanaList.length]);
-
   const { data: tarifIuranList = [] } = useQuery({
     queryKey: ['tarif-iuran'],
     queryFn: () => base44.entities.TarifIuran.list('nama'),
