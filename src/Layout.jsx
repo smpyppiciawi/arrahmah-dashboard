@@ -176,7 +176,6 @@ export default function Layout({ children, currentPageName }) {
               {/* Menu Groups */}
               {menuGroups.map((group) => {
                 const GroupIcon = group.icon;
-                const isUnlocked = unlockedGroups[group.id];
                 const isExpanded = expandedGroups[group.id];
 
                 return (
