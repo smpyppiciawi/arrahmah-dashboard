@@ -273,7 +273,7 @@ export default function Siswa() {
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
         title="Hapus Data Siswa"
-        description="Apakah Anda yakin ingin menghapus data siswa ini? Data akan dihapus secara permanen."
+        description="Apakah Anda yakin? Menghapus siswa ini akan menghapus SEMUA data terkait: absensi, nilai, pelanggaran, prestasi, dan UKS siswa ini secara permanen."
       />
       
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
