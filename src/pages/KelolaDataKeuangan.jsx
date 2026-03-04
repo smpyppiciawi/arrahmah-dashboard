@@ -22,54 +22,6 @@ export default function KelolaDataKeuangan() {
   const [formType, setFormType] = useState('');
   const queryClient = useQueryClient();
 
-  // Default data untuk ditampilkan jika database kosong
-  const defaultKategori = [
-    { nama: 'SPP', jenis: 'Pemasukan' },
-    { nama: 'BOS', jenis: 'Pemasukan' },
-    { nama: 'BOSP', jenis: 'Pemasukan' },
-    { nama: 'Donasi', jenis: 'Pemasukan' },
-    { nama: 'Gaji', jenis: 'Pengeluaran' },
-    { nama: 'Operasional', jenis: 'Pengeluaran' },
-    { nama: 'Sarpras', jenis: 'Pengeluaran' },
-    { nama: 'Listrik', jenis: 'Pengeluaran' },
-    { nama: 'Air', jenis: 'Pengeluaran' },
-    { nama: 'Internet', jenis: 'Pengeluaran' },
-    { nama: 'Kegiatan', jenis: 'Semua' },
-    { nama: 'ATK', jenis: 'Pengeluaran' },
-    { nama: 'Kasbon', jenis: 'Pengeluaran' },
-    { nama: 'Ujian', jenis: 'Pemasukan' },
-    { nama: 'Daftar Ulang', jenis: 'Pemasukan' },
-    { nama: 'Kelulusan', jenis: 'Pemasukan' },
-    { nama: 'Lainnya', jenis: 'Semua' }
-  ];
-
-  const defaultTipeTransaksi = [
-    { nama: 'SPP/Bulanan', jenis: 'Siswa' },
-    { nama: 'Ujian Sekolah', jenis: 'Siswa' },
-    { nama: 'Daftar Ulang', jenis: 'Siswa' },
-    { nama: 'Kelulusan', jenis: 'Siswa' },
-    { nama: 'Gaji Pokok', jenis: 'Pegawai' },
-    { nama: 'Tunjangan', jenis: 'Pegawai' },
-    { nama: 'Kasbon Pegawai', jenis: 'Pegawai' },
-    { nama: 'Belanja Harian', jenis: 'Umum' },
-    { nama: 'Belanja Bulanan', jenis: 'Umum' },
-    { nama: 'Belanja Tahunan', jenis: 'Umum' },
-    { nama: 'Kegiatan', jenis: 'Umum' },
-    { nama: 'BOSP', jenis: 'Umum' },
-    { nama: 'Donasi', jenis: 'Umum' },
-    { nama: 'Transaksi Khusus', jenis: 'Umum' },
-    { nama: 'Lainnya', jenis: 'Umum' }
-  ];
-
-  const defaultSumberDana = [
-    { nama: 'Kas Sekolah', keterangan: 'Kas utama sekolah' },
-    { nama: 'Bank BRI', keterangan: 'Rekening Bank BRI' },
-    { nama: 'Bank BJB', keterangan: 'Rekening Bank BJB' },
-    { nama: 'Dana BOS', keterangan: 'Dana Bantuan Operasional Sekolah' },
-    { nama: 'Dana Komite', keterangan: 'Dana dari Komite Sekolah' },
-    { nama: 'Yayasan', keterangan: 'Dana dari Yayasan' }
-  ];
-
   // Queries
   const { data: kategoriList = [] } = useQuery({
     queryKey: ['kategori-transaksi'],
