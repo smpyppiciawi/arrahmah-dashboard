@@ -54,12 +54,7 @@ const menuGroups = [
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [unlockedGroups, setUnlockedGroups] = useState({});
-  const [expandedGroups, setExpandedGroups] = useState({});
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [passwordInput, setPasswordInput] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [expandedGroups, setExpandedGroups] = useState({ guru: true, bendahara: false, admin: false });
 
   useEffect(() => {
     const fetchUser = async () => {
