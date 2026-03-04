@@ -226,51 +226,6 @@ export default function Layout({ children, currentPageName }) {
                     </div>
                     </nav>
 
-          {/* Password Dialog */}
-          <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-amber-500" />
-                  Masukkan Password
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div>
-                  <p className="text-sm text-slate-600 mb-3">
-                    Masukkan password untuk membuka <span className="font-semibold">{selectedGroup?.name}</span>
-                  </p>
-                  <Input
-                    type="password"
-                    value={passwordInput}
-                    onChange={(e) => {
-                      setPasswordInput(e.target.value);
-                      setPasswordError('');
-                    }}
-                    placeholder="Masukkan password"
-                    className={passwordError ? 'border-red-500' : ''}
-                    autoFocus
-                  />
-                  {passwordError && (
-                    <p className="text-xs text-red-500 mt-1">{passwordError}</p>
-                  )}
-                </div>
-                <div className="flex gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowPasswordDialog(false)}
-                    className="flex-1"
-                  >
-                    Batal
-                  </Button>
-                  <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                    Buka
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
 
           {/* User Profile & Footer */}
           <div className="px-4 py-4 border-t space-y-3">
