@@ -4,7 +4,7 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, Lock, ChevronDown, ClipboardList } from
+  School, LogOut, ChevronDown, ClipboardList } from
 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
