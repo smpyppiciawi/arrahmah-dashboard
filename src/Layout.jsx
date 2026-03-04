@@ -168,7 +168,32 @@ export default function Layout({ children, currentPageName }) {
 
               <div className="my-2 border-t border-slate-200" />
 
-              {/* Menu Groups */}
+              {/* Menu Guru langsung tampil */}
+              {guruMenuItems.map((item) => {
+                const isActive = currentPageName === item.page;
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.page}
+                    to={createPageUrl(item.page)}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`
+                      flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
+                      ${isActive ?
+                        'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm' :
+                        'text-slate-600 hover:bg-slate-50'}
+                    `}
+                  >
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
+                    <span className={`font-medium ${isActive ? 'text-blue-600' : ''}`}>{item.name}</span>
+                    {isActive && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
+                  </Link>
+                );
+              })}
+
+              <div className="my-2 border-t border-slate-200" />
+
+              {/* Menu Groups (Bendahara, Admin) */}
               {menuGroups.map((group) => {
                 const GroupIcon = group.icon;
                 const isExpanded = expandedGroups[group.id];
