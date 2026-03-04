@@ -188,11 +188,7 @@ export default function Layout({ children, currentPageName }) {
                     >
                       <GroupIcon className={`w-5 h-5 ${group.color}`} />
                       <span className="flex-1 text-left text-sm">{group.name}</span>
-                      {isUnlocked ? (
-                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      ) : (
-                        <Lock className="w-4 h-4 text-slate-400" />
-                      )}
+                      <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </button>
 
                     {/* Submenu Items */}
