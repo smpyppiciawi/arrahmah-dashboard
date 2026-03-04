@@ -82,9 +82,31 @@ export default function Siswa() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Siswa.delete(id),
+    mutationFn: async (id) => {
+      // Hapus semua data terkait siswa secara cascade
+      const [absensiData, nilaiData, pelanggaranData, prestasiData, uksData] = await Promise.all([
+        base44.entities.Absensi.filter({ siswa_id: id }),
+        base44.entities.Nilai.filter({ siswa_id: id }),
+        base44.entities.Pelanggaran.filter({ siswa_id: id }),
+        base44.entities.Prestasi.filter({ siswa_id: id }),
+        base44.entities.UKS.filter({ siswa_id: id }),
+      ]);
+      await Promise.all([
+        ...absensiData.map(r => base44.entities.Absensi.delete(r.id)),
+        ...nilaiData.map(r => base44.entities.Nilai.delete(r.id)),
+        ...pelanggaranData.map(r => base44.entities.Pelanggaran.delete(r.id)),
+        ...prestasiData.map(r => base44.entities.Prestasi.delete(r.id)),
+        ...uksData.map(r => base44.entities.UKS.delete(r.id)),
+      ]);
+      return base44.entities.Siswa.delete(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['nilai'] });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran'] });
+      queryClient.invalidateQueries({ queryKey: ['prestasi'] });
+      queryClient.invalidateQueries({ queryKey: ['uks'] });
       setDeleteConfirmOpen(false);
       setDeleteId(null);
     },
