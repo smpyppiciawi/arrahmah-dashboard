@@ -19,7 +19,6 @@ const menuGroups = [
     name: 'MENU GURU',
     icon: GraduationCap,
     color: 'text-green-500',
-    password: '20200721',
     items: [
       { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
@@ -32,7 +31,6 @@ const menuGroups = [
     name: 'MENU BENDAHARA',
     icon: Wallet,
     color: 'text-teal-500',
-    password: 'Y@pis20200721',
     items: [
       { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
       { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
@@ -44,7 +42,6 @@ const menuGroups = [
     name: 'MENU ADMIN',
     icon: Users,
     color: 'text-red-500',
-    password: 'Y@pis20200721',
     items: [
       { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
       { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
