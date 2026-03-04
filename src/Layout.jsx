@@ -192,7 +192,7 @@ export default function Layout({ children, currentPageName }) {
                     </button>
 
                     {/* Submenu Items */}
-                    {isUnlocked && isExpanded && (
+                    {isExpanded && (
                       <div className="ml-4 mt-1 space-y-1">
                         {group.items.map((item) => {
                           const isActive = currentPageName === item.page;
