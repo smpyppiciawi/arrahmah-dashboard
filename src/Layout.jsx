@@ -168,7 +168,6 @@ export default function Layout({ children, currentPageName }) {
                 <span className={`font-semibold ${currentPageName === 'Kepsek' ? 'text-indigo-600' : ''}`}>
                   KEPSEK
                 </span>
-                {!unlockedGroups['kepsek'] && <Lock className="w-4 h-4 ml-auto text-slate-400" />}
                 {currentPageName === 'Kepsek' && <ChevronRight className="w-4 h-4 ml-auto text-indigo-400" />}
               </button>
 
