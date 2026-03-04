@@ -151,19 +151,11 @@ export default function Layout({ children, currentPageName }) {
                 {currentPageName === 'Dashboard' && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
               </Link>
 
-              {/* KEPSEK - Locked */}
+              {/* KEPSEK */}
               <button
                 onClick={() => {
-                  const group = { id: 'kepsek', name: 'KEPSEK', password: 'Y@pis20200721' };
-                  if (unlockedGroups['kepsek']) {
-                    window.location.href = createPageUrl('Kepsek');
-                    setSidebarOpen(false);
-                  } else {
-                    setSelectedGroup(group);
-                    setPasswordInput('');
-                    setPasswordError('');
-                    setShowPasswordDialog(true);
-                  }
+                  window.location.href = createPageUrl('Kepsek');
+                  setSidebarOpen(false);
                 }}
                 className={`
                   flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full
