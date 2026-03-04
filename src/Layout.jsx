@@ -13,19 +13,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { Badge } from "@/components/ui/badge";
 
+const guruMenuItems = [
+  { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+  { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+  { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+  { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+];
+
 const menuGroups = [
-  {
-    id: 'guru',
-    name: 'MENU GURU',
-    icon: GraduationCap,
-    color: 'text-green-500',
-    items: [
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' }
-    ]
-  },
   {
     id: 'bendahara',
     name: 'MENU BENDAHARA',
