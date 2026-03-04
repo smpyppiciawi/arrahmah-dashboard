@@ -71,32 +71,7 @@ export default function Layout({ children, currentPageName }) {
   const userRole = currentUser?.role || 'guru';
 
   const handleGroupClick = (group) => {
-    if (unlockedGroups[group.id]) {
-      setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }));
-    } else {
-      setSelectedGroup(group);
-      setPasswordInput('');
-      setPasswordError('');
-      setShowPasswordDialog(true);
-    }
-  };
-
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault();
-    if (passwordInput === selectedGroup.password) {
-      setUnlockedGroups(prev => ({ ...prev, [selectedGroup.id]: true }));
-      setExpandedGroups(prev => ({ ...prev, [selectedGroup.id]: true }));
-      setShowPasswordDialog(false);
-      setPasswordInput('');
-      setPasswordError('');
-      
-      // If kepsek, redirect to page
-      if (selectedGroup.id === 'kepsek') {
-        window.location.href = createPageUrl('Kepsek');
-      }
-    } else {
-      setPasswordError('Password salah!');
-    }
+    setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }));
   };
 
   const getRoleBadgeColor = (role) => {
