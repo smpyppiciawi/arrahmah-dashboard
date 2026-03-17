@@ -33,7 +33,7 @@ export default function Absensi() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'guru', 'tu'].includes(userRole);
+  const canEdit = ['admin', 'guru'].includes(userRole);
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],

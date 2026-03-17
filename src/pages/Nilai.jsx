@@ -52,7 +52,7 @@ export default function Nilai() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'guru', 'tu'].includes(userRole);
+  const canEdit = ['admin', 'guru'].includes(userRole);
 
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',

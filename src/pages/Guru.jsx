@@ -41,7 +41,7 @@ export default function Guru() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'tu'].includes(userRole);
+  const canEdit = ['admin'].includes(userRole);
 
   const [formData, setFormData] = useState({
     nip: '',
