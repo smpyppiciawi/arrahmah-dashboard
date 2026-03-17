@@ -4,52 +4,121 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, ChevronDown, ClipboardList } from
-'lucide-react';
+  School, LogOut, ChevronDown, ClipboardList } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { Badge } from "@/components/ui/badge";
 
-const guruMenuItems = [
-  { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-  { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-  { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-  { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
-];
+// ==================== ROLE CONFIG ====================
+// role: admin   → Dashboard, Absensi, Nilai, Materi, CatatanSiswa, Guru, Siswa, Kelas
+// role: kepsek  → Kepsek, Absensi, Nilai, Materi, CatatanSiswa, Bendahara(CRUD), Admin
+// role: bendahara → Dashboard, Transaksi, LaporanKeuangan, KelolaDataKeuangan, Guru, Siswa, Kelas
+// role: guru    → Dashboard, Absensi, Nilai, Materi, CatatanSiswa
 
-const menuGroups = [
-  {
-    id: 'bendahara',
-    name: 'MENU BENDAHARA',
-    icon: Wallet,
-    color: 'text-teal-500',
-    items: [
-      { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
-      { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
-      { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' }
+const ROLE_MENU = {
+  admin: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+    ],
+    groups: [
+      {
+        id: 'admin',
+        name: 'MENU ADMIN',
+        icon: Users,
+        color: 'text-red-500',
+        items: [
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+        ]
+      }
     ]
   },
-  {
-    id: 'admin',
-    name: 'MENU ADMIN',
-    icon: Users,
-    color: 'text-red-500',
-    items: [
-      { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-      { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-      { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' }
+  kepsek: {
+    topItems: [
+      { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
     ],
-    separated: true
+    groups: [
+      {
+        id: 'bendahara',
+        name: 'MENU BENDAHARA',
+        icon: Wallet,
+        color: 'text-teal-500',
+        items: [
+          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
+          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
+          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+        ]
+      },
+      {
+        id: 'admin',
+        name: 'MENU ADMIN',
+        icon: Users,
+        color: 'text-red-500',
+        items: [
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+        ],
+        separated: true
+      }
+    ]
+  },
+  bendahara: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
+    ],
+    groups: [
+      {
+        id: 'bendahara',
+        name: 'MENU BENDAHARA',
+        icon: Wallet,
+        color: 'text-teal-500',
+        items: [
+          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
+          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
+          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+        ]
+      },
+      {
+        id: 'admin',
+        name: 'MENU ADMIN',
+        icon: Users,
+        color: 'text-red-500',
+        items: [
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+        ],
+        separated: true
+      }
+    ]
+  },
+  guru: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+    ],
+    groups: []
   }
-];
+};
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState({ guru: true, bendahara: false, admin: false });
+  const [expandedGroups, setExpandedGroups] = useState({});
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -64,9 +133,10 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
+  const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['guru'];
 
-  const handleGroupClick = (group) => {
-    setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }));
+  const handleGroupClick = (groupId) => {
+    setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
   const getRoleBadgeColor = (role) => {
@@ -128,48 +198,8 @@ export default function Layout({ children, currentPageName }) {
           {/* Navigation */}
           <nav className="flex-1 px-3 py-4 overflow-y-auto">
             <div className="space-y-1">
-              {/* Dashboard - Always Visible */}
-              <Link
-                to={createPageUrl('Dashboard')}
-                onClick={() => setSidebarOpen(false)}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                  ${currentPageName === 'Dashboard' ?
-                    'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm' :
-                    'text-slate-600 hover:bg-slate-50'}
-                `}
-              >
-                <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Dashboard' ? 'text-blue-600' : 'text-blue-500'}`} />
-                <span className={`font-medium ${currentPageName === 'Dashboard' ? 'text-blue-600' : ''}`}>
-                  Dashboard
-                </span>
-                {currentPageName === 'Dashboard' && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
-              </Link>
-
-              {/* KEPSEK */}
-              <button
-                onClick={() => {
-                  window.location.href = createPageUrl('Kepsek');
-                  setSidebarOpen(false);
-                }}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 w-full
-                  ${currentPageName === 'Kepsek' ?
-                    'bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-600 shadow-sm' :
-                    'text-slate-600 hover:bg-slate-50'}
-                `}
-              >
-                <LayoutDashboard className={`w-5 h-5 ${currentPageName === 'Kepsek' ? 'text-indigo-600' : 'text-indigo-500'}`} />
-                <span className={`font-semibold ${currentPageName === 'Kepsek' ? 'text-indigo-600' : ''}`}>
-                  KEPSEK
-                </span>
-                {currentPageName === 'Kepsek' && <ChevronRight className="w-4 h-4 ml-auto text-indigo-400" />}
-              </button>
-
-              <div className="my-2 border-t border-slate-200" />
-
-              {/* Menu Guru langsung tampil */}
-              {guruMenuItems.map((item) => {
+              {/* Top Items */}
+              {menuConfig.topItems.map((item) => {
                 const isActive = currentPageName === item.page;
                 const Icon = item.icon;
                 return (
@@ -179,9 +209,9 @@ export default function Layout({ children, currentPageName }) {
                     onClick={() => setSidebarOpen(false)}
                     className={`
                       flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                      ${isActive ?
-                        'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm' :
-                        'text-slate-600 hover:bg-slate-50'}
+                      ${isActive
+                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm'
+                        : 'text-slate-600 hover:bg-slate-50'}
                     `}
                   >
                     <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
@@ -191,61 +221,52 @@ export default function Layout({ children, currentPageName }) {
                 );
               })}
 
-              <div className="my-2 border-t border-slate-200" />
-
-              {/* Menu Groups (Bendahara, Admin) */}
-              {menuGroups.map((group) => {
+              {/* Group Menus */}
+              {menuConfig.groups.map((group) => {
                 const GroupIcon = group.icon;
                 const isExpanded = expandedGroups[group.id];
-
                 return (
                   <React.Fragment key={group.id}>
                     {group.separated && <div className="my-3 border-t border-slate-200" />}
                     <div className="mb-2">
-                    <button
-                      onClick={() => handleGroupClick(group)}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
-                    >
-                      <GroupIcon className={`w-5 h-5 ${group.color}`} />
-                      <span className="flex-1 text-left text-sm">{group.name}</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {/* Submenu Items */}
-                    {isExpanded && (
-                      <div className="ml-4 mt-1 space-y-1">
-                        {group.items.map((item) => {
-                          const isActive = currentPageName === item.page;
-                          const Icon = item.icon;
-
-                          return (
-                            <Link
-                              key={item.page}
-                              to={createPageUrl(item.page)}
-                              onClick={() => setSidebarOpen(false)}
-                              className={`
-                                flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200
-                                ${isActive ?
-                                  'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600' :
-                                  'text-slate-600 hover:bg-slate-50'}
-                              `}
-                            >
-                              <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : item.color}`} />
-                              <span className={`text-sm ${isActive ? 'font-medium text-blue-600' : ''}`}>
-                                {item.name}
-                              </span>
-                            </Link>
-                          );
-                        })}
-                      </div>
-                    )}
+                      <button
+                        onClick={() => handleGroupClick(group.id)}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
+                      >
+                        <GroupIcon className={`w-5 h-5 ${group.color}`} />
+                        <span className="flex-1 text-left text-sm">{group.name}</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+                      {isExpanded && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          {group.items.map((item) => {
+                            const isActive = currentPageName === item.page;
+                            const Icon = item.icon;
+                            return (
+                              <Link
+                                key={item.page}
+                                to={createPageUrl(item.page)}
+                                onClick={() => setSidebarOpen(false)}
+                                className={`
+                                  flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200
+                                  ${isActive
+                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600'
+                                    : 'text-slate-600 hover:bg-slate-50'}
+                                `}
+                              >
+                                <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : item.color}`} />
+                                <span className={`text-sm ${isActive ? 'font-medium text-blue-600' : ''}`}>{item.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    </React.Fragment>
-                    );
-                    })}
-                    </div>
-                    </nav>
-
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </nav>
 
           {/* User Profile & Footer */}
           <div className="px-4 py-4 border-t space-y-3">
@@ -262,9 +283,9 @@ export default function Layout({ children, currentPageName }) {
                     </Badge>
                   </div>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   className="w-full text-xs text-red-600 hover:bg-red-50"
                   onClick={() => base44.auth.logout()}
                 >
@@ -283,21 +304,21 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Overlay for mobile */}
       <AnimatePresence>
-        {sidebarOpen &&
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/50 lg:hidden" />
-
-        }
+        {sidebarOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSidebarOpen(false)}
+            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          />
+        )}
       </AnimatePresence>
 
       {/* Main Content */}
       <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
         {children}
       </main>
-    </div>);
-
+    </div>
+  );
 }
