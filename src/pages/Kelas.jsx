@@ -342,6 +342,84 @@ export default function Kelas() {
         </div>
       </div>
 
+      {/* Generate Progress Modal */}
+      <Dialog open={generateModalOpen} onOpenChange={(o) => { if (!isGenerating) setGenerateModalOpen(o); }}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {isGenerating ? <Loader2 className="w-5 h-5 animate-spin text-amber-500" /> : <CheckCircle2 className="w-5 h-5 text-green-500" />}
+              {isGenerating ? 'Sedang Proses Generate...' : 'Generate Selesai'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {/* Progress Bar */}
+          {generateProgress.phase === 'siswa' && (
+            <div className="px-1">
+              <div className="flex justify-between text-xs text-slate-500 mb-1">
+                <span>Memproses kelas ({generateProgress.current}/{generateProgress.total})</span>
+                <span>{Math.round((generateProgress.current / generateProgress.total) * 100)}%</span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2">
+                <div
+                  className="bg-amber-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${(generateProgress.current / generateProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Log Stream */}
+          <div className="flex-1 overflow-y-auto bg-slate-900 rounded-lg p-3 font-mono text-xs space-y-1 min-h-[150px] max-h-[220px]">
+            {generateProgress.log.map((entry, i) => (
+              <div key={i} className={`${entry.type === 'success' ? 'text-green-400' : entry.type === 'error' ? 'text-red-400' : 'text-slate-300'}`}>
+                <span className="text-slate-500 mr-2">[{entry.time}]</span>{entry.msg}
+              </div>
+            ))}
+            {isGenerating && <div className="text-amber-400 animate-pulse">▌</div>}
+          </div>
+
+          {/* Result Detail per Kelas */}
+          {generateResult && (
+            <div className="overflow-y-auto max-h-[250px] space-y-2">
+              <p className="text-sm font-semibold text-slate-700">Detail per Kelas:</p>
+              {generateResult.namaKelasList.map(namaKelas => {
+                const r = generateResult.kelasResult[namaKelas];
+                const isExpanded = expandedKelas[namaKelas];
+                return (
+                  <div key={namaKelas} className="border rounded-lg overflow-hidden">
+                    <button
+                      className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 hover:bg-slate-100 text-sm font-medium text-slate-700"
+                      onClick={() => setExpandedKelas(prev => ({ ...prev, [namaKelas]: !prev[namaKelas] }))}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className="font-bold text-purple-700">{namaKelas}</span>
+                        <span className="text-green-600 text-xs bg-green-50 px-2 py-0.5 rounded-full">{r.updated.length} diperbarui</span>
+                        <span className="text-slate-400 text-xs bg-slate-100 px-2 py-0.5 rounded-full">{r.skipped.length} sudah benar</span>
+                      </span>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                    </button>
+                    {isExpanded && (
+                      <div className="px-3 py-2 bg-white text-xs text-slate-600 space-y-1">
+                        {r.updated.length > 0 && (
+                          <div><span className="text-green-600 font-semibold">Diperbarui:</span> {r.updated.join(', ')}</div>
+                        )}
+                        {r.skipped.length > 0 && (
+                          <div><span className="text-slate-400 font-semibold">Sudah benar:</span> {r.skipped.join(', ')}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!isGenerating && (
+            <Button onClick={() => setGenerateModalOpen(false)} className="mt-2">Tutup</Button>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
