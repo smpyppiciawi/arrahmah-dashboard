@@ -180,6 +180,23 @@ export default function Kelas() {
             <p className="text-slate-500 mt-1">Kelola kelas dan wali kelas</p>
           </div>
           
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              onClick={handleGenerate}
+              disabled={isGenerating}
+              className="bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
+            </Button>
+          </div>
+
+          {generateResult && (
+            <div className="w-full md:w-auto mt-2 md:mt-0 px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+              ✅ Selesai! {generateResult.kelasBaruDibuat} kelas baru dibuat, {generateResult.siswadiupdate} siswa dimasukkan ke kelas.
+            </div>
+          )}
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogContent>
               <DialogHeader>
