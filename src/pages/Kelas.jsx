@@ -18,6 +18,9 @@ export default function Kelas() {
   const [deleteId, setDeleteId] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateResult, setGenerateResult] = useState(null);
+  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [generateProgress, setGenerateProgress] = useState({ phase: '', current: 0, total: 0, log: [] });
+  const [expandedKelas, setExpandedKelas] = useState({});
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
