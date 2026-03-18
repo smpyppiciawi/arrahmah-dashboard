@@ -37,7 +37,7 @@ export default function Transaksi() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'bendahara'].includes(userRole);
+  const canEdit = ['admin', 'bendahara', 'tu'].includes(userRole);
 
   const [formData, setFormData] = useState({
     tanggal: format(new Date(), 'yyyy-MM-dd'),

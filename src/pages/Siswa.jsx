@@ -36,7 +36,7 @@ export default function Siswa() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin'].includes(userRole);
+  const canEdit = ['admin', 'tu'].includes(userRole);
 
   const [formData, setFormData] = useState({
     nis: '',

@@ -5,10 +5,12 @@ import { queryClientInstance } from '@/lib/query-client'
 import VisualEditAgent from '@/lib/VisualEditAgent'
 import NavigationTracker from '@/lib/NavigationTracker'
 import { pagesConfig } from './pages.config'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+import Masuk from './pages/Masuk';
+import SiswaPortal from './pages/SiswaPortal';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -19,9 +21,9 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin, siswaUser } = useAuth();
 
-  // Show loading spinner while checking app public settings or auth
+  // Show loading spinner
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
@@ -35,39 +37,44 @@ const AuthenticatedApp = () => {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
     } else if (authError.type === 'auth_required') {
-      // Redirect to login automatically
-      navigateToLogin();
-      return null;
+      // Don't redirect to base44 login, show our custom page
+      return <Navigate to="/Masuk" replace />;
     }
   }
 
-  // Render the main app
   return (
     <Routes>
-      <Route path="/" element={
-        <LayoutWrapper currentPageName={mainPageKey}>
-          <MainPage />
-        </LayoutWrapper>
+      {/* Public routes - no layout/auth needed */}
+      <Route path="/Masuk" element={<Masuk />} />
+      <Route path="/SiswaPortal" element={
+        siswaUser ? <SiswaPortal /> : <Navigate to="/Masuk" replace />
       } />
+
+      {/* Staff routes - require Base44 auth */}
+      <Route path="/" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName={mainPageKey}><MainPage /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+
       {Object.entries(Pages).map(([path, Page]) => (
         <Route
           key={path}
           path={`/${path}`}
           element={
-            <LayoutWrapper currentPageName={path}>
-              <Page />
-            </LayoutWrapper>
+            isAuthenticated
+              ? <LayoutWrapper currentPageName={path}><Page /></LayoutWrapper>
+              : <Navigate to="/Masuk" replace />
           }
         />
       ))}
+
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
 };
 
-
 function App() {
-
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
