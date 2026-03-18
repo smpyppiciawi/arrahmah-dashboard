@@ -155,11 +155,10 @@ export default function Kelas() {
       }
     }
 
-    // Update siswa secara batch (5 per batch) untuk menghindari rate limit
-    const BATCH_SIZE = 5;
-    for (let i = 0; i < siswaPerluUpdate.length; i += BATCH_SIZE) {
-      const batch = siswaPerluUpdate.slice(i, i + BATCH_SIZE);
-      await Promise.all(batch.map(s => base44.entities.Siswa.update(s.id, { kelas_id: s.kelas_id })));
+    // Update siswa satu per satu dengan delay untuk menghindari rate limit
+    for (const s of siswaPerluUpdate) {
+      await base44.entities.Siswa.update(s.id, { kelas_id: s.kelas_id });
+      await new Promise(res => setTimeout(res, 300));
     }
 
     queryClient.invalidateQueries({ queryKey: ['kelas'] });
