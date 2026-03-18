@@ -241,12 +241,12 @@ export default function Kelas() {
               disabled={isGenerating}
               className="bg-amber-500 hover:bg-amber-600 text-white"
             >
-              <Wand2 className="w-4 h-4 mr-2" />
+              {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
               {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
             </Button>
-            {generateResult && (
-              <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                ✅ {generateResult.kelasBaruDibuat} kelas baru dibuat, {generateResult.siswadiupdate} siswa diperbarui.
+            {generateResult && !generateModalOpen && (
+              <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 cursor-pointer" onClick={() => setGenerateModalOpen(true)}>
+                ✅ {generateResult.kelasBaruDibuat} kelas baru, {generateResult.siswadiupdate} siswa diperbarui. <span className="underline">Lihat detail</span>
               </div>
             )}
           </div>
