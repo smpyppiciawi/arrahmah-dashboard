@@ -106,9 +106,19 @@ export default function Kelas() {
     setIsGenerating(true);
     setGenerateResult(null);
 
-    // Ambil semua siswa (aktif)
-    const semuaSiswa = await base44.entities.Siswa.list();
+    // Ambil semua data sekaligus
+    const [semuaSiswa, existingKelas] = await Promise.all([
+      base44.entities.Siswa.list(),
+      base44.entities.Kelas.list(),
+    ]);
+
     const siswaAktif = semuaSiswa.filter(s => s.nama_kelas && s.status === 'Aktif');
+
+    // Map kelas yang sudah ada
+    const kelasNamaMap = {};
+    for (const k of existingKelas) {
+      kelasNamaMap[k.nama_kelas] = k;
+    }
 
     // Kelompokkan siswa berdasarkan nama_kelas
     const kelasMap = {};
@@ -117,45 +127,45 @@ export default function Kelas() {
       kelasMap[siswa.nama_kelas].push(siswa);
     }
 
-    // Ambil daftar kelas yang sudah ada
-    const existingKelas = await base44.entities.Kelas.list();
-    const kelasNamaMap = {};
-    for (const k of existingKelas) {
-      kelasNamaMap[k.nama_kelas] = k;
+    // Buat kelas baru yang belum ada (bulk)
+    const namaKelasPerluDibuat = Object.keys(kelasMap).filter(n => !kelasNamaMap[n]);
+    let kelasBaruDibuat = 0;
+
+    if (namaKelasPerluDibuat.length > 0) {
+      const newKelasData = namaKelasPerluDibuat.map(namaKelas => {
+        const tingkatMatch = namaKelas.match(/^([789])/);
+        return { nama_kelas: namaKelas, tingkat: tingkatMatch ? tingkatMatch[1] : '7' };
+      });
+      const createdKelas = await base44.entities.Kelas.bulkCreate(newKelasData);
+      for (const k of createdKelas) {
+        kelasNamaMap[k.nama_kelas] = k;
+      }
+      kelasBaruDibuat = createdKelas.length;
     }
 
-    let kelasBaruDibuat = 0;
-    let siswadiupdate = 0;
-
+    // Kumpulkan siswa yang perlu diupdate
+    const siswaPerluUpdate = [];
     for (const [namaKelas, siswaDiKelas] of Object.entries(kelasMap)) {
-      let targetKelas = kelasNamaMap[namaKelas];
-
-      // Buat kelas baru jika belum ada
-      if (!targetKelas) {
-        // Deteksi tingkat dari nama kelas (misal: "7A" → "7")
-        const tingkatMatch = namaKelas.match(/^([789])/);
-        const tingkat = tingkatMatch ? tingkatMatch[1] : '7';
-        targetKelas = await base44.entities.Kelas.create({
-          nama_kelas: namaKelas,
-          tingkat,
-        });
-        kelasNamaMap[namaKelas] = targetKelas;
-        kelasBaruDibuat++;
-      }
-
-      // Update siswa yang kelas_id-nya belum sesuai
+      const targetKelas = kelasNamaMap[namaKelas];
+      if (!targetKelas) continue;
       for (const siswa of siswaDiKelas) {
         if (siswa.kelas_id !== targetKelas.id) {
-          await base44.entities.Siswa.update(siswa.id, { kelas_id: targetKelas.id });
-          siswadiupdate++;
+          siswaPerluUpdate.push({ id: siswa.id, kelas_id: targetKelas.id });
         }
       }
+    }
+
+    // Update siswa secara batch (5 per batch) untuk menghindari rate limit
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < siswaPerluUpdate.length; i += BATCH_SIZE) {
+      const batch = siswaPerluUpdate.slice(i, i + BATCH_SIZE);
+      await Promise.all(batch.map(s => base44.entities.Siswa.update(s.id, { kelas_id: s.kelas_id })));
     }
 
     queryClient.invalidateQueries({ queryKey: ['kelas'] });
     queryClient.invalidateQueries({ queryKey: ['siswa'] });
     setIsGenerating(false);
-    setGenerateResult({ kelasBaruDibuat, siswadiupdate });
+    setGenerateResult({ kelasBaruDibuat, siswadiupdate: siswaPerluUpdate.length });
   };
 
   const getSiswaCount = (kelasId) => {
