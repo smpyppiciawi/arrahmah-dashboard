@@ -199,10 +199,15 @@ export default function Kelas() {
         await base44.entities.Siswa.update(s.id, { kelas_id: targetKelas.id });
         kelasResult[namaKelas].updated.push(s.nama);
         totalUpdated++;
-        await new Promise(res => setTimeout(res, 300));
+        await new Promise(res => setTimeout(res, 700));
       }
 
       addLogLocal(`✅ Kelas ${namaKelas}: ${perluUpdate.length} diperbarui, ${sudahBenar.length} sudah benar`, 'success');
+
+      // Jeda antar kelas untuk menghindari rate limit
+      if (ki < namaKelasList.length - 1) {
+        await new Promise(res => setTimeout(res, 500));
+      }
     }
 
     queryClient.invalidateQueries({ queryKey: ['kelas'] });

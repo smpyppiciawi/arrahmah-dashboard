@@ -47,35 +47,39 @@
  *
  * The mainPage value must match a key in the PAGES object exactly.
  */
-import Absensi from './pages/Absensi';
 import CatatanSiswa from './pages/CatatanSiswa';
 import Dashboard from './pages/Dashboard';
-import Guru from './pages/Guru';
 import Home from './pages/Home';
 import Kelas from './pages/Kelas';
 import KelolaDataKeuangan from './pages/KelolaDataKeuangan';
 import Kepsek from './pages/Kepsek';
 import LaporanKeuangan from './pages/LaporanKeuangan';
 import Materi from './pages/Materi';
+import Absensi from './pages/Absensi';
+import Guru from './pages/Guru';
+import Masuk from './pages/Masuk';
 import Nilai from './pages/Nilai';
 import Siswa from './pages/Siswa';
+import SiswaPortal from './pages/SiswaPortal';
 import Transaksi from './pages/Transaksi';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
-    "Absensi": Absensi,
     "CatatanSiswa": CatatanSiswa,
     "Dashboard": Dashboard,
-    "Guru": Guru,
     "Home": Home,
     "Kelas": Kelas,
     "KelolaDataKeuangan": KelolaDataKeuangan,
     "Kepsek": Kepsek,
     "LaporanKeuangan": LaporanKeuangan,
     "Materi": Materi,
+    "Absensi": Absensi,
+    "Guru": Guru,
+    "Masuk": Masuk,
     "Nilai": Nilai,
     "Siswa": Siswa,
+    "SiswaPortal": SiswaPortal,
     "Transaksi": Transaksi,
 }
 
