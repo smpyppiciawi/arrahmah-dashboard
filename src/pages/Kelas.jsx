@@ -102,6 +102,62 @@ export default function Kelas() {
     setIsOpen(true);
   };
 
+  const handleGenerate = async () => {
+    setIsGenerating(true);
+    setGenerateResult(null);
+
+    // Ambil semua siswa (aktif)
+    const semuaSiswa = await base44.entities.Siswa.list();
+    const siswaAktif = semuaSiswa.filter(s => s.nama_kelas && s.status === 'Aktif');
+
+    // Kelompokkan siswa berdasarkan nama_kelas
+    const kelasMap = {};
+    for (const siswa of siswaAktif) {
+      if (!kelasMap[siswa.nama_kelas]) kelasMap[siswa.nama_kelas] = [];
+      kelasMap[siswa.nama_kelas].push(siswa);
+    }
+
+    // Ambil daftar kelas yang sudah ada
+    const existingKelas = await base44.entities.Kelas.list();
+    const kelasNamaMap = {};
+    for (const k of existingKelas) {
+      kelasNamaMap[k.nama_kelas] = k;
+    }
+
+    let kelasBaruDibuat = 0;
+    let siswadiupdate = 0;
+
+    for (const [namaKelas, siswaDiKelas] of Object.entries(kelasMap)) {
+      let targetKelas = kelasNamaMap[namaKelas];
+
+      // Buat kelas baru jika belum ada
+      if (!targetKelas) {
+        // Deteksi tingkat dari nama kelas (misal: "7A" → "7")
+        const tingkatMatch = namaKelas.match(/^([789])/);
+        const tingkat = tingkatMatch ? tingkatMatch[1] : '7';
+        targetKelas = await base44.entities.Kelas.create({
+          nama_kelas: namaKelas,
+          tingkat,
+        });
+        kelasNamaMap[namaKelas] = targetKelas;
+        kelasBaruDibuat++;
+      }
+
+      // Update siswa yang kelas_id-nya belum sesuai
+      for (const siswa of siswaDiKelas) {
+        if (siswa.kelas_id !== targetKelas.id) {
+          await base44.entities.Siswa.update(siswa.id, { kelas_id: targetKelas.id });
+          siswadiupdate++;
+        }
+      }
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['kelas'] });
+    queryClient.invalidateQueries({ queryKey: ['siswa'] });
+    setIsGenerating(false);
+    setGenerateResult({ kelasBaruDibuat, siswadiupdate });
+  };
+
   const getSiswaCount = (kelasId) => {
     return siswaList.filter(s => s.kelas_id === kelasId).length;
   };
