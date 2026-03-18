@@ -105,23 +105,43 @@ export default function Kelas() {
     setIsOpen(true);
   };
 
+  const addLog = (msg, type = 'info') => {
+    setGenerateProgress(prev => ({
+      ...prev,
+      log: [...prev.log, { msg, type, time: new Date().toLocaleTimeString() }]
+    }));
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGenerateResult(null);
+    setGenerateModalOpen(true);
+    setExpandedKelas({});
+    setGenerateProgress({ phase: 'scan', current: 0, total: 0, log: [] });
 
-    // Ambil semua data sekaligus
+    // Phase 1: Scanning
+    setGenerateProgress(prev => ({ ...prev, phase: 'scan' }));
+    const addLogLocal = (msg, type = 'info') => {
+      setGenerateProgress(prev => ({
+        ...prev,
+        log: [...prev.log, { msg, type, time: new Date().toLocaleTimeString() }]
+      }));
+    };
+
+    addLogLocal('🔍 Memindai data siswa dan kelas...', 'info');
+
     const [semuaSiswa, existingKelas] = await Promise.all([
       base44.entities.Siswa.list(),
       base44.entities.Kelas.list(),
     ]);
 
     const siswaAktif = semuaSiswa.filter(s => s.nama_kelas && s.status === 'Aktif');
+    addLogLocal(`✅ Ditemukan ${siswaAktif.length} siswa aktif`, 'success');
+    addLogLocal(`✅ Ditemukan ${existingKelas.length} kelas existing`, 'success');
 
     // Map kelas yang sudah ada
     const kelasNamaMap = {};
-    for (const k of existingKelas) {
-      kelasNamaMap[k.nama_kelas] = k;
-    }
+    for (const k of existingKelas) kelasNamaMap[k.nama_kelas] = k;
 
     // Kelompokkan siswa berdasarkan nama_kelas
     const kelasMap = {};
@@ -130,11 +150,16 @@ export default function Kelas() {
       kelasMap[siswa.nama_kelas].push(siswa);
     }
 
-    // Buat kelas baru yang belum ada (bulk)
-    const namaKelasPerluDibuat = Object.keys(kelasMap).filter(n => !kelasNamaMap[n]);
+    const namaKelasList = Object.keys(kelasMap).sort();
+    addLogLocal(`📋 ${namaKelasList.length} kelas terdeteksi: ${namaKelasList.join(', ')}`, 'info');
+
+    // Phase 2: Buat kelas baru
+    const namaKelasPerluDibuat = namaKelasList.filter(n => !kelasNamaMap[n]);
     let kelasBaruDibuat = 0;
 
     if (namaKelasPerluDibuat.length > 0) {
+      addLogLocal(`🏫 Membuat ${namaKelasPerluDibuat.length} kelas baru: ${namaKelasPerluDibuat.join(', ')}`, 'info');
+      setGenerateProgress(prev => ({ ...prev, phase: 'kelas' }));
       const newKelasData = namaKelasPerluDibuat.map(namaKelas => {
         const tingkatMatch = namaKelas.match(/^([789])/);
         return { nama_kelas: namaKelas, tingkat: tingkatMatch ? tingkatMatch[1] : '7' };
@@ -142,32 +167,50 @@ export default function Kelas() {
       const createdKelas = await base44.entities.Kelas.bulkCreate(newKelasData);
       for (const k of createdKelas) {
         kelasNamaMap[k.nama_kelas] = k;
+        addLogLocal(`✅ Kelas "${k.nama_kelas}" berhasil dibuat`, 'success');
       }
       kelasBaruDibuat = createdKelas.length;
+    } else {
+      addLogLocal('ℹ️ Semua kelas sudah ada, tidak perlu membuat kelas baru', 'info');
     }
 
-    // Kumpulkan siswa yang perlu diupdate
-    const siswaPerluUpdate = [];
-    for (const [namaKelas, siswaDiKelas] of Object.entries(kelasMap)) {
+    // Phase 3: Update siswa per kelas
+    setGenerateProgress(prev => ({ ...prev, phase: 'siswa', current: 0, total: namaKelasList.length }));
+
+    const kelasResult = {}; // namaKelas -> { updated: [], skipped: [] }
+    let totalUpdated = 0;
+
+    for (let ki = 0; ki < namaKelasList.length; ki++) {
+      const namaKelas = namaKelasList[ki];
       const targetKelas = kelasNamaMap[namaKelas];
-      if (!targetKelas) continue;
-      for (const siswa of siswaDiKelas) {
-        if (siswa.kelas_id !== targetKelas.id) {
-          siswaPerluUpdate.push({ id: siswa.id, kelas_id: targetKelas.id });
-        }
-      }
-    }
+      const siswaDiKelas = kelasMap[namaKelas] || [];
 
-    // Update siswa satu per satu dengan delay untuk menghindari rate limit
-    for (const s of siswaPerluUpdate) {
-      await base44.entities.Siswa.update(s.id, { kelas_id: s.kelas_id });
-      await new Promise(res => setTimeout(res, 300));
+      setGenerateProgress(prev => ({ ...prev, current: ki + 1 }));
+      addLogLocal(`📂 Memproses kelas ${namaKelas} (${siswaDiKelas.length} siswa)...`, 'info');
+
+      kelasResult[namaKelas] = { updated: [], skipped: [] };
+
+      const perluUpdate = siswaDiKelas.filter(s => s.kelas_id !== targetKelas?.id);
+      const sudahBenar = siswaDiKelas.filter(s => s.kelas_id === targetKelas?.id);
+
+      for (const s of sudahBenar) kelasResult[namaKelas].skipped.push(s.nama);
+
+      for (const s of perluUpdate) {
+        await base44.entities.Siswa.update(s.id, { kelas_id: targetKelas.id });
+        kelasResult[namaKelas].updated.push(s.nama);
+        totalUpdated++;
+        await new Promise(res => setTimeout(res, 300));
+      }
+
+      addLogLocal(`✅ Kelas ${namaKelas}: ${perluUpdate.length} diperbarui, ${sudahBenar.length} sudah benar`, 'success');
     }
 
     queryClient.invalidateQueries({ queryKey: ['kelas'] });
     queryClient.invalidateQueries({ queryKey: ['siswa'] });
     setIsGenerating(false);
-    setGenerateResult({ kelasBaruDibuat, siswadiupdate: siswaPerluUpdate.length });
+    setGenerateProgress(prev => ({ ...prev, phase: 'done' }));
+    setGenerateResult({ kelasBaruDibuat, siswadiupdate: totalUpdated, kelasResult, namaKelasList });
+    addLogLocal(`🎉 Selesai! ${kelasBaruDibuat} kelas dibuat, ${totalUpdated} siswa diperbarui.`, 'success');
   };
 
   const getSiswaCount = (kelasId) => {
