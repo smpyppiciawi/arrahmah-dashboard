@@ -16,8 +16,17 @@ export default function Masuk() {
   const [error, setError] = useState('');
   const { siswaLogin } = useAuth();
 
+  const { isAuthenticated } = useAuth();
+
+  // Jika sudah login sebagai staff, langsung ke Dashboard
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      window.location.href = '/Dashboard';
+    }
+  }, [isAuthenticated]);
+
   const handleStaffLogin = () => {
-    base44.auth.redirectToLogin(window.location.href);
+    base44.auth.redirectToLogin(window.location.origin + '/Dashboard');
   };
 
   const handleSiswaLogin = async (e) => {
