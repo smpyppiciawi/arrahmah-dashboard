@@ -19,7 +19,7 @@ export default function Masuk() {
   const { isAuthenticated } = useAuth();
 
   // Jika sudah login sebagai staff, langsung ke Dashboard
-  React.useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated) {
       window.location.href = '/Dashboard';
     }
