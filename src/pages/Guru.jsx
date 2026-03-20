@@ -323,12 +323,12 @@ export default function Guru() {
 
         {/* Dialog Form */}
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingData ? 'Edit Data' : 'Tambah Data Baru'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>NIP</Label>
                   <Input value={formData.nip} onChange={(e) => setFormData({...formData, nip: e.target.value})} />
@@ -338,7 +338,7 @@ export default function Guru() {
                   <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Jenis Kelamin</Label>
                   <Select value={formData.jenis_kelamin} onValueChange={(v) => setFormData({...formData, jenis_kelamin: v})}>
@@ -427,7 +427,7 @@ export default function Guru() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>No. Telepon</Label>
                   <Input value={formData.no_telp} onChange={(e) => setFormData({...formData, no_telp: e.target.value})} />
