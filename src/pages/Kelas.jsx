@@ -450,6 +450,10 @@ export default function Kelas() {
         title="Hapus Data Kelas"
         description="Apakah Anda yakin ingin menghapus kelas ini? Data akan dihapus secara permanen."
       />
+
+      <PembelajaranDialog open={pembelajaranOpen} onOpenChange={setPembelajaranOpen} kelas={selectedKelas} />
+      <JadwalDialog open={jadwalOpen} onOpenChange={setJadwalOpen} kelas={selectedKelas} />
+      <DetailKelasDialog open={detailOpen} onOpenChange={setDetailOpen} kelas={selectedKelas} />
     </div>
   );
 }
