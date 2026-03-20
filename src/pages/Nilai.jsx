@@ -278,12 +278,12 @@ export default function Nilai() {
                     <Plus className="w-4 h-4 mr-2" /> Input Per Kelas
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Input Nilai Per Kelas</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleKelasSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <Label>Kelas</Label>
                         <Select value={kelasFormData.kelas_id} onValueChange={handleKelasChange}>
@@ -307,9 +307,9 @@ export default function Nilai() {
                        </Select>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <Label>Jenis Penilaian</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                       <div>
+                         <Label>Jenis Penilaian</Label>
                         <Select value={kelasFormData.jenis_penilaian} onValueChange={(v) => setKelasFormData({...kelasFormData, jenis_penilaian: v})}>
                           <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                           <SelectContent>
@@ -336,7 +336,7 @@ export default function Nilai() {
                         <Input type="number" value={kelasFormData.kkm} onChange={(e) => setKelasFormData({...kelasFormData, kkm: e.target.value})} />
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div>
                         <Label>Nama Guru</Label>
                         <Input value={kelasFormData.nama_guru} onChange={(e) => setKelasFormData({...kelasFormData, nama_guru: e.target.value})} placeholder="Otomatis dari Mapel" />
@@ -528,7 +528,7 @@ export default function Nilai() {
         </div>
 
         {/* Stats - Real-time Filtered */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Card className="border-0 shadow-sm bg-blue-50">
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-blue-700">{totalSiswa}</p>
