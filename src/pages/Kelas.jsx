@@ -331,70 +331,142 @@ export default function Kelas() {
           </Dialog>
         </div>
 
-        {/* Kelas Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {kelasList.map((kelas, index) => (
-            <motion.div
-              key={kelas.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-            >
-              <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
-                <div className={`h-2 bg-gradient-to-r ${tingkatColors[kelas.tingkat] || 'from-slate-400 to-slate-500'}`} />
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold text-slate-800">{kelas.nama_kelas}</h3>
-                      <p className="text-sm text-slate-500 mt-1">Tingkat {kelas.tingkat}</p>
+        {/* GRID VIEW */}
+        {viewMode === 'grid' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {sortedKelasList.map((kelas, index) => (
+              <motion.div key={kelas.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.04 }}>
+                <Card className="border-0 shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden">
+                  <div className={`h-2 bg-gradient-to-r ${tingkatColors[kelas.tingkat] || 'from-slate-400 to-slate-500'}`} />
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">{kelas.nama_kelas}</h3>
+                        <p className="text-sm text-slate-500 mt-1">Tingkat {kelas.tingkat}</p>
+                      </div>
+                      <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full">
+                        <Users className="w-4 h-4 text-slate-500" />
+                        <span className="text-sm font-medium text-slate-600">{getSiswaCount(kelas.id)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full">
-                      <Users className="w-4 h-4 text-slate-500" />
-                      <span className="text-sm font-medium text-slate-600">{getSiswaCount(kelas.id)}</span>
-                    </div>
-                  </div>
-                  
-                  {kelas.wali_kelas && (
-                    <div className="mt-4 p-3 bg-slate-50 rounded-lg">
-                      <p className="text-xs text-slate-400 mb-1">Wali Kelas</p>
-                      <p className="text-sm font-medium text-slate-700">{kelas.wali_kelas}</p>
-                    </div>
-                  )}
-
-                  {kelas.tahun_ajaran && (
-                    <p className="text-xs text-slate-400 mt-3">TA {kelas.tahun_ajaran}</p>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t">
-                    <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}>
-                      <BookOpen className="w-3.5 h-3.5 mr-1" /> Pembelajaran
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}>
-                      <CalendarDays className="w-3.5 h-3.5 mr-1" /> Jadwal
-                    </Button>
-                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}>
-                      <Users className="w-3.5 h-3.5 mr-1" /> Detail Kelas
-                    </Button>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
-                        <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                    {kelas.wali_kelas && (
+                      <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                        <p className="text-xs text-slate-400 mb-1">Wali Kelas</p>
+                        <p className="text-sm font-medium text-slate-700">{kelas.wali_kelas}</p>
+                      </div>
+                    )}
+                    {kelas.tahun_ajaran && (
+                      <p className="text-xs text-slate-400 mt-3">TA {kelas.tahun_ajaran}</p>
+                    )}
+                    <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t">
+                      <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}>
+                        <BookOpen className="w-3.5 h-3.5 mr-1" /> Pembelajaran
                       </Button>
-                      <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
-                        <Trash2 className="w-3.5 h-3.5" />
+                      <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}>
+                        <CalendarDays className="w-3.5 h-3.5 mr-1" /> Jadwal
                       </Button>
+                      <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}>
+                        <Users className="w-3.5 h-3.5 mr-1" /> Detail Kelas
+                      </Button>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
+                          <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                        </Button>
+                        <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+            {sortedKelasList.length === 0 && !isLoading && (
+              <div className="col-span-full text-center py-12 text-slate-400">Belum ada data kelas.</div>
+            )}
+          </div>
+        )}
 
-          {kelasList.length === 0 && !isLoading && (
-            <div className="col-span-full text-center py-12 text-slate-400">
-              Belum ada data kelas. Klik "Tambah Kelas" untuk memulai.
+        {/* LIST / DETAIL VIEW */}
+        {viewMode === 'list' && (
+          <div className="space-y-2">
+            {/* Header Row */}
+            <div className="hidden md:grid grid-cols-12 gap-3 px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wide bg-slate-100 rounded-lg">
+              <div className="col-span-2">Kelas</div>
+              <div className="col-span-1 text-center">Tingkat</div>
+              <div className="col-span-1 text-center">Siswa</div>
+              <div className="col-span-2">Wali Kelas</div>
+              <div className="col-span-2">Tahun Ajaran</div>
+              <div className="col-span-4 text-center">Aksi</div>
             </div>
-          )}
-        </div>
+
+            {sortedKelasList.map((kelas, index) => (
+              <motion.div key={kelas.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.03 }}>
+                <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+                  <div className={`w-1 absolute left-0 top-0 bottom-0 bg-gradient-to-b ${tingkatColors[kelas.tingkat] || 'from-slate-400 to-slate-500'}`} style={{position: 'relative', display: 'none'}} />
+                  <CardContent className="p-0">
+                    <div className={`w-full border-l-4 ${kelas.tingkat === '7' ? 'border-blue-500' : kelas.tingkat === '8' ? 'border-emerald-500' : 'border-purple-500'}`}>
+                      {/* Mobile layout */}
+                      <div className="md:hidden p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h3 className="text-lg font-bold text-slate-800">{kelas.nama_kelas}</h3>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tingkatBadgeColors[kelas.tingkat] || 'bg-slate-100 text-slate-600'}`}>Tingkat {kelas.tingkat}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1 rounded-full text-sm text-slate-600">
+                            <Users className="w-3.5 h-3.5" />{getSiswaCount(kelas.id)}
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="text-slate-400 text-xs">Wali Kelas</span><p className="font-medium text-slate-700 truncate">{kelas.wali_kelas || '-'}</p></div>
+                          <div><span className="text-slate-400 text-xs">Tahun Ajaran</span><p className="font-medium text-slate-700">{kelas.tahun_ajaran || '-'}</p></div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 pt-2 border-t">
+                          <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 text-xs" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}><BookOpen className="w-3 h-3 mr-1" />Pembelajaran</Button>
+                          <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 text-xs" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}><CalendarDays className="w-3 h-3 mr-1" />Jadwal</Button>
+                          <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 text-xs" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}><Users className="w-3 h-3 mr-1" />Detail</Button>
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => handleEdit(kelas)}><Edit2 className="w-3 h-3 mr-1" />Edit</Button>
+                          <Button size="sm" variant="outline" className="text-red-500 text-xs" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3 h-3" /></Button>
+                        </div>
+                      </div>
+
+                      {/* Desktop layout */}
+                      <div className="hidden md:grid grid-cols-12 gap-3 items-center px-4 py-3">
+                        <div className="col-span-2">
+                          <p className="font-bold text-slate-800 text-base">{kelas.nama_kelas}</p>
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <span className={`text-xs px-2 py-1 rounded-full font-medium ${tingkatBadgeColors[kelas.tingkat] || 'bg-slate-100 text-slate-600'}`}>{kelas.tingkat}</span>
+                        </div>
+                        <div className="col-span-1 text-center">
+                          <div className="flex items-center justify-center gap-1 bg-slate-100 px-2 py-1 rounded-full text-sm text-slate-600 w-fit mx-auto">
+                            <Users className="w-3.5 h-3.5" />{getSiswaCount(kelas.id)}
+                          </div>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-sm text-slate-700 truncate">{kelas.wali_kelas || <span className="text-slate-300">-</span>}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-sm text-slate-600">{kelas.tahun_ajaran || <span className="text-slate-300">-</span>}</p>
+                        </div>
+                        <div className="col-span-4 flex items-center justify-end gap-1.5">
+                          <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}><BookOpen className="w-3.5 h-3.5 mr-1" />Pembelajaran</Button>
+                          <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 text-xs" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}><CalendarDays className="w-3.5 h-3.5 mr-1" />Jadwal</Button>
+                          <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}><Users className="w-3.5 h-3.5 mr-1" />Detail</Button>
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(kelas)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                          <Button size="sm" variant="outline" className="text-red-500" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+            {sortedKelasList.length === 0 && !isLoading && (
+              <div className="text-center py-12 text-slate-400">Belum ada data kelas.</div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Generate Progress Modal */}
