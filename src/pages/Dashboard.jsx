@@ -360,6 +360,7 @@ export default function Dashboard() {
                     )}
                   </TableBody>
                 </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -368,7 +369,7 @@ export default function Dashboard() {
           <TabsContent value="prestasi">
             <Card>
               <CardHeader>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <CardTitle>Rekap Prestasi</CardTitle>
                   <div className="flex gap-2 items-center">
                     <Input
