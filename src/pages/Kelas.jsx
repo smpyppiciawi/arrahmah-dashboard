@@ -236,6 +236,20 @@ export default function Kelas() {
     '9': 'from-purple-500 to-purple-600',
   };
 
+  const tingkatBadgeColors = {
+    '7': 'bg-blue-100 text-blue-700',
+    '8': 'bg-emerald-100 text-emerald-700',
+    '9': 'bg-purple-100 text-purple-700',
+  };
+
+  // Sort: by tingkat (7→8→9) then by nama_kelas alphabetically
+  const sortedKelasList = [...kelasList].sort((a, b) => {
+    const tingkatA = parseInt(a.tingkat) || 0;
+    const tingkatB = parseInt(b.tingkat) || 0;
+    if (tingkatA !== tingkatB) return tingkatA - tingkatB;
+    return (a.nama_kelas || '').localeCompare(b.nama_kelas || '');
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
