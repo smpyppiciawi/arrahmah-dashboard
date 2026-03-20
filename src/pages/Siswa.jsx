@@ -335,7 +335,7 @@ export default function Siswa() {
                   <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Jenis Kelamin</Label>
                   <Select value={formData.jenis_kelamin} onValueChange={(v) => setFormData({...formData, jenis_kelamin: v})}>
@@ -361,7 +361,7 @@ export default function Siswa() {
                   )}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Tanggal Lahir</Label>
                   <Input type="date" value={formData.tanggal_lahir} onChange={(e) => setFormData({...formData, tanggal_lahir: e.target.value})} />
@@ -383,7 +383,7 @@ export default function Siswa() {
                 <Label>Alamat</Label>
                 <Input value={formData.alamat} onChange={(e) => setFormData({...formData, alamat: e.target.value})} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Nama Orang Tua/Wali</Label>
                   <Input value={formData.nama_ortu} onChange={(e) => setFormData({...formData, nama_ortu: e.target.value})} />
