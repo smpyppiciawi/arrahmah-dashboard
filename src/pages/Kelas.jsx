@@ -263,14 +263,31 @@ export default function Kelas() {
           </div>
           
           <div className="flex flex-col items-end gap-2">
-            <Button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="bg-amber-500 hover:bg-amber-600 text-white"
-            >
-              {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
-              {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* View Toggle */}
+              <div className="flex items-center border rounded-lg overflow-hidden">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`px-3 py-2 flex items-center gap-1.5 text-sm transition-colors ${viewMode === 'grid' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" /> Grid
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-2 flex items-center gap-1.5 text-sm transition-colors ${viewMode === 'list' ? 'bg-purple-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                >
+                  <List className="w-4 h-4" /> Detail
+                </button>
+              </div>
+              <Button
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
+                {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
+              </Button>
+            </div>
             {generateResult && !generateModalOpen && (
               <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 cursor-pointer" onClick={() => setGenerateModalOpen(true)}>
                 ✅ {generateResult.kelasBaruDibuat} kelas baru, {generateResult.siswadiupdate} siswa diperbarui. <span className="underline">Lihat detail</span>
