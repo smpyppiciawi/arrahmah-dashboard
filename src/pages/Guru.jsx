@@ -380,16 +380,34 @@ export default function Guru() {
 
               <div>
                 <Label>Tugas Tambahan</Label>
-                <Select value={formData.tugas_tambahan} onValueChange={(v) => setFormData({...formData, tugas_tambahan: v})}>
+                <Select
+                  value={formData.tugas_tambahan === '' || !['Waka Kurikulum','Waka Kesiswaan','Pembina Osis','BP/BK','Bendahara','Operator'].includes(formData.tugas_tambahan) && formData.tugas_tambahan ? 'Lainnya' : (formData.tugas_tambahan || '_none')}
+                  onValueChange={(v) => {
+                    if (v === '_none') setFormData({...formData, tugas_tambahan: ''});
+                    else if (v === 'Lainnya') setFormData({...formData, tugas_tambahan: 'Lainnya'});
+                    else setFormData({...formData, tugas_tambahan: v});
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder="Pilih jika ada" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={null}>Tidak Ada</SelectItem>
+                    <SelectItem value="_none">Tidak Ada</SelectItem>
                     <SelectItem value="Waka Kurikulum">Waka Kurikulum</SelectItem>
                     <SelectItem value="Waka Kesiswaan">Waka Kesiswaan</SelectItem>
                     <SelectItem value="Pembina Osis">Pembina Osis</SelectItem>
                     <SelectItem value="BP/BK">BP/BK</SelectItem>
+                    <SelectItem value="Bendahara">Bendahara</SelectItem>
+                    <SelectItem value="Operator">Operator</SelectItem>
+                    <SelectItem value="Lainnya">Lainnya...</SelectItem>
                   </SelectContent>
                 </Select>
+                {(formData.tugas_tambahan === 'Lainnya' || (formData.tugas_tambahan && !['','Waka Kurikulum','Waka Kesiswaan','Pembina Osis','BP/BK','Bendahara','Operator'].includes(formData.tugas_tambahan))) && (
+                  <Input
+                    className="mt-2"
+                    placeholder="Isi tugas tambahan..."
+                    value={formData.tugas_tambahan === 'Lainnya' ? '' : formData.tugas_tambahan}
+                    onChange={(e) => setFormData({...formData, tugas_tambahan: e.target.value})}
+                  />
+                )}
               </div>
 
               {formData.jabatan === 'Guru Mata Pelajaran' && (
