@@ -291,21 +291,21 @@ export default function Guru() {
           </div>
           
           {canEdit && (
-            <div className="flex gap-2">
-              <Button onClick={handleDownloadTemplate} variant="outline">
-                <Download className="w-4 h-4 mr-2" /> Template
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
+                <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>
               <label>
-                <Button variant="outline" disabled={csvImporting} asChild>
+                <Button variant="outline" disabled={csvImporting} size="sm" asChild>
                   <span>
-                    <Upload className="w-4 h-4 mr-2" /> 
-                    {csvImporting ? 'Importing...' : 'Import CSV'}
+                    <Upload className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{csvImporting ? 'Importing...' : 'Import CSV'}</span>
                   </span>
                 </Button>
                 <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
               </label>
-              <Button onClick={() => setIsOpen(true)} className="bg-violet-600 hover:bg-violet-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Data
+              <Button onClick={() => setIsOpen(true)} className="bg-violet-600 hover:bg-violet-700" size="sm">
+                <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tambah Data</span>
               </Button>
             </div>
           )}
