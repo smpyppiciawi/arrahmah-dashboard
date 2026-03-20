@@ -353,9 +353,40 @@ export default function Layout({ children, currentPageName }) {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 min-h-screen">
+      <main className="lg:ml-64 pt-16 lg:pt-0 pb-16 lg:pb-0 min-h-screen">
         {children}
       </main>
+
+      {/* Bottom Navigation Bar - Mobile Only */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg safe-area-pb">
+        <div className="flex items-center justify-around px-2 h-16">
+          {menuConfig.topItems.slice(0, 4).map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPageName === item.page;
+            return (
+              <Link
+                key={item.page}
+                to={createPageUrl(item.page)}
+                onClick={() => setSidebarOpen(false)}
+                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
+                  isActive ? 'text-blue-600' : 'text-slate-400'
+                }`}
+              >
+                <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
+                <span className="text-[10px] font-medium leading-none">{item.name.split(' ')[0]}</span>
+              </Link>
+            );
+          })}
+          {/* More button */}
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-slate-400"
+          >
+            <Menu className="w-5 h-5" />
+            <span className="text-[10px] font-medium leading-none">Menu</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
