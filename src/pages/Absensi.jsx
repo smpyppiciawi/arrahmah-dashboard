@@ -188,27 +188,25 @@ export default function Absensi() {
                 </Select>
               </div>
               {canEdit && (
-                <div className="flex items-end gap-2">
-                  <div className="flex items-center gap-2">
-                    <Input 
-                      type="time"
-                      value={bulkJamMasuk}
-                      onChange={(e) => setBulkJamMasuk(e.target.value)}
-                      className="w-28"
-                      placeholder="Jam Masuk"
-                    />
-                    <Button 
-                      type="button"
-                      variant="outline"
-                      onClick={handleBulkJamMasuk}
-                      disabled={!selectedKelas || !bulkJamMasuk}
-                    >
-                      <Clock className="w-4 h-4 mr-1" /> Set Semua
-                    </Button>
-                  </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input 
+                    type="time"
+                    value={bulkJamMasuk}
+                    onChange={(e) => setBulkJamMasuk(e.target.value)}
+                    className="w-28"
+                    placeholder="Jam Masuk"
+                  />
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={handleBulkJamMasuk}
+                    disabled={!selectedKelas || !bulkJamMasuk}
+                  >
+                    <Clock className="w-4 h-4 mr-1" /> Set Semua
+                  </Button>
                   <Button 
                     onClick={handleSaveAll} 
-                    className="bg-emerald-600 hover:bg-emerald-700 w-full md:w-auto"
+                    className="bg-emerald-600 hover:bg-emerald-700"
                     disabled={!selectedKelas || siswaList.length === 0}
                   >
                     <Save className="w-4 h-4 mr-2" /> Simpan Absensi
@@ -221,7 +219,7 @@ export default function Absensi() {
 
         {/* Stats */}
         {selectedKelas && siswaList.length > 0 && (
-          <div className="grid grid-cols-5 gap-3 mb-6">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-6">
             <Card className="border-0 shadow-sm bg-emerald-50">
               <CardContent className="p-3 text-center">
                 <p className="text-2xl font-bold text-emerald-600">{stats.hadir}</p>
@@ -263,19 +261,19 @@ export default function Absensi() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50">
-                      <TableHead className="w-12">No</TableHead>
-                      <TableHead>NIS</TableHead>
+                      <TableHead className="w-10">No</TableHead>
+                      <TableHead className="hidden sm:table-cell">NIS</TableHead>
                       <TableHead>Nama Siswa</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Jam Masuk</TableHead>
-                      <TableHead>Keterangan</TableHead>
+                      <TableHead className="hidden sm:table-cell">Jam Masuk</TableHead>
+                      <TableHead className="hidden md:table-cell">Keterangan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedSiswaList.map((siswa, index) => (
                       <TableRow key={siswa.id} className="hover:bg-slate-50">
                         <TableCell className="text-slate-500">{index + 1}</TableCell>
-                        <TableCell className="font-medium">{siswa.nis}</TableCell>
+                        <TableCell className="font-medium hidden sm:table-cell">{siswa.nis}</TableCell>
                         <TableCell>{siswa.nama}</TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -307,7 +305,7 @@ export default function Absensi() {
                             })}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Input 
                             type="time"
                             value={absensiData[siswa.id]?.jam_masuk || ''}
@@ -319,7 +317,7 @@ export default function Absensi() {
                             disabled={!canEdit}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Input 
                             placeholder="Keterangan..."
                             value={absensiData[siswa.id]?.keterangan || ''}
