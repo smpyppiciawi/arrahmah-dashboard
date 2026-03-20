@@ -140,28 +140,30 @@ export default function Dashboard() {
 
         {/* Tabs */}
         <Tabs defaultValue="jumlah" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
-            <TabsTrigger value="jumlah">
-              <Users className="w-4 h-4 mr-2" />
-              Jumlah Siswa
-            </TabsTrigger>
-            <TabsTrigger value="kehadiran">
-              <Calendar className="w-4 h-4 mr-2" />
-              Kehadiran
-            </TabsTrigger>
-            <TabsTrigger value="pelanggaran">
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              Pelanggaran
-            </TabsTrigger>
-            <TabsTrigger value="prestasi">
-              <Award className="w-4 h-4 mr-2" />
-              Prestasi
-            </TabsTrigger>
-            <TabsTrigger value="uks">
-              <Heart className="w-4 h-4 mr-2" />
-              UKS
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto mb-6 -mx-1 px-1">
+            <TabsList className="flex w-max min-w-full gap-1">
+              <TabsTrigger value="jumlah" className="flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Jumlah Siswa</span>
+              </TabsTrigger>
+              <TabsTrigger value="kehadiran" className="flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
+                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Kehadiran</span>
+              </TabsTrigger>
+              <TabsTrigger value="pelanggaran" className="flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
+                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Pelanggaran</span>
+              </TabsTrigger>
+              <TabsTrigger value="prestasi" className="flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
+                <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>Prestasi</span>
+              </TabsTrigger>
+              <TabsTrigger value="uks" className="flex items-center gap-1.5 whitespace-nowrap text-xs sm:text-sm px-3 sm:px-4">
+                <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span>UKS</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* Jumlah Siswa */}
           <TabsContent value="jumlah">
@@ -181,7 +183,7 @@ export default function Dashboard() {
                         onClick={() => setExpandedGrade(isExpanded ? null : grade)}
                         className="w-full flex items-center justify-between"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
                           <div className="font-semibold text-lg">Tingkat {grade}</div>
                           <Badge className="bg-blue-100 text-blue-700">
                             Total: {gradeData.total}
@@ -247,7 +249,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
                     <div className="text-center">
                       <p className="text-sm text-slate-600">Total Hadir</p>
                       <p className="text-2xl font-bold text-emerald-600">{attendanceSummary.reduce((sum, item) => sum + item.hadir, 0)}</p>
