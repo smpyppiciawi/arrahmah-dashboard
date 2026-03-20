@@ -394,7 +394,7 @@ export default function Nilai() {
                     <Plus className="w-4 h-4 mr-2" /> Input Per Siswa
                   </Button>
                 </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Nilai' : 'Input Nilai Baru'}</DialogTitle>
               </DialogHeader>
@@ -481,7 +481,7 @@ export default function Nilai() {
                     placeholder="Contoh: Bab 1 - Teks Narasi"
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <Label>Nilai</Label>
                     <Input 
