@@ -28,6 +28,7 @@ export default function Kelas() {
   const [jadwalOpen, setJadwalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedKelas, setSelectedKelas] = useState(null);
+  const [viewMode, setViewMode] = useState('grid');
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
