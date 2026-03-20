@@ -333,13 +333,24 @@ export default function Kelas() {
                     <p className="text-xs text-slate-400 mt-3">TA {kelas.tahun_ajaran}</p>
                   )}
 
-                  <div className="flex gap-2 mt-4 pt-4 border-t">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
-                      <Edit2 className="w-4 h-4 mr-1" /> Edit
+                  <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t">
+                    <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}>
+                      <BookOpen className="w-3.5 h-3.5 mr-1" /> Pembelajaran
                     </Button>
-                    <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
-                      <Trash2 className="w-4 h-4" />
+                    <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}>
+                      <CalendarDays className="w-3.5 h-3.5 mr-1" /> Jadwal
                     </Button>
+                    <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}>
+                      <Users className="w-3.5 h-3.5 mr-1" /> Detail Kelas
+                    </Button>
+                    <div className="flex gap-1">
+                      <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
+                        <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
