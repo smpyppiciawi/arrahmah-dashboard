@@ -24,6 +24,10 @@ export default function Kelas() {
   const [generateModalOpen, setGenerateModalOpen] = useState(false);
   const [generateProgress, setGenerateProgress] = useState({ phase: '', current: 0, total: 0, log: [] });
   const [expandedKelas, setExpandedKelas] = useState({});
+  const [pembelajaranOpen, setPembelajaranOpen] = useState(false);
+  const [jadwalOpen, setJadwalOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedKelas, setSelectedKelas] = useState(null);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
