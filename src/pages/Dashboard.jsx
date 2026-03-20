@@ -306,7 +306,7 @@ export default function Dashboard() {
           <TabsContent value="pelanggaran">
             <Card>
               <CardHeader>
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <CardTitle>Rekap Pelanggaran</CardTitle>
                   <div className="flex gap-2 items-center">
                     <Input
@@ -330,6 +330,7 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
