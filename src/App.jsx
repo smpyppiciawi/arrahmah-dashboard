@@ -10,6 +10,8 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Masuk from './pages/Masuk';
+import Pengaturan from './pages/Pengaturan';
+import { ActiveAcademicYearProvider } from './context/ActiveAcademicYearContext';
 import SiswaPortal from './pages/SiswaPortal';
 
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -46,6 +48,11 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* Public routes - no layout/auth needed */}
       <Route path="/Masuk" element={<Masuk />} />
+      <Route path="/Pengaturan" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="Pengaturan"><Pengaturan /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
       <Route path="/SiswaPortal" element={
         siswaUser ? <SiswaPortal /> : <Navigate to="/Masuk" replace />
       } />
@@ -78,12 +85,14 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <NavigationTracker />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
-        <VisualEditAgent />
+        <ActiveAcademicYearProvider>
+          <Router>
+            <NavigationTracker />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+          <VisualEditAgent />
+        </ActiveAcademicYearProvider>
       </QueryClientProvider>
     </AuthProvider>
   )

@@ -4,7 +4,7 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, ChevronDown, ClipboardList } from 'lucide-react';
+  School, LogOut, ChevronDown, ClipboardList, Settings } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
@@ -25,6 +25,7 @@ const ROLE_MENU = {
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
       { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
     ],
     groups: [
       {
@@ -59,6 +60,7 @@ const ROLE_MENU = {
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
     ],
     groups: [
       {
@@ -81,6 +83,7 @@ const ROLE_MENU = {
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
     ],
     groups: [
       {
