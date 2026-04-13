@@ -21,13 +21,13 @@ import {
 import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save } from 'lucide-react';
 
 export default function Pengaturan() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [tahunAjaranInput, setTahunAjaranInput] = useState('');
   const [showGraduateConfirm, setShowGraduateConfirm] = useState(false);
 
-  const isAdmin = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
+  const isAdmin = ['admin', 'operator', 'tu', 'kepsek'].includes(currentUser?.role);
 
   const { data: settings = [], isLoading: loadingSettings } = useQuery({
     queryKey: ['pengaturan-aplikasi'],

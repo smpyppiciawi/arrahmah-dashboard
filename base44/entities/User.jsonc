@@ -1,0 +1,20 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "operator",
+        "kepsek",
+        "bendahara",
+        "guru",
+        "tu"
+      ],
+      "default": "guru",
+      "description": "Peran pengguna dalam sistem"
+    }
+  },
+  "required": []
+}

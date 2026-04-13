@@ -16,43 +16,46 @@ import { Badge } from "@/components/ui/badge";
 // role: bendahara → Dashboard, Transaksi, LaporanKeuangan, KelolaDataKeuangan, Guru, Siswa, Kelas
 // role: guru    → Dashboard, Absensi, Nilai, Materi, CatatanSiswa
 
+const FULL_ACCESS_MENU = {
+  topItems: [
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
+    { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
+    { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
+    { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
+    { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+    { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
+    { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
+  ],
+  groups: [
+    {
+      id: 'bendahara',
+      name: 'MENU BENDAHARA',
+      icon: Wallet,
+      color: 'text-teal-500',
+      items: [
+        { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
+        { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
+        { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+      ]
+    },
+    {
+      id: 'admin',
+      name: 'MENU ADMIN',
+      icon: Users,
+      color: 'text-red-500',
+      items: [
+        { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
+        { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
+        { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+      ],
+      separated: true
+    }
+  ]
+};
+
 const ROLE_MENU = {
-  tu: {
-    topItems: [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
-      { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
-    ],
-    groups: [
-      {
-        id: 'bendahara',
-        name: 'MENU BENDAHARA',
-        icon: Wallet,
-        color: 'text-teal-500',
-        items: [
-          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
-          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
-          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
-        ]
-      },
-      {
-        id: 'admin',
-        name: 'MENU ADMIN',
-        icon: Users,
-        color: 'text-red-500',
-        items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
-        ],
-        separated: true
-      }
-    ]
-  },
+  tu: FULL_ACCESS_MENU,
+  operator: FULL_ACCESS_MENU,
   admin: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
@@ -171,7 +174,7 @@ export default function Layout({ children, currentPageName }) {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['guru'];
+  const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['tu'];
 
   const handleGroupClick = (groupId) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
@@ -180,6 +183,7 @@ export default function Layout({ children, currentPageName }) {
   const getRoleBadgeColor = (role) => {
     const colors = {
       admin: 'bg-red-100 text-red-700',
+      operator: 'bg-rose-100 text-rose-700',
       kepsek: 'bg-purple-100 text-purple-700',
       bendahara: 'bg-teal-100 text-teal-700',
       guru: 'bg-blue-100 text-blue-700',
@@ -191,6 +195,7 @@ export default function Layout({ children, currentPageName }) {
   const getRoleLabel = (role) => {
     const labels = {
       admin: 'Admin',
+      operator: 'Operator',
       kepsek: 'Kepala Sekolah',
       bendahara: 'Bendahara',
       guru: 'Guru',
