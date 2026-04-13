@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -19,11 +19,14 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import LulusanTab from '@/components/pengaturan/LulusanTab';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('pengaturan');
   const [tahunAjaranInput, setTahunAjaranInput] = useState('');
   const [showGraduateConfirm, setShowGraduateConfirm] = useState(false);
 
@@ -42,11 +45,11 @@ export default function Pengaturan() {
   const pengaturan = settings[0] || null;
 
   // Set tahun input when data loads
-  useState(() => {
+  useEffect(() => {
     if (pengaturan?.tahun_ajaran_aktif && !tahunAjaranInput) {
       setTahunAjaranInput(pengaturan.tahun_ajaran_aktif);
     }
-  });
+  }, [pengaturan]);
 
   const saveTahunAjaranMutation = useMutation({
     mutationFn: async (tahunAjaran) => {
@@ -125,7 +128,7 @@ export default function Pengaturan() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 bg-slate-100 rounded-lg">
@@ -137,96 +140,115 @@ export default function Pengaturan() {
         </div>
       </div>
 
-      {!isAdmin && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
-          Anda tidak memiliki akses untuk mengubah pengaturan ini.
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 max-w-sm">
+          <TabsTrigger value="pengaturan" className="gap-2">
+            <Settings className="w-4 h-4" /> Umum
+          </TabsTrigger>
+          <TabsTrigger value="lulusan" className="gap-2">
+            <GraduationCap className="w-4 h-4" /> Data Lulusan
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Tahun Ajaran Aktif */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarDays className="w-5 h-5 text-blue-500" />
-            Tahun Pelajaran Aktif
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm text-slate-500">Saat ini aktif:</span>
-            {pengaturan?.tahun_ajaran_aktif ? (
-              <Badge className="bg-green-100 text-green-700 border-green-200">
-                {pengaturan.tahun_ajaran_aktif}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-slate-400">Belum diatur</Badge>
-            )}
-          </div>
-          {isAdmin && (
-            <div className="flex gap-3 items-end">
-              <div className="flex-1">
-                <Label className="text-sm mb-1.5 block">Ganti Tahun Pelajaran</Label>
-                <Input
-                  value={tahunAjaranInput}
-                  onChange={e => setTahunAjaranInput(e.target.value)}
-                  placeholder="contoh: 2025/2026"
-                  className="max-w-xs"
-                />
-                <p className="text-xs text-slate-400 mt-1">Format: YYYY/YYYY (contoh: 2025/2026)</p>
-              </div>
-              <Button
-                onClick={() => saveTahunAjaranMutation.mutate(tahunAjaranInput)}
-                disabled={saveTahunAjaranMutation.isPending || !tahunAjaranInput.trim()}
-              >
-                {saveTahunAjaranMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-1" />
-                ) : (
-                  <Save className="w-4 h-4 mr-1" />
-                )}
-                Simpan
-              </Button>
+        {/* Tab Pengaturan Umum */}
+        <TabsContent value="pengaturan" className="space-y-5 mt-5">
+          {!isAdmin && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">
+              Anda tidak memiliki akses untuk mengubah pengaturan ini.
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Luluskan Siswa Kelas 9 */}
-      <Card className="border-amber-200">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <GraduationCap className="w-5 h-5 text-amber-500" />
-            Kelulusan Siswa Kelas 9
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 bg-amber-50 rounded-lg">
-            <p className="text-sm text-amber-800 font-medium mb-1">Informasi</p>
-            <p className="text-sm text-amber-700">
-              Fitur ini akan mengubah status semua siswa aktif di tingkat kelas 9 menjadi <strong>"Lulus"</strong>.
-              Terdapat <strong>{kelas9Count} kelas</strong> tingkat 9. Aksi ini tidak dapat dibatalkan dengan mudah.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 text-slate-400" />
-            <span className="text-sm text-slate-500">Status siswa kelas 9 akan berubah dari <strong>Aktif</strong> → <strong>Lulus</strong></span>
-          </div>
-          {isAdmin && (
-            <Button
-              variant="outline"
-              className="border-amber-400 text-amber-700 hover:bg-amber-50"
-              onClick={() => setShowGraduateConfirm(true)}
-              disabled={graduateMutation.isPending}
-            >
-              {graduateMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <GraduationCap className="w-4 h-4 mr-2" />
+          {/* Tahun Ajaran Aktif */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CalendarDays className="w-5 h-5 text-blue-500" />
+                Tahun Pelajaran Aktif
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-sm text-slate-500">Saat ini aktif:</span>
+                {pengaturan?.tahun_ajaran_aktif ? (
+                  <Badge className="bg-green-100 text-green-700 border-green-200">
+                    {pengaturan.tahun_ajaran_aktif}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-slate-400">Belum diatur</Badge>
+                )}
+              </div>
+              {isAdmin && (
+                <div className="flex gap-3 items-end">
+                  <div className="flex-1">
+                    <Label className="text-sm mb-1.5 block">Ganti Tahun Pelajaran</Label>
+                    <Input
+                      value={tahunAjaranInput}
+                      onChange={e => setTahunAjaranInput(e.target.value)}
+                      placeholder="contoh: 2025/2026"
+                      className="max-w-xs"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Format: YYYY/YYYY (contoh: 2025/2026)</p>
+                  </div>
+                  <Button
+                    onClick={() => saveTahunAjaranMutation.mutate(tahunAjaranInput)}
+                    disabled={saveTahunAjaranMutation.isPending || !tahunAjaranInput.trim()}
+                  >
+                    {saveTahunAjaranMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 animate-spin mr-1" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-1" />
+                    )}
+                    Simpan
+                  </Button>
+                </div>
               )}
-              Luluskan Siswa Kelas 9
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Luluskan Siswa Kelas 9 */}
+          <Card className="border-amber-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <GraduationCap className="w-5 h-5 text-amber-500" />
+                Kelulusan Siswa Kelas 9
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-amber-50 rounded-lg">
+                <p className="text-sm text-amber-800 font-medium mb-1">Informasi</p>
+                <p className="text-sm text-amber-700">
+                  Fitur ini akan mengubah status semua siswa aktif di tingkat kelas 9 menjadi <strong>&quot;Lulus&quot;</strong>.
+                  Terdapat <strong>{kelas9Count} kelas</strong> tingkat 9. Aksi ini tidak dapat dibatalkan dengan mudah.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-slate-400" />
+                <span className="text-sm text-slate-500">Status siswa kelas 9 akan berubah dari <strong>Aktif</strong> → <strong>Lulus</strong></span>
+              </div>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  className="border-amber-400 text-amber-700 hover:bg-amber-50"
+                  onClick={() => setShowGraduateConfirm(true)}
+                  disabled={graduateMutation.isPending}
+                >
+                  {graduateMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <GraduationCap className="w-4 h-4 mr-2" />
+                  )}
+                  Luluskan Siswa Kelas 9
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab Data Lulusan */}
+        <TabsContent value="lulusan" className="mt-5">
+          <LulusanTab />
+        </TabsContent>
+      </Tabs>
 
       {/* Confirm Dialog */}
       <AlertDialog open={showGraduateConfirm} onOpenChange={setShowGraduateConfirm}>
@@ -235,7 +257,7 @@ export default function Pengaturan() {
             <AlertDialogTitle>Konfirmasi Kelulusan Siswa Kelas 9</AlertDialogTitle>
             <AlertDialogDescription>
               Apakah Anda yakin ingin meluluskan semua siswa kelas 9 yang aktif?
-              Aksi ini akan mengubah status siswa menjadi <strong>"Lulus"</strong> dan tidak dapat dibatalkan dengan mudah.
+              Aksi ini akan mengubah status siswa menjadi <strong>&quot;Lulus&quot;</strong> dan tidak dapat dibatalkan dengan mudah.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
