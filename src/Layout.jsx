@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Badge } from "@/components/ui/badge";
 
 // ==================== ROLE CONFIG ====================
@@ -158,20 +159,8 @@ const ROLE_MENU = {
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState({});
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await base44.auth.me();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user: currentUser } = useAuth();
 
   const userRole = currentUser?.role || 'guru';
   const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['tu'];
