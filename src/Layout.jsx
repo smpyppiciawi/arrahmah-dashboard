@@ -4,7 +4,7 @@ import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, ChevronDown, ClipboardList, Settings } from 'lucide-react';
+  School, LogOut, ChevronDown, ClipboardList, Settings, UserCircle } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
@@ -147,6 +147,8 @@ const ROLE_MENU = {
   },
   guru: {
     topItems: [
+      { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: 'text-violet-500' },
+      { name: 'Wali Kelas', icon: Users, page: 'WaliKelas', color: 'text-purple-500' },
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
       { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },

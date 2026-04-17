@@ -1,0 +1,106 @@
+{
+  "name": "Guru",
+  "type": "object",
+  "properties": {
+    "nip": {
+      "type": "string",
+      "description": "Nomor Induk Pegawai / NUPTK / NIK"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap guru/pegawai"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "enum": [
+        "Laki-laki",
+        "Perempuan"
+      ]
+    },
+    "jabatan": {
+      "type": "string",
+      "enum": [
+        "Guru Mata Pelajaran",
+        "Kepala Sekolah",
+        "Tata Usaha",
+        "Yayasan",
+        "DKM",
+        "Madrasah",
+        "Lainnya"
+      ],
+      "default": "Guru Mata Pelajaran",
+      "description": "Jabatan pegawai"
+    },
+    "tugas_tambahan": {
+      "type": "string",
+      "description": "Tugas tambahan guru (nilai bebas)"
+    },
+    "mapel": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Mata pelajaran yang diampu (untuk Guru)"
+    },
+    "no_telp": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Cuti",
+        "Pensiun"
+      ],
+      "default": "Aktif"
+    },
+    "data_anak": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nama": {
+            "type": "string"
+          },
+          "tanggal_lahir": {
+            "type": "string"
+          },
+          "jenis_kelamin": {
+            "type": "string"
+          },
+          "pendidikan": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Data anak guru"
+    },
+    "riwayat_pendidikan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "jenjang": {
+            "type": "string"
+          },
+          "nama_institusi": {
+            "type": "string"
+          },
+          "jurusan": {
+            "type": "string"
+          },
+          "tahun_lulus": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Riwayat pendidikan guru"
+    }
+  },
+  "required": [
+    "nama"
+  ]
+}

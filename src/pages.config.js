@@ -48,6 +48,8 @@
  * The mainPage value must match a key in the PAGES object exactly.
  */
 import CatatanSiswa from './pages/CatatanSiswa';
+import ProfilGuru from './pages/ProfilGuru';
+import WaliKelas from './pages/WaliKelas';
 import Dashboard from './pages/Dashboard';
 import Home from './pages/Home';
 import Kelas from './pages/Kelas';
@@ -67,6 +69,8 @@ import __Layout from './Layout.jsx';
 
 export const PAGES = {
     "CatatanSiswa": CatatanSiswa,
+    "ProfilGuru": ProfilGuru,
+    "WaliKelas": WaliKelas,
     "Dashboard": Dashboard,
     "Home": Home,
     "Kelas": Kelas,

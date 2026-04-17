@@ -1,0 +1,46 @@
+{
+  "name": "Pengumuman",
+  "type": "object",
+  "properties": {
+    "judul": {
+      "type": "string",
+      "description": "Judul pengumuman"
+    },
+    "isi": {
+      "type": "string",
+      "description": "Isi pengumuman"
+    },
+    "kelas_id": {
+      "type": "string",
+      "description": "ID kelas tujuan"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas tujuan"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID guru pembuat"
+    },
+    "nama_guru": {
+      "type": "string",
+      "description": "Nama guru pembuat"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal pengumuman"
+    },
+    "penting": {
+      "type": "boolean",
+      "default": false,
+      "description": "Tandai sebagai penting"
+    }
+  },
+  "required": [
+    "judul",
+    "isi",
+    "kelas_id",
+    "nama_kelas"
+  ]
+}

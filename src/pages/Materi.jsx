@@ -45,7 +45,7 @@ export default function Materi() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'guru'].includes(userRole);
+  const canEdit = ['admin', 'guru', 'tu', 'kepsek', 'operator'].includes(userRole);
 
   const [formData, setFormData] = useState({
     judul: '', mapel: '', tingkat_kelas: '', semester: '',
@@ -53,9 +53,19 @@ export default function Materi() {
     guru_pengampu: '', deskripsi: ''
   });
 
+  const isGuruRole = userRole === 'guru';
+  const guruData = guruList.find(g => g.email === currentUser?.email);
+
   const { data: materiList = [], isLoading } = useQuery({
-    queryKey: ['materi'],
-    queryFn: () => base44.entities.Materi.list('-created_date'),
+    queryKey: ['materi', currentUser?.email, userRole],
+    queryFn: async () => {
+      if (isGuruRole && guruData) {
+        const all = await base44.entities.Materi.list('-created_date');
+        return all.filter(m => (guruData.mapel || []).includes(m.mapel) || m.guru_pengampu === guruData.nama);
+      }
+      return base44.entities.Materi.list('-created_date');
+    },
+    enabled: guruList.length > 0 || !isGuruRole,
   });
 
   const { data: guruList = [] } = useQuery({

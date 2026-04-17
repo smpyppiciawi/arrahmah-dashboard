@@ -52,7 +52,7 @@ export default function Nilai() {
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'guru', 'tu'].includes(userRole);
+  const canEdit = ['admin', 'guru', 'tu', 'kepsek', 'operator'].includes(userRole);
 
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
@@ -60,9 +60,21 @@ export default function Nilai() {
     kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: ''
   });
 
+  // Guru hanya melihat nilai yang diinputnya sendiri; admin/tu/kepsek melihat semua
+  const isGuruRole = userRole === 'guru';
+  const guruData = guruList.find(g => g.email === currentUser?.email);
+
   const { data: nilaiList = [], isLoading } = useQuery({
-    queryKey: ['nilai'],
-    queryFn: () => base44.entities.Nilai.list('-created_date'),
+    queryKey: ['nilai', currentUser?.email, userRole],
+    queryFn: async () => {
+      if (isGuruRole && guruData) {
+        // Guru hanya lihat nilai berdasarkan mapel yang diampu
+        const all = await base44.entities.Nilai.list('-created_date');
+        return all.filter(n => (guruData.mapel || []).includes(n.mapel));
+      }
+      return base44.entities.Nilai.list('-created_date');
+    },
+    enabled: guruList.length > 0 || !isGuruRole,
   });
 
   const { data: siswaList = [] } = useQuery({
@@ -78,6 +90,7 @@ export default function Nilai() {
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
     queryFn: () => base44.entities.Guru.list('nama'),
+    staleTime: 60000,
   });
 
   const createMutation = useMutation({
