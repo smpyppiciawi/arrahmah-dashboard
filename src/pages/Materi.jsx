@@ -46,6 +46,7 @@ export default function Materi() {
 
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'guru', 'tu', 'kepsek', 'operator'].includes(userRole);
+  const isGuruRole = userRole === 'guru';
 
   const [formData, setFormData] = useState({
     judul: '', mapel: '', tingkat_kelas: '', semester: '',
@@ -53,24 +54,25 @@ export default function Materi() {
     guru_pengampu: '', deskripsi: ''
   });
 
-  const isGuruRole = userRole === 'guru';
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+    staleTime: 60000,
+  });
+
+  // Cari data guru yang login
   const guruData = guruList.find(g => g.email === currentUser?.email);
 
   const { data: materiList = [], isLoading } = useQuery({
     queryKey: ['materi', currentUser?.email, userRole],
     queryFn: async () => {
+      const all = await base44.entities.Materi.list('-created_date');
       if (isGuruRole && guruData) {
-        const all = await base44.entities.Materi.list('-created_date');
         return all.filter(m => (guruData.mapel || []).includes(m.mapel) || m.guru_pengampu === guruData.nama);
       }
-      return base44.entities.Materi.list('-created_date');
+      return all;
     },
-    enabled: guruList.length > 0 || !isGuruRole,
-  });
-
-  const { data: guruList = [] } = useQuery({
-    queryKey: ['guru'],
-    queryFn: () => base44.entities.Guru.list('nama'),
+    enabled: !isGuruRole || !!currentUser,
   });
 
   const filteredGuruList = formData.mapel 
