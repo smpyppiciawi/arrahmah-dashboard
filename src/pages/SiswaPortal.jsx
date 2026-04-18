@@ -262,80 +262,73 @@ export default function SiswaPortal() {
       {/* ====== DASHBOARD ====== */}
       {activeTab === 'dashboard' && (
         <div className="pb-24">
-          {/* Hero Header */}
-          <div className="bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 px-5 pt-12 pb-24 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-24 translate-x-20" />
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-16 -translate-x-10" />
-            <div className="absolute top-8 right-8 w-16 h-16 bg-yellow-400/20 rounded-full" />
-
-            <div className="relative flex items-start justify-between">
+          {/* Hero Header — compact */}
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-5 pt-10 pb-6 relative overflow-hidden">
+            <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/5 rounded-full" />
+            <div className="absolute bottom-0 left-1/2 w-24 h-24 bg-white/5 rounded-full translate-y-8" />
+            <div className="relative flex items-center justify-between">
               <div>
-                <p className="text-white/70 text-sm mb-1">Selamat datang 👋</p>
-                <h1 className="text-white font-black text-2xl leading-tight">{siswa?.nama?.split(' ')[0]}</h1>
-                <p className="text-white/60 text-xs mt-1">Kelas {siswa?.nama_kelas} · NIS {siswa?.nis}</p>
+                <p className="text-indigo-200 text-xs font-medium mb-0.5">Selamat datang 👋</p>
+                <h1 className="text-white font-black text-xl leading-tight">{siswa?.nama?.split(' ').slice(0, 2).join(' ')}</h1>
+                <p className="text-indigo-300 text-[11px] mt-0.5">Kelas {siswa?.nama_kelas} · {siswa?.nis}</p>
               </div>
               <div className="flex items-center gap-2">
                 {pengumumanList.length > 0 && (
                   <div className="relative">
-                    <button className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                      <Bell className="w-5 h-5 text-white" />
+                    <button className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center">
+                      <Bell className="w-4 h-4 text-white" />
                     </button>
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[10px] flex items-center justify-center font-bold">{pengumumanList.length}</span>
+                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-[9px] flex items-center justify-center font-bold">{pengumumanList.length}</span>
                   </div>
                 )}
-                <button onClick={() => setShowProfil(true)} className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/30">
-                  <span className="text-white font-black text-base">{siswa?.nama?.charAt(0)}</span>
+                <button onClick={() => setShowProfil(true)} className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center border border-white/30">
+                  <span className="text-white font-black text-sm">{siswa?.nama?.charAt(0)}</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Stats Grid - floating over header */}
-          <div className="px-4 -mt-16 mb-5">
-            <div className="grid grid-cols-2 gap-3">
-              <StatCard
+          {/* Stats Grid — 4 compact cards */}
+          <div className="px-4 mt-4 mb-4">
+            <div className="grid grid-cols-4 gap-2">
+              <SmallStatCard
                 emoji="📅"
-                label="Kehadiran"
+                label="Hadir"
                 value={`${stats.kehadiran}%`}
-                sub={`${stats.hadir} dari ${stats.total} hari`}
-                color={stats.kehadiran >= 75 ? 'from-emerald-400 to-teal-500' : 'from-red-400 to-rose-500'}
+                bg={stats.kehadiran >= 75 ? 'bg-emerald-500' : 'bg-red-500'}
               />
-              <StatCard
+              <SmallStatCard
                 emoji="📊"
-                label="Rata-rata Nilai"
+                label="Nilai"
                 value={stats.rataRataNilai || '-'}
-                sub={`${nilaiList.length} penilaian`}
-                color={stats.rataRataNilai >= 75 ? 'from-blue-400 to-cyan-500' : 'from-orange-400 to-amber-500'}
+                bg={stats.rataRataNilai >= 75 ? 'bg-blue-500' : 'bg-orange-500'}
               />
-              <StatCard
+              <SmallStatCard
                 emoji="🏆"
                 label="Prestasi"
                 value={prestasiList.length}
-                sub="pencapaian"
-                color="from-yellow-400 to-orange-400"
+                bg="bg-amber-500"
               />
-              <StatCard
+              <SmallStatCard
                 emoji="⚠️"
-                label="Poin Pelanggaran"
+                label="Poin"
                 value={stats.totalPoin}
-                sub={`${pelanggaranList.length} catatan`}
-                color={stats.totalPoin === 0 ? 'from-slate-400 to-slate-500' : stats.totalPoin > 50 ? 'from-red-500 to-rose-600' : 'from-amber-400 to-orange-500'}
+                bg={stats.totalPoin === 0 ? 'bg-slate-400' : stats.totalPoin > 50 ? 'bg-red-500' : 'bg-orange-400'}
               />
             </div>
           </div>
 
           {/* Quick Actions */}
-          <div className="px-4 mb-5">
-            <p className="text-slate-700 font-bold text-sm mb-3">Menu Cepat</p>
+          <div className="px-4 mb-4">
             <div className="grid grid-cols-4 gap-2">
               {[
-                { key: 'absensi', emoji: '📅', label: 'Absensi', bg: 'bg-emerald-100', text: 'text-emerald-700' },
-                { key: 'nilai', emoji: '📊', label: 'Nilai', bg: 'bg-blue-100', text: 'text-blue-700' },
-                { key: 'catatan', emoji: '📋', label: 'Catatan', bg: 'bg-amber-100', text: 'text-amber-700' },
-                { key: 'keuangan', emoji: '💰', label: 'Keuangan', bg: 'bg-teal-100', text: 'text-teal-700' },
+                { key: 'absensi', emoji: '📅', label: 'Absensi', bg: 'bg-emerald-50 border border-emerald-100', text: 'text-emerald-700' },
+                { key: 'nilai', emoji: '📊', label: 'Nilai', bg: 'bg-blue-50 border border-blue-100', text: 'text-blue-700' },
+                { key: 'catatan', emoji: '📋', label: 'Catatan', bg: 'bg-amber-50 border border-amber-100', text: 'text-amber-700' },
+                { key: 'keuangan', emoji: '💰', label: 'Keuangan', bg: 'bg-teal-50 border border-teal-100', text: 'text-teal-700' },
               ].map(item => (
-                <button key={item.key} onClick={() => setActiveTab(item.key)} className={`${item.bg} rounded-2xl p-3 flex flex-col items-center gap-1.5 active:scale-95 transition-transform`}>
-                  <span className="text-2xl">{item.emoji}</span>
+                <button key={item.key} onClick={() => setActiveTab(item.key)} className={`${item.bg} rounded-2xl py-3 px-1 flex flex-col items-center gap-1 active:scale-95 transition-transform`}>
+                  <span className="text-xl">{item.emoji}</span>
                   <span className={`text-[10px] font-semibold ${item.text}`}>{item.label}</span>
                 </button>
               ))}
@@ -658,13 +651,12 @@ export default function SiswaPortal() {
 }
 
 // ===================== HELPERS =====================
-function StatCard({ emoji, label, value, sub, color }) {
+function SmallStatCard({ emoji, label, value, bg }) {
   return (
-    <div className={`bg-gradient-to-br ${color} rounded-3xl p-4 text-white shadow-lg`}>
-      <span className="text-2xl block mb-1">{emoji}</span>
-      <p className="text-3xl font-black leading-none">{value}</p>
-      <p className="text-xs font-semibold opacity-80 mt-1">{label}</p>
-      <p className="text-[10px] opacity-60 mt-0.5">{sub}</p>
+    <div className={`${bg} rounded-2xl p-2.5 text-white text-center shadow-md`}>
+      <span className="text-lg block leading-none mb-1">{emoji}</span>
+      <p className="text-base font-black leading-none">{value}</p>
+      <p className="text-[9px] font-semibold opacity-80 mt-0.5 truncate">{label}</p>
     </div>
   );
 }
