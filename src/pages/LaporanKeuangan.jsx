@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   FileText, Printer, Users, TrendingUp, TrendingDown, 
-  Wallet, Calendar, Filter, Download, AlertCircle
+  Wallet, Calendar, Filter, Download, AlertCircle, Megaphone
 } from "lucide-react";
+import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
 
 export default function LaporanKeuangan() {
   const [activeTab, setActiveTab] = useState('rekening-koran');
@@ -353,10 +354,13 @@ export default function LaporanKeuangan() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex flex-wrap h-auto gap-1">
             <TabsTrigger value="rekening-koran">Buku Kas</TabsTrigger>
             <TabsTrigger value="pemasukan-pengeluaran">Pemasukan & Pengeluaran</TabsTrigger>
             <TabsTrigger value="tunggakan">Tunggakan Siswa</TabsTrigger>
+            <TabsTrigger value="pengumuman">
+              <Megaphone className="w-3.5 h-3.5 mr-1" /> Pengumuman
+            </TabsTrigger>
           </TabsList>
 
           {/* Rekening Koran */}
@@ -495,6 +499,10 @@ export default function LaporanKeuangan() {
                 <DataTable columns={tunggakanColumns} data={laporanTunggakan} pageSize={10} />
               </CardContent>
             </Card>
+          </TabsContent>
+          {/* Pengumuman */}
+          <TabsContent value="pengumuman">
+            <PengumumanBendahara />
           </TabsContent>
         </Tabs>
       </div>
