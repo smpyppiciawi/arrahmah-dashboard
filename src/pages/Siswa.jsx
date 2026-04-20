@@ -54,15 +54,11 @@ export default function Siswa() {
   const { data: siswaList = [], isLoading } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.list('nama'),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
-    staleTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({
