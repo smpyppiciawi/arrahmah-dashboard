@@ -128,7 +128,8 @@ export default function SiswaPortal() {
   // === PROFIL SCREEN ===
   if (showProfil) {
     return (
-      <div className="min-h-screen bg-slate-50 max-w-md mx-auto">
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center">
+      <div className="w-full max-w-lg">
         {/* Header */}
         <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-4 pt-12 pb-20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-16 translate-x-16" />
@@ -252,18 +253,20 @@ export default function SiswaPortal() {
           </button>
         </div>
       </div>
+      </div>
     );
   }
 
   // === MAIN APP ===
   return (
-    <div className="min-h-screen bg-slate-100 max-w-md mx-auto relative">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center">
+    <div className="w-full max-w-lg relative">
 
       {/* ====== DASHBOARD ====== */}
       {activeTab === 'dashboard' && (
         <div className="pb-24">
           {/* Hero Header — compact */}
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-5 pt-10 pb-6 relative overflow-hidden">
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-5 pt-12 pb-5 relative overflow-hidden">
             <div className="absolute -top-6 -right-6 w-32 h-32 bg-white/5 rounded-full" />
             <div className="absolute bottom-0 left-1/2 w-24 h-24 bg-white/5 rounded-full translate-y-8" />
             <div className="relative flex items-center justify-between">
@@ -627,7 +630,8 @@ export default function SiswaPortal() {
       )}
 
       {/* ====== BOTTOM NAVIGATION ====== */}
-      <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-slate-100 shadow-2xl px-2 py-2 z-50">
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
+      <div className="w-full max-w-lg bg-white border-t border-slate-100 shadow-2xl px-2 py-2">
         <div className="flex items-center justify-around">
           {NAV_ITEMS.map(({ key, icon: Icon, label }) => {
             const isActive = activeTab === key;
@@ -646,6 +650,8 @@ export default function SiswaPortal() {
           })}
         </div>
       </div>
+      </div>
+    </div>
     </div>
   );
 }

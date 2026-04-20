@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Users, Megaphone, Plus, Trash2, Building, User, Phone, Bell } from 'lucide-react';
+import { Users, Megaphone, Plus, Trash2, Building, User, Phone, Bell, Edit2, MessageCircle, X, Save } from 'lucide-react';
 
 export default function WaliKelas() {
   const { user: currentUser } = useAuth();
@@ -22,6 +22,8 @@ export default function WaliKelas() {
 
   const [pengumumanOpen, setPengumumanOpen] = useState(false);
   const [pengumumanForm, setPengumumanForm] = useState({ judul: '', isi: '', penting: false });
+  const [editingTelpId, setEditingTelpId] = useState(null);
+  const [editingTelpVal, setEditingTelpVal] = useState('');
 
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
@@ -67,6 +69,25 @@ export default function WaliKelas() {
       toast({ title: 'Berhasil', description: 'Pengumuman telah dihapus.' });
     },
   });
+
+  const updateSiswaMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Siswa.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['siswa-wali', kelasWali?.id] });
+      setEditingTelpId(null);
+      setEditingTelpVal('');
+      toast({ title: 'Berhasil', description: 'Nomor telepon orang tua berhasil disimpan.' });
+    },
+  });
+
+  const handleSaveNoTelp = (siswaId) => {
+    updateSiswaMutation.mutate({ id: siswaId, data: { no_telp_ortu: editingTelpVal } });
+  };
+
+  const openWA = (noTelp) => {
+    const cleaned = noTelp.replace(/\D/g, '').replace(/^0/, '62');
+    window.open(`https://wa.me/${cleaned}`, '_blank');
+  };
 
   const handleSendPengumuman = () => {
     if (!pengumumanForm.judul || !pengumumanForm.isi) return;
@@ -181,10 +202,10 @@ export default function WaliKelas() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
-                        <TableHead className="text-xs">No</TableHead>
+                        <TableHead className="text-xs w-8">No</TableHead>
                         <TableHead className="text-xs">NIS</TableHead>
                         <TableHead className="text-xs">Nama Siswa</TableHead>
-                        <TableHead className="text-xs">L/P</TableHead>
+                        <TableHead className="text-xs w-8">L/P</TableHead>
                         <TableHead className="text-xs">No. Telp Ortu</TableHead>
                         <TableHead className="text-xs">Nama Ortu</TableHead>
                       </TableRow>
@@ -206,7 +227,56 @@ export default function WaliKelas() {
                               {siswa.jenis_kelamin === 'Laki-laki' ? 'L' : 'P'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-xs text-slate-500">{siswa.no_telp_ortu || '-'}</TableCell>
+                          <TableCell className="text-xs">
+                            {editingTelpId === siswa.id ? (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  className="border border-slate-300 rounded-lg px-2 py-1 text-xs w-32 focus:outline-none focus:ring-2 focus:ring-purple-300"
+                                  value={editingTelpVal}
+                                  onChange={e => setEditingTelpVal(e.target.value)}
+                                  placeholder="08xx-xxxx-xxxx"
+                                  autoFocus
+                                />
+                                <button
+                                  onClick={() => handleSaveNoTelp(siswa.id)}
+                                  disabled={updateSiswaMutation.isPending}
+                                  className="p-1 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+                                >
+                                  <Save className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingTelpId(null)}
+                                  className="p-1 bg-slate-200 text-slate-600 rounded-lg hover:bg-slate-300"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                {siswa.no_telp_ortu ? (
+                                  <>
+                                    <span className="text-slate-600">{siswa.no_telp_ortu}</span>
+                                    <button
+                                      onClick={() => openWA(siswa.no_telp_ortu)}
+                                      className="p-1 bg-green-500 text-white rounded-lg hover:bg-green-600 shrink-0"
+                                      title="Kirim pesan WhatsApp"
+                                    >
+                                      <MessageCircle className="w-3 h-3" />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span className="text-slate-300 italic">-</span>
+                                )}
+                                <button
+                                  onClick={() => { setEditingTelpId(siswa.id); setEditingTelpVal(siswa.no_telp_ortu || ''); }}
+                                  className="p-1 text-slate-400 hover:text-purple-600 rounded-lg hover:bg-purple-50 shrink-0"
+                                  title="Edit nomor telepon"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-xs text-slate-500">{siswa.nama_ortu || '-'}</TableCell>
                         </TableRow>
                       ))}
