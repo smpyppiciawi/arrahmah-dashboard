@@ -401,23 +401,23 @@ export default function SiswaPortal() {
       {activeTab === 'absensi' && (
         <div className="pb-24">
           <PageHeader title="Absensi" emoji="📅" gradient="from-emerald-500 to-teal-500" />
-          <div className="px-4 -mt-6">
+          <div className="px-4 mt-4">
             {/* Summary pills */}
-            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+            <div className="grid grid-cols-5 gap-2 mb-4">
               {[
-                { label: 'Hadir', val: stats.hadir, color: 'bg-emerald-100 text-emerald-700' },
-                { label: 'Sakit', val: stats.sakit, color: 'bg-blue-100 text-blue-700' },
-                { label: 'Izin', val: stats.izin, color: 'bg-amber-100 text-amber-700' },
-                { label: 'Alfa', val: stats.alfa, color: 'bg-red-100 text-red-700' },
+                { label: 'Hadir', val: stats.hadir, color: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
+                { label: 'Sakit', val: stats.sakit, color: 'bg-blue-50 text-blue-700 border border-blue-100' },
+                { label: 'Izin', val: stats.izin, color: 'bg-amber-50 text-amber-700 border border-amber-100' },
+                { label: 'Alfa', val: stats.alfa, color: 'bg-red-50 text-red-700 border border-red-100' },
               ].map(item => (
-                <div key={item.label} className={`${item.color} rounded-2xl px-4 py-2 shrink-0`}>
-                  <p className="text-xs font-medium opacity-70">{item.label}</p>
-                  <p className="text-lg font-black">{item.val}</p>
+                <div key={item.label} className={`${item.color} rounded-2xl px-2 py-2.5 text-center`}>
+                  <p className="text-base font-black leading-none">{item.val}</p>
+                  <p className="text-[10px] font-semibold opacity-70 mt-1">{item.label}</p>
                 </div>
               ))}
-              <div className={`${stats.kehadiran >= 75 ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'} rounded-2xl px-4 py-2 shrink-0`}>
-                <p className="text-xs font-medium opacity-70">Kehadiran</p>
-                <p className="text-lg font-black">{stats.kehadiran}%</p>
+              <div className={`${stats.kehadiran >= 75 ? 'bg-emerald-500' : 'bg-red-500'} text-white rounded-2xl px-2 py-2.5 text-center`}>
+                <p className="text-base font-black leading-none">{stats.kehadiran}%</p>
+                <p className="text-[10px] font-semibold opacity-80 mt-1">Hadir</p>
               </div>
             </div>
             <div className="space-y-2">
@@ -440,7 +440,7 @@ export default function SiswaPortal() {
       {activeTab === 'nilai' && (
         <div className="pb-24">
           <PageHeader title="Nilai" emoji="📊" gradient="from-blue-500 to-cyan-500" />
-          <div className="px-4 -mt-6">
+          <div className="px-4 mt-4">
             {/* Summary */}
             <div className="bg-white rounded-3xl shadow-sm p-4 mb-4">
               <div className="flex items-center justify-between">
@@ -504,7 +504,7 @@ export default function SiswaPortal() {
       {activeTab === 'catatan' && (
         <div className="pb-24">
           <PageHeader title="Catatan" emoji="📋" gradient="from-amber-500 to-orange-500" />
-          <div className="px-4 -mt-6 space-y-4">
+          <div className="px-4 mt-4 space-y-4">
             {/* Pelanggaran */}
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -582,7 +582,7 @@ export default function SiswaPortal() {
       {activeTab === 'keuangan' && (
         <div className="pb-24">
           <PageHeader title="Keuangan" emoji="💰" gradient="from-teal-500 to-emerald-500" />
-          <div className="px-4 -mt-6">
+          <div className="px-4 mt-4">
             {/* Summary Card */}
             <div className="bg-white rounded-3xl shadow-sm p-5 mb-4">
               <p className="text-slate-400 text-xs mb-1">Total Pembayaran</p>
@@ -669,10 +669,14 @@ function SmallStatCard({ emoji, label, value, bg }) {
 
 function PageHeader({ title, emoji, gradient }) {
   return (
-    <div className={`bg-gradient-to-br ${gradient} px-5 pt-12 pb-14 relative overflow-hidden`}>
+    <div className={`bg-gradient-to-br ${gradient} px-5 pt-10 pb-10 relative overflow-hidden`}>
       <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-16 translate-x-16" />
-      <h2 className="text-white font-black text-2xl flex items-center gap-2 relative">
-        <span>{emoji}</span> {title}
+      <div className="absolute -bottom-6 -left-6 w-28 h-28 bg-white/10 rounded-full" />
+      <h2 className="text-white font-black text-2xl flex items-center gap-3 relative">
+        <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-xl backdrop-blur-sm border border-white/30">
+          {emoji}
+        </div>
+        {title}
       </h2>
     </div>
   );
