@@ -569,29 +569,26 @@ export default function PelanggaranTab() {
                   {formData.progress_sanksi.map((item, index) => {
                     if (!item || !item.tanggal) return null;
                     const isSelesai = Boolean(item.selesai);
+                    const checkId = `sanksi-${index}`;
                     return (
-                      <div 
-                        key={index} 
-                        className={`flex flex-col items-center p-2 rounded-lg border transition-all cursor-pointer ${
+                      <label 
+                        key={index}
+                        htmlFor={checkId}
+                        className={`flex flex-col items-center p-2 rounded-lg border transition-all cursor-pointer select-none ${
                           isSelesai ? 'bg-emerald-100 border-emerald-300' : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleProgressCheck(index, !isSelesai);
-                        }}
                       >
                         <Checkbox 
+                          id={checkId}
                           checked={isSelesai}
                           onCheckedChange={(checked) => handleProgressCheck(index, checked)}
                           className="mb-1"
-                          onClick={(e) => e.stopPropagation()}
                         />
                         <span className="text-xs font-medium">Hari {item.hari_ke}</span>
                         <span className="text-[10px] text-slate-400">
                           {format(new Date(item.tanggal), 'dd/MM')}
                         </span>
-                      </div>
+                      </label>
                     );
                   })}
                 </div>
