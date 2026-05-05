@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Search, Edit2, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Search, Edit2, Trash2, TrendingUp, Calculator } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
+import AnalisisNilai from "@/components/nilai/AnalisisNilai";
+import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
 
 const MAPEL_LIST = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
@@ -20,6 +22,7 @@ const MAPEL_LIST = [
 ];
 
 export default function Nilai() {
+  const [activeTab, setActiveTab] = useState('input'); // 'input' | 'analisis' | 'pengelolaan'
   const [isOpen, setIsOpen] = useState(false);
   const [editingData, setEditingData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -275,16 +278,49 @@ export default function Nilai() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
               <BookOpen className="w-8 h-8 text-amber-500" />
-              Data Nilai
+              Nilai
             </h1>
-            <p className="text-slate-500 mt-1">Kelola nilai dan ketuntasan siswa</p>
+            <p className="text-slate-500 mt-1">Input, analisis, dan hitung nilai akhir siswa</p>
           </div>
-          
-          {canEdit && (
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 mb-6 border-b border-slate-200">
+          {[
+            { key: 'input', label: 'Input Nilai', icon: <BookOpen className="w-4 h-4" /> },
+            { key: 'analisis', label: 'Analisis Nilai', icon: <TrendingUp className="w-4 h-4" /> },
+            { key: 'pengelolaan', label: 'Pengelolaan Nilai', icon: <Calculator className="w-4 h-4" /> },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === tab.key
+                  ? 'border-amber-500 text-amber-700'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sub-menu: Analisis Nilai */}
+        {activeTab === 'analisis' && <AnalisisNilai />}
+
+        {/* Sub-menu: Pengelolaan Nilai */}
+        {activeTab === 'pengelolaan' && <PengelolaanNilai />}
+
+        {/* Sub-menu: Input Nilai (existing) */}
+        {activeTab === 'input' && (
+        <div>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+            <div></div>
+            {canEdit && (
             <div className="flex gap-2">
               <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
                 <DialogTrigger asChild>
@@ -537,12 +573,12 @@ export default function Nilai() {
               </form>
             </DialogContent>
           </Dialog>
-            </div>
+          </div>
           )}
-        </div>
+          </div>
 
-        {/* Stats - Real-time Filtered */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {/* Stats - Real-time Filtered */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           <Card className="border-0 shadow-sm bg-blue-50">
             <CardContent className="p-4 text-center">
               <p className="text-2xl font-bold text-blue-700">{totalSiswa}</p>
@@ -569,8 +605,8 @@ export default function Nilai() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6 border-0 shadow-sm">
+          {/* Filters */}
+          <Card className="mb-6 border-0 shadow-sm">
           <CardContent className="p-4">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
@@ -615,8 +651,8 @@ export default function Nilai() {
           </CardContent>
         </Card>
 
-        {/* Table with DataTable */}
-        <Card className="border-0 shadow-sm">
+          {/* Table with DataTable */}
+          <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
             <DataTable 
               columns={[
@@ -664,13 +700,15 @@ export default function Nilai() {
           </CardContent>
         </Card>
 
-        <ConfirmDialog
-          open={deleteConfirmOpen}
-          onOpenChange={setDeleteConfirmOpen}
-          onConfirm={confirmDelete}
-          title="Hapus Data Nilai"
-          description="Apakah Anda yakin ingin menghapus data nilai ini?"
-        />
+          <ConfirmDialog
+            open={deleteConfirmOpen}
+            onOpenChange={setDeleteConfirmOpen}
+            onConfirm={confirmDelete}
+            title="Hapus Data Nilai"
+            description="Apakah Anda yakin ingin menghapus data nilai ini?"
+          />
+        </div>
+        )}
       </div>
     </div>
   );

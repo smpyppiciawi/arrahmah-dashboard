@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Absensi() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -18,7 +19,9 @@ export default function Absensi() {
   const [absensiData, setAbsensiData] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [bulkJamMasuk, setBulkJamMasuk] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -100,10 +103,16 @@ export default function Absensi() {
   const sortedSiswaList = [...siswaList].sort((a, b) => a.nama.localeCompare(b.nama));
 
   const handleSaveAll = async () => {
+    setIsSaving(true);
     const kelas = kelasList.find(k => k.id === selectedKelas);
-    
+    let createdCount = 0;
+    let updatedCount = 0;
+    let duplicateCount = 0;
+
     for (const siswa of siswaList) {
       const data = absensiData[siswa.id];
+      if (!data) continue;
+
       const payload = {
         tanggal: selectedDate,
         siswa_id: siswa.id,
@@ -117,13 +126,52 @@ export default function Absensi() {
       };
 
       if (data.existing_id) {
+        // Update data yang sudah ada (data pertama yang diinputkan)
         await updateMutation.mutateAsync({ id: data.existing_id, data: payload });
+        updatedCount++;
       } else {
-        await createMutation.mutateAsync(payload);
+        // Cek duplikat dari server sebelum create
+        const cekDuplikat = existingAbsensi.filter(a => a.siswa_id === siswa.id);
+        if (cekDuplikat.length > 0) {
+          // Ambil data pertama, update itu, hapus sisanya
+          const first = cekDuplikat[0];
+          await updateMutation.mutateAsync({ id: first.id, data: payload });
+          // Hapus duplikat jika ada lebih dari 1
+          for (let i = 1; i < cekDuplikat.length; i++) {
+            await base44.entities.Absensi.delete(cekDuplikat[i].id);
+          }
+          duplicateCount++;
+        } else {
+          await createMutation.mutateAsync(payload);
+          createdCount++;
+        }
       }
     }
-    
-    queryClient.invalidateQueries({ queryKey: ['absensi'] });
+
+    await queryClient.invalidateQueries({ queryKey: ['absensi'] });
+    setIsSaving(false);
+
+    // Notifikasi
+    if (duplicateCount > 0) {
+      toast({
+        title: '⚠️ Data Ganda Ditemukan & Diperbaiki',
+        description: `${duplicateCount} data duplikat diperbarui ke data pertama. ${createdCount} baru, ${updatedCount} diupdate.`,
+        variant: 'default',
+        duration: 5000,
+      });
+    } else if (updatedCount > 0 && createdCount === 0) {
+      toast({
+        title: '✅ Absensi Berhasil Diperbarui',
+        description: `${updatedCount} data absensi berhasil diupdate.`,
+        duration: 4000,
+      });
+    } else {
+      toast({
+        title: '✅ Absensi Berhasil Disimpan',
+        description: `${createdCount} data absensi baru tersimpan${updatedCount > 0 ? `, ${updatedCount} diperbarui` : ''}.`,
+        duration: 4000,
+      });
+    }
   };
 
   const getStatusColor = (status) => {
@@ -207,9 +255,9 @@ export default function Absensi() {
                   <Button 
                     onClick={handleSaveAll} 
                     className="bg-emerald-600 hover:bg-emerald-700"
-                    disabled={!selectedKelas || siswaList.length === 0}
+                    disabled={!selectedKelas || siswaList.length === 0 || isSaving}
                   >
-                    <Save className="w-4 h-4 mr-2" /> Simpan Absensi
+                    <Save className="w-4 h-4 mr-2" /> {isSaving ? 'Menyimpan...' : 'Simpan Absensi'}
                   </Button>
                 </div>
               )}
