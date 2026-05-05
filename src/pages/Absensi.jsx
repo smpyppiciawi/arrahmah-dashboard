@@ -10,8 +10,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText } from "lucide-react";
+import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+
+const STATUS_CONFIG = {
+  'Hadir':     { icon: CheckCircle, active: 'bg-emerald-500 text-white shadow-sm shadow-emerald-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600' },
+  'Sakit':     { icon: AlertCircle, active: 'bg-amber-500 text-white shadow-sm shadow-amber-200',   inactive: 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-600' },
+  'Izin':      { icon: FileText,    active: 'bg-blue-500 text-white shadow-sm shadow-blue-200',     inactive: 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600' },
+  'Alfa':      { icon: UserX,       active: 'bg-red-500 text-white shadow-sm shadow-red-200',       inactive: 'bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-600' },
+  'Terlambat': { icon: Clock,       active: 'bg-orange-500 text-white shadow-sm shadow-orange-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-600' },
+};
 
 export default function Absensi() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -23,24 +31,15 @@ export default function Absensi() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await base44.auth.me();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-    fetchUser();
+  React.useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(console.error);
   }, []);
 
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'guru', 'tu'].includes(userRole);
 
   const { data: kelasList = [] } = useQuery({
-    queryKey: ['kelas'],
-    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+    queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
   const { data: siswaList = [] } = useQuery({
@@ -55,7 +54,7 @@ export default function Absensi() {
     enabled: !!selectedKelas,
   });
 
-  // Initialize absensi data when siswa or existing data changes
+  // Sync local state from DB data
   React.useEffect(() => {
     const newData = {};
     siswaList.forEach(siswa => {
@@ -81,62 +80,46 @@ export default function Absensi() {
   });
 
   const handleStatusChange = (siswaId, status) => {
-    setAbsensiData({
-      ...absensiData,
-      [siswaId]: { ...absensiData[siswaId], status }
-    });
+    setAbsensiData(prev => ({ ...prev, [siswaId]: { ...prev[siswaId], status } }));
   };
 
-  // Bulk set jam masuk untuk semua siswa
   const handleBulkJamMasuk = () => {
     if (!bulkJamMasuk) return;
-    const newData = { ...absensiData };
-    siswaList.forEach(siswa => {
-      if (newData[siswa.id]) {
-        newData[siswa.id] = { ...newData[siswa.id], jam_masuk: bulkJamMasuk };
-      }
+    setAbsensiData(prev => {
+      const updated = { ...prev };
+      siswaList.forEach(siswa => {
+        if (updated[siswa.id]) updated[siswa.id] = { ...updated[siswa.id], jam_masuk: bulkJamMasuk };
+      });
+      return updated;
     });
-    setAbsensiData(newData);
   };
 
-  // Sort siswa alphabetically
   const sortedSiswaList = [...siswaList].sort((a, b) => a.nama.localeCompare(b.nama));
 
   const handleSaveAll = async () => {
     setIsSaving(true);
     const kelas = kelasList.find(k => k.id === selectedKelas);
-    let createdCount = 0;
-    let updatedCount = 0;
-    let duplicateCount = 0;
+    let createdCount = 0, updatedCount = 0, duplicateCount = 0;
 
     for (const siswa of siswaList) {
       const data = absensiData[siswa.id];
       if (!data) continue;
 
       const payload = {
-        tanggal: selectedDate,
-        siswa_id: siswa.id,
-        nis: siswa.nis,
-        nama_siswa: siswa.nama,
-        kelas_id: selectedKelas,
+        tanggal: selectedDate, siswa_id: siswa.id, nis: siswa.nis,
+        nama_siswa: siswa.nama, kelas_id: selectedKelas,
         nama_kelas: kelas?.nama_kelas || '',
-        status: data.status,
-        jam_masuk: data.jam_masuk,
-        keterangan: data.keterangan,
+        status: data.status, jam_masuk: data.jam_masuk, keterangan: data.keterangan,
       };
 
       if (data.existing_id) {
-        // Update data yang sudah ada (data pertama yang diinputkan)
         await updateMutation.mutateAsync({ id: data.existing_id, data: payload });
         updatedCount++;
       } else {
-        // Cek duplikat dari server sebelum create
+        // Cek duplikat — ambil data pertama, hapus sisanya
         const cekDuplikat = existingAbsensi.filter(a => a.siswa_id === siswa.id);
         if (cekDuplikat.length > 0) {
-          // Ambil data pertama, update itu, hapus sisanya
-          const first = cekDuplikat[0];
-          await updateMutation.mutateAsync({ id: first.id, data: payload });
-          // Hapus duplikat jika ada lebih dari 1
+          await updateMutation.mutateAsync({ id: cekDuplikat[0].id, data: payload });
           for (let i = 1; i < cekDuplikat.length; i++) {
             await base44.entities.Absensi.delete(cekDuplikat[i].id);
           }
@@ -151,43 +134,15 @@ export default function Absensi() {
     await queryClient.invalidateQueries({ queryKey: ['absensi'] });
     setIsSaving(false);
 
-    // Notifikasi
     if (duplicateCount > 0) {
-      toast({
-        title: '⚠️ Data Ganda Ditemukan & Diperbaiki',
-        description: `${duplicateCount} data duplikat diperbarui ke data pertama. ${createdCount} baru, ${updatedCount} diupdate.`,
-        variant: 'default',
-        duration: 5000,
-      });
+      toast({ title: '⚠️ Data Ganda Diperbaiki', description: `${duplicateCount} duplikat diperbarui. ${createdCount} baru, ${updatedCount} diupdate.`, duration: 5000 });
     } else if (updatedCount > 0 && createdCount === 0) {
-      toast({
-        title: '✅ Absensi Berhasil Diperbarui',
-        description: `${updatedCount} data absensi berhasil diupdate.`,
-        duration: 4000,
-      });
+      toast({ title: '✅ Absensi Diperbarui', description: `${updatedCount} data berhasil diupdate.`, duration: 4000 });
     } else {
-      toast({
-        title: '✅ Absensi Berhasil Disimpan',
-        description: `${createdCount} data absensi baru tersimpan${updatedCount > 0 ? `, ${updatedCount} diperbarui` : ''}.`,
-        duration: 4000,
-      });
+      toast({ title: '✅ Absensi Tersimpan', description: `${createdCount} data baru${updatedCount > 0 ? `, ${updatedCount} diperbarui` : ''}.`, duration: 4000 });
     }
   };
 
-  const getStatusColor = (status) => {
-    const colors = {
-      'Hadir': 'bg-emerald-100 text-emerald-700',
-      'Sakit': 'bg-amber-100 text-amber-700',
-      'Izin': 'bg-blue-100 text-blue-700',
-      'Alfa': 'bg-red-100 text-red-700',
-      'Terlambat': 'bg-orange-100 text-orange-700',
-    };
-    return colors[status] || 'bg-slate-100 text-slate-700';
-  };
-
-
-
-  // Stats
   const stats = {
     hadir: Object.values(absensiData).filter(d => d.status === 'Hadir').length,
     sakit: Object.values(absensiData).filter(d => d.status === 'Sakit').length,
@@ -196,69 +151,61 @@ export default function Absensi() {
     terlambat: Object.values(absensiData).filter(d => d.status === 'Terlambat').length,
   };
 
+  const total = sortedSiswaList.length;
+  const hadirPct = total > 0 ? Math.round((stats.hadir / total) * 100) : 0;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
-              <Calendar className="w-8 h-8 text-emerald-500" />
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+              <Calendar className="w-7 h-7 text-emerald-500" />
               Absensi Siswa
             </h1>
-            <p className="text-slate-500 mt-1">
+            <p className="text-slate-500 mt-0.5 text-sm">
               {format(new Date(selectedDate), 'EEEE, d MMMM yyyy', { locale: idLocale })}
             </p>
           </div>
+          {canEdit && selectedKelas && siswaList.length > 0 && (
+            <Button
+              onClick={handleSaveAll}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 gap-2"
+              disabled={isSaving}
+            >
+              <Save className="w-4 h-4" />
+              {isSaving ? 'Menyimpan...' : 'Simpan Absensi'}
+            </Button>
+          )}
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6 border-0 shadow-sm">
+        {/* Filter Bar */}
+        <Card className="border-0 shadow-sm">
           <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col md:flex-row gap-3">
               <div className="flex-1">
-                <Label className="text-sm text-slate-500">Tanggal</Label>
-                <Input 
-                  type="date" 
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="mt-1"
-                />
+                <Label className="text-xs text-slate-500 font-medium mb-1 block">Tanggal</Label>
+                <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-9" />
               </div>
               <div className="flex-1">
-                <Label className="text-sm text-slate-500">Kelas</Label>
+                <Label className="text-xs text-slate-500 font-medium mb-1 block">Kelas</Label>
                 <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                  <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
+                  <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
                   <SelectContent>
-                    {kelasList.map(kelas => (
-                      <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                    ))}
+                    {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               {canEdit && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input 
-                    type="time"
-                    value={bulkJamMasuk}
-                    onChange={(e) => setBulkJamMasuk(e.target.value)}
-                    className="w-28"
-                    placeholder="Jam Masuk"
-                  />
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={handleBulkJamMasuk}
-                    disabled={!selectedKelas || !bulkJamMasuk}
-                  >
-                    <Clock className="w-4 h-4 mr-1" /> Set Semua
-                  </Button>
-                  <Button 
-                    onClick={handleSaveAll} 
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    disabled={!selectedKelas || siswaList.length === 0 || isSaving}
-                  >
-                    <Save className="w-4 h-4 mr-2" /> {isSaving ? 'Menyimpan...' : 'Simpan Absensi'}
-                  </Button>
+                <div className="flex-1">
+                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Set Jam Masuk (semua)</Label>
+                  <div className="flex gap-2">
+                    <Input type="time" value={bulkJamMasuk} onChange={(e) => setBulkJamMasuk(e.target.value)} className="h-9 flex-1" />
+                    <Button variant="outline" onClick={handleBulkJamMasuk} disabled={!selectedKelas || !bulkJamMasuk} className="h-9 gap-1 text-xs">
+                      <Clock className="w-3.5 h-3.5" /> Set
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
@@ -267,113 +214,103 @@ export default function Absensi() {
 
         {/* Stats */}
         {selectedKelas && siswaList.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-6">
-            <Card className="border-0 shadow-sm bg-emerald-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-emerald-600">{stats.hadir}</p>
-                <p className="text-xs text-slate-500">Hadir</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm bg-amber-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-amber-600">{stats.sakit}</p>
-                <p className="text-xs text-slate-500">Sakit</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm bg-blue-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats.izin}</p>
-                <p className="text-xs text-slate-500">Izin</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm bg-red-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-red-600">{stats.alfa}</p>
-                <p className="text-xs text-slate-500">Alfa</p>
-              </CardContent>
-            </Card>
-            <Card className="border-0 shadow-sm bg-orange-50">
-              <CardContent className="p-3 text-center">
-                <p className="text-2xl font-bold text-orange-600">{stats.terlambat}</p>
-                <p className="text-xs text-slate-500">Terlambat</p>
-              </CardContent>
-            </Card>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {[
+              { label: 'Hadir', val: stats.hadir, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
+              { label: 'Sakit', val: stats.sakit, color: 'bg-amber-50 border-amber-200 text-amber-700' },
+              { label: 'Izin', val: stats.izin, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+              { label: 'Alfa', val: stats.alfa, color: 'bg-red-50 border-red-200 text-red-700' },
+              { label: 'Terlambat', val: stats.terlambat, color: 'bg-orange-50 border-orange-200 text-orange-700' },
+              { label: 'Kehadiran', val: `${hadirPct}%`, color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
+            ].map(s => (
+              <div key={s.label} className={`rounded-xl border p-3 text-center ${s.color}`}>
+                <p className="text-xl font-bold">{s.val}</p>
+                <p className="text-[11px] font-medium mt-0.5">{s.label}</p>
+              </div>
+            ))}
           </div>
         )}
 
-        {/* Absensi Table */}
-        {selectedKelas && (
-          <Card className="border-0 shadow-sm">
+        {/* Table */}
+        {selectedKelas ? (
+          <Card className="border-0 shadow-sm overflow-hidden">
+            <CardHeader className="pb-0 pt-4 px-4 border-b border-slate-100">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-emerald-500" />
+                  Daftar Siswa — {kelasList.find(k => k.id === selectedKelas)?.nama_kelas}
+                  <Badge className="bg-slate-100 text-slate-600 text-xs border-0 ml-1">{total} siswa</Badge>
+                </CardTitle>
+                {existingAbsensi.length > 0 && (
+                  <Badge className="bg-emerald-50 text-emerald-700 text-xs border-0">Data tersimpan</Badge>
+                )}
+              </div>
+            </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50">
-                      <TableHead className="w-10">No</TableHead>
-                      <TableHead className="hidden sm:table-cell">NIS</TableHead>
-                      <TableHead>Nama Siswa</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden sm:table-cell">Jam Masuk</TableHead>
-                      <TableHead className="hidden md:table-cell">Keterangan</TableHead>
+                    <TableRow className="bg-slate-50/80">
+                      <TableHead className="w-10 text-center text-xs">#</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs">NIS</TableHead>
+                      <TableHead className="text-xs">Nama Siswa</TableHead>
+                      <TableHead className="text-xs">Status Kehadiran</TableHead>
+                      <TableHead className="hidden sm:table-cell text-xs">Jam Masuk</TableHead>
+                      <TableHead className="hidden md:table-cell text-xs">Keterangan</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sortedSiswaList.map((siswa, index) => (
-                      <TableRow key={siswa.id} className="hover:bg-slate-50">
-                        <TableCell className="text-slate-500">{index + 1}</TableCell>
-                        <TableCell className="font-medium hidden sm:table-cell">{siswa.nis}</TableCell>
-                        <TableCell>{siswa.nama}</TableCell>
+                      <TableRow key={siswa.id} className="hover:bg-slate-50/60 transition-colors">
+                        <TableCell className="text-center text-xs text-slate-400 font-medium">{index + 1}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-xs text-slate-500 font-mono">{siswa.nis}</TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-sm text-slate-800">{siswa.nama}</p>
+                            {absensiData[siswa.id]?.existing_id && (
+                              <p className="text-[10px] text-emerald-500">✓ tersimpan</p>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {['Hadir', 'Sakit', 'Izin', 'Alfa', 'Terlambat'].map(status => {
+                            {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
                               const isActive = absensiData[siswa.id]?.status === status;
-                              const StatusIcon = {
-                                'Hadir': CheckCircle,
-                                'Sakit': AlertCircle,
-                                'Izin': FileText,
-                                'Alfa': UserX,
-                                'Terlambat': Clock,
-                              }[status];
+                              const Icon = cfg.icon;
                               return (
-                                <button 
+                                <button
                                   key={status}
                                   type="button"
-                                  className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium cursor-pointer transition-all ${
-                                    isActive 
-                                      ? getStatusColor(status) 
-                                      : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                                  }`}
                                   onClick={() => canEdit && handleStatusChange(siswa.id, status)}
                                   disabled={!canEdit}
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? cfg.active : cfg.inactive}`}
                                 >
-                                  <StatusIcon className="w-3 h-3" />
-                                  <span className="ml-1 hidden sm:inline">{status}</span>
+                                  <Icon className="w-3 h-3" />
+                                  <span className="hidden sm:inline">{status}</span>
                                 </button>
                               );
                             })}
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
-                          <Input 
+                          <Input
                             type="time"
                             value={absensiData[siswa.id]?.jam_masuk || ''}
-                            onChange={(e) => setAbsensiData({
-                              ...absensiData,
-                              [siswa.id]: { ...absensiData[siswa.id], jam_masuk: e.target.value }
-                            })}
-                            className="w-28"
+                            onChange={(e) => setAbsensiData(prev => ({
+                              ...prev, [siswa.id]: { ...prev[siswa.id], jam_masuk: e.target.value }
+                            }))}
+                            className="w-28 h-8 text-xs"
                             disabled={!canEdit}
                           />
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
-                          <Input 
+                          <Input
                             placeholder="Keterangan..."
                             value={absensiData[siswa.id]?.keterangan || ''}
-                            onChange={(e) => setAbsensiData({
-                              ...absensiData,
-                              [siswa.id]: { ...absensiData[siswa.id], keterangan: e.target.value }
-                            })}
-                            className="w-40"
+                            onChange={(e) => setAbsensiData(prev => ({
+                              ...prev, [siswa.id]: { ...prev[siswa.id], keterangan: e.target.value }
+                            }))}
+                            className="w-40 h-8 text-xs"
                             disabled={!canEdit}
                           />
                         </TableCell>
@@ -381,8 +318,9 @@ export default function Absensi() {
                     ))}
                     {siswaList.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-400">
-                          Pilih kelas untuk melihat daftar siswa
+                        <TableCell colSpan={6} className="text-center py-12 text-slate-400">
+                          <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                          <p className="text-sm">Tidak ada siswa aktif di kelas ini</p>
                         </TableCell>
                       </TableRow>
                     )}
@@ -391,13 +329,14 @@ export default function Absensi() {
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {!selectedKelas && (
+        ) : (
           <Card className="border-0 shadow-sm">
-            <CardContent className="p-12 text-center">
-              <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-400">Pilih tanggal dan kelas untuk memulai absensi</p>
+            <CardContent className="p-16 text-center">
+              <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-emerald-400" />
+              </div>
+              <p className="text-slate-700 font-semibold">Pilih tanggal dan kelas</p>
+              <p className="text-slate-400 text-sm mt-1">untuk memulai pencatatan absensi</p>
             </CardContent>
           </Card>
         )}

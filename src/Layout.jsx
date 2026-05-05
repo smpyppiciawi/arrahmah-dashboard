@@ -1,53 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
-  BookOpen, FolderOpen, GraduationCap, Menu, X, ChevronRight,
-  School, LogOut, ChevronDown, ClipboardList, Settings, UserCircle } from 'lucide-react';
+  BookOpen, FolderOpen, GraduationCap, Menu, X,
+  School, LogOut, ChevronDown, ClipboardList, Settings,
+  UserCircle, TrendingUp, Bell, Search
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Badge } from "@/components/ui/badge";
 
-// ==================== ROLE CONFIG ====================
-// role: admin   → Dashboard, Absensi, Nilai, Materi, CatatanSiswa, Guru, Siswa, Kelas
-// role: kepsek  → Kepsek, Absensi, Nilai, Materi, CatatanSiswa, Bendahara(CRUD), Admin
-// role: bendahara → Dashboard, Transaksi, LaporanKeuangan, KelolaDataKeuangan, Guru, Siswa, Kelas
-// role: guru    → Dashboard, Absensi, Nilai, Materi, CatatanSiswa
-
 const FULL_ACCESS_MENU = {
   topItems: [
-    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
-    { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-    { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-    { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-    { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
-    { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
-    { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
+    { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+    { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+    { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+    { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+    { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
+    { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
   ],
   groups: [
     {
       id: 'bendahara',
-      name: 'MENU BENDAHARA',
+      name: 'BENDAHARA',
       icon: Wallet,
-      color: 'text-teal-500',
+      color: '#14b8a6',
       items: [
-        { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
-        { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
-        { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+        { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: '#14b8a6' },
+        { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
+        { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
       ]
     },
     {
       id: 'admin',
-      name: 'MENU ADMIN',
+      name: 'ADMIN',
       icon: Users,
-      color: 'text-red-500',
+      color: '#ef4444',
       items: [
-        { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-        { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-        { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+        { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+        { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+        { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
       ],
       separated: true
     }
@@ -59,104 +55,101 @@ const ROLE_MENU = {
   operator: FULL_ACCESS_MENU,
   admin: {
     topItems: [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: [
       {
-        id: 'admin',
-        name: 'MENU ADMIN',
-        icon: Users,
-        color: 'text-red-500',
+        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444',
         items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         ]
       }
     ]
   },
   kepsek: {
     topItems: [
-      { name: 'Dashboard Kepsek', icon: LayoutDashboard, page: 'Kepsek', color: 'text-indigo-500' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: 'text-slate-500' },
+      { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: [
       {
-        id: 'bendahara',
-        name: 'MENU BENDAHARA',
-        icon: Wallet,
-        color: 'text-teal-500',
+        id: 'bendahara', name: 'BENDAHARA', icon: Wallet, color: '#14b8a6',
         items: [
-          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
-          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
-          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: '#14b8a6' },
+          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
+          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
         ]
       },
       {
-        id: 'admin',
-        name: 'MENU ADMIN',
-        icon: Users,
-        color: 'text-red-500',
+        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444', separated: true,
         items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
-        ],
-        separated: true
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
+        ]
       }
     ]
   },
   bendahara: {
     topItems: [
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
     ],
     groups: [
       {
-        id: 'bendahara',
-        name: 'MENU BENDAHARA',
-        icon: Wallet,
-        color: 'text-teal-500',
+        id: 'bendahara', name: 'BENDAHARA', icon: Wallet, color: '#14b8a6',
         items: [
-          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: 'text-teal-500' },
-          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: 'text-blue-500' },
-          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: 'text-purple-500' },
+          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: '#14b8a6' },
+          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
+          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
         ]
       },
       {
-        id: 'admin',
-        name: 'MENU ADMIN',
-        icon: Users,
-        color: 'text-red-500',
+        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444', separated: true,
         items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: 'text-blue-500' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: 'text-violet-500' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: 'text-purple-500' },
-        ],
-        separated: true
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
+        ]
       }
     ]
   },
   guru: {
     topItems: [
-      { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: 'text-violet-500' },
-      { name: 'Wali Kelas', icon: Users, page: 'WaliKelas', color: 'text-purple-500' },
-      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: 'text-blue-500' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: 'text-emerald-500' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: 'text-amber-500' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: 'text-indigo-500' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: 'text-purple-500' },
+      { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' },
+      { name: 'Wali Kelas', icon: Users, page: 'WaliKelas', color: '#8b5cf6' },
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
     ],
     groups: []
   }
+};
+
+const ROLE_LABELS = {
+  admin: 'Admin', operator: 'Operator', kepsek: 'Kepala Sekolah',
+  bendahara: 'Bendahara', guru: 'Guru', tu: 'Tata Usaha'
+};
+
+const ROLE_COLORS = {
+  admin: { bg: 'bg-rose-500/20', text: 'text-rose-300', dot: 'bg-rose-400' },
+  operator: { bg: 'bg-orange-500/20', text: 'text-orange-300', dot: 'bg-orange-400' },
+  kepsek: { bg: 'bg-purple-500/20', text: 'text-purple-300', dot: 'bg-purple-400' },
+  bendahara: { bg: 'bg-teal-500/20', text: 'text-teal-300', dot: 'bg-teal-400' },
+  guru: { bg: 'bg-blue-500/20', text: 'text-blue-300', dot: 'bg-blue-400' },
+  tu: { bg: 'bg-amber-500/20', text: 'text-amber-300', dot: 'bg-amber-400' },
 };
 
 export default function Layout({ children, currentPageName }) {
@@ -166,115 +159,108 @@ export default function Layout({ children, currentPageName }) {
 
   const userRole = currentUser?.role || 'guru';
   const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['tu'];
+  const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
 
   const handleGroupClick = (groupId) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
-  const getRoleBadgeColor = (role) => {
-    const colors = {
-      admin: 'bg-red-100 text-red-700',
-      operator: 'bg-rose-100 text-rose-700',
-      kepsek: 'bg-purple-100 text-purple-700',
-      bendahara: 'bg-teal-100 text-teal-700',
-      guru: 'bg-blue-100 text-blue-700',
-      tu: 'bg-orange-100 text-orange-700'
-    };
-    return colors[role] || 'bg-slate-100 text-slate-700';
-  };
-
-  const getRoleLabel = (role) => {
-    const labels = {
-      admin: 'Admin',
-      operator: 'Operator',
-      kepsek: 'Kepala Sekolah',
-      bendahara: 'Bendahara',
-      guru: 'Guru',
-      tu: 'Tata Usaha'
-    };
-    return labels[role] || 'User';
-  };
+  const initials = currentUser?.full_name?.split(' ').map(n => n[0]).slice(0, 2).join('') || 'U';
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-950 font-inter">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b shadow-sm">
-        <div className="flex items-center justify-between px-4 h-16">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
-              <School className="w-5 h-5 text-white" />
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800">
+        <div className="flex items-center justify-between px-4 h-14">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+              <School className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-slate-800">SIS Sekolah</span>
+            <span className="font-bold text-white text-sm tracking-wide">YPPI ARRAHMAH</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+          >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
+          </button>
         </div>
       </header>
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 z-40 h-full w-64 bg-white border-r shadow-lg
+        fixed top-0 left-0 z-40 h-full w-64 bg-slate-900 border-r border-slate-800
         transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0
+        lg:translate-x-0 flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex flex-col h-full">
-          {/* Logo */}
-          <div className="flex items-center gap-3 px-6 h-20 border-b">
-            <div className="bg-slate-400 p-4 rounded-lg from-blue-500 to-indigo-600 shadow-lg">
-              <School className="lucide lucide-school w-7 h-7 text-white" />
-            </div>
-            <div>
-              <h1 className="text-slate-800 my-1 px-1 py-1 text-sm font-bold">YPPI ARRAHMAH</h1>
-              <p className="text-xs text-slate-400">Sistem Sekolah</p>
-            </div>
+        {/* Logo Area */}
+        <div className="flex items-center gap-3 px-5 h-[72px] border-b border-slate-800 flex-shrink-0">
+          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
+            <School className="w-5 h-5 text-white" />
           </div>
+          <div>
+            <h1 className="text-white text-sm font-bold leading-none">YPPI ARRAHMAH</h1>
+            <p className="text-slate-500 text-xs mt-0.5">Sistem Informasi Sekolah</p>
+          </div>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 px-3 py-4 overflow-y-auto">
-            <div className="space-y-1">
-              {/* Top Items */}
-              {menuConfig.topItems.map((item) => {
-                const isActive = currentPageName === item.page;
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.page}
-                    to={createPageUrl(item.page)}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
-                      ${isActive
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600 shadow-sm'
-                        : 'text-slate-600 hover:bg-slate-50'}
-                    `}
-                  >
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
-                    <span className={`font-medium ${isActive ? 'text-blue-600' : ''}`}>{item.name}</span>
-                    {isActive && <ChevronRight className="w-4 h-4 ml-auto text-blue-400" />}
-                  </Link>
-                );
-              })}
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 overflow-y-auto scrollbar-thin scrollbar-track-slate-900 scrollbar-thumb-slate-700">
+          <div className="space-y-0.5">
+            {menuConfig.topItems.map((item) => {
+              const isActive = currentPageName === item.page;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.page}
+                  to={createPageUrl(item.page)}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative ${
+                    isActive
+                      ? 'bg-blue-600/20 text-blue-400'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-6 rounded-r-full bg-blue-500" />
+                  )}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all ${
+                    isActive ? 'bg-blue-500/20' : 'bg-slate-800 group-hover:bg-slate-700'
+                  }`}>
+                    <Icon className="w-4 h-4" style={{ color: isActive ? item.color : undefined }} />
+                  </div>
+                  <span className={`text-sm font-medium ${isActive ? 'text-blue-300' : ''}`}>{item.name}</span>
+                </Link>
+              );
+            })}
 
-              {/* Group Menus */}
-              {menuConfig.groups.map((group) => {
-                const GroupIcon = group.icon;
-                const isExpanded = expandedGroups[group.id];
-                return (
-                  <React.Fragment key={group.id}>
-                    {group.separated && <div className="my-3 border-t border-slate-200" />}
-                    <div className="mb-2">
-                      <button
-                        onClick={() => handleGroupClick(group.id)}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-slate-700 hover:bg-slate-50 font-semibold"
-                      >
-                        <GroupIcon className={`w-5 h-5 ${group.color}`} />
-                        <span className="flex-1 text-left text-sm">{group.name}</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                      </button>
+            {menuConfig.groups.map((group) => {
+              const GroupIcon = group.icon;
+              const isExpanded = expandedGroups[group.id];
+              return (
+                <React.Fragment key={group.id}>
+                  {group.separated && <div className="my-3 border-t border-slate-800" />}
+                  <div>
+                    <button
+                      onClick={() => handleGroupClick(group.id)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center flex-shrink-0">
+                        <GroupIcon className="w-4 h-4" style={{ color: group.color }} />
+                      </div>
+                      <span className="flex-1 text-left text-xs font-bold tracking-widest uppercase text-slate-500">{group.name}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                    </button>
+                    <AnimatePresence>
                       {isExpanded && (
-                        <div className="ml-4 mt-1 space-y-1">
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="ml-3 mt-0.5 space-y-0.5 overflow-hidden"
+                        >
                           {group.items.map((item) => {
                             const isActive = currentPageName === item.page;
                             const Icon = item.icon;
@@ -283,62 +269,59 @@ export default function Layout({ children, currentPageName }) {
                                 key={item.page}
                                 to={createPageUrl(item.page)}
                                 onClick={() => setSidebarOpen(false)}
-                                className={`
-                                  flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200
-                                  ${isActive
-                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600'
-                                    : 'text-slate-600 hover:bg-slate-50'}
-                                `}
+                                className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all duration-200 group ${
+                                  isActive
+                                    ? 'bg-blue-600/20 text-blue-400'
+                                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-800/60'
+                                }`}
                               >
-                                <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600' : item.color}`} />
-                                <span className={`text-sm ${isActive ? 'font-medium text-blue-600' : ''}`}>{item.name}</span>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                  isActive ? 'bg-blue-500/20' : 'bg-slate-800/80'
+                                }`}>
+                                  <Icon className="w-3.5 h-3.5" style={{ color: isActive ? item.color : undefined }} />
+                                </div>
+                                <span className={`text-sm ${isActive ? 'font-medium text-blue-300' : ''}`}>{item.name}</span>
                               </Link>
                             );
                           })}
-                        </div>
+                        </motion.div>
                       )}
-                    </div>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          </nav>
-
-          {/* User Profile & Footer */}
-          <div className="px-4 py-4 border-t space-y-3">
-            {currentUser && (
-              <div className="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm">
-                    {currentUser.full_name?.charAt(0) || 'U'}
+                    </AnimatePresence>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-800 truncate">{currentUser.full_name}</p>
-                    <Badge className={`text-xs ${getRoleBadgeColor(userRole)}`}>
-                      {getRoleLabel(userRole)}
-                    </Badge>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full text-xs text-red-600 hover:bg-red-50"
-                  onClick={() => base44.auth.logout()}
-                >
-                  <LogOut className="w-3 h-3 mr-1" /> Logout
-                </Button>
-              </div>
-            )}
-            <div className="p-3 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl">
-              <p className="text-xs text-slate-500 text-center">
-                © {new Date().getFullYear()} SIS Sekolah
-              </p>
-            </div>
+                </React.Fragment>
+              );
+            })}
           </div>
+        </nav>
+
+        {/* User Profile Footer */}
+        <div className="flex-shrink-0 p-3 border-t border-slate-800">
+          {currentUser && (
+            <div className="flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-800/60">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0 shadow-lg shadow-blue-500/20">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-xs font-semibold truncate">{currentUser.full_name}</p>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${roleColor.dot}`} />
+                  <span className={`text-xs ${roleColor.text}`}>{ROLE_LABELS[userRole] || 'User'}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => base44.auth.logout()}
+                className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          <p className="text-xs text-slate-600 text-center mt-2">© {new Date().getFullYear()} SIS Sekolah</p>
         </div>
       </aside>
 
-      {/* Overlay for mobile */}
+      {/* Overlay mobile */}
       <AnimatePresence>
         {sidebarOpen && (
           <motion.div
@@ -346,19 +329,19 @@ export default function Layout({ children, currentPageName }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-16 lg:pt-0 pb-16 lg:pb-0 min-h-screen">
+      <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen bg-slate-50">
         {children}
       </main>
 
-      {/* Bottom Navigation Bar - Mobile Only */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t shadow-lg safe-area-pb">
-        <div className="flex items-center justify-around px-2 h-16">
+      {/* Bottom Navigation - Mobile */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800">
+        <div className="flex items-center justify-around px-2 h-16 pb-safe">
           {menuConfig.topItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
             const isActive = currentPageName === item.page;
@@ -368,21 +351,28 @@ export default function Layout({ children, currentPageName }) {
                 to={createPageUrl(item.page)}
                 onClick={() => setSidebarOpen(false)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
-                  isActive ? 'text-blue-600' : 'text-slate-400'
+                  isActive ? '' : 'opacity-50'
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : item.color}`} />
-                <span className="text-[10px] font-medium leading-none">{item.name.split(' ')[0]}</span>
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                  isActive ? 'bg-blue-600/20' : ''
+                }`}>
+                  <Icon className="w-5 h-5" style={{ color: isActive ? item.color : '#94a3b8' }} />
+                </div>
+                <span className="text-[9px] font-medium" style={{ color: isActive ? item.color : '#64748b' }}>
+                  {item.name.split(' ')[0]}
+                </span>
               </Link>
             );
           })}
-          {/* More button */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl text-slate-400"
+            className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl opacity-50"
           >
-            <Menu className="w-5 h-5" />
-            <span className="text-[10px] font-medium leading-none">Menu</span>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+              <Menu className="w-5 h-5 text-slate-400" />
+            </div>
+            <span className="text-[9px] font-medium text-slate-500">Menu</span>
           </button>
         </div>
       </nav>
