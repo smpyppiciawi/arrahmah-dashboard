@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users } from "lucide-react";
+import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, History } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import RiwayatAbsensi from '@/components/absensi/RiwayatAbsensi';
 
 const STATUS_CONFIG = {
   'Hadir':     { icon: CheckCircle, active: 'bg-emerald-500 text-white shadow-sm shadow-emerald-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600' },
@@ -22,6 +23,7 @@ const STATUS_CONFIG = {
 };
 
 export default function Absensi() {
+  const [activeTab, setActiveTab] = useState('input'); // 'input' | 'riwayat'
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedKelas, setSelectedKelas] = useState('');
   const [absensiData, setAbsensiData] = useState({});
@@ -168,7 +170,7 @@ export default function Absensi() {
               {format(new Date(selectedDate), 'EEEE, d MMMM yyyy', { locale: idLocale })}
             </p>
           </div>
-          {canEdit && selectedKelas && siswaList.length > 0 && (
+          {canEdit && activeTab === 'input' && selectedKelas && siswaList.length > 0 && (
             <Button
               onClick={handleSaveAll}
               className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 gap-2"
@@ -179,6 +181,25 @@ export default function Absensi() {
             </Button>
           )}
         </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit">
+          <button
+            onClick={() => setActiveTab('input')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'input' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <Calendar className="w-4 h-4" /> Input Absensi
+          </button>
+          <button
+            onClick={() => setActiveTab('riwayat')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'riwayat' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/25' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <History className="w-4 h-4" /> Riwayat
+          </button>
+        </div>
+
+        {activeTab === 'riwayat' && <RiwayatAbsensi />}
+        {activeTab === 'input' && (<>
 
         {/* Filter Bar */}
         <Card className="border-0 shadow-sm">
@@ -340,6 +361,7 @@ export default function Absensi() {
             </CardContent>
           </Card>
         )}
+        </>)}
       </div>
     </div>
   );

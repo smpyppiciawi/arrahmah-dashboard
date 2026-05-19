@@ -1,0 +1,51 @@
+{
+  "name": "KalenderAkademik",
+  "type": "object",
+  "properties": {
+    "judul": {
+      "type": "string",
+      "description": "Judul kegiatan"
+    },
+    "tanggal_mulai": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal mulai kegiatan"
+    },
+    "tanggal_selesai": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal selesai kegiatan (opsional, jika lebih dari 1 hari)"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Hari Libur Nasional",
+        "Libur Sekolah",
+        "Ujian",
+        "Kegiatan Sekolah",
+        "Penerimaan Rapor",
+        "Kegiatan Kesiswaan",
+        "Lainnya"
+      ],
+      "description": "Kategori kegiatan"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan tambahan"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran (contoh: 2025/2026)"
+    },
+    "warna": {
+      "type": "string",
+      "description": "Warna penanda (hex atau nama)"
+    }
+  },
+  "required": [
+    "judul",
+    "tanggal_mulai",
+    "kategori",
+    "tahun_ajaran"
+  ]
+}
