@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -10,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import {
   User, GraduationCap, Users, Phone, Mail, Edit2, Save, X,
-  Building, Monitor, Smartphone, BookOpen, Award, Home,
-  ChevronRight, Check, Plus, Trash2, School
+  Building, Monitor, Smartphone, BookOpen, Home, LayoutDashboard,
+  ChevronRight, Check, Plus, Trash2, School, Calendar, Menu
 } from 'lucide-react';
 
 const MAPEL_LIST = [
@@ -22,9 +23,10 @@ const MAPEL_LIST = [
 
 const NAV_ITEMS = [
   { key: 'profil', icon: User, label: 'Profil' },
-  { key: 'data-diri', icon: BookOpen, label: 'Data Diri' },
-  { key: 'data-anak', icon: Users, label: 'Data Anak' },
-  { key: 'pendidikan', icon: GraduationCap, label: 'Pendidikan' },
+  { key: 'wali', icon: Users, label: 'Wali' },
+  { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { key: 'absensi', icon: Calendar, label: 'Absensi' },
+  { key: 'menu', icon: Menu, label: 'Menu' },
 ];
 
 export default function ProfilGuru() {
@@ -294,68 +296,51 @@ export default function ProfilGuru() {
 
   // ====== MOBILE VIEW ======
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col items-center">
-      <div className="w-full max-w-lg relative">
-
-        {/* View Mode Toggle */}
-        <div className="fixed top-3 right-3 z-50 bg-white/90 backdrop-blur-sm rounded-2xl shadow-lg p-1 flex gap-1">
-          <button onClick={() => setViewMode('mobile')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${viewMode === 'mobile' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
-            <Smartphone className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={() => setViewMode('web')}
-            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${viewMode === 'web' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}>
-            <Monitor className="w-3.5 h-3.5" />
-          </button>
-        </div>
+    <div className="min-h-screen bg-slate-100">
 
         {/* ====== PROFIL TAB ====== */}
         {activeTab === 'profil' && (
-          <div className="pb-24">
-            {/* Hero */}
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 px-5 pt-14 pb-20 relative overflow-hidden">
+          <div className="pb-28">
+            {/* Hero - centered layout like desktop preview */}
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 px-5 pt-8 pb-16 relative overflow-hidden">
+              {/* View Mode Toggle inside hero */}
+              <div className="absolute top-4 right-4 z-10 bg-white/20 backdrop-blur-sm rounded-2xl p-1 flex gap-1">
+                <button onClick={() => setViewMode('mobile')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${viewMode === 'mobile' ? 'bg-white text-violet-700' : 'text-white/70 hover:text-white'}`}>
+                  <Smartphone className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => setViewMode('web')}
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${viewMode === 'web' ? 'bg-white text-violet-700' : 'text-white/70 hover:text-white'}`}>
+                  <Monitor className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
               <div className="absolute -top-8 -right-8 w-40 h-40 bg-white/5 rounded-full" />
-              <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/5 rounded-full translate-y-10 -translate-x-6" />
-              <div className="relative flex items-center gap-4">
-                <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black text-white shrink-0">
+              <div className="absolute bottom-0 left-10 w-28 h-28 bg-white/5 rounded-full translate-y-10" />
+
+              {/* Centered avatar + info */}
+              <div className="relative flex flex-col items-center text-center pt-2">
+                <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black text-white mb-3">
                   {guruData.nama?.charAt(0)}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h1 className="text-white font-black text-xl leading-tight">{guruData.nama}</h1>
-                  <p className="text-violet-200 text-sm mt-0.5">{guruData.jabatan || 'Guru'}</p>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {(guruData.mapel || []).slice(0, 2).map(m => (
-                      <span key={m} className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">{m}</span>
-                    ))}
-                    {(guruData.mapel || []).length > 2 && (
-                      <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">+{(guruData.mapel || []).length - 2}</span>
-                    )}
-                    {kelasWali && (
-                      <span className="text-[10px] font-bold bg-amber-400/80 text-amber-900 px-2 py-0.5 rounded-full">Wali {kelasWali.nama_kelas}</span>
-                    )}
-                  </div>
+                <h1 className="text-white font-black text-xl leading-tight">{guruData.nama}</h1>
+                <p className="text-violet-200 text-sm mt-1">{guruData.jabatan || 'Guru Mata Pelajaran'}</p>
+                <div className="flex flex-wrap justify-center gap-1.5 mt-2.5">
+                  {(guruData.mapel || []).slice(0, 2).map(m => (
+                    <span key={m} className="text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full">{m}</span>
+                  ))}
+                  {(guruData.mapel || []).length > 2 && (
+                    <span className="text-xs font-semibold bg-white/20 text-white px-3 py-1 rounded-full">+{(guruData.mapel || []).length - 2}</span>
+                  )}
+                  {kelasWali && (
+                    <span className="text-xs font-bold bg-amber-400 text-amber-900 px-3 py-1 rounded-full">Wali Kelas {kelasWali.nama_kelas}</span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Info Cards */}
-            <div className="px-4 -mt-10 pb-4 space-y-3">
-              {/* Quick stats */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-                  <p className="text-lg font-black text-violet-600">{(guruData.mapel || []).length}</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Mapel</p>
-                </div>
-                <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-                  <p className="text-lg font-black text-blue-600">{(guruData.data_anak || []).length}</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Anak</p>
-                </div>
-                <div className="bg-white rounded-2xl p-3 text-center shadow-sm">
-                  <p className="text-lg font-black text-emerald-600">{(guruData.riwayat_pendidikan || []).length}</p>
-                  <p className="text-[10px] text-slate-400 font-semibold">Riwayat</p>
-                </div>
-              </div>
-
+            <div className="px-4 -mt-8 pb-4 space-y-3">
               {/* Contact Info */}
               <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-slate-50">
@@ -363,34 +348,34 @@ export default function ProfilGuru() {
                 </div>
                 <div className="divide-y divide-slate-50">
                   {guruData.nip && (
-                    <div className="flex items-center gap-3 px-5 py-3">
-                      <div className="w-8 h-8 bg-violet-100 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-3 px-5 py-3.5">
+                      <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center shrink-0">
                         <Building className="w-4 h-4 text-violet-500" />
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400">NIP / NUPTK</p>
+                        <p className="text-[10px] text-slate-400 font-medium">NIP / NUPTK</p>
                         <p className="text-slate-800 text-sm font-semibold">{guruData.nip}</p>
                       </div>
                     </div>
                   )}
                   {guruData.email && (
-                    <div className="flex items-center gap-3 px-5 py-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-3 px-5 py-3.5">
+                      <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
                         <Mail className="w-4 h-4 text-blue-500" />
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] text-slate-400">Email</p>
-                        <p className="text-slate-800 text-sm font-semibold truncate">{guruData.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] text-slate-400 font-medium">Email</p>
+                        <p className="text-slate-800 text-sm font-semibold break-all">{guruData.email}</p>
                       </div>
                     </div>
                   )}
                   {guruData.no_telp && (
-                    <div className="flex items-center gap-3 px-5 py-3">
-                      <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                    <div className="flex items-center gap-3 px-5 py-3.5">
+                      <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
                         <Phone className="w-4 h-4 text-emerald-500" />
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400">No. Telepon</p>
+                        <p className="text-[10px] text-slate-400 font-medium">No. Telepon</p>
                         <p className="text-slate-800 text-sm font-semibold">{guruData.no_telp}</p>
                       </div>
                     </div>
@@ -408,9 +393,23 @@ export default function ProfilGuru() {
                 </div>
               </div>
 
+              {/* Status + Edit */}
+              <div className="bg-white rounded-3xl shadow-sm px-5 py-4 flex items-center justify-between">
+                <span className="font-semibold text-slate-700 text-sm">Status Kepegawaian</span>
+                <Badge className={guruData.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-slate-100 text-slate-600 border-0'}>
+                  {guruData.status || 'Aktif'}
+                </Badge>
+              </div>
+
               {/* Nav to detail */}
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-800 text-sm">Data Lengkap</span>
+                <Button onClick={() => setActiveTab('data-diri')} className="bg-violet-600 hover:bg-violet-700 gap-2 rounded-2xl">
+                  <Edit2 className="w-4 h-4" /> Edit Profil
+                </Button>
+              </div>
+
               {[
-                { tab: 'data-diri', icon: '👤', label: 'Data Diri Lengkap', sub: 'NIP, jabatan, tugas tambahan' },
                 { tab: 'data-anak', icon: '👨‍👩‍👧', label: 'Data Anak', sub: `${(guruData.data_anak || []).length} data anak` },
                 { tab: 'pendidikan', icon: '🎓', label: 'Riwayat Pendidikan', sub: `${(guruData.riwayat_pendidikan || []).length} riwayat` },
               ].map(item => (
@@ -586,23 +585,47 @@ export default function ProfilGuru() {
         )}
 
         {/* ====== BOTTOM NAVIGATION ====== */}
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center z-50">
-          <div className="w-full max-w-lg bg-white border-t border-slate-100 shadow-2xl px-2 py-2">
-            <div className="flex items-center justify-around">
-              {NAV_ITEMS.map(({ key, icon: Icon, label }) => {
-                const isActive = activeTab === key || (key === 'profil' && activeTab === 'profil');
-                return (
-                  <button key={key} onClick={() => { setActiveTab(key); if (key === 'profil') setEditMode(false); }}
-                    className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl transition-all ${isActive ? 'bg-violet-50' : ''}`}>
-                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-violet-600' : 'text-slate-400'}`} />
-                    <span className={`text-[10px] font-semibold transition-colors ${isActive ? 'text-violet-600' : 'text-slate-400'}`}>{label}</span>
-                  </button>
-                );
-              })}
-            </div>
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100 shadow-2xl">
+          <div className="flex items-center justify-around px-2 py-2 pb-safe">
+            {/* Profil - active */}
+            <button onClick={() => { setActiveTab('profil'); setEditMode(false); }}
+              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl">
+              <div className="w-9 h-9 rounded-xl bg-violet-100 flex items-center justify-center">
+                <User className="w-5 h-5 text-violet-600" />
+              </div>
+              <span className="text-[10px] font-semibold text-violet-600">Profil</span>
+            </button>
+            {/* Wali - link to WaliKelas page */}
+            <Link to="/WaliKelas" className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl opacity-50">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                <Users className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-400">Wali</span>
+            </Link>
+            {/* Dashboard */}
+            <Link to="/Dashboard" className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl opacity-50">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                <LayoutDashboard className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-400">Dashboard</span>
+            </Link>
+            {/* Absensi */}
+            <Link to="/Absensi" className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl opacity-50">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-400">Absensi</span>
+            </Link>
+            {/* Menu - sub tabs */}
+            <button onClick={() => setActiveTab('data-diri')}
+              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-2xl opacity-50">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center">
+                <Menu className="w-5 h-5 text-slate-400" />
+              </div>
+              <span className="text-[10px] font-semibold text-slate-400">Menu</span>
+            </button>
           </div>
         </div>
-      </div>
     </div>
   );
 }
