@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import { useToast } from "@/components/ui/use-toast";
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO, isWithinInterval, addMonths, subMonths } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
