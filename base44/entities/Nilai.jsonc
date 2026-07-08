@@ -1,0 +1,70 @@
+{
+  "name": "Nilai",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "mapel": {
+      "type": "string",
+      "description": "Mata pelajaran"
+    },
+    "semester": {
+      "type": "string",
+      "enum": [
+        "Ganjil",
+        "Genap"
+      ]
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "jenis_penilaian": {
+      "type": "string",
+      "enum": [
+        "Ulangan Harian",
+        "Tugas",
+        "PTS",
+        "PAS",
+        "Praktik"
+      ]
+    },
+    "kompetensi_bab": {
+      "type": "string",
+      "description": "Kompetensi atau bab yang dinilai"
+    },
+    "nilai": {
+      "type": "number"
+    },
+    "kkm": {
+      "type": "number",
+      "default": 75
+    },
+    "status_ketuntasan": {
+      "type": "string",
+      "enum": [
+        "Tuntas",
+        "Belum Tuntas"
+      ]
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "mapel",
+    "jenis_penilaian",
+    "nilai"
+  ]
+}

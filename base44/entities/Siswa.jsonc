@@ -1,0 +1,59 @@
+{
+  "name": "Siswa",
+  "type": "object",
+  "properties": {
+    "nis": {
+      "type": "string",
+      "description": "Nomor Induk Siswa"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap siswa"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "enum": [
+        "Laki-laki",
+        "Perempuan"
+      ]
+    },
+    "kelas_id": {
+      "type": "string",
+      "description": "ID kelas siswa"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas untuk tampilan"
+    },
+    "tanggal_lahir": {
+      "type": "string",
+      "format": "date"
+    },
+    "alamat": {
+      "type": "string"
+    },
+    "nama_ortu": {
+      "type": "string",
+      "description": "Nama orang tua/wali"
+    },
+    "no_telp_ortu": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Lulus",
+        "Pindah",
+        "Keluar"
+      ],
+      "default": "Aktif"
+    }
+  },
+  "required": [
+    "nis",
+    "nama",
+    "kelas_id",
+    "nama_kelas"
+  ]
+}

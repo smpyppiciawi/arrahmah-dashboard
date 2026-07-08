@@ -1,0 +1,27 @@
+{
+  "name": "TipeTransaksi",
+  "type": "object",
+  "properties": {
+    "nama": {
+      "type": "string",
+      "description": "Nama tipe transaksi"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Siswa",
+        "Pegawai",
+        "Umum"
+      ],
+      "description": "Untuk jenis transaksi"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "nama",
+    "jenis"
+  ]
+}

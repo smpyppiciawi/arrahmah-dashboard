@@ -1,0 +1,60 @@
+{
+  "name": "Materi",
+  "type": "object",
+  "properties": {
+    "judul": {
+      "type": "string",
+      "description": "Judul materi"
+    },
+    "mapel": {
+      "type": "string"
+    },
+    "tingkat_kelas": {
+      "type": "string",
+      "enum": [
+        "7",
+        "8",
+        "9",
+        "Semua"
+      ]
+    },
+    "semester": {
+      "type": "string",
+      "enum": [
+        "Ganjil",
+        "Genap"
+      ]
+    },
+    "bab": {
+      "type": "string"
+    },
+    "pertemuan_ke": {
+      "type": "number"
+    },
+    "jenis_file": {
+      "type": "string",
+      "enum": [
+        "Word",
+        "PPT",
+        "PDF",
+        "Video",
+        "Link"
+      ]
+    },
+    "file_url": {
+      "type": "string",
+      "description": "URL file materi"
+    },
+    "guru_pengampu": {
+      "type": "string"
+    },
+    "deskripsi": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "judul",
+    "mapel",
+    "tingkat_kelas"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "TindakLanjut",
+  "type": "object",
+  "properties": {
+    "pelanggaran_id": {
+      "type": "string",
+      "description": "ID pelanggaran terkait"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal tindak lanjut"
+    },
+    "dilaporkan_kepada": {
+      "type": "string",
+      "enum": [
+        "Wali Kelas",
+        "BP/BK",
+        "Kepala Sekolah"
+      ],
+      "description": "Pihak yang menerima laporan"
+    },
+    "nama_penerima": {
+      "type": "string",
+      "description": "Nama guru/pihak yang menerima laporan"
+    },
+    "catatan": {
+      "type": "string",
+      "description": "Catatan tindak lanjut"
+    },
+    "tindakan": {
+      "type": "string",
+      "description": "Tindakan yang dilakukan"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Proses",
+        "Selesai"
+      ],
+      "default": "Proses",
+      "description": "Status tindak lanjut"
+    }
+  },
+  "required": [
+    "pelanggaran_id",
+    "siswa_id",
+    "tanggal",
+    "dilaporkan_kepada"
+  ]
+}

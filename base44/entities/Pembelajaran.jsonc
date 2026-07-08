@@ -1,0 +1,37 @@
+{
+  "name": "Pembelajaran",
+  "type": "object",
+  "properties": {
+    "kelas_id": {
+      "type": "string",
+      "description": "ID kelas"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas"
+    },
+    "mapel": {
+      "type": "string",
+      "description": "Mata pelajaran"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID guru pengampu"
+    },
+    "nama_guru": {
+      "type": "string",
+      "description": "Nama guru pengampu"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran"
+    }
+  },
+  "required": [
+    "kelas_id",
+    "nama_kelas",
+    "mapel",
+    "guru_id",
+    "nama_guru"
+  ]
+}

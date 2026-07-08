@@ -1,0 +1,36 @@
+{
+  "name": "KodePelanggaran",
+  "type": "object",
+  "properties": {
+    "kode": {
+      "type": "string",
+      "description": "Kode pelanggaran (A1, B1, dst)"
+    },
+    "tingkatan": {
+      "type": "string",
+      "enum": [
+        "Sangat Berat",
+        "Berat",
+        "Sedang",
+        "Ringan",
+        "Sangat Ringan",
+        "Khusus"
+      ],
+      "description": "Tingkat pelanggaran"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Uraian/deskripsi pelanggaran"
+    },
+    "poin": {
+      "type": "number",
+      "description": "Poin pelanggaran"
+    }
+  },
+  "required": [
+    "kode",
+    "tingkatan",
+    "uraian",
+    "poin"
+  ]
+}

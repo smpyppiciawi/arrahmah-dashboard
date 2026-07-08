@@ -1,0 +1,51 @@
+{
+  "name": "BiayaKhusus",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "tarif_iuran_id": {
+      "type": "string",
+      "description": "ID tarif iuran yang dimodifikasi"
+    },
+    "nama_iuran": {
+      "type": "string"
+    },
+    "nominal_khusus": {
+      "type": "number",
+      "description": "Nominal khusus untuk siswa ini"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Yatim",
+        "Piatu",
+        "Yatim Piatu",
+        "Kurang Mampu",
+        "Prestasi",
+        "Lainnya"
+      ],
+      "description": "Kategori keringanan"
+    },
+    "keterangan": {
+      "type": "string"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "tarif_iuran_id",
+    "nominal_khusus"
+  ]
+}

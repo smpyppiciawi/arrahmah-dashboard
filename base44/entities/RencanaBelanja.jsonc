@@ -1,0 +1,57 @@
+{
+  "name": "RencanaBelanja",
+  "type": "object",
+  "properties": {
+    "nama_rencana": {
+      "type": "string",
+      "description": "Nama rencana belanja"
+    },
+    "periode": {
+      "type": "string",
+      "description": "Periode (contoh: 2024/2025)"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Gaji",
+        "Operasional",
+        "Sarpras",
+        "Kegiatan",
+        "Pemeliharaan",
+        "Pengembangan",
+        "Lainnya"
+      ]
+    },
+    "anggaran": {
+      "type": "number",
+      "description": "Total anggaran yang direncanakan"
+    },
+    "realisasi": {
+      "type": "number",
+      "default": 0,
+      "description": "Total realisasi pengeluaran"
+    },
+    "sisa": {
+      "type": "number",
+      "description": "Sisa anggaran"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan rencana"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Selesai",
+        "Ditunda"
+      ],
+      "default": "Aktif"
+    }
+  },
+  "required": [
+    "nama_rencana",
+    "kategori",
+    "anggaran"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "UKS",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal kunjungan"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "jam_masuk": {
+      "type": "string",
+      "description": "Jam masuk UKS (format HH:mm)"
+    },
+    "jam_keluar": {
+      "type": "string",
+      "description": "Jam keluar UKS (format HH:mm)"
+    },
+    "keluhan": {
+      "type": "string",
+      "description": "Keluhan siswa"
+    },
+    "diagnosa": {
+      "type": "string",
+      "description": "Diagnosa awal"
+    },
+    "penanganan": {
+      "type": "string",
+      "description": "Penanganan yang diberikan"
+    },
+    "suhu_badan": {
+      "type": "string",
+      "description": "Suhu badan (jika diukur)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Di UKS",
+        "Pulang",
+        "Kembali ke Kelas"
+      ],
+      "default": "Di UKS",
+      "description": "Status siswa"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan tambahan"
+    }
+  },
+  "required": [
+    "tanggal",
+    "siswa_id",
+    "nama_siswa",
+    "jam_masuk",
+    "keluhan"
+  ]
+}

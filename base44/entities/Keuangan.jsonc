@@ -1,0 +1,116 @@
+{
+  "name": "Keuangan",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal transaksi"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Pemasukan",
+        "Pengeluaran"
+      ],
+      "description": "Jenis transaksi"
+    },
+    "tipe_transaksi": {
+      "type": "string",
+      "enum": [
+        "SPP/Bulanan",
+        "Ujian Sekolah",
+        "Daftar Ulang",
+        "Kelulusan",
+        "Belanja Harian",
+        "Belanja Bulanan",
+        "Belanja Tahunan",
+        "Kasbon Pegawai",
+        "Kegiatan",
+        "BOSP",
+        "Transaksi Khusus",
+        "Lainnya"
+      ],
+      "description": "Tipe detail transaksi"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "SPP",
+        "BOS",
+        "BOSP",
+        "Donasi",
+        "Gaji",
+        "Operasional",
+        "Sarpras",
+        "Listrik",
+        "Air",
+        "Internet",
+        "Kegiatan",
+        "ATK",
+        "Kasbon",
+        "Ujian",
+        "Daftar Ulang",
+        "Kelulusan",
+        "Lainnya"
+      ],
+      "description": "Kategori transaksi"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Deskripsi transaksi"
+    },
+    "jumlah": {
+      "type": "number",
+      "description": "Nominal transaksi"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa (untuk transaksi siswa)"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS siswa"
+    },
+    "nama_siswa": {
+      "type": "string",
+      "description": "Nama siswa"
+    },
+    "kelas": {
+      "type": "string",
+      "description": "Kelas siswa"
+    },
+    "sumber_rekening": {
+      "type": "string",
+      "description": "Sumber atau rekening terkait"
+    },
+    "pic": {
+      "type": "string",
+      "description": "Penanggung jawab"
+    },
+    "bukti_file": {
+      "type": "string",
+      "description": "URL file bukti transaksi"
+    },
+    "rencana_belanja_id": {
+      "type": "string",
+      "description": "ID rencana belanja terkait"
+    },
+    "status_bayar": {
+      "type": "string",
+      "enum": [
+        "Lunas",
+        "Belum Lunas",
+        "Cicilan"
+      ],
+      "default": "Lunas",
+      "description": "Status pembayaran"
+    }
+  },
+  "required": [
+    "tanggal",
+    "jenis",
+    "kategori",
+    "jumlah"
+  ]
+}

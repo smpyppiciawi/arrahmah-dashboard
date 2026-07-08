@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Upload, Edit2, Trash2 } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
+import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,7 +19,6 @@ export default function Siswa() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [currentUser, setCurrentUser] = useState(null);
-  const [csvImporting, setCsvImporting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const queryClient = useQueryClient();
@@ -128,47 +128,6 @@ export default function Siswa() {
     a.href = url;
     a.download = 'template_siswa.csv';
     a.click();
-  };
-
-  const handleImportCSV = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    setCsvImporting(true);
-    const text = await file.text();
-    const rows = text.split('\n').slice(1).filter(row => row.trim());
-
-    // Ambil data kelas terbaru
-    const currentKelas = await base44.entities.Kelas.list('nama_kelas');
-    const classMap = new Map();
-    currentKelas.forEach(k => classMap.set(k.nama_kelas, k.id));
-
-    for (const row of rows) {
-      const [nis, nama, jenis_kelamin, nama_kelas, tanggal_lahir, alamat, nama_ortu, no_telp_ortu] = row.split(',').map(s => s.trim());
-
-      // Jika kelas belum ada, buat otomatis
-      if (nama_kelas && !classMap.has(nama_kelas)) {
-        // Ekstrak tingkat dari nama kelas (misal: "7A" -> "7", "8B" -> "8")
-        const tingkat = nama_kelas.match(/\d+/)?.[0] || '7';
-        const newClass = await base44.entities.Kelas.create({
-          nama_kelas,
-          tingkat,
-          tahun_ajaran: new Date().getFullYear() + '/' + (new Date().getFullYear() + 1)
-        });
-        classMap.set(nama_kelas, newClass.id);
-      }
-
-      await createMutation.mutateAsync({
-        nis, nama, jenis_kelamin, nama_kelas,
-        kelas_id: classMap.get(nama_kelas) || '',
-        tanggal_lahir, alamat, nama_ortu, no_telp_ortu,
-        status: 'Aktif'
-      });
-    }
-
-    setCsvImporting(false);
-    queryClient.invalidateQueries({ queryKey: ['siswa'] });
-    queryClient.invalidateQueries({ queryKey: ['kelas'] });
   };
 
   const resetForm = () => {
@@ -288,15 +247,7 @@ export default function Siswa() {
               <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
                 <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>
-              <label>
-                <Button variant="outline" disabled={csvImporting} size="sm" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{csvImporting ? 'Importing...' : 'Import CSV'}</span>
-                  </span>
-                </Button>
-                <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
-              </label>
+              <ImportSiswaCSV />
               <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700" size="sm">
                 <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tambah Siswa</span>
               </Button>

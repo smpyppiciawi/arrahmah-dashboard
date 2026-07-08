@@ -1,0 +1,17 @@
+{
+  "name": "SumberDana",
+  "type": "object",
+  "properties": {
+    "nama": {
+      "type": "string",
+      "description": "Nama sumber dana/rekening"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan tambahan"
+    }
+  },
+  "required": [
+    "nama"
+  ]
+}

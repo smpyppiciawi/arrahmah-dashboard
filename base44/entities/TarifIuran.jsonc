@@ -1,0 +1,44 @@
+{
+  "name": "TarifIuran",
+  "type": "object",
+  "properties": {
+    "nama": {
+      "type": "string",
+      "description": "Nama iuran (SPP, Ujian, dll)"
+    },
+    "nominal": {
+      "type": "number",
+      "description": "Nominal iuran"
+    },
+    "periode": {
+      "type": "string",
+      "enum": [
+        "Bulanan",
+        "Semester",
+        "Tahunan",
+        "Sekali"
+      ],
+      "description": "Periode pembayaran"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran berlaku"
+    },
+    "keterangan": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Tidak Aktif"
+      ],
+      "default": "Aktif"
+    }
+  },
+  "required": [
+    "nama",
+    "nominal",
+    "periode"
+  ]
+}

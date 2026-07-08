@@ -1,0 +1,58 @@
+{
+  "name": "JadwalPelajaran",
+  "type": "object",
+  "properties": {
+    "kelas_id": {
+      "type": "string",
+      "description": "ID kelas"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas"
+    },
+    "hari": {
+      "type": "string",
+      "enum": [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu"
+      ],
+      "description": "Hari pelajaran"
+    },
+    "jam_ke": {
+      "type": "number",
+      "description": "Urutan jam ke-berapa"
+    },
+    "jam_mulai": {
+      "type": "string",
+      "description": "Jam mulai (HH:mm)"
+    },
+    "jam_selesai": {
+      "type": "string",
+      "description": "Jam selesai (HH:mm)"
+    },
+    "mapel": {
+      "type": "string",
+      "description": "Mata pelajaran"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID guru"
+    },
+    "nama_guru": {
+      "type": "string",
+      "description": "Nama guru"
+    }
+  },
+  "required": [
+    "kelas_id",
+    "nama_kelas",
+    "hari",
+    "mapel",
+    "jam_mulai",
+    "jam_selesai"
+  ]
+}

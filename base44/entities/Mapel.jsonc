@@ -1,0 +1,22 @@
+{
+  "name": "Mapel",
+  "type": "object",
+  "properties": {
+    "nama": {
+      "type": "string",
+      "description": "Nama mata pelajaran"
+    },
+    "kode": {
+      "type": "string",
+      "description": "Kode singkat mata pelajaran"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": true,
+      "description": "Apakah mapel default sistem"
+    }
+  },
+  "required": [
+    "nama"
+  ]
+}
