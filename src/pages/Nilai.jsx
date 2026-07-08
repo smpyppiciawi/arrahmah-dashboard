@@ -13,6 +13,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 const MAPEL_LIST = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
@@ -45,10 +46,19 @@ export default function Nilai() {
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
   const queryClient = useQueryClient();
+  const { activeAcademicYear } = useActiveAcademicYear();
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(console.error);
   }, []);
+
+  // Default tahun_ajaran ke tahun ajaran aktif
+  useEffect(() => {
+    if (activeAcademicYear) {
+      setFormData(prev => prev.tahun_ajaran ? prev : { ...prev, tahun_ajaran: activeAcademicYear });
+      setKelasFormData(prev => prev.tahun_ajaran ? prev : { ...prev, tahun_ajaran: activeAcademicYear });
+    }
+  }, [activeAcademicYear]);
 
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'guru', 'tu', 'kepsek', 'operator'].includes(userRole);
@@ -92,7 +102,7 @@ export default function Nilai() {
   });
 
   const resetForm = () => {
-    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: '', tahun_ajaran: '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '' });
+    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: '', tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '' });
     setEditingData(null);
     setIsOpen(false);
   };
@@ -109,7 +119,7 @@ export default function Nilai() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { ...formData, nilai: Number(formData.nilai), kkm: Number(formData.kkm) };
+    const payload = { ...formData, nilai: Number(formData.nilai), kkm: Number(formData.kkm), tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
     if (editingData) updateMutation.mutate({ id: editingData.id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -134,15 +144,17 @@ export default function Nilai() {
 
   const handleKelasSubmit = async (e) => {
     e.preventDefault();
+    const finalTahunAjaran = kelasFormData.tahun_ajaran || activeAcademicYear || '';
     const records = kelasNilaiData.map(item => ({
       ...item, ...kelasFormData, kelas_id: kelasFormData.kelas_id,
+      tahun_ajaran: finalTahunAjaran,
       kkm: Number(kelasFormData.kkm),
       status_ketuntasan: item.nilai >= Number(kelasFormData.kkm) ? 'Tuntas' : 'Belum Tuntas'
     }));
     await base44.entities.Nilai.bulkCreate(records);
     queryClient.invalidateQueries({ queryKey: ['nilai'] });
     setKelasInputOpen(false);
-    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: '', tahun_ajaran: '', kkm: 75, nama_guru: '' });
+    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: '', tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
     setKelasNilaiData([]);
   };
 

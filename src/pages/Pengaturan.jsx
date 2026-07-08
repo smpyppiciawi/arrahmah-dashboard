@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save } from 'lucide-react';
+import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LulusanTab from '@/components/pengaturan/LulusanTab';
 
@@ -29,6 +29,7 @@ export default function Pengaturan() {
   const [activeTab, setActiveTab] = useState('pengaturan');
   const [tahunAjaranInput, setTahunAjaranInput] = useState('');
   const [showGraduateConfirm, setShowGraduateConfirm] = useState(false);
+  const [showTahunConfirm, setShowTahunConfirm] = useState(false);
 
   const isAdmin = ['admin', 'operator', 'tu', 'kepsek'].includes(currentUser?.role);
 
@@ -60,13 +61,27 @@ export default function Pengaturan() {
       }
     },
     onSuccess: () => {
+      // Invalidate SEMUA query agar data di seluruh app mengikuti tahun ajaran aktif yang baru
       queryClient.invalidateQueries({ queryKey: ['pengaturan-aplikasi'] });
-      toast({ title: 'Berhasil', description: 'Tahun ajaran aktif berhasil diperbarui.' });
+      queryClient.invalidateQueries({ queryKey: ['kalender'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['kelas'] });
+      queryClient.invalidateQueries({ queryKey: ['absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['nilai'] });
+      setShowTahunConfirm(false);
+      toast({ title: 'Berhasil', description: 'Tahun ajaran aktif berhasil diperbarui. Data baru akan mengikuti tahun ajaran ini.' });
     },
     onError: () => {
       toast({ title: 'Gagal', description: 'Gagal memperbarui tahun ajaran.', variant: 'destructive' });
     }
   });
+
+  const handleTahunAjaranSubmit = () => {
+    const current = pengaturan?.tahun_ajaran_aktif;
+    if (tahunAjaranInput.trim() && tahunAjaranInput.trim() !== current) {
+      setShowTahunConfirm(true);
+    }
+  };
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas-all'],
@@ -188,10 +203,11 @@ export default function Pengaturan() {
                       className="max-w-xs"
                     />
                     <p className="text-xs text-slate-400 mt-1">Format: YYYY/YYYY (contoh: 2025/2026)</p>
-                  </div>
+                    <p className="text-xs text-green-600 mt-1">Data tahun ajaran lama tetap tersimpan rapih. Data baru otomatis mengikuti tahun aktif.</p>
+                    </div>
                   <Button
-                    onClick={() => saveTahunAjaranMutation.mutate(tahunAjaranInput)}
-                    disabled={saveTahunAjaranMutation.isPending || !tahunAjaranInput.trim()}
+                    onClick={handleTahunAjaranSubmit}
+                    disabled={saveTahunAjaranMutation.isPending || !tahunAjaranInput.trim() || tahunAjaranInput.trim() === pengaturan?.tahun_ajaran_aktif}
                   >
                     {saveTahunAjaranMutation.isPending ? (
                       <Loader2 className="w-4 h-4 animate-spin mr-1" />
@@ -249,6 +265,31 @@ export default function Pengaturan() {
           <LulusanTab />
         </TabsContent>
       </Tabs>
+
+      {/* Confirm Dialog - Ganti Tahun Ajaran */}
+      <AlertDialog open={showTahunConfirm} onOpenChange={setShowTahunConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" /> Konfirmasi Ganti Tahun Ajaran
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda akan mengubah tahun ajaran aktif dari <strong>{pengaturan?.tahun_ajaran_aktif || '(kosong)'}</strong> menjadi <strong>{tahunAjaranInput}</strong>.
+              <br /><br />
+              Data yang diinput setelah pergantian akan otomatis mengikuti tahun ajaran <strong>{tahunAjaranInput}</strong>. Data tahun ajaran lama tetap tersimpan rapih dan dapat difilter kapan saja.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => saveTahunAjaranMutation.mutate(tahunAjaranInput)}
+            >
+              Ya, Ganti Tahun Ajaran
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Confirm Dialog */}
       <AlertDialog open={showGraduateConfirm} onOpenChange={setShowGraduateConfirm}>

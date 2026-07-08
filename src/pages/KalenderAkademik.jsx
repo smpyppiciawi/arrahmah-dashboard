@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2 } from "lucide-react";
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
@@ -47,6 +47,15 @@ export default function KalenderAkademik() {
   const [viewMode, setViewMode] = useState('kalender'); // 'kalender' | 'daftar'
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { activeAcademicYear } = useActiveAcademicYear();
+
+  // Default filter & form ke tahun ajaran aktif
+  useEffect(() => {
+    if (activeAcademicYear && !filterTahun) setFilterTahun(activeAcademicYear);
+    if (activeAcademicYear && !formData.tahun_ajaran) {
+      setFormData(prev => ({ ...prev, tahun_ajaran: activeAcademicYear }));
+    }
+  }, [activeAcademicYear]);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['kalender'],
@@ -66,13 +75,40 @@ export default function KalenderAkademik() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['kalender'] }); setDeleteOpen(false); toast({ title: '✅ Kegiatan dihapus' }); },
   });
 
-  const resetForm = () => { setFormData(EMPTY_FORM); setEditData(null); setIsOpen(false); };
+  const resetForm = () => {
+    setFormData({ ...EMPTY_FORM, tahun_ajaran: activeAcademicYear || '' });
+    setEditData(null);
+    setIsOpen(false);
+  };
 
   const handleEdit = (ev) => { setEditData(ev); setFormData(ev); setIsOpen(true); };
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (editData) updateMutation.mutate({ id: editData.id, data: formData });
-    else createMutation.mutate(formData);
+    // Pastikan tahun_ajaran selalu terisi (default ke tahun ajaran aktif)
+    const finalData = { ...formData, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
+    if (editData) updateMutation.mutate({ id: editData.id, data: finalData });
+    else createMutation.mutate(finalData);
+  };
+
+  // Generate Google Calendar "Add to Calendar" link — no OAuth needed
+  const getGoogleCalendarLink = (ev) => {
+    const fmtGCalDate = (dateStr, isEnd = false) => {
+      if (!dateStr) return '';
+      const d = parseISO(dateStr);
+      // For end dates, add 1 day since Google Calendar end is exclusive for all-day events
+      const adjusted = isEnd ? new Date(d.getTime() + 24 * 60 * 60 * 1000) : d;
+      return format(adjusted, 'yyyyMMdd');
+    };
+    const startDate = fmtGCalDate(ev.tanggal_mulai);
+    const endDate = ev.tanggal_selesai ? fmtGCalDate(ev.tanggal_selesai, true) : startDate;
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text: ev.judul,
+      dates: `${startDate}/${endDate}`,
+      details: ev.keterangan || `Kategori: ${ev.kategori}${ev.tahun_ajaran ? ` | Tahun Ajaran: ${ev.tahun_ajaran}` : ''}`,
+      location: '',
+    });
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
   };
 
   // Filtered events
@@ -169,10 +205,15 @@ export default function KalenderAkademik() {
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs text-slate-500">Tahun Ajaran</Label>
+                  <Label className="text-xs text-slate-500">
+                    Tahun Ajaran
+                    {activeAcademicYear && (
+                      <span className="text-green-600 ml-1">(Aktif: {activeAcademicYear})</span>
+                    )}
+                  </Label>
                   <Select value={formData.tahun_ajaran} onValueChange={(v) => setFormData({...formData, tahun_ajaran: v})}>
                     <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih Tahun Ajaran" /></SelectTrigger>
-                    <SelectContent>{tahunOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                    <SelectContent>{tahunOptions.map(t => <SelectItem key={t} value={t}>{t}{t === activeAcademicYear ? ' ✓' : ''}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
@@ -209,12 +250,20 @@ export default function KalenderAkademik() {
                 </div>
               </div>
               <div>
-                <Label className="text-xs text-slate-500 mb-1 block">Tahun Ajaran</Label>
+                <Label className="text-xs text-slate-500 mb-1 block">
+                  Tahun Ajaran {activeAcademicYear && (
+                    <span className="text-green-600 font-medium">• Aktif: {activeAcademicYear}</span>
+                  )}
+                </Label>
                 <Select value={filterTahun} onValueChange={setFilterTahun}>
-                  <SelectTrigger className="w-36 h-9"><SelectValue placeholder="Semua" /></SelectTrigger>
+                  <SelectTrigger className="w-40 h-9"><SelectValue placeholder="Semua" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={null}>Semua</SelectItem>
-                    {tahunOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    {tahunOptions.map(t => (
+                      <SelectItem key={t} value={t}>
+                        {t}{t === activeAcademicYear ? ' ✓' : ''}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -352,6 +401,9 @@ export default function KalenderAkademik() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-semibold text-sm truncate">{ev.judul}</p>
                                 <Badge className={`mt-1 text-[10px] border ${KATEGORI_CONFIG[ev.kategori]?.light}`}>{ev.kategori}</Badge>
+                                {ev.tahun_ajaran && (
+                                  <span className="text-[10px] text-slate-500 ml-1">• {ev.tahun_ajaran}</span>
+                                )}
                                 {ev.tanggal_selesai && ev.tanggal_selesai !== ev.tanggal_mulai && (
                                   <p className="text-[11px] mt-1 opacity-70">
                                     s/d {format(parseISO(ev.tanggal_selesai), 'd MMM yyyy', { locale: idLocale })}
@@ -363,6 +415,9 @@ export default function KalenderAkademik() {
                                 <button onClick={() => handleEdit(ev)} className="p-1 rounded hover:bg-white/60 transition-all">
                                   <Edit2 className="w-3.5 h-3.5 opacity-60" />
                                 </button>
+                                <a href={getGoogleCalendarLink(ev)} target="_blank" rel="noopener noreferrer" title="Tambah ke Google Calendar" className="p-1 rounded hover:bg-white/60 transition-all">
+                                  <ExternalLink className="w-3.5 h-3.5 text-blue-500 opacity-70" />
+                                </a>
                                 <button onClick={() => { setDeleteId(ev.id); setDeleteOpen(true); }} className="p-1 rounded hover:bg-red-100 transition-all">
                                   <Trash2 className="w-3.5 h-3.5 text-red-500 opacity-60" />
                                 </button>
@@ -464,6 +519,11 @@ export default function KalenderAkademik() {
                           </div>
                         </div>
                         <div className="flex gap-1">
+                          <Button size="sm" variant="ghost" asChild className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600">
+                            <a href={getGoogleCalendarLink(ev)} target="_blank" rel="noopener noreferrer" title="Tambah ke Google Calendar">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </Button>
                           <Button size="sm" variant="ghost" onClick={() => handleEdit(ev)} className="h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600">
                             <Edit2 className="w-3.5 h-3.5" />
                           </Button>
