@@ -177,10 +177,13 @@ export default function Transaksi() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const payload = userRole === 'bendahara' && !formData.pic
+      ? { ...formData, pic: currentUser?.full_name || '' }
+      : formData;
     if (editingData) {
-      updateMutation.mutate({ id: editingData.id, data: formData });
+      updateMutation.mutate({ id: editingData.id, data: payload });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(payload);
     }
   };
 
@@ -388,7 +391,7 @@ export default function Transaksi() {
           </div>
           
           {canEdit && (
-            <Button onClick={() => setIsOpen(true)} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => { setFormData(prev => ({ ...prev, pic: userRole === 'bendahara' ? (currentUser?.full_name || '') : prev.pic })); setIsOpen(true); }} className="bg-teal-600 hover:bg-teal-700">
               <Plus className="w-4 h-4 mr-2" /> Tambah Transaksi
             </Button>
           )}
@@ -609,23 +612,9 @@ export default function Transaksi() {
                   <Select value={formData.tipe_transaksi} onValueChange={(v) => setFormData({...formData, tipe_transaksi: v})}>
                     <SelectTrigger><SelectValue placeholder="Pilih tipe" /></SelectTrigger>
                     <SelectContent>
-                      {tipeTransaksiList.length > 0 ? (
-                        tipeTransaksiList.map(tipe => (
-                          <SelectItem key={tipe.id} value={tipe.nama}>{tipe.nama}</SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="SPP/Bulanan">SPP/Bulanan</SelectItem>
-                          <SelectItem value="Ujian Sekolah">Ujian Sekolah</SelectItem>
-                          <SelectItem value="Daftar Ulang">Daftar Ulang</SelectItem>
-                          <SelectItem value="Kelulusan">Kelulusan</SelectItem>
-                          <SelectItem value="Belanja Harian">Belanja Harian</SelectItem>
-                          <SelectItem value="Kasbon Pegawai">Kasbon Pegawai</SelectItem>
-                          <SelectItem value="Gaji">Gaji</SelectItem>
-                          <SelectItem value="Donasi">Donasi</SelectItem>
-                          <SelectItem value="Lainnya">Lainnya</SelectItem>
-                        </>
-                      )}
+                      {tipeTransaksiList.map(tipe => (
+                        <SelectItem key={tipe.id} value={tipe.nama}>{tipe.nama}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -634,22 +623,9 @@ export default function Transaksi() {
                   <Select value={formData.kategori} onValueChange={(v) => setFormData({...formData, kategori: v})}>
                     <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
                     <SelectContent>
-                      {kategoriList.length > 0 ? (
-                        kategoriList.map(kat => (
-                          <SelectItem key={kat.id} value={kat.nama}>{kat.nama}</SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="SPP">SPP</SelectItem>
-                          <SelectItem value="BOS">BOS</SelectItem>
-                          <SelectItem value="Donasi">Donasi</SelectItem>
-                          <SelectItem value="Gaji">Gaji</SelectItem>
-                          <SelectItem value="Operasional">Operasional</SelectItem>
-                          <SelectItem value="Sarpras">Sarpras</SelectItem>
-                          <SelectItem value="Kegiatan">Kegiatan</SelectItem>
-                          <SelectItem value="Lainnya">Lainnya</SelectItem>
-                        </>
-                      )}
+                      {kategoriList.map(kat => (
+                        <SelectItem key={kat.id} value={kat.nama}>{kat.nama}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -695,23 +671,20 @@ export default function Transaksi() {
                   <Select value={formData.sumber_rekening} onValueChange={(v) => setFormData({...formData, sumber_rekening: v})}>
                     <SelectTrigger><SelectValue placeholder="Pilih sumber" /></SelectTrigger>
                     <SelectContent>
-                      {sumberDanaList.length > 0 ? (
-                        sumberDanaList.map(sumber => (
-                          <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
-                        ))
-                      ) : (
-                        <>
-                          <SelectItem value="Kas Sekolah">Kas Sekolah</SelectItem>
-                          <SelectItem value="Bank BRI">Bank BRI</SelectItem>
-                          <SelectItem value="Bank BJB">Bank BJB</SelectItem>
-                        </>
-                      )}
+                      {sumberDanaList.map(sumber => (
+                        <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <Label>PIC/Penanggung Jawab</Label>
-                  <Input value={formData.pic} onChange={(e) => setFormData({...formData, pic: e.target.value})} />
+                  <Input
+                    value={formData.pic}
+                    onChange={(e) => setFormData({...formData, pic: e.target.value})}
+                    readOnly={userRole === 'bendahara'}
+                    placeholder={userRole === 'bendahara' ? currentUser?.full_name || '' : 'Masukkan nama PIC'}
+                  />
                 </div>
               </div>
 
