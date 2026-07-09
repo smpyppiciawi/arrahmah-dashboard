@@ -13,31 +13,46 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { 
   Wallet, Plus, TrendingUp, TrendingDown, 
   Edit2, Trash2, ArrowUpRight, ArrowDownRight, Printer, 
-  Users, UserCheck, Heart, Filter
+  Users, UserCheck, Heart, Filter, Check, ChevronsUpDown, Search
 } from "lucide-react";
 
 export default function Transaksi() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingData, setEditingData] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [currentGuru, setCurrentGuru] = useState(null);
   const [activeTab, setActiveTab] = useState('semua');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [selectedKelasId, setSelectedKelasId] = useState('');
+  const [pegawaiSearchOpen, setPegawaiSearchOpen] = useState(false);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchUser = async () => {
       const user = await base44.auth.me();
       setCurrentUser(user);
+      // Cari record Guru berdasarkan email untuk cek tugas_tambahan
+      if (user?.email) {
+        try {
+          const gurus = await base44.entities.Guru.filter({ email: user.email });
+          if (gurus.length > 0) setCurrentGuru(gurus[0]);
+        } catch (e) {
+          // Guru tidak ditemukan, bukan masalah
+        }
+      }
     };
     fetchUser();
   }, []);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'bendahara', 'tu'].includes(userRole);
+  const isBendahara = (currentGuru?.tugas_tambahan || '').toLowerCase().includes('bendahara');
+  const canEdit = ['admin', 'tu'].includes(userRole) || isBendahara;
 
   const [formData, setFormData] = useState({
     tanggal: format(new Date(), 'yyyy-MM-dd'),
@@ -97,10 +112,28 @@ export default function Transaksi() {
     queryFn: () => base44.entities.TarifIuran.filter({ status: 'Aktif' }),
   });
 
+  const { data: kelasList = [] } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
   const { data: rencanaList = [] } = useQuery({
     queryKey: ['rencana-belanja'],
     queryFn: () => base44.entities.RencanaBelanja.list('-created_date'),
   });
+
+  // Siswa difilter berdasarkan kelas yang dipilih, diurutkan abjad
+  const sortedSiswaList = useMemo(() => {
+    const filtered = selectedKelasId
+      ? siswaList.filter(s => s.kelas_id === selectedKelasId)
+      : siswaList;
+    return [...filtered].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [siswaList, selectedKelasId]);
+
+  // Guru diurutkan abjad
+  const sortedGuruList = useMemo(() => {
+    return [...guruList].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [guruList]);
 
   // Filter transaksi berdasarkan tab dan tanggal
   const filteredTransaksi = useMemo(() => {
@@ -173,13 +206,12 @@ export default function Transaksi() {
     setEditingData(null);
     setIsOpen(false);
     setJenisTransaksi('umum');
+    setSelectedKelasId('');
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = userRole === 'bendahara' && !formData.pic
-      ? { ...formData, pic: currentUser?.full_name || '' }
-      : formData;
+    const payload = { ...formData, pic: currentUser?.full_name || formData.pic || '' };
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: payload });
     } else {
@@ -190,9 +222,14 @@ export default function Transaksi() {
   const handleEdit = (data) => {
     setEditingData(data);
     setFormData(data);
-    if (data.siswa_id) setJenisTransaksi('siswa');
-    else if (data.guru_id || data.nama_pegawai) setJenisTransaksi('pegawai');
-    else setJenisTransaksi('umum');
+    if (data.siswa_id) {
+      setJenisTransaksi('siswa');
+      setSelectedKelasId(data.kelas_id || '');
+    } else if (data.guru_id || data.nama_pegawai) {
+      setJenisTransaksi('pegawai');
+    } else {
+      setJenisTransaksi('umum');
+    }
     setIsOpen(true);
   };
 
@@ -391,7 +428,7 @@ export default function Transaksi() {
           </div>
           
           {canEdit && (
-            <Button onClick={() => { setFormData(prev => ({ ...prev, pic: userRole === 'bendahara' ? (currentUser?.full_name || '') : prev.pic })); setIsOpen(true); }} className="bg-teal-600 hover:bg-teal-700">
+            <Button onClick={() => { setFormData(prev => ({ ...prev, pic: currentUser?.full_name || '' })); setIsOpen(true); }} className="bg-teal-600 hover:bg-teal-700">
               <Plus className="w-4 h-4 mr-2" /> Tambah Transaksi
             </Button>
           )}
@@ -547,18 +584,39 @@ export default function Transaksi() {
               {jenisTransaksi === 'siswa' && (
                 <div className="space-y-4 p-4 bg-blue-50 rounded-lg">
                   <div>
-                    <Label>Pilih Siswa</Label>
-                    <Select value={formData.siswa_id} onValueChange={handleSiswaChange}>
-                      <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
+                    <Label>Pilih Kelas</Label>
+                    <Select
+                      value={selectedKelasId}
+                      onValueChange={(v) => {
+                        setSelectedKelasId(v);
+                        setFormData(prev => ({ ...prev, siswa_id: '', nis: '', nama_siswa: '', kelas: '' }));
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
                       <SelectContent>
-                        {siswaList.map(siswa => (
-                          <SelectItem key={siswa.id} value={siswa.id}>
-                            {siswa.nis} - {siswa.nama} ({siswa.nama_kelas})
+                        {kelasList.map(kelas => (
+                          <SelectItem key={kelas.id} value={kelas.id}>
+                            {kelas.nama_kelas}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  {selectedKelasId && (
+                    <div>
+                      <Label>Pilih Siswa</Label>
+                      <Select value={formData.siswa_id} onValueChange={handleSiswaChange}>
+                        <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
+                        <SelectContent>
+                          {sortedSiswaList.map(siswa => (
+                            <SelectItem key={siswa.id} value={siswa.id}>
+                              {siswa.nis} - {siswa.nama}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                   {formData.siswa_id && tarifIuranList.length > 0 && (
                     <div>
                       <Label>Pilih Tarif Iuran (Opsional)</Label>
@@ -577,20 +635,52 @@ export default function Transaksi() {
                 </div>
               )}
 
-              {/* Pegawai Selection */}
+              {/* Pegawai Selection - dengan pencarian */}
               {jenisTransaksi === 'pegawai' && (
-                <div className="p-4 bg-purple-50 rounded-lg">
+                <div className="p-4 bg-purple-50 rounded-lg space-y-2">
                   <Label>Pilih Pegawai</Label>
-                  <Select value={formData.guru_id} onValueChange={handleGuruChange}>
-                    <SelectTrigger><SelectValue placeholder="Pilih pegawai" /></SelectTrigger>
-                    <SelectContent>
-                      {guruList.map(guru => (
-                        <SelectItem key={guru.id} value={guru.id}>
-                          {guru.nip || '-'} - {guru.nama} ({guru.jabatan})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={pegawaiSearchOpen} onOpenChange={setPegawaiSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal"
+                      >
+                        {formData.guru_id
+                          ? `${formData.nama_pegawai} (${formData.jabatan_pegawai || '-'})`
+                          : "Cari pegawai..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Ketik nama pegawai..." />
+                        <CommandList>
+                          <CommandEmpty>Pegawai tidak ditemukan.</CommandEmpty>
+                          <CommandGroup>
+                            {sortedGuruList.map(guru => (
+                              <CommandItem
+                                key={guru.id}
+                                value={`${guru.nama} ${guru.nip || ''} ${guru.jabatan || ''}`}
+                                onSelect={() => {
+                                  handleGuruChange(guru.id);
+                                  setPegawaiSearchOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={`mr-2 h-4 w-4 ${formData.guru_id === guru.id ? "opacity-100" : "opacity-0"}`}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{guru.nama}</span>
+                                  <span className="text-xs text-slate-400">{guru.nip || '-'} · {guru.jabatan || '-'}</span>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 
@@ -681,9 +771,9 @@ export default function Transaksi() {
                   <Label>PIC/Penanggung Jawab</Label>
                   <Input
                     value={formData.pic}
-                    onChange={(e) => setFormData({...formData, pic: e.target.value})}
-                    readOnly={userRole === 'bendahara'}
-                    placeholder={userRole === 'bendahara' ? currentUser?.full_name || '' : 'Masukkan nama PIC'}
+                    readOnly
+                    placeholder={currentUser?.full_name || ''}
+                    className="bg-slate-50 text-slate-600"
                   />
                 </div>
               </div>
