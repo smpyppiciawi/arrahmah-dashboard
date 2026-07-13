@@ -1,13 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, BarChart2, Search } from "lucide-react";
+import { Users, UserCheck, BarChart2, Search, Lock } from "lucide-react";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
@@ -20,12 +19,22 @@ const STATUS_BADGE = {
 };
 
 export default function RiwayatAbsensi() {
-  const [viewMode, setViewMode] = useState('kelas'); // 'kelas' | 'siswa'
+  const [currentUser, setCurrentUser] = useState(null);
+  const [viewMode, setViewMode] = useState('kelas');
   const [selectedKelas, setSelectedKelas] = useState('');
+  const [filterKelasForSiswa, setFilterKelasForSiswa] = useState('');
   const [selectedSiswa, setSelectedSiswa] = useState('');
   const [searchSiswa, setSearchSiswa] = useState('');
   const [bulanFilter, setBulanFilter] = useState(String(new Date().getMonth() + 1).padStart(2, '0'));
   const [tahunFilter, setTahunFilter] = useState(String(new Date().getFullYear()));
+
+  useEffect(() => {
+    base44.auth.me().then(setCurrentUser).catch(console.error);
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canViewPerSiswa = ['admin', 'operator', 'tu', 'kepsek'].includes(userRole);
+  const isGuru = userRole === 'guru';
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas'),
@@ -35,13 +44,30 @@ export default function RiwayatAbsensi() {
     queryKey: ['siswa-all'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
   });
 
-  // Semua absensi di bulan & tahun terpilih
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama'),
+    enabled: isGuru,
+  });
+
+  const guruData = guruList.find(g => g.email === currentUser?.email);
+
+  // For guru: find their wali kelas
+  const waliKelas = useMemo(() => {
+    if (!isGuru || !guruData) return null;
+    return kelasList.find(k => k.wali_kelas === guruData.nama);
+  }, [kelasList, guruData, isGuru]);
+
+  // Auto-set selectedKelas for guru
+  useEffect(() => {
+    if (waliKelas) setSelectedKelas(waliKelas.id);
+  }, [waliKelas]);
+
   const { data: absensiAll = [], isLoading } = useQuery({
     queryKey: ['absensi-riwayat', bulanFilter, tahunFilter],
     queryFn: async () => {
       const all = await base44.entities.Absensi.list('-tanggal');
       return all.filter(a => {
-        const d = a.tanggal?.slice(0, 7); // "YYYY-MM"
+        const d = a.tanggal?.slice(0, 7);
         return d === `${tahunFilter}-${bulanFilter}`;
       });
     },
@@ -67,7 +93,6 @@ export default function RiwayatAbsensi() {
     return absensiAll.filter(a => a.kelas_id === selectedKelas);
   }, [absensiAll, selectedKelas]);
 
-  // Summary per siswa dalam kelas
   const siswaKelasRekap = useMemo(() => {
     const siswaInKelas = siswaList.filter(s => s.kelas_id === selectedKelas)
       .sort((a, b) => a.nama.localeCompare(b.nama));
@@ -96,11 +121,14 @@ export default function RiwayatAbsensi() {
 
   // ---- Mode Per Siswa ----
   const filteredSiswaList = useMemo(() => {
-    return siswaList
+    const base = filterKelasForSiswa
+      ? siswaList.filter(s => s.kelas_id === filterKelasForSiswa)
+      : siswaList;
+    return base
       .filter(s => s.nama.toLowerCase().includes(searchSiswa.toLowerCase()) || s.nis?.includes(searchSiswa))
       .sort((a, b) => a.nama.localeCompare(b.nama))
       .slice(0, 50);
-  }, [siswaList, searchSiswa]);
+  }, [siswaList, filterKelasForSiswa, searchSiswa]);
 
   const absensiSiswa = useMemo(() => {
     if (!selectedSiswa) return [];
@@ -140,7 +168,7 @@ export default function RiwayatAbsensi() {
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-3 items-end">
-            {/* Mode Toggle */}
+            {/* Mode Toggle - hide "Per Siswa" for guru */}
             <div>
               <Label className="text-xs text-slate-500 font-medium mb-1 block">Tampilan</Label>
               <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
@@ -150,12 +178,14 @@ export default function RiwayatAbsensi() {
                 >
                   <Users className="w-3.5 h-3.5" /> Per Kelas
                 </button>
-                <button
-                  onClick={() => setViewMode('siswa')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'siswa' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
-                >
-                  <UserCheck className="w-3.5 h-3.5" /> Per Siswa
-                </button>
+                {canViewPerSiswa && (
+                  <button
+                    onClick={() => setViewMode('siswa')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'siswa' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5" /> Per Siswa
+                  </button>
+                )}
               </div>
             </div>
 
@@ -178,38 +208,62 @@ export default function RiwayatAbsensi() {
             {viewMode === 'kelas' && (
               <div className="flex-1">
                 <Label className="text-xs text-slate-500 font-medium mb-1 block">Kelas</Label>
-                <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
-                  <SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
-                </Select>
+                {isGuru ? (
+                  waliKelas ? (
+                    <div className="flex items-center gap-2 h-9 px-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-700">{waliKelas.nama_kelas}</span>
+                      <Badge className="ml-auto bg-blue-50 text-blue-600 text-xs">Wali Kelas</Badge>
+                    </div>
+                  ) : (
+                    <div className="h-9 flex items-center px-3 text-xs text-slate-400 italic">Anda tidak terdaftar sebagai wali kelas</div>
+                  )
+                ) : (
+                  <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
+                    <SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
+                  </Select>
+                )}
               </div>
             )}
 
-            {viewMode === 'siswa' && (
-              <div className="flex-1">
-                <Label className="text-xs text-slate-500 font-medium mb-1 block">Cari & Pilih Siswa</Label>
-                <Select value={selectedSiswa} onValueChange={setSelectedSiswa}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Siswa..." /></SelectTrigger>
-                  <SelectContent>
-                    <div className="px-2 py-1.5">
-                      <div className="relative">
-                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                        <input
-                          className="w-full pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
-                          placeholder="Cari nama / NIS..."
-                          value={searchSiswa}
-                          onChange={(e) => setSearchSiswa(e.target.value)}
-                        />
+            {viewMode === 'siswa' && canViewPerSiswa && (
+              <>
+                <div>
+                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Filter Kelas</Label>
+                  <Select value={filterKelasForSiswa} onValueChange={(v) => { setFilterKelasForSiswa(v === 'all' ? '' : v); setSelectedSiswa(''); }}>
+                    <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kelas</SelectItem>
+                      {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Cari & Pilih Siswa</Label>
+                  <Select value={selectedSiswa} onValueChange={setSelectedSiswa}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Siswa..." /></SelectTrigger>
+                    <SelectContent>
+                      <div className="px-2 py-1.5">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                          <input
+                            className="w-full pl-7 pr-2 py-1 text-xs border border-slate-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            placeholder="Cari nama / NIS..."
+                            value={searchSiswa}
+                            onChange={(e) => setSearchSiswa(e.target.value)}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    {filteredSiswaList.map(s => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.nama} — <span className="text-slate-400">{s.nama_kelas}</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                      {filteredSiswaList.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.nama} — <span className="text-slate-400">{s.nama_kelas}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
           </div>
         </CardContent>
@@ -278,7 +332,7 @@ export default function RiwayatAbsensi() {
         </Card>
       )}
 
-      {viewMode === 'kelas' && !selectedKelas && (
+      {viewMode === 'kelas' && !selectedKelas && !isGuru && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-14 text-center text-slate-400">
             <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -287,8 +341,18 @@ export default function RiwayatAbsensi() {
         </Card>
       )}
 
+      {viewMode === 'kelas' && isGuru && !waliKelas && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-14 text-center text-slate-400">
+            <Lock className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p className="text-sm">Anda tidak terdaftar sebagai wali kelas.</p>
+            <p className="text-xs mt-1">Riwayat absensi per kelas hanya tersedia untuk wali kelas.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* ---- SISWA VIEW ---- */}
-      {viewMode === 'siswa' && selectedSiswa && (
+      {viewMode === 'siswa' && canViewPerSiswa && selectedSiswa && (
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -335,7 +399,7 @@ export default function RiwayatAbsensi() {
         </Card>
       )}
 
-      {viewMode === 'siswa' && !selectedSiswa && (
+      {viewMode === 'siswa' && canViewPerSiswa && !selectedSiswa && (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-14 text-center text-slate-400">
             <UserCheck className="w-10 h-10 mx-auto mb-3 opacity-30" />

@@ -3,14 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Upload, AlertTriangle, Loader2 } from "lucide-react";
+import { Upload, Loader2, CheckCircle } from "lucide-react";
 
 /**
- * Replace All Import CSV dengan NIS sebagai kunci utama.
- * - Hapus SEMUA siswa lama
- * - BulkCreate siswa baru dari CSV
- * - Re-link siswa_id di Absensi/Nilai/Pelanggaran/Prestasi/UKS berdasarkan NIS
- *   sehingga riwayat siswa tetap terhubung meskipun siswa_id berubah.
+ * Smart Import CSV dengan NIS sebagai kunci utama.
+ * - NIS sudah ada & data tidak berubah → tidak diubah
+ * - NIS sudah ada & data berubah → diperbarui (contoh: kelas baru)
+ * - NIS baru → ditambahkan sebagai siswa baru
+ * Riwayat data (Absensi, Nilai, dll) tetap aman karena siswa_id tidak berubah.
  */
 export default function ImportSiswaCSV({ disabled }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -32,7 +32,6 @@ export default function ImportSiswaCSV({ disabled }) {
   const parseCSV = (text) => {
     const rows = text.split(/\r?\n/).slice(1).filter(r => r.trim());
     return rows.map(row => {
-      // Support quoted commas minimally: split by comma
       const cols = row.split(',').map(s => (s || '').trim().replace(/^"|"$/g, ''));
       return {
         nis: cols[0] || '',
@@ -61,7 +60,6 @@ export default function ImportSiswaCSV({ disabled }) {
         throw new Error('CSV kosong atau format tidak sesuai. Gunakan tombol Template untuk format yang benar.');
       }
 
-      // Validasi NIS duplikat di dalam CSV
       const nisCounts = {};
       parsed.forEach(r => { nisCounts[r.nis] = (nisCounts[r.nis] || 0) + 1; });
       const dupes = Object.entries(nisCounts).filter(([, c]) => c > 1).map(([n]) => n);
@@ -80,68 +78,76 @@ export default function ImportSiswaCSV({ disabled }) {
         if (row.nama_kelas && !classMap.has(row.nama_kelas)) {
           const tingkat = row.nama_kelas.match(/\d+/)?.[0] || '7';
           const newClass = await base44.entities.Kelas.create({
-            nama_kelas: row.nama_kelas,
-            tingkat,
-            tahun_ajaran: tahunAjaran,
+            nama_kelas: row.nama_kelas, tingkat, tahun_ajaran: tahunAjaran,
           });
           classMap.set(row.nama_kelas, newClass.id);
         }
       }
 
-      const newRecords = parsed.map(r => ({
-        nis: r.nis,
-        nama: r.nama,
-        jenis_kelamin: r.jenis_kelamin,
-        nama_kelas: r.nama_kelas,
-        kelas_id: classMap.get(r.nama_kelas) || '',
-        tanggal_lahir: r.tanggal_lahir,
-        alamat: r.alamat,
-        nama_ortu: r.nama_ortu,
-        no_telp_ortu: r.no_telp_ortu,
-        status: 'Aktif',
-      }));
+      // Fetch existing students
+      setProgress('Mengambil data siswa existing...');
+      const existingSiswa = await base44.entities.Siswa.list('nis', 500);
+      const nisToExisting = new Map();
+      existingSiswa.forEach(s => { if (s.nis) nisToExisting.set(s.nis, s); });
 
-      // Replace All: hapus SEMUA siswa lama (cascade TIDAK di-trigger di deleteMany)
-      setProgress(`Menghapus ${newRecords.length > 0 ? 'data siswa lama' : ''}...`);
-      await base44.entities.Siswa.deleteMany({});
+      // Categorize: create vs update vs unchanged
+      const toCreate = [];
+      const toUpdate = [];
+      let unchangedCount = 0;
+      const updatedDetails = [];
 
-      // BulkCreate siswa baru
-      setProgress(`Menyimpan ${newRecords.length} siswa baru...`);
-      await base44.entities.Siswa.bulkCreate(newRecords);
+      for (const row of parsed) {
+        const kelasId = classMap.get(row.nama_kelas) || '';
+        const existing = nisToExisting.get(row.nis);
 
-      // Ambil siswa baru untuk memetakan NIS -> siswa_id
-      setProgress('Menghubungkan riwayat via NIS...');
-      const newSiswa = await base44.entities.Siswa.list('nis', 500);
-      const nisToNewId = new Map();
-      newSiswa.forEach(s => { if (s.nis) nisToNewId.set(s.nis, s.id); });
+        if (existing) {
+          const changes = {};
+          if (existing.nama !== row.nama) changes.nama = row.nama;
+          if (existing.jenis_kelamin !== row.jenis_kelamin) changes.jenis_kelamin = row.jenis_kelamin;
+          if (existing.nama_kelas !== row.nama_kelas) { changes.nama_kelas = row.nama_kelas; }
+          if (kelasId && existing.kelas_id !== kelasId) { changes.kelas_id = kelasId; changes.nama_kelas = row.nama_kelas; }
+          if (row.tanggal_lahir && existing.tanggal_lahir !== row.tanggal_lahir) changes.tanggal_lahir = row.tanggal_lahir;
+          if (row.alamat && existing.alamat !== row.alamat) changes.alamat = row.alamat;
+          if (row.nama_ortu && existing.nama_ortu !== row.nama_ortu) changes.nama_ortu = row.nama_ortu;
+          if (row.no_telp_ortu && existing.no_telp_ortu !== row.no_telp_ortu) changes.no_telp_ortu = row.no_telp_ortu;
 
-      // Re-link siswa_id di seluruh entitas riwayat berdasarkan NIS
-      const relinkEntities = ['Absensi', 'Nilai', 'Pelanggaran', 'Prestasi', 'UKS'];
-      let totalRelinked = 0;
-      for (const entityName of relinkEntities) {
-        setProgress(`Menghubungkan riwayat: ${entityName}...`);
-        const records = await base44.entities[entityName].list('-updated_date', 500);
-        const toUpdate = [];
-        records.forEach(r => {
-          if (r.nis && nisToNewId.has(r.nis) && r.siswa_id !== nisToNewId.get(r.nis)) {
-            toUpdate.push({ id: r.id, siswa_id: nisToNewId.get(r.nis) });
+          if (Object.keys(changes).length > 0) {
+            toUpdate.push({ id: existing.id, ...changes });
+            updatedDetails.push({ nis: row.nis, nama: row.nama, fields: Object.keys(changes) });
+          } else {
+            unchangedCount++;
           }
-        });
-        if (toUpdate.length > 0) {
-          await base44.entities[entityName].bulkUpdate(toUpdate);
-          totalRelinked += toUpdate.length;
+        } else {
+          toCreate.push({
+            nis: row.nis, nama: row.nama, jenis_kelamin: row.jenis_kelamin,
+            nama_kelas: row.nama_kelas, kelas_id: kelasId,
+            tanggal_lahir: row.tanggal_lahir, alamat: row.alamat,
+            nama_ortu: row.nama_ortu, no_telp_ortu: row.no_telp_ortu,
+            status: 'Aktif',
+          });
         }
       }
 
-      // Invalidate semua query terkait
-      ['siswa', 'kelas', 'absensi', 'nilai', 'pelanggaran', 'prestasi', 'uks'].forEach(k =>
+      if (toCreate.length > 0) {
+        setProgress(`Menyimpan ${toCreate.length} siswa baru...`);
+        await base44.entities.Siswa.bulkCreate(toCreate);
+      }
+
+      if (toUpdate.length > 0) {
+        setProgress(`Memperbarui ${toUpdate.length} siswa yang berubah...`);
+        await base44.entities.Siswa.bulkUpdate(toUpdate);
+      }
+
+      ['siswa', 'kelas', 'absensi', 'nilai'].forEach(k =>
         queryClient.invalidateQueries({ queryKey: [k] })
       );
 
       setResult({
         success: true,
-        total: newRecords.length,
-        relinked: totalRelinked,
+        created: toCreate.length,
+        updated: toUpdate.length,
+        unchanged: unchangedCount,
+        updatedDetails: updatedDetails.slice(0, 10),
       });
     } catch (err) {
       console.error('Import CSV error:', err);
@@ -165,39 +171,35 @@ export default function ImportSiswaCSV({ disabled }) {
         <input type="file" accept=".csv" onChange={handleFileSelect} className="hidden" />
       </label>
 
-      {/* Konfirmasi Replace All */}
       <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="w-5 h-5" /> Konfirmasi Replace All
+            <DialogTitle className="flex items-center gap-2 text-blue-600">
+              <Upload className="w-5 h-5" /> Konfirmasi Import CSV
             </DialogTitle>
             <DialogDescription className="text-left pt-2">
-              Import CSV akan <b>menghapus SEMUA data siswa yang ada</b> dan menggantinya dengan data dari CSV.
+              Import CSV akan <b>memperbarui data siswa berdasarkan NIS</b>:
               <br /><br />
-              <b>Riwayat data siswa (Absensi, Nilai, Pelanggaran, Prestasi, UKS) akan dipertahankan</b> dan otomatis dihubungkan ulang ke siswa baru berdasarkan <b>NIS</b>.
+              • <b>NIS sudah ada & data tidak berubah</b> → tidak diubah
+              <br />
+              • <b>NIS sudah ada & data berubah</b> → diperbarui (contoh: kelas baru)
+              <br />
+              • <b>NIS baru</b> → ditambahkan sebagai siswa baru
               <br /><br />
-              Pastikan CSV berisi <b>semua siswa aktif</b> untuk tahun ajaran ini. Gunakan tombol <b>Template</b> untuk format yang benar.
+              <b>Riwayat data (Absensi, Nilai, dll) tetap aman</b> karena siswa_id tidak berubah. Gunakan tombol <b>Template</b> untuk format yang benar.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setConfirmOpen(false); setPendingFile(null); }}>
-              Batal
-            </Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={confirmImport}>
-              Ya, Replace All & Import
-            </Button>
+            <Button variant="outline" onClick={() => { setConfirmOpen(false); setPendingFile(null); }}>Batal</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={confirmImport}>Ya, Import & Update</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Progress & hasil */}
       <Dialog open={importing || !!result} onOpenChange={(o) => { if (!importing) setResult(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {importing ? 'Memproses Import CSV' : (result?.success ? 'Import Berhasil' : 'Import Gagal')}
-            </DialogTitle>
+            <DialogTitle>{importing ? 'Memproses Import CSV' : (result?.success ? 'Import Berhasil' : 'Import Gagal')}</DialogTitle>
           </DialogHeader>
           {importing ? (
             <div className="flex items-center gap-3 py-4">
@@ -205,19 +207,42 @@ export default function ImportSiswaCSV({ disabled }) {
               <p className="text-sm text-slate-600">{progress}</p>
             </div>
           ) : result?.success ? (
-            <div className="space-y-2 py-2 text-sm">
-              <p className="text-slate-700">✅ <b>{result.total}</b> siswa berhasil diimport.</p>
-              <p className="text-slate-700">🔗 <b>{result.relinked}</b> record riwayat (Absensi, Nilai, Catatan Siswa) telah dihubungkan ulang via NIS.</p>
+            <div className="space-y-3 py-2 text-sm">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                  <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-lg font-bold text-emerald-700">{result.created}</p>
+                  <p className="text-xs text-emerald-600">Siswa Baru</p>
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-blue-700">{result.updated}</p>
+                  <p className="text-xs text-blue-600">Diperbarui</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-center">
+                  <p className="text-lg font-bold text-slate-600">{result.unchanged}</p>
+                  <p className="text-xs text-slate-500">Tidak Berubah</p>
+                </div>
+              </div>
+              {result.updatedDetails && result.updatedDetails.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-slate-500 mb-1">Detail siswa yang diperbarui:</p>
+                  <div className="max-h-32 overflow-y-auto space-y-1">
+                    {result.updatedDetails.map((d, i) => (
+                      <div key={i} className="text-xs text-slate-600 flex items-center gap-2">
+                        <span className="font-mono text-slate-400">{d.nis}</span>
+                        <span className="flex-1 truncate">{d.nama}</span>
+                        <span className="text-blue-500">{d.fields.join(', ')}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <div className="py-2 text-sm text-red-600">
-              ⚠️ {result?.error || 'Terjadi kesalahan tidak diketahui.'}
-            </div>
+            <div className="py-2 text-sm text-red-600">⚠️ {result?.error || 'Terjadi kesalahan tidak diketahui.'}</div>
           )}
           {!importing && (
-            <DialogFooter>
-              <Button onClick={() => setResult(null)}>Tutup</Button>
-            </DialogFooter>
+            <DialogFooter><Button onClick={() => setResult(null)}>Tutup</Button></DialogFooter>
           )}
         </DialogContent>
       </Dialog>

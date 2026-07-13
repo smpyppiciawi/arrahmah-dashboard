@@ -56,6 +56,11 @@ export default function Absensi() {
     enabled: !!selectedKelas,
   });
 
+  // Detect duplicates
+  const siswaIdCounts = {};
+  existingAbsensi.forEach(a => { siswaIdCounts[a.siswa_id] = (siswaIdCounts[a.siswa_id] || 0) + 1; });
+  const duplicateCount = Object.values(siswaIdCounts).filter(c => c > 1).length;
+
   // Sync local state from DB data
   React.useEffect(() => {
     const newData = {};
@@ -264,6 +269,9 @@ export default function Absensi() {
                 </CardTitle>
                 {existingAbsensi.length > 0 && (
                   <Badge className="bg-emerald-50 text-emerald-700 text-xs border-0">Data tersimpan</Badge>
+                )}
+                {duplicateCount > 0 && (
+                  <Badge className="bg-amber-50 text-amber-700 text-xs border border-amber-200">⚠️ {duplicateCount} duplikat</Badge>
                 )}
               </div>
             </CardHeader>

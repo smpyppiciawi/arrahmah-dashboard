@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Edit2, Trash2, Building, Users, Wand2, CheckCircle2, Loader2, ChevronDown, ChevronUp, BookOpen, CalendarDays, LayoutGrid, List } from "lucide-react";
+import { Edit2, Trash2, Building, Users, Wand2, CheckCircle2, Loader2, ChevronDown, ChevronUp, BookOpen, CalendarDays, LayoutGrid, List, GraduationCap } from "lucide-react";
 import { motion } from "framer-motion";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import PembelajaranDialog from "@/components/kelas/PembelajaranDialog";
+import InputPembelajaranGuru from "@/components/kelas/InputPembelajaranGuru";
 import JadwalDialog from "@/components/kelas/JadwalDialog";
 import DetailKelasDialog from "@/components/kelas/DetailKelasDialog";
 
@@ -25,6 +26,7 @@ export default function Kelas() {
   const [generateProgress, setGenerateProgress] = useState({ phase: '', current: 0, total: 0, log: [] });
   const [expandedKelas, setExpandedKelas] = useState({});
   const [pembelajaranOpen, setPembelajaranOpen] = useState(false);
+  const [inputPembelajaranGuruOpen, setInputPembelajaranGuruOpen] = useState(false);
   const [jadwalOpen, setJadwalOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selectedKelas, setSelectedKelas] = useState(null);
@@ -279,6 +281,13 @@ export default function Kelas() {
                   <List className="w-4 h-4" /> Detail
                 </button>
               </div>
+              <Button
+                onClick={() => setInputPembelajaranGuruOpen(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                <GraduationCap className="w-4 h-4 mr-2" />
+                Input Pembelajaran Guru
+              </Button>
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating}
@@ -556,6 +565,7 @@ export default function Kelas() {
       />
 
       <PembelajaranDialog open={pembelajaranOpen} onOpenChange={setPembelajaranOpen} kelas={selectedKelas} />
+      <InputPembelajaranGuru open={inputPembelajaranGuruOpen} onOpenChange={setInputPembelajaranGuruOpen} />
       <JadwalDialog open={jadwalOpen} onOpenChange={setJadwalOpen} kelas={selectedKelas} />
       <DetailKelasDialog open={detailOpen} onOpenChange={setDetailOpen} kelas={selectedKelas} />
     </div>

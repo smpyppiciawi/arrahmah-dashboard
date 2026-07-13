@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,14 +76,29 @@ export default function Nilai() {
 
   const guruData = guruList.find(g => g.email === currentUser?.email);
 
+  // Fetch Pembelajaran assignments for guru
+  const { data: pembelajaranGuru = [] } = useQuery({
+    queryKey: ['pembelajaran-guru', guruData?.id],
+    queryFn: () => base44.entities.Pembelajaran.filter({ guru_id: guruData?.id }),
+    enabled: isGuruRole && !!guruData?.id,
+    staleTime: 60000,
+  });
+
+  const assignedKelasIds = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.kelas_id))] : [], [isGuruRole, pembelajaranGuru]);
+  const assignedMapel = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.mapel))] : [], [isGuruRole, pembelajaranGuru]);
+  const availableKelas = isGuruRole ? kelasList.filter(k => assignedKelasIds.includes(k.id)) : kelasList;
+  const availableMapel = isGuruRole ? assignedMapel : MAPEL_LIST;
+
   const { data: nilaiList = [], isLoading } = useQuery({
-    queryKey: ['nilai', currentUser?.email, userRole],
+    queryKey: ['nilai', currentUser?.email, userRole, assignedKelasIds, assignedMapel],
     queryFn: async () => {
       const all = await base44.entities.Nilai.list('-created_date');
-      if (isGuruRole && guruData) return all.filter(n => (guruData.mapel || []).includes(n.mapel));
+      if (isGuruRole) {
+        return all.filter(n => assignedKelasIds.includes(n.kelas_id) && assignedMapel.includes(n.mapel));
+      }
       return all;
     },
-    enabled: !isGuruRole || !!currentUser,
+    enabled: !isGuruRole || (!!currentUser && !!guruData),
   });
 
   const createMutation = useMutation({
@@ -134,7 +149,7 @@ export default function Nilai() {
   };
 
   const handleMapelChange = (mapel) => {
-    const guru = guruList.find(g => g.mapel && g.mapel.includes(mapel));
+    const guru = isGuruRole ? guruData : guruList.find(g => g.mapel && g.mapel.includes(mapel));
     setKelasFormData(prev => ({ ...prev, mapel, nama_guru: guru?.nama || prev.nama_guru }));
   };
 
@@ -171,9 +186,12 @@ export default function Nilai() {
   const totalBelumTuntas = filteredData.filter(n => n.status_ketuntasan === 'Belum Tuntas').length;
   const persentaseTuntas = totalSiswa > 0 ? ((totalTuntas / totalSiswa) * 100).toFixed(1) : 0;
 
-  const filteredSiswaForInput = filterKelasInput
-    ? siswaList.filter(s => s.kelas_id === filterKelasInput).sort((a, b) => a.nama.localeCompare(b.nama))
-    : siswaList.sort((a, b) => a.nama.localeCompare(b.nama));
+  const filteredSiswaForInput = (filterKelasInput
+    ? siswaList.filter(s => s.kelas_id === filterKelasInput)
+    : isGuruRole
+      ? siswaList.filter(s => assignedKelasIds.includes(s.kelas_id))
+      : siswaList
+  ).sort((a, b) => a.nama.localeCompare(b.nama));
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -230,14 +248,14 @@ export default function Nilai() {
                           <Label className="text-xs text-slate-500">Kelas</Label>
                           <Select value={kelasFormData.kelas_id} onValueChange={handleKelasChange}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                            <SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
+                            <SelectContent>{availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Mata Pelajaran</Label>
                           <Select value={kelasFormData.mapel} onValueChange={handleMapelChange}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
-                            <SelectContent>{MAPEL_LIST.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                            <SelectContent>{availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                       </div>
@@ -324,7 +342,7 @@ export default function Nilai() {
                         <Select value={filterKelasInput} onValueChange={setFilterKelasInput}>
                           <SelectTrigger className="mt-1"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
                           <SelectContent>
-                            {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                            {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>
@@ -342,7 +360,7 @@ export default function Nilai() {
                           <Label className="text-xs text-slate-500">Mata Pelajaran</Label>
                           <Select value={formData.mapel} onValueChange={(v) => setFormData({...formData, mapel: v})}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
-                            <SelectContent>{MAPEL_LIST.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                            <SelectContent>{availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
@@ -406,6 +424,16 @@ export default function Nilai() {
               </div>
             )}
 
+            {isGuruRole && assignedKelasIds.length === 0 && (
+              <Card className="border-0 shadow-sm">
+                <CardContent className="p-8 text-center">
+                  <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-700 font-medium">Belum ada penugasan pembelajaran</p>
+                  <p className="text-slate-400 text-sm mt-1">Hubungi admin untuk penugasan mapel & kelas.</p>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
@@ -433,14 +461,14 @@ export default function Nilai() {
                     <SelectTrigger className="w-full md:w-36"><SelectValue placeholder="Kelas" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Kelas</SelectItem>
-                      {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                      {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={filterMapel} onValueChange={setFilterMapel}>
                     <SelectTrigger className="w-full md:w-44"><SelectValue placeholder="Mapel" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Mapel</SelectItem>
-                      {MAPEL_LIST.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                      {availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <Select value={filterJenisPenilaian} onValueChange={setFilterJenisPenilaian}>
