@@ -80,6 +80,33 @@
       "type": "string",
       "description": "Kelas siswa"
     },
+    "guru_id": {
+      "type": "string",
+      "description": "ID pegawai (untuk transaksi pegawai)"
+    },
+    "nip_pegawai": {
+      "type": "string",
+      "description": "NIP pegawai"
+    },
+    "nama_pegawai": {
+      "type": "string",
+      "description": "Nama pegawai"
+    },
+    "jabatan_pegawai": {
+      "type": "string",
+      "description": "Jabatan pegawai"
+    },
+    "nama_donatur": {
+      "type": "string",
+      "description": "Nama donatur (untuk transaksi donasi)"
+    },
+    "bulan_dibayar": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Bulan SPP yang dibayar dalam transaksi ini"
+    },
     "sumber_rekening": {
       "type": "string",
       "description": "Sumber atau rekening terkait"
@@ -105,6 +132,10 @@
       ],
       "default": "Lunas",
       "description": "Status pembayaran"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran transaksi"
     }
   },
   "required": [
