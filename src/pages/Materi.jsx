@@ -15,6 +15,7 @@ import {
   Download
 } from "lucide-react";
 import { motion } from "framer-motion";
+import FloatingAddButton from "@/components/ui/FloatingAddButton";
 
 const MAPEL_LIST = [
   'Bahasa Indonesia', 'Matematika', 'IPA', 'IPS', 'Bahasa Inggris',
@@ -188,13 +189,7 @@ export default function Materi() {
             <p className="text-slate-500 mt-1">Kelola materi pembelajaran</p>
           </div>
           
-          {canEdit && (
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-indigo-600 hover:bg-indigo-700">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Materi
-                </Button>
-              </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingData ? 'Edit Materi' : 'Tambah Materi Baru'}</DialogTitle>
@@ -328,7 +323,6 @@ export default function Materi() {
               </form>
             </DialogContent>
           </Dialog>
-          )}
         </div>
 
         {/* Filters */}
@@ -453,6 +447,7 @@ export default function Materi() {
           </Card>
         )}
       </div>
+      {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Materi" color="indigo" icon={Plus} />}
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import TransaksiSummary from '@/components/transaksi/TransaksiSummary';
 import TransaksiForm from '@/components/transaksi/TransaksiForm';
+import FloatingAddButton from '@/components/ui/FloatingAddButton';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -272,11 +273,7 @@ export default function Transaksi() {
               Kelola transaksi sekolah {activeAcademicYear && `· TP ${activeAcademicYear}`}
             </p>
           </div>
-          {canEdit && (
-            <Button onClick={handleAdd} className="bg-teal-600 hover:bg-teal-700">
-              <Plus className="w-4 h-4 mr-2" /> Tambah Transaksi
-            </Button>
-          )}
+
         </div>
 
         {/* Summary */}
@@ -362,6 +359,7 @@ export default function Transaksi() {
           tarifIuranList={tarifIuranList}
           keuanganList={keuanganList}
         />
+        {canEdit && <FloatingAddButton onClick={handleAdd} label="Tambah Transaksi" color="teal" icon={Plus} />}
       </div>
     </div>
   );

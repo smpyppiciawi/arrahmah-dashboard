@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
 import { GraduationCap, Plus, Edit2, Trash2, Download, Upload } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
+import FloatingAddButton from "@/components/ui/FloatingAddButton";
 
 // Default Mapel list - akan diambil dari database
 
@@ -304,9 +305,7 @@ export default function Guru() {
                 </Button>
                 <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
               </label>
-              <Button onClick={() => setIsOpen(true)} className="bg-violet-600 hover:bg-violet-700" size="sm">
-                <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tambah Data</span>
-              </Button>
+
             </div>
           )}
         </div>
@@ -467,6 +466,7 @@ export default function Guru() {
         </Dialog>
       </div>
     </div>
+    {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Data" color="purple" icon={Plus} />}
     </>
   );
 }

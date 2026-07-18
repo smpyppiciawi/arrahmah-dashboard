@@ -1,5 +1,5 @@
 {
-  "name": "Siswa",
+  "name": "DataLulusan",
   "type": "object",
   "properties": {
     "nis": {
@@ -17,14 +17,6 @@
         "Perempuan"
       ]
     },
-    "kelas_id": {
-      "type": "string",
-      "description": "ID kelas siswa"
-    },
-    "nama_kelas": {
-      "type": "string",
-      "description": "Nama kelas untuk tampilan"
-    },
     "tanggal_lahir": {
       "type": "string",
       "format": "date"
@@ -39,25 +31,34 @@
     "no_telp_ortu": {
       "type": "string"
     },
-    "status": {
+    "kelas_terakhir": {
       "type": "string",
-      "enum": [
-        "Aktif",
-        "Lulus",
-        "Pindah",
-        "Keluar"
-      ],
-      "default": "Aktif"
+      "description": "Nama kelas terakhir siswa sebelum lulus"
     },
     "tahun_lulus": {
       "type": "string",
       "description": "Tahun ajaran saat lulus (contoh: 2024/2025)"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa asli untuk relasi data riwayat (Nilai, Absensi, dll)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Lulus",
+        "Pindah",
+        "Keluar"
+      ],
+      "default": "Lulus"
+    },
+    "keterangan": {
+      "type": "string"
     }
   },
   "required": [
     "nis",
     "nama",
-    "kelas_id",
-    "nama_kelas"
+    "tahun_lulus"
   ]
 }

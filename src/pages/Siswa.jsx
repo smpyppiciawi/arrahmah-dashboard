@@ -9,9 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2 } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap } from "lucide-react";
+import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
+import FloatingAddButton from "@/components/ui/FloatingAddButton";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -53,7 +55,7 @@ export default function Siswa() {
 
   const { data: siswaList = [], isLoading } = useQuery({
     queryKey: ['siswa'],
-    queryFn: () => base44.entities.Siswa.list('nama'),
+    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
   });
 
   const { data: kelasList = [] } = useQuery({
@@ -248,9 +250,11 @@ export default function Siswa() {
                 <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>
               <ImportSiswaCSV />
-              <Button onClick={() => setIsOpen(true)} className="bg-blue-600 hover:bg-blue-700" size="sm">
-                <Plus className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tambah Siswa</span>
-              </Button>
+              <Link to="/DataLulusan">
+                <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50">
+                  <GraduationCap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Data Lulusan</span>
+                </Button>
+              </Link>
             </div>
           )}
         </div>
@@ -351,6 +355,7 @@ export default function Siswa() {
         </Dialog>
       </div>
     </div>
+    {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Siswa" color="blue" icon={Plus} />}
     </>
   );
 }

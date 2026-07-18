@@ -14,6 +14,7 @@ import PembelajaranDialog from "@/components/kelas/PembelajaranDialog";
 import InputPembelajaranGuru from "@/components/kelas/InputPembelajaranGuru";
 import JadwalDialog from "@/components/kelas/JadwalDialog";
 import DetailKelasDialog from "@/components/kelas/DetailKelasDialog";
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function Kelas() {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,6 +33,7 @@ export default function Kelas() {
   const [selectedKelas, setSelectedKelas] = useState(null);
   const [viewMode, setViewMode] = useState('grid');
   const queryClient = useQueryClient();
+  const { activeAcademicYear } = useActiveAcademicYear();
 
   const [formData, setFormData] = useState({
     wali_kelas: '', tahun_ajaran: ''
@@ -172,7 +174,7 @@ export default function Kelas() {
       setGenerateProgress(prev => ({ ...prev, phase: 'kelas' }));
       const newKelasData = namaKelasPerluDibuat.map(namaKelas => {
         const tingkatMatch = namaKelas.match(/^([789])/);
-        return { nama_kelas: namaKelas, tingkat: tingkatMatch ? tingkatMatch[1] : '7' };
+        return { nama_kelas: namaKelas, tingkat: tingkatMatch ? tingkatMatch[1] : '7', tahun_ajaran: activeAcademicYear || '' };
       });
       const createdKelas = await base44.entities.Kelas.bulkCreate(newKelasData);
       for (const k of createdKelas) {
@@ -245,7 +247,9 @@ export default function Kelas() {
   };
 
   // Sort: by tingkat (7→8→9) then by nama_kelas alphabetically
-  const sortedKelasList = [...kelasList].sort((a, b) => {
+  const sortedKelasList = [...kelasList]
+    .filter(k => k.tahun_ajaran === activeAcademicYear)
+    .sort((a, b) => {
     const tingkatA = parseInt(a.tingkat) || 0;
     const tingkatB = parseInt(b.tingkat) || 0;
     if (tingkatA !== tingkatB) return tingkatA - tingkatB;

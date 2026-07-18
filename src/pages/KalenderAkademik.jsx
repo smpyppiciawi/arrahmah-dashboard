@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, ExternalLink } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
+import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO, isWithinInterval, addMonths, subMonths } from 'date-fns';
@@ -166,11 +167,6 @@ export default function KalenderAkademik() {
             <p className="text-slate-500 mt-0.5 text-sm">Jadwal & kegiatan akademik sepanjang tahun pelajaran</p>
           </div>
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25 gap-2" onClick={() => { setEditData(null); setFormData(EMPTY_FORM); }}>
-                <Plus className="w-4 h-4" /> Tambah Kegiatan
-              </Button>
-            </DialogTrigger>
             <DialogContent className="w-[95vw] max-w-md">
               <DialogHeader><DialogTitle>{editData ? 'Edit Kegiatan' : 'Tambah Kegiatan'}</DialogTitle></DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -547,6 +543,7 @@ export default function KalenderAkademik() {
           title="Hapus Kegiatan"
           description="Yakin ingin menghapus kegiatan ini?"
         />
+        <FloatingAddButton onClick={() => { setEditData(null); setFormData(EMPTY_FORM); setIsOpen(true); }} label="Tambah Kegiatan" color="indigo" icon={Plus} />
       </div>
     </div>
   );

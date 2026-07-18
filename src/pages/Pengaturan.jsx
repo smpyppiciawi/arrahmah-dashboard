@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import LulusanTab from '@/components/pengaturan/LulusanTab';
+import { Link } from 'react-router-dom';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
@@ -108,14 +108,31 @@ export default function Pengaturan() {
         return { updatedCount: 0 };
       }
 
-      // Update status semua siswa kelas 9 menjadi Lulus
+      // Update status semua siswa kelas 9 menjadi Lulus + set tahun_lulus
       await Promise.all(
         siswaKelas9.map(siswa =>
           base44.entities.Siswa.update(siswa.id, {
             status: 'Lulus',
+            tahun_lulus: pengaturan?.tahun_ajaran_aktif || '',
           })
         )
       );
+
+      // Buat arsip DataLulusan
+      const dataLulusanRecords = siswaKelas9.map(siswa => ({
+        nis: siswa.nis,
+        nama: siswa.nama,
+        jenis_kelamin: siswa.jenis_kelamin,
+        tanggal_lahir: siswa.tanggal_lahir,
+        alamat: siswa.alamat,
+        nama_ortu: siswa.nama_ortu,
+        no_telp_ortu: siswa.no_telp_ortu,
+        kelas_terakhir: siswa.nama_kelas,
+        tahun_lulus: pengaturan?.tahun_ajaran_aktif || '',
+        siswa_id: siswa.id,
+        status: 'Lulus',
+      }));
+      await base44.entities.DataLulusan.bulkCreate(dataLulusanRecords);
 
       return { updatedCount: siswaKelas9.length };
     },
@@ -133,6 +150,11 @@ export default function Pengaturan() {
   });
 
   const kelas9Count = kelasList.filter(k => k.tingkat === '9').length;
+
+  const tahunAjaranList = useMemo(() => {
+    const set = new Set(kelasList.map(k => k.tahun_ajaran).filter(Boolean));
+    return Array.from(set).sort().reverse();
+  }, [kelasList]);
 
   if (loadingSettings) {
     return (
@@ -221,6 +243,38 @@ export default function Pengaturan() {
             </CardContent>
           </Card>
 
+          {/* Daftar Tahun Ajaran */}
+          {tahunAjaranList.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <CalendarDays className="w-5 h-5 text-indigo-500" />
+                  Daftar Tahun Ajaran
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {tahunAjaranList.map(ta => (
+                    <div key={ta} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <CalendarDays className="w-4 h-4 text-slate-400" />
+                        <span className="font-medium text-slate-700">{ta}</span>
+                      </div>
+                      {pengaturan?.tahun_ajaran_aktif === ta ? (
+                        <Badge className="bg-green-100 text-green-700 border-green-200">Aktif</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-slate-400">Arsip</Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400 mt-3">
+                  Data kelas, siswa, dan transaksi tersimpan rapih per tahun ajaran. Beralih tahun ajaran tidak menghapus data sebelumnya.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Luluskan Siswa Kelas 9 */}
           <Card className="border-amber-200">
             <CardHeader className="pb-3">
@@ -262,7 +316,20 @@ export default function Pengaturan() {
 
         {/* Tab Data Lulusan */}
         <TabsContent value="lulusan" className="mt-5">
-          <LulusanTab />
+          <Card>
+            <CardContent className="p-8 text-center">
+              <GraduationCap className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Arsip Data Lulusan</h3>
+              <p className="text-sm text-slate-500 mb-4 max-w-md mx-auto">
+                Lihat daftar tahun pelajaran lulusan dan riwayat lengkap setiap siswa (Nilai, Absensi, Prestasi, Pelanggaran, UKS, Keuangan).
+              </p>
+              <Link to="/DataLulusan">
+                <Button className="bg-amber-500 hover:bg-amber-600 gap-2">
+                  <GraduationCap className="w-4 h-4" /> Buka Data Lulusan
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
