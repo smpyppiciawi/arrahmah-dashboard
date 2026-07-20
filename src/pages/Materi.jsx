@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +64,16 @@ export default function Materi() {
   // Cari data guru yang login
   const guruData = guruList.find(g => g.email === currentUser?.email);
 
+  const { data: pembelajaranGuru = [] } = useQuery({
+    queryKey: ['pembelajaran-guru-materi', guruData?.id],
+    queryFn: () => base44.entities.Pembelajaran.filter({ guru_id: guruData?.id }),
+    enabled: isGuruRole && !!guruData?.id,
+    staleTime: 60000,
+  });
+
+  const assignedMapel = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.mapel))] : [], [isGuruRole, pembelajaranGuru]);
+  const availableMapel = isGuruRole ? assignedMapel : MAPEL_LIST;
+
   const { data: materiList = [], isLoading } = useQuery({
     queryKey: ['materi', currentUser?.email, userRole],
     queryFn: async () => {
@@ -75,6 +85,13 @@ export default function Materi() {
     },
     enabled: !isGuruRole || !!currentUser,
   });
+
+  // Autofill guru_pengampu for guru role
+  useEffect(() => {
+    if (isOpen && !editingData && guruData && isGuruRole) {
+      setFormData(prev => prev.guru_pengampu ? prev : { ...prev, guru_pengampu: guruData.nama });
+    }
+  }, [isOpen, guruData, isGuruRole, editingData]);
 
   const filteredGuruList = formData.mapel 
     ? guruList.filter(guru => guru.mapel?.includes(formData.mapel))
@@ -210,7 +227,7 @@ export default function Materi() {
                     <Select value={formData.mapel} onValueChange={(v) => setFormData({...formData, mapel: v})}>
                       <SelectTrigger><SelectValue placeholder="Pilih" /></SelectTrigger>
                       <SelectContent>
-                        {MAPEL_LIST.map(mapel => (
+                        {availableMapel.map(mapel => (
                           <SelectItem key={mapel} value={mapel}>{mapel}</SelectItem>
                         ))}
                       </SelectContent>

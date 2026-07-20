@@ -66,6 +66,7 @@ import SiswaPortal from './pages/SiswaPortal';
 import Transaksi from './pages/Transaksi';
 import KalenderAkademik from './pages/KalenderAkademik';
 import DataLulusan from './pages/DataLulusan';
+import SiswaKeluar from './pages/SiswaKeluar';
 import __Layout from './Layout.jsx';
 
 
@@ -89,6 +90,7 @@ export const PAGES = {
     "Transaksi": Transaksi,
     "KalenderAkademik": KalenderAkademik,
     "DataLulusan": DataLulusan,
+    "SiswaKeluar": SiswaKeluar,
 }
 
 export const pagesConfig = {

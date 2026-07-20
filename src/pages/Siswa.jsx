@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +24,7 @@ export default function Siswa() {
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [keluarSiswa, setKeluarSiswa] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -210,10 +212,13 @@ export default function Siswa() {
       filterable: false,
       render: (row) => canEdit ? (
         <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)} title="Edit">
             <Edit2 className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)}>
+          <Button size="sm" variant="ghost" className="text-orange-500" onClick={() => setKeluarSiswa(row)} title="Keluarkan Siswa">
+            <LogOut className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)} title="Hapus">
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -253,6 +258,11 @@ export default function Siswa() {
               <Link to="/DataLulusan">
                 <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50">
                   <GraduationCap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Data Lulusan</span>
+                </Button>
+              </Link>
+              <Link to="/SiswaKeluar">
+                <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50">
+                  <LogOut className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Siswa Keluar</span>
                 </Button>
               </Link>
             </div>
@@ -356,6 +366,7 @@ export default function Siswa() {
       </div>
     </div>
     {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Siswa" color="blue" icon={Plus} />}
+    {keluarSiswa && <SiswaKeluarDialog siswa={keluarSiswa} onClose={() => setKeluarSiswa(null)} />}
     </>
   );
 }

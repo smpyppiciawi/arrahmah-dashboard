@@ -46,6 +46,7 @@ const FULL_ACCESS_MENU = {
         { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
         { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
       ],
       separated: true
     }
@@ -73,6 +74,7 @@ const ROLE_MENU = {
           { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
         ]
       }
     ]
@@ -103,6 +105,7 @@ const ROLE_MENU = {
           { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
         ]
       }
     ]
@@ -127,6 +130,7 @@ const ROLE_MENU = {
           { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
         ]
       }
     ]

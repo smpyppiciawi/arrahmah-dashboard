@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
-import { Users, Megaphone, Plus, Trash2, Building, User, Phone, Bell, Edit2, MessageCircle, X, Save } from 'lucide-react';
+import UangKasTab from '@/components/walikelas/UangKasTab';
+import { Users, Megaphone, Plus, Trash2, Building, User, Phone, Bell, Edit2, MessageCircle, X, Save, Wallet } from 'lucide-react';
 
 export default function WaliKelas() {
   const { user: currentUser } = useAuth();
@@ -179,12 +180,15 @@ export default function WaliKelas() {
 
         {/* Tabs */}
         <Tabs defaultValue="siswa">
-          <TabsList className="grid grid-cols-2 w-full max-w-xs">
+          <TabsList className="grid grid-cols-3 w-full max-w-md">
             <TabsTrigger value="siswa" className="gap-1.5">
               <User className="w-4 h-4" /> Data Siswa
             </TabsTrigger>
             <TabsTrigger value="pengumuman" className="gap-1.5">
               <Megaphone className="w-4 h-4" /> Pengumuman
+            </TabsTrigger>
+            <TabsTrigger value="uangkas" className="gap-1.5">
+              <Wallet className="w-4 h-4" /> Uang Kas
             </TabsTrigger>
           </TabsList>
 
@@ -324,6 +328,10 @@ export default function WaliKelas() {
                 </Card>
               ))}
             </div>
+          </TabsContent>
+          {/* Uang Kas */}
+          <TabsContent value="uangkas">
+            <UangKasTab kelasWali={kelasWali} guruData={guruData} />
           </TabsContent>
         </Tabs>
       </div>

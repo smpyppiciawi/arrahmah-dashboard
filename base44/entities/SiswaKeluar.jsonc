@@ -1,0 +1,70 @@
+{
+  "name": "SiswaKeluar",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa asli"
+    },
+    "nis": {
+      "type": "string",
+      "description": "Nomor Induk Siswa"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap siswa"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "enum": [
+        "Laki-laki",
+        "Perempuan"
+      ]
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Kelas terakhir siswa"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Pindah",
+        "Meninggal Dunia",
+        "Mengundurkan Diri",
+        "Lainnya"
+      ],
+      "description": "Kategori siswa keluar"
+    },
+    "kategori_manual": {
+      "type": "string",
+      "description": "Kategori manual jika Lainnya"
+    },
+    "tanggal_keluar": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal siswa keluar"
+    },
+    "alasan": {
+      "type": "string",
+      "description": "Alasan keluar"
+    },
+    "nama_sekolah_tujuan": {
+      "type": "string",
+      "description": "Nama sekolah tujuan (jika Pindah)"
+    },
+    "npsn_sekolah_tujuan": {
+      "type": "string",
+      "description": "NPSN sekolah tujuan (jika Pindah)"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran saat keluar"
+    }
+  },
+  "required": [
+    "nis",
+    "nama",
+    "kategori",
+    "tanggal_keluar"
+  ]
+}

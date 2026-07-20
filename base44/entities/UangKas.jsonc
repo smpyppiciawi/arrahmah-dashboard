@@ -1,0 +1,51 @@
+{
+  "name": "UangKas",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal transaksi"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Pemasukan",
+        "Pengeluaran"
+      ],
+      "description": "Jenis transaksi kas"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Deskripsi transaksi"
+    },
+    "jumlah": {
+      "type": "number",
+      "description": "Nominal transaksi"
+    },
+    "kelas_id": {
+      "type": "string",
+      "description": "ID kelas"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas"
+    },
+    "pic": {
+      "type": "string",
+      "description": "Penanggung jawab"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran"
+    }
+  },
+  "required": [
+    "tanggal",
+    "jenis",
+    "uraian",
+    "jumlah",
+    "kelas_id",
+    "nama_kelas"
+  ]
+}

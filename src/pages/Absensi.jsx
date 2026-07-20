@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -44,6 +44,23 @@ export default function Absensi() {
     queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama'), staleTime: 60000,
+  });
+
+  const guruData = guruList.find(g => g.email === currentUser?.email);
+  const isGuruRole = userRole === 'guru';
+
+  const { data: pembelajaranGuru = [] } = useQuery({
+    queryKey: ['pembelajaran-guru-absensi', guruData?.id],
+    queryFn: () => base44.entities.Pembelajaran.filter({ guru_id: guruData?.id }),
+    enabled: isGuruRole && !!guruData?.id,
+    staleTime: 60000,
+  });
+
+  const assignedKelasIds = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.kelas_id))] : [], [isGuruRole, pembelajaranGuru]);
+  const availableKelas = isGuruRole ? kelasList.filter(k => assignedKelasIds.includes(k.id)) : kelasList;
+
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa', selectedKelas],
     queryFn: () => selectedKelas ? base44.entities.Siswa.filter({ kelas_id: selectedKelas, status: 'Aktif' }) : [],
@@ -75,6 +92,13 @@ export default function Absensi() {
     });
     setAbsensiData(newData);
   }, [siswaList, existingAbsensi]);
+
+  // Auto-select kelas for guru role
+  React.useEffect(() => {
+    if (isGuruRole && availableKelas.length > 0 && !selectedKelas) {
+      setSelectedKelas(availableKelas[0].id);
+    }
+  }, [isGuruRole, availableKelas, selectedKelas]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Absensi.create(data),
@@ -219,7 +243,7 @@ export default function Absensi() {
                 <Select value={selectedKelas} onValueChange={setSelectedKelas}>
                   <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
                   <SelectContent>
-                    {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                    {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

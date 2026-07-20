@@ -1,0 +1,35 @@
+{
+  "name": "Menstruasi",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal menstruasi"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "tanggal"
+  ]
+}
