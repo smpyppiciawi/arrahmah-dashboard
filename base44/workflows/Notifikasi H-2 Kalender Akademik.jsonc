@@ -1,0 +1,44 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 7 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Jakarta",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "h2_notification",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_h2_notification": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "h2Notification"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Kirim Notifikasi H-2",
+            "description": "Cek kegiatan H-2 dan kirim email"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Notifikasi H-2 Kalender Akademik",
+  "description": "Setiap hari pukul 07:00 WIB, cek kegiatan yang akan berlangsung H-2 (lusa) dan kirim email notifikasi ke semua guru/pegawai serta kepala sekolah"
+}

@@ -91,33 +91,9 @@ const ROLE_MENU = {
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
-      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
-      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
-      { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
-    groups: [
-      {
-        id: 'bendahara', name: 'BENDAHARA', icon: Wallet, color: '#14b8a6',
-        items: [
-          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: '#14b8a6' },
-          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
-          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
-        ]
-      },
-      {
-        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444', separated: true,
-        items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
-        { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
-        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
-        ]
-      }
-    ]
+    groups: []
   },
   bendahara: {
     topItems: [
@@ -172,6 +148,11 @@ export default function Layout({ children, currentPageName }) {
   const userRole = currentUser?.role || 'guru';
   const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['tu'];
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
+
+  // Kepsek dashboard: full-screen, no sidebar
+  if (currentPageName === 'Kepsek' && userRole === 'kepsek') {
+    return <div className="min-h-screen bg-slate-950 font-inter">{children}</div>;
+  }
 
   const handleGroupClick = (groupId) => {
     setExpandedGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));

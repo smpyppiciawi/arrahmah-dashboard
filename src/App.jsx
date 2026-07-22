@@ -13,6 +13,7 @@ import Masuk from './pages/Masuk';
 import Pengaturan from './pages/Pengaturan';
 import { ActiveAcademicYearProvider } from './context/ActiveAcademicYearContext';
 import SiswaPortal from './pages/SiswaPortal';
+import Kepsek from './pages/Kepsek';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -23,7 +24,8 @@ const LayoutWrapper = ({ children, currentPageName }) => Layout ?
   : <>{children}</>;
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin, siswaUser } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, navigateToLogin, siswaUser, user } = useAuth();
+  const isKepsek = user?.role === 'kepsek';
 
   // Show loading spinner
   if (isLoadingPublicSettings || isLoadingAuth) {
@@ -60,7 +62,14 @@ const AuthenticatedApp = () => {
       {/* Staff routes - require Base44 auth */}
       <Route path="/" element={
         isAuthenticated
-          ? <LayoutWrapper currentPageName={mainPageKey}><MainPage /></LayoutWrapper>
+          ? (isKepsek
+            ? <Kepsek />
+            : <LayoutWrapper currentPageName={mainPageKey}><MainPage /></LayoutWrapper>)
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/Kepsek" element={
+        isAuthenticated
+          ? <Kepsek />
           : <Navigate to="/Masuk" replace />
       } />
 
