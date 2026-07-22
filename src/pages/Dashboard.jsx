@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,8 @@ export default function Dashboard() {
   const { data: pelanggaranList = [] } = useQuery({ queryKey: ['pelanggaran', dateFilter], queryFn: () => base44.entities.Pelanggaran.filter({ tanggal: dateFilter }) });
   const { data: prestasiList = [] } = useQuery({ queryKey: ['prestasi', dateFilter], queryFn: () => base44.entities.Prestasi.filter({ tanggal: dateFilter }) });
   const { data: uksList = [] } = useQuery({ queryKey: ['uks', dateFilter], queryFn: () => base44.entities.UKS.filter({ tanggal: dateFilter }) });
+  const { data: menstruasiList = [] } = useQuery({ queryKey: ['menstruasi', dateFilter], queryFn: () => base44.entities.Menstruasi.filter({ tanggal: dateFilter }) });
+  const { data: izinList = [] } = useQuery({ queryKey: ['izinSiswa', dateFilter], queryFn: () => base44.entities.IzinSiswa.filter({ tanggal: dateFilter }) });
 
   const aktiveSiswa = siswaList.filter(s => s.status === 'Aktif');
   const siswa7 = aktiveSiswa.filter(s => s.nama_kelas?.startsWith('7'));
@@ -110,6 +112,8 @@ export default function Dashboard() {
                 { value: 'pelanggaran', label: 'Pelanggaran', icon: AlertTriangle },
                 { value: 'prestasi', label: 'Prestasi', icon: Award },
                 { value: 'uks', label: 'UKS', icon: Heart },
+                { value: 'menstruasi', label: 'Menstruasi', icon: Droplets },
+                { value: 'izin', label: 'Izin', icon: FileText },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -369,6 +373,71 @@ export default function Dashboard() {
                         </TableRow>
                       ))}
                       {uksList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada data UKS pada tanggal ini</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Menstruasi */}
+          <TabsContent value="menstruasi">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Menstruasi</CardTitle>
+                  <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                  <Table>
+                    <TableHeader><TableRow className="bg-slate-50">
+                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {menstruasiList.map(item => (
+                        <TableRow key={item.id} className="hover:bg-slate-50">
+                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
+                          <TableCell><Badge className="bg-pink-50 text-pink-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
+                        </TableRow>
+                      ))}
+                      {menstruasiList.length === 0 && <TableRow><TableCell colSpan={2} className="text-center py-10 text-slate-400 text-sm">Tidak ada data menstruasi pada tanggal ini</TableCell></TableRow>}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Izin */}
+          <TabsContent value="izin">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Izin Siswa</CardTitle>
+                  <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto rounded-xl border border-slate-100">
+                  <Table>
+                    <TableHeader><TableRow className="bg-slate-50">
+                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
+                      <TableHead className="text-xs">Jam</TableHead><TableHead className="text-xs">Alasan</TableHead>
+                      <TableHead className="text-xs">Petugas</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>
+                      {izinList.map(item => (
+                        <TableRow key={item.id} className="hover:bg-slate-50">
+                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
+                          <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
+                          <TableCell className="text-sm text-slate-600">{item.jam_izin}</TableCell>
+                          <TableCell><Badge className="bg-amber-50 text-amber-700 text-xs border-0">{item.alasan === 'Lainnya' && item.alasan_manual ? item.alasan_manual : item.alasan}</Badge></TableCell>
+                          <TableCell className="text-sm text-slate-600">{item.petugas_piket}</TableCell>
+                        </TableRow>
+                      ))}
+                      {izinList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada izin pada tanggal ini</TableCell></TableRow>}
                     </TableBody>
                   </Table>
                 </div>

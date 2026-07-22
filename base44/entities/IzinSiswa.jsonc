@@ -1,0 +1,87 @@
+{
+  "name": "IzinSiswa",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal izin"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "jam_izin": {
+      "type": "string",
+      "description": "Jam izin keluar (HH:mm)"
+    },
+    "alasan": {
+      "type": "string",
+      "enum": [
+        "Dispensasi",
+        "Permintaan Orang Tua",
+        "Lainnya"
+      ],
+      "description": "Alasan izin"
+    },
+    "alasan_manual": {
+      "type": "string",
+      "description": "Alasan manual jika Lainnya"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan izin"
+    },
+    "petugas_piket": {
+      "type": "string",
+      "description": "Nama petugas piket"
+    },
+    "petugas_piket_id": {
+      "type": "string",
+      "description": "ID guru petugas piket"
+    },
+    "wali_kelas": {
+      "type": "string",
+      "description": "Nama wali kelas siswa"
+    },
+    "no_telp_wali": {
+      "type": "string",
+      "description": "No telp wali kelas untuk notifikasi WA"
+    },
+    "no_telp_ortu": {
+      "type": "string",
+      "description": "No telp orang tua siswa"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "notif_wa_sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "notif_email_sent": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "tanggal",
+    "siswa_id",
+    "nama_siswa",
+    "jam_izin",
+    "alasan",
+    "petugas_piket"
+  ]
+}

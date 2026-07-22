@@ -73,6 +73,17 @@ export default function Absensi() {
     enabled: !!selectedKelas,
   });
 
+  const { data: jadwalList = [] } = useQuery({
+    queryKey: ['jadwal-pelajaran', selectedKelas],
+    queryFn: () => selectedKelas ? base44.entities.JadwalPelajaran.filter({ kelas_id: selectedKelas }) : [],
+    enabled: !!selectedKelas,
+  });
+
+  const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const todayJadwal = jadwalList
+    .filter(j => j.hari === HARI_INDONESIA[new Date(selectedDate).getDay()])
+    .sort((a, b) => (a.jam_ke || 0) - (b.jam_ke || 0));
+
   // Detect duplicates
   const siswaIdCounts = {};
   existingAbsensi.forEach(a => { siswaIdCounts[a.siswa_id] = (siswaIdCounts[a.siswa_id] || 0) + 1; });
@@ -251,7 +262,18 @@ export default function Absensi() {
                 <div className="flex-1">
                   <Label className="text-xs text-slate-500 font-medium mb-1 block">Set Jam Masuk (semua)</Label>
                   <div className="flex gap-2">
-                    <Input type="time" value={bulkJamMasuk} onChange={(e) => setBulkJamMasuk(e.target.value)} className="h-9 flex-1" />
+                    <Select value={bulkJamMasuk || undefined} onValueChange={setBulkJamMasuk}>
+                      <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Pilih Jam..." /></SelectTrigger>
+                      <SelectContent>
+                        {todayJadwal.length === 0 ? (
+                          <SelectItem value="none" disabled>Tidak ada jadwal hari ini</SelectItem>
+                        ) : todayJadwal.map(j => (
+                          <SelectItem key={j.id} value={j.jam_mulai || ''}>
+                            Jam {j.jam_ke} ({j.jam_mulai} - {j.jam_selesai})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <Button variant="outline" onClick={handleBulkJamMasuk} disabled={!selectedKelas || !bulkJamMasuk} className="h-9 gap-1 text-xs">
                       <Clock className="w-3.5 h-3.5" /> Set
                     </Button>

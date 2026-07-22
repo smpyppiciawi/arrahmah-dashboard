@@ -63,13 +63,45 @@ export default function KalenderAkademik() {
     queryFn: () => base44.entities.KalenderAkademik.list('-tanggal_mulai'),
   });
 
+  const sendEventNotifications = async (eventData, isUpdate) => {
+    try {
+      if (!eventData?.tanggal_mulai) return;
+      const guruList = await base44.entities.Guru.list();
+      const emails = guruList.filter(g => g.email).map(g => g.email);
+      if (emails.length === 0) return;
+      const eventDate = format(parseISO(eventData.tanggal_mulai), 'd MMMM yyyy', { locale: idLocale });
+      const eventEndDate = eventData.tanggal_selesai ? ` s/d ${format(parseISO(eventData.tanggal_selesai), 'd MMMM yyyy', { locale: idLocale })}` : '';
+      const body = `Kegiatan ${isUpdate ? 'diperbarui' : 'baru'} di Kalender Akademik:\n\n${eventData.judul}\nTanggal: ${eventDate}${eventEndDate}\nKategori: ${eventData.kategori}${eventData.keterangan ? `\nKeterangan: ${eventData.keterangan}` : ''}\n\nTambahkan ke Google Calendar:\n${getGoogleCalendarLink(eventData)}`;
+      let sentCount = 0;
+      for (const email of emails) {
+        try {
+          await base44.integrations.Core.SendEmail({ to: email, subject: `📅 ${eventData.judul} - Kalender Akademik`, body });
+          sentCount++;
+        } catch (e) { /* skip unregistered emails */ }
+      }
+      if (sentCount > 0) {
+        toast({ title: '📧 Notifikasi Email Terkirim', description: `${sentCount} guru/pegawai mendapat notifikasi.` });
+      }
+    } catch (e) { console.error('Email notification error:', e); }
+  };
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.KalenderAkademik.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['kalender'] }); resetForm(); toast({ title: '✅ Kegiatan ditambahkan' }); },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['kalender'] });
+      resetForm();
+      toast({ title: '✅ Kegiatan ditambahkan' });
+      sendEventNotifications(data || variables, false);
+    },
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.KalenderAkademik.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['kalender'] }); resetForm(); toast({ title: '✅ Kegiatan diperbarui' }); },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['kalender'] });
+      resetForm();
+      toast({ title: '✅ Kegiatan diperbarui' });
+      sendEventNotifications(variables?.data || data, true);
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.KalenderAkademik.delete(id),

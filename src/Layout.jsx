@@ -54,9 +54,9 @@ const FULL_ACCESS_MENU = {
 };
 
 const ROLE_MENU = {
-  tu: FULL_ACCESS_MENU,
+  admin: FULL_ACCESS_MENU,
   operator: FULL_ACCESS_MENU,
-  admin: {
+  tu: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
       { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
@@ -73,11 +73,20 @@ const ROLE_MENU = {
           { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
           { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
-        { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
-        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
+          { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+          { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
         ]
       }
     ]
+  },
+  piket: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+    ],
+    groups: []
   },
   kepsek: {
     topItems: [
@@ -122,16 +131,6 @@ const ROLE_MENU = {
           { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
           { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
         ]
-      },
-      {
-        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444', separated: true,
-        items: [
-          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
-          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
-        { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
-        { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
-        ]
       }
     ]
   },
@@ -152,7 +151,7 @@ const ROLE_MENU = {
 
 const ROLE_LABELS = {
   admin: 'Admin', operator: 'Operator', kepsek: 'Kepala Sekolah',
-  bendahara: 'Bendahara', guru: 'Guru', tu: 'Tata Usaha'
+  bendahara: 'Bendahara', guru: 'Guru', tu: 'Tata Usaha', piket: 'Piket'
 };
 
 const ROLE_COLORS = {
@@ -162,6 +161,7 @@ const ROLE_COLORS = {
   bendahara: { bg: 'bg-teal-500/20', text: 'text-teal-300', dot: 'bg-teal-400' },
   guru: { bg: 'bg-blue-500/20', text: 'text-blue-300', dot: 'bg-blue-400' },
   tu: { bg: 'bg-amber-500/20', text: 'text-amber-300', dot: 'bg-amber-400' },
+  piket: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', dot: 'bg-cyan-400' },
 };
 
 export default function Layout({ children, currentPageName }) {
