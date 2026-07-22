@@ -15,6 +15,7 @@ import SiswaRiwayat from './SiswaRiwayat';
 import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
 import BuktiUpload from './BuktiUpload';
+import RupiahInput from '@/components/ui/RupiahInput';
 
 const TIPE_TO_KATEGORI = {
   'SPP/Bulanan': 'SPP',
@@ -22,11 +23,12 @@ const TIPE_TO_KATEGORI = {
   'Daftar Ulang': 'Daftar Ulang',
   'Kelulusan': 'Kelulusan',
   'Kasbon Pegawai': 'Kasbon',
+  'Gaji/Honorarium': 'Gaji',
 };
 
 const FALLBACK_TIPE = {
   siswa: ['SPP/Bulanan', 'Ujian Sekolah', 'Daftar Ulang', 'Kelulusan'],
-  pegawai: ['Kasbon Pegawai', 'Lainnya'],
+  pegawai: ['Gaji/Honorarium', 'Kasbon Pegawai', 'Lainnya'],
   donatur: ['Lainnya'],
   umum: ['Belanja Harian', 'Belanja Bulanan', 'Belanja Tahunan', 'Kegiatan', 'BOSP', 'Transaksi Khusus', 'Lainnya'],
 };
@@ -185,6 +187,7 @@ export default function TransaksiForm({
       jumlah: '',
       jenis: (type === 'siswa' || type === 'donatur') ? 'Pemasukan' : prev.jenis,
     }));
+    if (type === 'siswa') set('jenis', 'Pemasukan');
   };
 
   const handleSiswaSelect = (siswa) => {
@@ -210,6 +213,7 @@ export default function TransaksiForm({
       jabatan_pegawai: guru.jabatan,
       siswa_id: '', nis: '', nama_siswa: '', kelas: '',
       nama_donatur: '',
+      jumlah: prev.tipe_transaksi === 'Gaji/Honorarium' && guru.nominal_gaji ? guru.nominal_gaji : prev.jumlah,
     }));
   };
 
@@ -230,6 +234,13 @@ export default function TransaksiForm({
     set('tipe_transaksi', tipe);
     if (TIPE_TO_KATEGORI[tipe]) {
       set('kategori', TIPE_TO_KATEGORI[tipe]);
+    }
+    if (tipe === 'Gaji/Honorarium' && formData.guru_id) {
+      const guru = guruList.find(g => g.id === formData.guru_id);
+      if (guru?.nominal_gaji) {
+        set('jumlah', guru.nominal_gaji);
+        if (!formData.uraian) set('uraian', `Pembayaran Honorarium ${guru.nama}`);
+      }
     }
     if (!tipe.toLowerCase().includes('spp')) {
       setSelectedMonths([]);
@@ -352,7 +363,7 @@ export default function TransaksiForm({
             </div>
             <div>
               <Label>Jenis</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className={jenisTransaksi === 'siswa' ? '' : 'grid grid-cols-2 gap-2'}>
                 <button
                   type="button"
                   onClick={() => set('jenis', 'Pemasukan')}
@@ -365,19 +376,24 @@ export default function TransaksiForm({
                   <ArrowUpRight className="w-4 h-4" />
                   Masuk
                 </button>
-                <button
-                  type="button"
-                  onClick={() => set('jenis', 'Pengeluaran')}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg border-2 text-sm font-medium transition ${
-                    formData.jenis === 'Pengeluaran'
-                      ? 'bg-red-500 text-white border-red-500'
-                      : 'text-red-600 border-slate-200 hover:border-red-300'
-                  }`}
-                >
-                  <ArrowDownRight className="w-4 h-4" />
-                  Keluar
-                </button>
+                {jenisTransaksi !== 'siswa' && (
+                  <button
+                    type="button"
+                    onClick={() => set('jenis', 'Pengeluaran')}
+                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg border-2 text-sm font-medium transition ${
+                      formData.jenis === 'Pengeluaran'
+                        ? 'bg-red-500 text-white border-red-500'
+                        : 'text-red-600 border-slate-200 hover:border-red-300'
+                    }`}
+                  >
+                    <ArrowDownRight className="w-4 h-4" />
+                    Keluar
+                  </button>
+                )}
               </div>
+              {jenisTransaksi === 'siswa' && (
+                <p className="text-xs text-blue-500 mt-1">Transaksi siswa hanya menerima pemasukan</p>
+              )}
             </div>
           </div>
 
@@ -485,10 +501,9 @@ export default function TransaksiForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Jumlah (Rp)</Label>
-              <Input
-                type="number"
+              <RupiahInput
                 value={formData.jumlah}
-                onChange={(e) => set('jumlah', e.target.value)}
+                onChange={(val) => set('jumlah', val)}
                 placeholder="0"
                 required
               />

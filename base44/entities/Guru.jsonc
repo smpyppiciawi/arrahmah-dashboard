@@ -57,6 +57,18 @@
       ],
       "default": "Aktif"
     },
+    "golongan_id": {
+      "type": "string",
+      "description": "ID golongan honorarium"
+    },
+    "nama_golongan": {
+      "type": "string",
+      "description": "Nama golongan honorarium"
+    },
+    "nominal_gaji": {
+      "type": "number",
+      "description": "Nominal gaji/honorarium berdasarkan golongan"
+    },
     "data_anak": {
       "type": "array",
       "items": {

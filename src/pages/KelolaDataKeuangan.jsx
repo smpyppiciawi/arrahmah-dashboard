@@ -12,8 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   Settings, Plus, Edit2, Trash2, Tags, Layers, Wallet, 
-  CreditCard, Users, UserCheck
+  CreditCard, Users, UserCheck, Award
 } from "lucide-react";
+import RupiahInput from '@/components/ui/RupiahInput';
+import HonorariumTab from '@/components/keuangan/HonorariumTab';
+import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function KelolaDataKeuangan() {
   const [activeTab, setActiveTab] = useState('kategori');
@@ -21,6 +25,7 @@ export default function KelolaDataKeuangan() {
   const [editingData, setEditingData] = useState(null);
   const [formType, setFormType] = useState('');
   const queryClient = useQueryClient();
+  const { activeAcademicYear } = useActiveAcademicYear();
 
   // Queries
   const { data: kategoriList = [] } = useQuery({
@@ -53,11 +58,17 @@ export default function KelolaDataKeuangan() {
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
   });
 
+  const { data: kelasList = [] } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
   // Form states
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', nominal: '', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+  const [tarifForm, setTarifForm] = useState({ nama: '', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+  const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [biayaKhususForm, setBiayaKhususForm] = useState({ 
     siswa_id: '', nama_siswa: '', nama_kelas: '', 
     tarif_iuran_id: '', nama_iuran: '', 
@@ -144,7 +155,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', nominal: '', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+    setTarifForm({ nama: '', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -245,6 +256,7 @@ export default function KelolaDataKeuangan() {
   const tarifColumns = [
     { key: 'nama', label: 'Nama Iuran' },
     { key: 'nominal', label: 'Nominal', render: (row) => <span className="font-medium text-teal-600">{formatRupiah(row.nominal)}</span> },
+    { key: 'tingkat', label: 'Tingkat', render: (row) => <Badge className={row.tingkat === 'Semua' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}>{row.tingkat || 'Semua'}</Badge> },
     { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
     { key: 'tahun_ajaran', label: 'Tahun Ajaran', render: (row) => row.tahun_ajaran || '-' },
     { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{row.status}</Badge> },
@@ -264,14 +276,11 @@ export default function KelolaDataKeuangan() {
     { key: 'nama_kelas', label: 'Kelas' },
     { key: 'nama_iuran', label: 'Iuran' },
     { key: 'nominal_khusus', label: 'Nominal Khusus', render: (row) => <span className="font-medium text-amber-600">{formatRupiah(row.nominal_khusus)}</span> },
-    { key: 'kategori', label: 'Kategori', render: (row) => <Badge className="bg-pink-100 text-pink-700">{row.kategori}</Badge> },
+    { key: 'kategori', label: 'Kategori Biaya Khusus', render: (row) => <Badge className="bg-pink-100 text-pink-700">{row.kategori}</Badge> },
     {
       key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
       render: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => handleEdit('biaya-khusus', row)}><Edit2 className="w-4 h-4" /></Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteBiayaKhususMutation.mutate(row.id)}><Trash2 className="w-4 h-4" /></Button>
-        </div>
+        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteBiayaKhususMutation.mutate(row.id)}><Trash2 className="w-4 h-4" /></Button>
       )
     }
   ];
@@ -294,6 +303,7 @@ export default function KelolaDataKeuangan() {
             <TabsTrigger value="sumber" className="flex items-center gap-1"><Wallet className="w-3 h-3" /> Sumber Dana</TabsTrigger>
             <TabsTrigger value="tarif" className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Tarif Iuran</TabsTrigger>
             <TabsTrigger value="biaya-khusus" className="flex items-center gap-1"><Users className="w-3 h-3" /> Biaya Khusus</TabsTrigger>
+            <TabsTrigger value="honorarium" className="flex items-center gap-1"><Award className="w-3 h-3" /> Honorarium</TabsTrigger>
           </TabsList>
 
           {/* Kategori */}
@@ -361,7 +371,7 @@ export default function KelolaDataKeuangan() {
             <Card className="border-0 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Biaya Khusus Siswa (Yatim, Kurang Mampu, dll)</CardTitle>
-                <Button onClick={() => openAddForm('biaya-khusus')} className="bg-purple-600 hover:bg-purple-700">
+                <Button onClick={() => setBiayaKhususFormOpen(true)} className="bg-purple-600 hover:bg-purple-700">
                   <Plus className="w-4 h-4 mr-2" /> Tambah Biaya Khusus
                 </Button>
               </CardHeader>
@@ -369,6 +379,11 @@ export default function KelolaDataKeuangan() {
                 <DataTable columns={biayaKhususColumns} data={biayaKhususList} pageSize={10} />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Honorarium */}
+          <TabsContent value="honorarium">
+            <HonorariumTab />
           </TabsContent>
         </Tabs>
 
@@ -425,8 +440,20 @@ export default function KelolaDataKeuangan() {
               {formType === 'tarif' && (
                 <>
                   <div><Label>Nama Iuran</Label><Input value={tarifForm.nama} onChange={(e) => setTarifForm({...tarifForm, nama: e.target.value})} placeholder="SPP, Ujian Sekolah, dll" required /></div>
-                  <div><Label>Nominal (Rp)</Label><Input type="number" value={tarifForm.nominal} onChange={(e) => setTarifForm({...tarifForm, nominal: e.target.value})} required /></div>
+                  <div><Label>Nominal (Rp)</Label><RupiahInput value={tarifForm.nominal} onChange={(val) => setTarifForm({...tarifForm, nominal: val})} placeholder="0" required /></div>
                   <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Tingkat Kelas</Label>
+                      <Select value={tarifForm.tingkat} onValueChange={(v) => setTarifForm({...tarifForm, tingkat: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Semua">Semua Tingkat</SelectItem>
+                          <SelectItem value="7">Kelas 7</SelectItem>
+                          <SelectItem value="8">Kelas 8</SelectItem>
+                          <SelectItem value="9">Kelas 9</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div>
                       <Label>Periode</Label>
                       <Select value={tarifForm.periode} onValueChange={(v) => setTarifForm({...tarifForm, periode: v})}>
@@ -439,57 +466,20 @@ export default function KelolaDataKeuangan() {
                         </SelectContent>
                       </Select>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div><Label>Tahun Ajaran</Label><Input value={tarifForm.tahun_ajaran} onChange={(e) => setTarifForm({...tarifForm, tahun_ajaran: e.target.value})} placeholder="2024/2025" /></div>
+                    <div>
+                      <Label>Status</Label>
+                      <Select value={tarifForm.status} onValueChange={(v) => setTarifForm({...tarifForm, status: v})}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Aktif">Aktif</SelectItem>
+                          <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Status</Label>
-                    <Select value={tarifForm.status} onValueChange={(v) => setTarifForm({...tarifForm, status: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Aktif">Aktif</SelectItem>
-                        <SelectItem value="Tidak Aktif">Tidak Aktif</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
-
-              {formType === 'biaya-khusus' && (
-                <>
-                  <div>
-                    <Label>Pilih Siswa</Label>
-                    <Select value={biayaKhususForm.siswa_id} onValueChange={handleSiswaChange}>
-                      <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
-                      <SelectContent>
-                        {siswaList.map(s => <SelectItem key={s.id} value={s.id}>{s.nama} - {s.nama_kelas}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Pilih Iuran</Label>
-                    <Select value={biayaKhususForm.tarif_iuran_id} onValueChange={handleTarifChange}>
-                      <SelectTrigger><SelectValue placeholder="Pilih iuran" /></SelectTrigger>
-                      <SelectContent>
-                        {tarifIuranList.map(t => <SelectItem key={t.id} value={t.id}>{t.nama} - {formatRupiah(t.nominal)}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>Nominal Khusus (Rp)</Label><Input type="number" value={biayaKhususForm.nominal_khusus} onChange={(e) => setBiayaKhususForm({...biayaKhususForm, nominal_khusus: e.target.value})} required /></div>
-                  <div>
-                    <Label>Kategori Keringanan</Label>
-                    <Select value={biayaKhususForm.kategori} onValueChange={(v) => setBiayaKhususForm({...biayaKhususForm, kategori: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Yatim">Yatim</SelectItem>
-                        <SelectItem value="Piatu">Piatu</SelectItem>
-                        <SelectItem value="Yatim Piatu">Yatim Piatu</SelectItem>
-                        <SelectItem value="Kurang Mampu">Kurang Mampu</SelectItem>
-                        <SelectItem value="Prestasi">Prestasi</SelectItem>
-                        <SelectItem value="Lainnya">Lainnya</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div><Label>Keterangan</Label><Input value={biayaKhususForm.keterangan} onChange={(e) => setBiayaKhususForm({...biayaKhususForm, keterangan: e.target.value})} /></div>
                 </>
               )}
 
@@ -500,6 +490,15 @@ export default function KelolaDataKeuangan() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <BiayaKhususForm
+          isOpen={biayaKhususFormOpen}
+          onClose={() => setBiayaKhususFormOpen(false)}
+          siswaList={siswaList}
+          kelasList={kelasList}
+          tarifIuranList={tarifIuranList}
+          activeAcademicYear={activeAcademicYear}
+        />
       </div>
     </div>
   );

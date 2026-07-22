@@ -1,0 +1,21 @@
+{
+  "name": "Golongan",
+  "type": "object",
+  "properties": {
+    "nama_golongan": {
+      "type": "string",
+      "description": "Nama golongan honorarium"
+    },
+    "nominal": {
+      "type": "number",
+      "description": "Nominal gaji/honorarium"
+    },
+    "keterangan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nama_golongan",
+    "nominal"
+  ]
+}

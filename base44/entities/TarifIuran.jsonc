@@ -10,6 +10,17 @@
       "type": "number",
       "description": "Nominal iuran"
     },
+    "tingkat": {
+      "type": "string",
+      "enum": [
+        "7",
+        "8",
+        "9",
+        "Semua"
+      ],
+      "default": "Semua",
+      "description": "Tingkat kelas yang berlaku"
+    },
     "periode": {
       "type": "string",
       "enum": [

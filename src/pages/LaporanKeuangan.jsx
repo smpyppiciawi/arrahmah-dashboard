@@ -23,6 +23,7 @@ export default function LaporanKeuangan() {
   const [filterDateTo, setFilterDateTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedSiswa, setSelectedSiswa] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('');
+  const [selectedIuran, setSelectedIuran] = useState('');
 
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
@@ -95,6 +96,68 @@ export default function LaporanKeuangan() {
     return { totalPemasukan, totalPengeluaran, pemasukanByKategori, pengeluaranByKategori };
   }, [filteredData]);
 
+  // Unique iuran names for filter
+  const iuranNames = useMemo(() => {
+    return [...new Set(tarifIuranList.map(t => t.nama))].sort();
+  }, [tarifIuranList]);
+
+  // Map kelas_id → tingkat
+  const kelasTingkatMap = useMemo(() => {
+    const map = {};
+    kelasList.forEach(k => { map[k.id] = k.tingkat; });
+    return map;
+  }, [kelasList]);
+
+  // Helper: get tingkat from siswa
+  const getTingkat = (siswa) => {
+    return kelasTingkatMap[siswa.kelas_id] || (siswa.nama_kelas?.[0] || '');
+  };
+
+  // Helper: calculate expected total for a tingkat
+  const calculateExpected = (tingkat, iuranName = null) => {
+    return tarifIuranList
+      .filter(t => {
+        if (t.tingkat && t.tingkat !== 'Semua' && t.tingkat !== tingkat) return false;
+        if (iuranName && t.nama !== iuranName) return false;
+        return true;
+      })
+      .reduce((sum, t) => {
+        let multiplier = 1;
+        switch (t.periode) {
+          case 'Bulanan': multiplier = 12; break;
+          case 'Semester': multiplier = 2; break;
+          case 'Tahunan': multiplier = 1; break;
+          case 'Sekali': multiplier = 1; break;
+        }
+        return sum + (t.nominal * multiplier);
+      }, 0);
+  };
+
+  // Helper: get periode label for iuran
+  const getIuranPeriode = (iuranName, tingkat) => {
+    const tarif = tarifIuranList.find(t => t.nama === iuranName && (!t.tingkat || t.tingkat === 'Semua' || t.tingkat === tingkat));
+    if (!tarif) return '-';
+    switch (tarif.periode) {
+      case 'Bulanan': return `${tarif.periode} (12 bln)`;
+      case 'Semester': return `${tarif.periode} (2x)`;
+      case 'Tahunan': return `${tarif.periode} (1x)`;
+      case 'Sekali': return `${tarif.periode} (1x)`;
+      default: return tarif.periode;
+    }
+  };
+
+  // Helper: calculate paid for siswa (all or specific iuran)
+  const calculatePaid = (siswaId, iuranName = null) => {
+    return keuanganList
+      .filter(k => k.siswa_id === siswaId && k.jenis === 'Pemasukan')
+      .filter(k => {
+        if (!iuranName) return true;
+        return k.tipe_transaksi?.toLowerCase().includes(iuranName.toLowerCase()) ||
+               k.kategori?.toLowerCase().includes(iuranName.toLowerCase());
+      })
+      .reduce((sum, k) => sum + (k.jumlah || 0), 0);
+  };
+
   // Filter siswa by kelas
   const filteredSiswaList = useMemo(() => {
     if (!selectedKelas) return siswaList;
@@ -103,33 +166,22 @@ export default function LaporanKeuangan() {
 
   // Laporan Tunggakan Siswa
   const laporanTunggakan = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    const sppTarif = tarifIuranList.find(t => t.nama.toLowerCase().includes('spp'));
-    const sppNominal = sppTarif?.nominal || 0;
-    
-    // Get current month number (1-12)
-    const currentMonth = new Date().getMonth() + 1;
-    
     return filteredSiswaList.map(siswa => {
-      // Get all SPP payments for this siswa
-      const sppPayments = keuanganList.filter(k => 
-        k.siswa_id === siswa.id && 
-        k.tipe_transaksi?.toLowerCase().includes('spp')
-      );
-      
-      const totalDibayar = sppPayments.reduce((sum, p) => sum + (p.jumlah || 0), 0);
-      const jumlahBulanBayar = sppNominal > 0 ? Math.floor(totalDibayar / sppNominal) : 0;
-      const tunggakan = Math.max(0, (currentMonth - jumlahBulanBayar) * sppNominal);
-      
+      const tingkat = getTingkat(siswa);
+      const expected = calculateExpected(tingkat, selectedIuran || null);
+      const totalDibayar = calculatePaid(siswa.id, selectedIuran || null);
+      const tunggakan = Math.max(0, expected - totalDibayar);
+      const periode = selectedIuran ? getIuranPeriode(selectedIuran, tingkat) : '-';
+
       return {
         ...siswa,
         total_dibayar: totalDibayar,
-        bulan_dibayar: jumlahBulanBayar,
-        tunggakan: tunggakan,
+        tunggakan,
+        periode,
         status: tunggakan > 0 ? 'Menunggak' : 'Lunas'
       };
     }).filter(s => selectedSiswa ? s.id === selectedSiswa : true);
-  }, [filteredSiswaList, keuanganList, tarifIuranList, selectedSiswa]);
+  }, [filteredSiswaList, keuanganList, tarifIuranList, selectedSiswa, selectedIuran, kelasTingkatMap]);
 
   // Print functions
   const printRekeningKoran = () => {
@@ -161,6 +213,8 @@ export default function LaporanKeuangan() {
                 <th>No</th>
                 <th>Tanggal</th>
                 <th>Uraian</th>
+                <th>Kategori</th>
+                <th>Sumber Dana</th>
                 <th>Debit</th>
                 <th>Kredit</th>
                 <th>Saldo</th>
@@ -172,6 +226,8 @@ export default function LaporanKeuangan() {
                   <td>${i + 1}</td>
                   <td>${format(new Date(t.tanggal), 'd/M/yyyy')}</td>
                   <td>${t.uraian || t.kategori || '-'}</td>
+                  <td>${t.kategori || '-'}</td>
+                  <td>${t.sumber_rekening || '-'}</td>
                   <td class="right green">${t.jenis === 'Pemasukan' ? formatRupiah(t.jumlah) : '-'}</td>
                   <td class="right red">${t.jenis === 'Pengeluaran' ? formatRupiah(t.jumlah) : '-'}</td>
                   <td class="right">${formatRupiah(t.saldo)}</td>
@@ -262,8 +318,8 @@ export default function LaporanKeuangan() {
           </style>
         </head>
         <body>
-          <h2>LAPORAN TUNGGAKAN SPP SISWA</h2>
-          <p>Kelas: ${selectedKelas ? kelasList.find(k => k.id === selectedKelas)?.nama_kelas : 'Semua Kelas'}</p>
+          <h2>LAPORAN TUNGGAKAN IURAN SISWA</h2>
+          <p>Kelas: ${selectedKelas ? kelasList.find(k => k.id === selectedKelas)?.nama_kelas : 'Semua Kelas'}${selectedIuran ? ` | Iuran: ${selectedIuran}` : ' | Semua Iuran'}</p>
           <table>
             <tr>
               <th>No</th>
@@ -272,6 +328,7 @@ export default function LaporanKeuangan() {
               <th>Kelas</th>
               <th>Total Bayar</th>
               <th>Tunggakan</th>
+              ${selectedIuran ? '<th>Periode</th>' : ''}
               <th>Status</th>
             </tr>
             ${laporanTunggakan.map((s, i) => `
@@ -282,6 +339,7 @@ export default function LaporanKeuangan() {
                 <td>${s.nama_kelas}</td>
                 <td class="right">${formatRupiah(s.total_dibayar)}</td>
                 <td class="right ${s.tunggakan > 0 ? 'red' : ''}">${formatRupiah(s.tunggakan)}</td>
+                ${selectedIuran ? `<td>${s.periode}</td>` : ''}
                 <td class="${s.status === 'Lunas' ? 'green' : 'red'}">${s.status}</td>
               </tr>
             `).join('')}
@@ -300,21 +358,32 @@ export default function LaporanKeuangan() {
   const rekeningKoranColumns = [
     { key: 'tanggal', label: 'Tanggal', render: (row) => format(new Date(row.tanggal), 'd MMM yyyy', { locale: idLocale }) },
     { key: 'uraian', label: 'Uraian', render: (row) => row.uraian || row.kategori || '-' },
+    { key: 'kategori', label: 'Kategori', render: (row) => <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge> },
+    { key: 'sumber_rekening', label: 'Sumber Dana', render: (row) => <span className="text-xs text-slate-500">{row.sumber_rekening || '-'}</span> },
     { key: 'nama', label: 'Nama', render: (row) => row.nama_siswa || row.nama_pegawai || '-' },
     { key: 'debit', label: 'Debit (Masuk)', render: (row) => row.jenis === 'Pemasukan' ? <span className="text-emerald-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },
     { key: 'kredit', label: 'Kredit (Keluar)', render: (row) => row.jenis === 'Pengeluaran' ? <span className="text-red-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },
     { key: 'saldo', label: 'Saldo', render: (row) => <span className="font-medium">{formatRupiah(row.saldo)}</span> }
   ];
 
-  const tunggakanColumns = [
-    { key: 'nis', label: 'NIS' },
-    { key: 'nama', label: 'Nama' },
-    { key: 'nama_kelas', label: 'Kelas' },
-    { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
-    { key: 'bulan_dibayar', label: 'Bulan Lunas', render: (row) => `${row.bulan_dibayar} bulan` },
-    { key: 'tunggakan', label: 'Tunggakan', render: (row) => <span className={row.tunggakan > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row.tunggakan)}</span> },
-    { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.status}</Badge> }
-  ];
+  const tunggakanColumns = selectedIuran
+    ? [
+        { key: 'nis', label: 'NIS' },
+        { key: 'nama', label: 'Nama' },
+        { key: 'nama_kelas', label: 'Kelas' },
+        { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
+        { key: 'tunggakan', label: 'Nominal Tunggakan', render: (row) => <span className={row.tunggakan > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row.tunggakan)}</span> },
+        { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
+        { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.status}</Badge> }
+      ]
+    : [
+        { key: 'nis', label: 'NIS' },
+        { key: 'nama', label: 'Nama' },
+        { key: 'nama_kelas', label: 'Kelas' },
+        { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
+        { key: 'tunggakan', label: 'Nominal Tunggakan', render: (row) => <span className={row.tunggakan > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row.tunggakan)}</span> },
+        { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.status}</Badge> }
+      ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
@@ -458,6 +527,18 @@ export default function LaporanKeuangan() {
                         <SelectItem value={null}>Semua Siswa</SelectItem>
                         {filteredSiswaList.map(s => (
                           <SelectItem key={s.id} value={s.id}>{s.nama}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Filter Jenis Iuran</Label>
+                    <Select value={selectedIuran} onValueChange={setSelectedIuran}>
+                      <SelectTrigger className="w-48"><SelectValue placeholder="Semua Iuran" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={null}>Semua Iuran (Total)</SelectItem>
+                        {iuranNames.map(name => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

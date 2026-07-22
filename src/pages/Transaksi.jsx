@@ -183,6 +183,8 @@ export default function Transaksi() {
       ),
     },
     { key: 'tipe_transaksi', label: 'Tipe', render: (row) => row.tipe_transaksi || '-' },
+    { key: 'kategori', label: 'Kategori', render: (row) => <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge> },
+    { key: 'sumber_rekening', label: 'Sumber Dana', render: (row) => <span className="text-xs text-slate-500">{row.sumber_rekening || '-'}</span> },
     {
       key: 'penerima',
       label: 'Sumber / Penerima',
