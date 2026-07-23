@@ -76,7 +76,7 @@ export default function Kepsek() {
   const t = isDark ? {
     page: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100',
     header: 'bg-slate-900/80 backdrop-blur-lg border-slate-700',
-    card: 'bg-slate-800/50 backdrop-blur border border-slate-700',
+    card: 'bg-slate-800/50 border border-slate-700',
     dialog: 'bg-slate-900 border-slate-700',
     text: 'text-slate-100', textMuted: 'text-slate-400', textSubtle: 'text-slate-500',
     btn: 'bg-slate-800 hover:bg-slate-700 text-slate-400', btnDanger: 'bg-red-500/20 hover:bg-red-500/30 text-red-400',

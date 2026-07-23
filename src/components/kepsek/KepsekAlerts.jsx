@@ -5,7 +5,7 @@ import { MessageCircle, Mail, AlertTriangle, Bell } from 'lucide-react';
 
 export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = true }) {
   const c = isDark ? {
-    container: 'bg-slate-800/50 backdrop-blur border border-slate-700',
+    container: 'bg-slate-800 border border-slate-700',
     text: 'text-slate-100', textMuted: 'text-slate-400',
     empty: 'bg-emerald-500/20', emptyText: 'text-emerald-400',
     btn: 'border-slate-600 text-slate-300 hover:bg-slate-700',
@@ -18,7 +18,7 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = tru
 
   if (!alerts || alerts.length === 0) {
     return (
-      <div className={`rounded-2xl ${c.container} p-4 flex items-center gap-3`}>
+      <div className={`rounded-2xl ${c.container} p-3 flex items-center gap-3`}>
         <div className={`w-10 h-10 rounded-full ${c.empty} flex items-center justify-center`}>
           <Bell className={`w-5 h-5 ${c.emptyText}`} />
         </div>
@@ -31,14 +31,14 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = tru
   }
 
   const getAlertStyle = (severity) => {
-    if (severity === 'critical') return { bg: 'bg-red-500/10', border: 'border-red-500/30', icon: 'text-red-400', iconBg: 'bg-red-500/20' };
-    if (severity === 'warning') return { bg: 'bg-amber-500/10', border: 'border-amber-500/30', icon: 'text-amber-400', iconBg: 'bg-amber-500/20' };
-    return { bg: 'bg-blue-500/10', border: 'border-blue-500/30', icon: 'text-blue-400', iconBg: 'bg-blue-500/20' };
+    if (severity === 'critical') return { bg: 'bg-red-500/20', border: 'border-red-500/40', icon: 'text-red-400', iconBg: 'bg-red-500/30' };
+    if (severity === 'warning') return { bg: 'bg-amber-500/20', border: 'border-amber-500/40', icon: 'text-amber-400', iconBg: 'bg-amber-500/30' };
+    return { bg: 'bg-blue-500/20', border: 'border-blue-500/40', icon: 'text-blue-400', iconBg: 'bg-blue-500/30' };
   };
 
   return (
-    <div className={`rounded-2xl ${c.container} p-4`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`rounded-2xl ${c.container} p-3`}>
+      <div className="flex items-center justify-between mb-2">
         <h3 className={`${c.text} font-bold text-sm flex items-center gap-2`}>
           <AlertTriangle className="w-4 h-4 text-red-400" /> Peringatan & Notifikasi ({alerts.length})
         </h3>
@@ -50,12 +50,12 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = tru
           <Mail className="w-3 h-3" /> Kirim Semua ke Email
         </Button>
       </div>
-      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
         {alerts.map((alert, idx) => {
           const style = getAlertStyle(alert.severity);
           return (
             <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
-              className={`rounded-xl ${style.bg} border ${style.border} p-3 flex items-center justify-between gap-2`}>
+              className={`rounded-xl ${style.bg} border ${style.border} p-2.5 flex items-center justify-between gap-2`}>
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={`w-9 h-9 rounded-lg ${style.iconBg} flex items-center justify-center flex-shrink-0`}>
                   <AlertTriangle className={`w-4 h-4 ${style.icon}`} />
