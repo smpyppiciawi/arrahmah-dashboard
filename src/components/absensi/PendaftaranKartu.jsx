@@ -11,6 +11,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User } from "lucide-react";
 import GenerateQRMassal from '@/components/absensi/GenerateQRMassal';
 import PersonSearch from '@/components/absensi/PersonSearch';
+import NfcScanner from '@/components/absensi/NfcScanner';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const [selectedPerson, setSelectedPerson] = useState('');
@@ -19,6 +21,8 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const [scanMode, setScanMode] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user: currentUser } = useAuth();
+  const canUseNfc = ['admin', 'tu'].includes(currentUser?.role);
 
   const entityName = personType === 'Pegawai' ? 'Guru' : 'Siswa';
   const { data: personList = [] } = useQuery({
@@ -137,10 +141,19 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
               {/* Add New Card */}
               <div className="border-t pt-4 space-y-2">
                 <p className="text-xs font-semibold text-slate-600">Daftarkan Kartu Baru</p>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   <Button type="button" size="sm" variant={newJenis === 'RFID' ? 'default' : 'outline'} className={newJenis === 'RFID' ? 'bg-purple-600' : ''} onClick={() => { setNewJenis('RFID'); handleScanRFID(); }}>
-                    <CreditCard className="w-3 h-3 mr-1" /> RFID
+                    <CreditCard className="w-3 h-3 mr-1" /> RFID Reader
                   </Button>
+                  {canUseNfc && (
+                    <NfcScanner
+                      disabled={!selectedPerson}
+                      onScan={(uid) => {
+                        setNewCardId(uid);
+                        setNewJenis('RFID');
+                      }}
+                    />
+                  )}
                   <Button type="button" size="sm" variant={newJenis === 'QRCode' ? 'default' : 'outline'} className={newJenis === 'QRCode' ? 'bg-blue-600' : ''} onClick={() => { setNewJenis('QRCode'); handleGenerateQR(); }}>
                     <QrCode className="w-3 h-3 mr-1" /> QR Code
                   </Button>
