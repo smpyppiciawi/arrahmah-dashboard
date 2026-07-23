@@ -10,13 +10,8 @@ import { Calendar, Clock, User, TrendingUp } from "lucide-react";
 import ScanAbsensi from '@/components/absensi/ScanAbsensi';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
-import { useAuth } from '@/lib/AuthContext';
 
 export default function AbsensiPegawai() {
-  const { user: currentUser } = useAuth();
-  const userRole = currentUser?.role || 'guru';
-  const canManageKartu = ['admin', 'tu', 'kepsek'].includes(userRole);
-
   const [activeTab, setActiveTab] = useState('scan');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -42,10 +37,8 @@ export default function AbsensiPegawai() {
 
   const tabs = [
     { key: 'scan', label: 'Scan Absensi', icon: Clock, color: 'bg-emerald-500' },
-    ...(canManageKartu ? [
-      { key: 'kartu', label: 'Pendaftaran Kartu', icon: Calendar, color: 'bg-purple-500' },
-      { key: 'idcard', label: 'Kartu ID', icon: User, color: 'bg-blue-500' },
-    ] : []),
+    { key: 'kartu', label: 'Pendaftaran Kartu', icon: Calendar, color: 'bg-purple-500' },
+    { key: 'idcard', label: 'Kartu ID', icon: User, color: 'bg-blue-500' },
     { key: 'rekap', label: 'Rekap Bulanan', icon: TrendingUp, color: 'bg-indigo-500' },
   ];
 
