@@ -450,6 +450,7 @@ export default function KelolaDataKeuangan() {
                         <SelectItem value="Ujian">Ujian</SelectItem>
                         <SelectItem value="Mutasi">Mutasi</SelectItem>
                         <SelectItem value="Awal Tahun">Awal Tahun</SelectItem>
+                        <SelectItem value="PPDB">PPDB</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
