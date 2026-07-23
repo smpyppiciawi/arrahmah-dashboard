@@ -15,8 +15,13 @@ import ScanAbsensi from '@/components/absensi/ScanAbsensi';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
 import { ScanLine, CreditCard, User as UserIcon } from "lucide-react";
+import { useAuth } from '@/lib/AuthContext';
 
 export default function Absensi() {
+  const { user: currentUser } = useAuth();
+  const userRole = currentUser?.role || 'guru';
+  const canManageCards = ['admin', 'tu'].includes(userRole);
+
   const [activeTab, setActiveTab] = useState('rekap');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -46,10 +51,10 @@ export default function Absensi() {
     { key: 'rekap', label: 'Rekap Harian', icon: CalendarDays, color: 'bg-emerald-500' },
     { key: 'kehadiran', label: 'Absensi Kehadiran', icon: CheckCircle, color: 'bg-emerald-500' },
     { key: 'jumat', label: 'Absensi Jumat', icon: Users, color: 'bg-emerald-500' },
-    { key: 'kartu', label: 'Pendaftaran Kartu', icon: CreditCard, color: 'bg-purple-500' },
-    { key: 'idcard', label: 'Kartu ID', icon: UserIcon, color: 'bg-blue-500' },
+    { key: 'kartu', label: 'Pendaftaran Kartu', icon: CreditCard, color: 'bg-purple-500', adminOnly: true },
+    { key: 'idcard', label: 'Kartu ID', icon: UserIcon, color: 'bg-blue-500', adminOnly: true },
     { key: 'riwayat', label: 'Riwayat', icon: History, color: 'bg-blue-500' },
-  ];
+  ].filter(tab => !tab.adminOnly || canManageCards);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
