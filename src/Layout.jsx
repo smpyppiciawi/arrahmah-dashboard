@@ -102,8 +102,6 @@ const ROLE_MENU = {
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
-      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: []
   },
@@ -164,7 +162,7 @@ export default function Layout({ children, currentPageName }) {
 
   // Kepsek dashboard: full-screen, no sidebar
   if (currentPageName === 'Kepsek' && userRole === 'kepsek') {
-    return <div className="min-h-screen bg-slate-950 font-inter">{children}</div>;
+    return <div className="min-h-screen font-inter">{children}</div>;
   }
 
   const handleGroupClick = (groupId) => {

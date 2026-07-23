@@ -1,18 +1,30 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Mail, AlertTriangle, CalendarDays, Bell } from 'lucide-react';
+import { MessageCircle, Mail, AlertTriangle, Bell } from 'lucide-react';
 
-export default function KepsekAlerts({ alerts, onWhatsApp, onEmail }) {
+export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = true }) {
+  const c = isDark ? {
+    container: 'bg-slate-800/50 backdrop-blur border border-slate-700',
+    text: 'text-slate-100', textMuted: 'text-slate-400',
+    empty: 'bg-emerald-500/20', emptyText: 'text-emerald-400',
+    btn: 'border-slate-600 text-slate-300 hover:bg-slate-700',
+  } : {
+    container: 'bg-white border border-slate-200 shadow-sm',
+    text: 'text-slate-800', textMuted: 'text-slate-500',
+    empty: 'bg-emerald-100', emptyText: 'text-emerald-600',
+    btn: 'border-slate-300 text-slate-600 hover:bg-slate-100',
+  };
+
   if (!alerts || alerts.length === 0) {
     return (
-      <div className="rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-          <Bell className="w-5 h-5 text-emerald-400" />
+      <div className={`rounded-2xl ${c.container} p-4 flex items-center gap-3`}>
+        <div className={`w-10 h-10 rounded-full ${c.empty} flex items-center justify-center`}>
+          <Bell className={`w-5 h-5 ${c.emptyText}`} />
         </div>
         <div>
-          <p className="text-slate-200 font-medium text-sm">Tidak ada peringatan</p>
-          <p className="text-slate-500 text-xs">Semua kondisi dalam batas normal</p>
+          <p className={`${c.text} font-medium text-sm`}>Tidak ada peringatan</p>
+          <p className={`${c.textMuted} text-xs`}>Semua kondisi dalam batas normal</p>
         </div>
       </div>
     );
@@ -25,21 +37,16 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail }) {
   };
 
   return (
-    <div className="rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">
+    <div className={`rounded-2xl ${c.container} p-4`}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-slate-100 font-bold text-sm flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4 text-red-400" />
-          Peringatan & Notifikasi ({alerts.length})
+        <h3 className={`${c.text} font-bold text-sm flex items-center gap-2`}>
+          <AlertTriangle className="w-4 h-4 text-red-400" /> Peringatan & Notifikasi ({alerts.length})
         </h3>
-        <Button
-          size="sm"
-          variant="outline"
-          className="border-slate-600 text-slate-300 hover:bg-slate-700 h-7 text-xs gap-1"
+        <Button size="sm" variant="outline" className={`${c.btn} h-7 text-xs gap-1`}
           onClick={() => {
             const summary = alerts.map(a => `• ${a.title}: ${a.person || a.event || ''} ${a.kelas || ''}`).join('\n');
             onEmail('Notifikasi Peringatan Sekolah', `Berikut adalah ringkasan peringatan hari ini:\n\n${summary}`);
-          }}
-        >
+          }}>
           <Mail className="w-3 h-3" /> Kirim Semua ke Email
         </Button>
       </div>
@@ -47,48 +54,34 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail }) {
         {alerts.map((alert, idx) => {
           const style = getAlertStyle(alert.severity);
           return (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              className={`rounded-xl ${style.bg} border ${style.border} p-3 flex items-center justify-between gap-2`}
-            >
+            <motion.div key={idx} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: idx * 0.05 }}
+              className={`rounded-xl ${style.bg} border ${style.border} p-3 flex items-center justify-between gap-2`}>
               <div className="flex items-center gap-3 flex-1 min-w-0">
                 <div className={`w-9 h-9 rounded-lg ${style.iconBg} flex items-center justify-center flex-shrink-0`}>
                   <AlertTriangle className={`w-4 h-4 ${style.icon}`} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-slate-100 text-sm font-medium truncate">{alert.title}</p>
-                  <p className="text-slate-400 text-xs truncate">
+                  <p className={`${c.text} text-sm font-medium truncate`}>{alert.title}</p>
+                  <p className={`${c.textMuted} text-xs truncate`}>
                     {alert.person || alert.event} {alert.kelas ? `• ${alert.kelas}` : ''} {alert.date ? `• ${alert.date}` : ''}
                   </p>
                 </div>
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 {alert.waliPhone && (
-                  <button
-                    onClick={() => onWhatsApp(alert.waliPhone, `Yth. ${alert.waliName || 'Wali Kelas'},\n\nMenginformasikan mengenai: ${alert.title}\nSiswa: ${alert.person} (${alert.kelas})\n\nMohon tindak lanjutnya. Terima kasih.`)}
-                    className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center justify-center transition-colors"
-                    title={`WA Wali Kelas: ${alert.waliName || ''}`}
-                  >
+                  <button onClick={() => onWhatsApp(alert.waliPhone, `Yth. ${alert.waliName || 'Wali Kelas'},\n\nMenginformasikan mengenai: ${alert.title}\nSiswa: ${alert.person} (${alert.kelas})\n\nMohon tindak lanjutnya. Terima kasih.`)}
+                    className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center justify-center transition-colors" title={`WA Wali Kelas: ${alert.waliName || ''}`}>
                     <MessageCircle className="w-4 h-4" />
                   </button>
                 )}
                 {alert.ortuPhone && (
-                  <button
-                    onClick={() => onWhatsApp(alert.ortuPhone, `Yth. Orang Tua dari ${alert.person},\n\nMenginformasikan mengenai: ${alert.title}\n\nMohon konfirmasi dan tindak lanjutnya. Terima kasih.`)}
-                    className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors"
-                    title="WA Orang Tua"
-                  >
+                  <button onClick={() => onWhatsApp(alert.ortuPhone, `Yth. Orang Tua dari ${alert.person},\n\nMenginformasikan mengenai: ${alert.title}\n\nMohon konfirmasi dan tindak lanjutnya. Terima kasih.`)}
+                    className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 flex items-center justify-center transition-colors" title="WA Orang Tua">
                     <MessageCircle className="w-4 h-4" />
                   </button>
                 )}
-                <button
-                  onClick={() => onEmail(`Notifikasi: ${alert.title}`, `Detail Peringatan:\n\nJenis: ${alert.title}\n${alert.person ? `Siswa: ${alert.person}\n` : ''}${alert.kelas ? `Kelas: ${alert.kelas}\n` : ''}${alert.event ? `Kegiatan: ${alert.event}\n` : ''}${alert.date ? `Tanggal: ${alert.date}\n` : ''}\nMohon perhatian dan tindak lanjutnya.`)}
-                  className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 flex items-center justify-center transition-colors"
-                  title="Kirim Email"
-                >
+                <button onClick={() => onEmail(`Notifikasi: ${alert.title}`, `Detail Peringatan:\n\nJenis: ${alert.title}\n${alert.person ? `Siswa: ${alert.person}\n` : ''}${alert.kelas ? `Kelas: ${alert.kelas}\n` : ''}${alert.event ? `Kegiatan: ${alert.event}\n` : ''}${alert.date ? `Tanggal: ${alert.date}\n` : ''}\nMohon perhatian dan tindak lanjutnya.`)}
+                  className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 flex items-center justify-center transition-colors" title="Kirim Email">
                   <Mail className="w-4 h-4" />
                 </button>
               </div>
