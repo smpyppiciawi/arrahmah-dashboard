@@ -13,14 +13,14 @@ export default function GuruContactFab({ guruList, onWhatsApp, isDark = true }) 
   const activeCount = guruList.filter(g => g.status === 'Aktif').length;
 
   const c = isDark ? {
-    fab: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30',
+    fab: 'bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 shadow-emerald-500/40',
     dialog: 'bg-slate-900 border-slate-700',
     text: 'text-slate-100',
     textMuted: 'text-slate-400',
     input: 'bg-slate-800 text-slate-300 border-slate-700',
     item: 'bg-slate-800/50 hover:bg-slate-700/50',
   } : {
-    fab: 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20',
+    fab: 'bg-gradient-to-br from-emerald-400 to-teal-500 hover:from-emerald-500 hover:to-teal-600 shadow-emerald-400/30',
     dialog: 'bg-white border-slate-200',
     text: 'text-slate-800',
     textMuted: 'text-slate-500',
@@ -36,7 +36,7 @@ export default function GuruContactFab({ guruList, onWhatsApp, isDark = true }) 
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => setOpen(true)}
-        className={`fixed bottom-6 left-6 z-40 w-14 h-14 rounded-full ${c.fab} text-white shadow-lg flex items-center justify-center transition-colors`}
+        className={`fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full ${c.fab} text-white shadow-xl flex items-center justify-center transition-all`}
         title="Kontak Guru & Pegawai"
       >
         <Phone className="w-6 h-6" />

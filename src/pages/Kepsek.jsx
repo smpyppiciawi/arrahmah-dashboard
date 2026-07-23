@@ -76,7 +76,7 @@ export default function Kepsek() {
   const t = isDark ? {
     page: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100',
     header: 'bg-slate-900/80 backdrop-blur-lg border-slate-700',
-    card: 'bg-slate-800/50 border border-slate-700',
+    card: 'bg-slate-800/50 border border-slate-700 shadow-lg shadow-black/30',
     dialog: 'bg-slate-900 border-slate-700',
     text: 'text-slate-100', textMuted: 'text-slate-400', textSubtle: 'text-slate-500',
     btn: 'bg-slate-800 hover:bg-slate-700 text-slate-400', btnDanger: 'bg-red-500/20 hover:bg-red-500/30 text-red-400',
@@ -87,7 +87,7 @@ export default function Kepsek() {
   } : {
     page: 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 text-slate-800',
     header: 'bg-white/80 backdrop-blur-lg border-slate-200 shadow-sm',
-    card: 'bg-white border border-slate-200 shadow-sm',
+    card: 'bg-white border border-slate-200/80 shadow-md shadow-slate-300/30',
     dialog: 'bg-white border-slate-200',
     text: 'text-slate-800', textMuted: 'text-slate-500', textSubtle: 'text-slate-400',
     btn: 'bg-slate-100 hover:bg-slate-200 text-slate-600', btnDanger: 'bg-red-50 hover:bg-red-100 text-red-500',
@@ -300,7 +300,7 @@ export default function Kepsek() {
           ].map((item, i) => {
             const Icon = item.icon;
             return (
-              <button key={i} onClick={item.onClick} className={`rounded-xl ${t.card} p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] cursor-pointer text-left`}>
+              <button key={i} onClick={item.onClick} className={`rounded-2xl ${t.card} p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] hover:shadow-lg cursor-pointer text-left`}>
                 <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center ${t.iconBg} flex-shrink-0`}><Icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${item.color}`} /></div>
                 <div className="min-w-0"><p className={`text-sm md:text-xl font-bold ${t.text} truncate`}>{item.value}</p><p className={`text-[9px] md:text-[10px] ${t.textMuted} truncate`}>{item.label}</p></div>
               </button>
