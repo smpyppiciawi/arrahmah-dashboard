@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User } from "lucide-react";
+import GenerateQRMassal from '@/components/absensi/GenerateQRMassal';
 
 export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const [selectedPerson, setSelectedPerson] = useState('');
@@ -95,6 +96,7 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
 
   return (
     <div className="space-y-4">
+      {personType === 'Siswa' && <GenerateQRMassal personType={personType} />}
       <Card className="border-0 shadow-sm">
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-emerald-500" /> Pendaftaran Kartu {personType}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
