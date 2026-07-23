@@ -243,7 +243,7 @@ export default function Kepsek() {
   return (
     <div className={`min-h-screen ${t.page} font-inter transition-colors duration-300`}>
       <header className={`sticky top-0 z-40 ${t.header} border-b`}>
-        <div className="max-w-[1800px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-[1800px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <School className="w-5 h-5 text-white" />
@@ -260,20 +260,20 @@ export default function Kepsek() {
               <span className={t.textSubtle}>|</span>
               <span className={`text-xs ${t.textMuted}`}>{format(now, 'EEEE, d MMMM yyyy', { locale: idLocale })}</span>
             </div>
-            <button onClick={() => setIsDark(!isDark)} className={`w-9 h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`} title="Ganti Tema">
+            <button onClick={() => setIsDark(!isDark)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`} title="Ganti Tema">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button onClick={() => refetch()} className={`w-9 h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><RefreshCw className="w-4 h-4" /></button>
-            <button onClick={() => setSettingsOpen(true)} className={`w-9 h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><Settings className="w-4 h-4" /></button>
-            <button onClick={() => base44.auth.logout()} className={`w-9 h-9 rounded-lg ${t.btnDanger} flex items-center justify-center transition-colors`}><LogOut className="w-4 h-4" /></button>
+            <button onClick={() => refetch()} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><RefreshCw className="w-4 h-4" /></button>
+            <button onClick={() => setSettingsOpen(true)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><Settings className="w-4 h-4" /></button>
+            <button onClick={() => base44.auth.logout()} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btnDanger} flex items-center justify-center transition-colors`}><LogOut className="w-4 h-4" /></button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-[1800px] mx-auto p-4 md:p-6 space-y-4">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="max-w-[1800px] mx-auto p-3 md:p-6 space-y-3 md:space-y-5">
+        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-1 md:flex-wrap md:pb-0">
           {DATE_PRESETS.map(p => (
-            <button key={p.key} onClick={() => setPreset(p.key)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${preset === p.key ? t.presetActive : t.presetInactive}`}>{p.label}</button>
+            <button key={p.key} onClick={() => setPreset(p.key)} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${preset === p.key ? t.presetActive : t.presetInactive}`}>{p.label}</button>
           ))}
           <div className={`flex items-center gap-1 ${t.input} rounded-lg px-2 py-1`}>
             <input type="date" value={dateFrom} onChange={(e) => { setPreset('custom'); setDateFrom(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
@@ -284,11 +284,11 @@ export default function Kepsek() {
 
         <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onEmail={handleEmail} isDark={isDark} />
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
           {statCards.map((card, i) => <StatCard key={i} {...card} />)}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
           {[
             { label: 'Siswa Aktif', value: stats.totalSiswa, icon: Users, color: 'text-blue-500', onClick: () => openDrillDown('siswa') },
             { label: 'Guru Aktif', value: stats.totalGuru, icon: School, color: 'text-violet-500', onClick: () => openDrillDown('guru') },
@@ -300,18 +300,18 @@ export default function Kepsek() {
           ].map((item, i) => {
             const Icon = item.icon;
             return (
-              <button key={i} onClick={item.onClick} className={`rounded-xl ${t.card} p-3 flex items-center gap-3 transition-all hover:scale-[1.02] cursor-pointer text-left`}>
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.iconBg}`}><Icon className={`w-4 h-4 ${item.color}`} /></div>
-                <div><p className={`text-xl font-bold ${t.text}`}>{item.value}</p><p className={`text-[10px] ${t.textMuted}`}>{item.label}</p></div>
+              <button key={i} onClick={item.onClick} className={`rounded-xl ${t.card} p-2 md:p-3 flex items-center gap-2 md:gap-3 transition-all hover:scale-[1.02] cursor-pointer text-left`}>
+                <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg flex items-center justify-center ${t.iconBg} flex-shrink-0`}><Icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${item.color}`} /></div>
+                <div className="min-w-0"><p className={`text-sm md:text-xl font-bold ${t.text} truncate`}>{item.value}</p><p className={`text-[9px] md:text-[10px] ${t.textMuted} truncate`}>{item.label}</p></div>
               </button>
             );
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className={`rounded-2xl ${t.card} p-4`}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
+          <div className="lg:col-span-2 space-y-3 md:space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
                 <h3 className={`${t.text} font-bold text-sm mb-3`}>Statistik Kehadiran</h3>
                 {attendanceData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
@@ -319,7 +319,7 @@ export default function Kepsek() {
                   </ResponsiveContainer>
                 ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data</p>}
               </div>
-              <div className={`rounded-2xl ${t.card} p-4`}>
+              <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
                 <h3 className={`${t.text} font-bold text-sm mb-3`}>Rata-rata Nilai per Mapel</h3>
                 {gradeData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
@@ -328,7 +328,7 @@ export default function Kepsek() {
                 ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data</p>}
               </div>
             </div>
-            <div className={`rounded-2xl ${t.card} p-4`}>
+            <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`${t.text} font-bold text-sm`}>Tren Keuangan</h3>
                 <div className="flex gap-3 text-xs">

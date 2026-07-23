@@ -37,7 +37,7 @@ export default function KepsekKalender({ events, onEmail, today, isDark = true }
   const h2Events = upcoming.filter(ev => differenceInCalendarDays(parseISO(ev.tanggal_mulai), todayDate) === 2);
 
   return (
-    <div className={`rounded-2xl ${c.container} p-4 h-full`}>
+    <div className={`rounded-2xl ${c.container} p-3 md:p-4 h-full`}>
       <div className="flex items-center justify-between mb-3">
         <h3 className={`${c.text} font-bold text-sm flex items-center gap-2`}>
           <CalendarDays className="w-4 h-4 text-indigo-400" /> Kalender Akademik
@@ -65,7 +65,7 @@ export default function KepsekKalender({ events, onEmail, today, isDark = true }
         </div>
       )}
 
-      <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+      <div className="space-y-2 max-h-[250px] md:max-h-[350px] overflow-y-auto pr-1">
         {upcoming.length === 0 ? (
           <div className="text-center py-8">
             <CalendarDays className={`w-8 h-8 ${c.textSubtle} mx-auto mb-2`} />
