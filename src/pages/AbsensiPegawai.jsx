@@ -10,15 +10,8 @@ import { Calendar, Clock, User, TrendingUp } from "lucide-react";
 import ScanAbsensi from '@/components/absensi/ScanAbsensi';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
-import { useAuth } from '@/lib/AuthContext';
-
-const ADMIN_ROLES = ['admin', 'tu', 'operator', 'kepsek'];
 
 export default function AbsensiPegawai() {
-  const { user: currentUser } = useAuth();
-  const userRole = currentUser?.role || 'guru';
-  const canManageKartu = ADMIN_ROLES.includes(userRole);
-
   const [activeTab, setActiveTab] = useState('scan');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -42,13 +35,12 @@ export default function AbsensiPegawai() {
 
   const dates = Object.keys(rekapByDate).sort().reverse();
 
-  const allTabs = [
+  const tabs = [
     { key: 'scan', label: 'Scan Absensi', icon: Clock, color: 'bg-emerald-500' },
     { key: 'kartu', label: 'Pendaftaran Kartu', icon: Calendar, color: 'bg-purple-500' },
     { key: 'idcard', label: 'Kartu ID', icon: User, color: 'bg-blue-500' },
     { key: 'rekap', label: 'Rekap Bulanan', icon: TrendingUp, color: 'bg-indigo-500' },
   ];
-  const tabs = allTabs.filter(t => (t.key === 'kartu' || t.key === 'idcard') ? canManageKartu : true);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -73,8 +65,8 @@ export default function AbsensiPegawai() {
         </div>
 
         {activeTab === 'scan' && <ScanAbsensi personType="Pegawai" />}
-        {canManageKartu && activeTab === 'kartu' && <PendaftaranKartu personType="Pegawai" />}
-        {canManageKartu && activeTab === 'idcard' && <IDCardPreview personType="Pegawai" />}
+        {activeTab === 'kartu' && <PendaftaranKartu personType="Pegawai" />}
+        {activeTab === 'idcard' && <IDCardPreview personType="Pegawai" />}
 
         {activeTab === 'rekap' && (
           <div className="space-y-4">
