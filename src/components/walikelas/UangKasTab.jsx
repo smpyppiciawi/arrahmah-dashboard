@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -220,20 +219,21 @@ export default function UangKasTab({ kelasWali, guruData }) {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
               <div>
                 <Label className="text-xs">Tanggal</Label>
                 <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
               </div>
               <div>
                 <Label className="text-xs">Jenis</Label>
-                <Select value={formData.jenis} onValueChange={(v) => setFormData({ ...formData, jenis: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pemasukan">Pemasukan</SelectItem>
-                    <SelectItem value="Pengeluaran">Pengeluaran</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  <button type="button" onClick={() => setFormData({ ...formData, jenis: 'Pemasukan' })} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${formData.jenis === 'Pemasukan' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                    <TrendingUp className="w-4 h-4" /> Pemasukan
+                  </button>
+                  <button type="button" onClick={() => setFormData({ ...formData, jenis: 'Pengeluaran' })} className={`flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-colors ${formData.jenis === 'Pengeluaran' ? 'bg-red-500 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                    <TrendingDown className="w-4 h-4" /> Pengeluaran
+                  </button>
+                </div>
               </div>
             </div>
             <div>
@@ -242,7 +242,18 @@ export default function UangKasTab({ kelasWali, guruData }) {
             </div>
             <div>
               <Label className="text-xs">Jumlah (Rp)</Label>
-              <Input type="number" value={formData.jumlah} onChange={(e) => setFormData({ ...formData, jumlah: e.target.value })} placeholder="0" required />
+              <div className="relative mt-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">Rp</span>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.jumlah ? new Intl.NumberFormat('id-ID').format(Number(formData.jumlah)) : ''}
+                  onChange={(e) => setFormData({ ...formData, jumlah: e.target.value.replace(/\D/g, '') })}
+                  placeholder="0"
+                  className="pl-9"
+                  required
+                />
+              </div>
             </div>
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" className="flex-1" onClick={resetForm}>Batal</Button>
