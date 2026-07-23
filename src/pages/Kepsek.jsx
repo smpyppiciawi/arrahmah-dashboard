@@ -23,6 +23,7 @@ import StatCard from '@/components/kepsek/StatCard';
 import KepsekAlerts from '@/components/kepsek/KepsekAlerts';
 import KepsekKalender from '@/components/kepsek/KepsekKalender';
 import DrillDownDialog from '@/components/kepsek/DrillDownDialog';
+import PenyebaranSiswaMap from '@/components/kepsek/PenyebaranSiswaMap';
 
 const DATE_PRESETS = [
   { key: 'today', label: 'Hari Ini' },
@@ -66,6 +67,7 @@ export default function Kepsek() {
   const { data: kalenderList = [] } = useQuery({ queryKey: ['kalender-kepsek'], queryFn: () => base44.entities.KalenderAkademik.list('-tanggal_mulai') });
   const { data: izinList = [] } = useQuery({ queryKey: ['izin-kepsek'], queryFn: () => base44.entities.IzinSiswa.filter({ tanggal: format(new Date(), 'yyyy-MM-dd') }) });
   const { data: uksList = [] } = useQuery({ queryKey: ['uks-kepsek'], queryFn: () => base44.entities.UKS.list('-tanggal') });
+  const { data: homeVisitList = [] } = useQuery({ queryKey: ['homeVisit-kepsek'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
 
   const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
 
@@ -380,6 +382,9 @@ export default function Kepsek() {
           {/* Kalender Widget */}
           <KepsekKalender events={kalenderList} onEmail={handleEmail} today={new Date()} />
         </div>
+
+        {/* Penyebaran Siswa */}
+        <PenyebaranSiswaMap homeVisitList={homeVisitList} />
 
         {/* Quick Contact */}
         <div className="rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">

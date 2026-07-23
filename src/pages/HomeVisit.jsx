@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Home, Search, Edit2, MapPin } from "lucide-react";
+import { Home, Search, Edit2, MapPin, CloudOff, RefreshCw } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import HomeVisitForm from "@/components/homevisit/HomeVisitForm";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useAuth } from '@/lib/AuthContext';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -37,14 +39,21 @@ export default function HomeVisit() {
   const [editingData, setEditingData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
-  const [currentUser, setCurrentUser] = useState(null);
+  const { user: currentUser } = useAuth();
   const { activeAcademicYear } = useActiveAcademicYear();
+  const { pendingCount, syncing, syncNow, addPending } = useOfflineSync();
 
-  useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
-
-  const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
+  const { data: siswaListAll = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
-  const { data: homeVisitList = [], isLoading } = useQuery({ queryKey: ['homeVisit'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
+  const { data: homeVisitListAll = [], isLoading } = useQuery({ queryKey: ['homeVisit'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
+
+  const userRole = currentUser?.role || 'guru';
+  const isWaliKelas = userRole === 'guru';
+  const waliKelasIds = isWaliKelas
+    ? kelasList.filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id)
+    : [];
+  const siswaList = isWaliKelas ? siswaListAll.filter(s => waliKelasIds.includes(s.kelas_id)) : siswaListAll;
+  const homeVisitList = isWaliKelas ? homeVisitListAll.filter(hv => waliKelasIds.includes(hv.kelas_id)) : homeVisitListAll;
 
   const siswaSudahHomeVisit = new Set(homeVisitList.map(hv => hv.siswa_id));
   const belumHomeVisit = siswaList.filter(s => !siswaSudahHomeVisit.has(s.id));
@@ -98,6 +107,21 @@ export default function HomeVisit() {
             <p className="text-slate-500 mt-0.5 text-sm">Hasil home visit wali kelas ke rumah siswa</p>
           </div>
         </div>
+
+        {pendingCount > 0 && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CloudOff className="w-5 h-5 text-amber-500" />
+              <div>
+                <p className="text-sm font-medium text-amber-700">{pendingCount} data home visit menunggu sinkronisasi</p>
+                <p className="text-xs text-amber-500">Akan otomatis terkirim saat ada koneksi internet</p>
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={syncNow} disabled={syncing} className="border-amber-300 text-amber-600">
+              {syncing ? <><RefreshCw className="w-3 h-3 mr-1 animate-spin" /> Sync...</> : 'Sync Sekarang'}
+            </Button>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           {[
@@ -188,6 +212,7 @@ export default function HomeVisit() {
           kelasList={kelasList}
           currentUser={currentUser}
           activeAcademicYear={activeAcademicYear}
+          addPending={addPending}
         />
       )}
     </div>

@@ -78,7 +78,7 @@ const DEFAULT_FORM = {
   catatan_tambahan: '',
 };
 
-export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList, kelasList, currentUser, activeAcademicYear }) {
+export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList, kelasList, currentUser, activeAcademicYear, addPending }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState(DEFAULT_FORM);
@@ -104,14 +104,30 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   const handleFotoUpload = async (file, field) => {
     if (!file) return;
     setUploadingFoto(true);
-    try { const result = await base44.integrations.Core.UploadFile({ file }); set(field, result.file_url); }
-    catch { toast({ title: "Gagal upload foto", variant: "destructive" }); }
+    try {
+      const result = await base44.integrations.Core.UploadFile({ file });
+      try {
+        const driveRes = await base44.functions.invoke('uploadToGoogleDrive', { file_url: result.file_url, filename: `homevisit_${field}_${Date.now()}.jpg` });
+        set(field, driveRes.data.file_url || result.file_url);
+      } catch {
+        set(field, result.file_url);
+      }
+    } catch { toast({ title: "Gagal upload foto", variant: "destructive" }); }
     finally { setUploadingFoto(false); }
   };
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.HomeVisit.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['homeVisit'] }); toast({ title: "Data home visit tersimpan" }); onClose(); },
+    onError: (error, variables) => {
+      if (addPending && (!navigator.onLine || error?.message?.includes('network') || error?.message?.includes('fetch'))) {
+        addPending(variables);
+        toast({ title: "Data tersimpan offline", description: "Akan tersinkron saat ada koneksi" });
+        onClose();
+      } else {
+        toast({ title: "Gagal menyimpan data", variant: "destructive" });
+      }
+    },
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.HomeVisit.update(id, data),
