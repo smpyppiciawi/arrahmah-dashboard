@@ -67,7 +67,7 @@ export default function KelolaDataKeuangan() {
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [biayaKhususForm, setBiayaKhususForm] = useState({ 
     siswa_id: '', nama_siswa: '', nama_kelas: '', 
@@ -155,7 +155,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -255,6 +255,7 @@ export default function KelolaDataKeuangan() {
 
   const tarifColumns = [
     { key: 'nama', label: 'Nama Iuran' },
+    { key: 'jenis_iuran', label: 'Jenis', render: (row) => <Badge className={row.jenis_iuran === 'SPP' ? 'bg-teal-100 text-teal-700' : row.jenis_iuran === 'Ujian' ? 'bg-blue-100 text-blue-700' : row.jenis_iuran === 'Mutasi' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}>{row.jenis_iuran || 'SPP'}</Badge> },
     { key: 'nominal', label: 'Nominal', render: (row) => <span className="font-medium text-teal-600">{formatRupiah(row.nominal)}</span> },
     { key: 'tingkat', label: 'Tingkat', render: (row) => <Badge className={row.tingkat === 'Semua' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}>{row.tingkat || 'Semua'}</Badge> },
     { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
@@ -440,6 +441,18 @@ export default function KelolaDataKeuangan() {
               {formType === 'tarif' && (
                 <>
                   <div><Label>Nama Iuran</Label><Input value={tarifForm.nama} onChange={(e) => setTarifForm({...tarifForm, nama: e.target.value})} placeholder="SPP, Ujian Sekolah, dll" required /></div>
+                  <div>
+                    <Label>Jenis Iuran</Label>
+                    <Select value={tarifForm.jenis_iuran} onValueChange={(v) => setTarifForm({...tarifForm, jenis_iuran: v})}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SPP">SPP</SelectItem>
+                        <SelectItem value="Ujian">Ujian</SelectItem>
+                        <SelectItem value="Mutasi">Mutasi</SelectItem>
+                        <SelectItem value="Awal Tahun">Awal Tahun</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div><Label>Nominal (Rp)</Label><RupiahInput value={tarifForm.nominal} onChange={(val) => setTarifForm({...tarifForm, nominal: val})} placeholder="0" required /></div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>

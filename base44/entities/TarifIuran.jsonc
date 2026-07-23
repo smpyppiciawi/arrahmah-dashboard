@@ -6,6 +6,17 @@
       "type": "string",
       "description": "Nama iuran (SPP, Ujian, dll)"
     },
+    "jenis_iuran": {
+      "type": "string",
+      "enum": [
+        "SPP",
+        "Ujian",
+        "Mutasi",
+        "Awal Tahun"
+      ],
+      "default": "SPP",
+      "description": "Jenis iuran untuk pengelompokan"
+    },
     "nominal": {
       "type": "number",
       "description": "Nominal iuran"

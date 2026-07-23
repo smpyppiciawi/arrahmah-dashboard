@@ -14,6 +14,8 @@ import {
   ChevronRight, Star, Zap, Heart, Shield, Home,
   ArrowLeft, Trophy, Flame, Target
 } from "lucide-react";
+import CatatanSection from '@/components/siswaportal/CatatanSection';
+import KeuanganSection from '@/components/siswaportal/KeuanganSection';
 
 // ===================== BOTTOM NAV =====================
 const NAV_ITEMS = [
@@ -102,9 +104,8 @@ export default function SiswaPortal() {
     const kehadiran = total > 0 ? Math.round((hadir / total) * 100) : 0;
     const rataRataNilai = nilaiList.length > 0
       ? Math.round(nilaiList.reduce((s, n) => s + (n.nilai || 0), 0) / nilaiList.length) : 0;
-    const totalPembayaran = keuanganList.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
     const totalPoin = pelanggaranList.reduce((s, p) => s + (p.poin || 0), 0);
-    return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPembayaran, totalPoin };
+    return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin };
   }, [absensiList, nilaiList, keuanganList, pelanggaranList]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -131,7 +132,7 @@ export default function SiswaPortal() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center">
       <div className="w-full max-w-lg">
         {/* Header */}
-        <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-4 pt-12 pb-20 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-4 pt-10 pb-14 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-16 translate-x-16" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-12 -translate-x-8" />
           <button onClick={() => { setShowProfil(false); setEditingProfil(false); }} className="flex items-center gap-2 text-white/80 mb-4">
@@ -151,7 +152,7 @@ export default function SiswaPortal() {
           </div>
         </div>
 
-        <div className="px-4 -mt-8 pb-8 space-y-4">
+        <div className="px-4 -mt-10 pb-8 space-y-4">
           {/* Data Diri Card */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -502,131 +503,12 @@ export default function SiswaPortal() {
 
       {/* ====== CATATAN ====== */}
       {activeTab === 'catatan' && (
-        <div className="pb-24">
-          <PageHeader title="Catatan" emoji="📋" gradient="from-amber-500 to-orange-500" />
-          <div className="px-4 mt-4 space-y-4">
-            {/* Pelanggaran */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-slate-700 font-bold text-sm">⚠️ Pelanggaran</p>
-                <span className={`text-xs font-bold px-3 py-1 rounded-full ${stats.totalPoin === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                  {stats.totalPoin} poin
-                </span>
-              </div>
-              {pelanggaranList.length === 0 ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 text-center">
-                  <span className="text-4xl block mb-2">✅</span>
-                  <p className="font-bold text-emerald-700">Hebat! Tidak ada pelanggaran</p>
-                  <p className="text-emerald-500 text-xs mt-1">Tetap pertahankan ya!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {pelanggaranList.map((p, idx) => (
-                    <div key={idx} className="bg-white rounded-2xl shadow-sm p-4">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-800 text-sm">{p.uraian}</p>
-                          <p className="text-slate-400 text-xs mt-1">{p.tanggal} · {p.jenis_pelanggaran}</p>
-                          {p.sanksi && <p className="text-red-500 text-xs mt-1">⚡ {p.sanksi}</p>}
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-red-600 font-black text-lg">{p.poin}</span>
-                          <span className="text-[9px] text-red-400">poin</span>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${p.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.status}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Prestasi */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-slate-700 font-bold text-sm">🏆 Prestasi</p>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-yellow-100 text-yellow-700">{prestasiList.length} pencapaian</span>
-              </div>
-              {prestasiList.length === 0 ? (
-                <div className="bg-white rounded-3xl shadow-sm p-6 text-center">
-                  <span className="text-4xl block mb-2">🏅</span>
-                  <p className="text-slate-500 text-sm">Belum ada prestasi tercatat</p>
-                  <p className="text-slate-400 text-xs mt-1">Terus semangat berprestasi!</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {prestasiList.map((p, idx) => (
-                    <div key={idx} className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 rounded-2xl p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="w-10 h-10 bg-yellow-100 rounded-2xl flex items-center justify-center text-xl shrink-0">🏆</div>
-                        <div className="flex-1">
-                          <p className="font-bold text-slate-800 text-sm">{p.nama_prestasi}</p>
-                          <p className="text-slate-500 text-xs mt-0.5">{p.tanggal} · {p.jenis_prestasi}</p>
-                          {p.penyelenggara && <p className="text-slate-400 text-xs">{p.penyelenggara}</p>}
-                        </div>
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="text-[10px] font-bold bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">{p.kategori}</span>
-                          <span className="text-[10px] text-slate-400">{p.tingkat}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <CatatanSection siswa={currentSiswa} pelanggaranList={pelanggaranList} prestasiList={prestasiList} absensiList={absensiList} />
       )}
 
       {/* ====== KEUANGAN ====== */}
       {activeTab === 'keuangan' && (
-        <div className="pb-24">
-          <PageHeader title="Keuangan" emoji="💰" gradient="from-teal-500 to-emerald-500" />
-          <div className="px-4 mt-4">
-            {/* Summary Card */}
-            <div className="bg-white rounded-3xl shadow-sm p-5 mb-4">
-              <p className="text-slate-400 text-xs mb-1">Total Pembayaran</p>
-              <p className="text-3xl font-black text-teal-600">{formatRupiah(stats.totalPembayaran)}</p>
-              <div className="flex gap-3 mt-4">
-                <div className="flex-1 bg-slate-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-slate-700">{keuanganList.length}</p>
-                  <p className="text-[10px] text-slate-400">Transaksi</p>
-                </div>
-                <div className="flex-1 bg-emerald-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-emerald-600">{keuanganList.filter(k => k.status_bayar === 'Lunas').length}</p>
-                  <p className="text-[10px] text-emerald-500">Lunas</p>
-                </div>
-                <div className="flex-1 bg-amber-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-amber-600">{keuanganList.filter(k => k.status_bayar !== 'Lunas').length}</p>
-                  <p className="text-[10px] text-amber-500">Pending</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {keuanganList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map((k, idx) => (
-                <div key={idx} className="bg-white rounded-2xl shadow-sm p-4 flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0 ${k.jenis === 'Pemasukan' ? 'bg-emerald-100' : 'bg-red-100'}`}>
-                    {k.jenis === 'Pemasukan' ? '💳' : '📤'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-slate-800 text-sm truncate">{k.uraian || k.kategori}</p>
-                    <p className="text-slate-400 text-xs">{k.tanggal}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className={`font-black text-sm ${k.jenis === 'Pemasukan' ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {k.jenis === 'Pengeluaran' ? '-' : '+'}{formatRupiah(k.jumlah)}
-                    </p>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${k.status_bayar === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                      {k.status_bayar}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              {keuanganList.length === 0 && <EmptyState emoji="💰" text="Belum ada riwayat keuangan" />}
-            </div>
-          </div>
-        </div>
+        <KeuanganSection siswa={currentSiswa} keuanganList={keuanganList} />
       )}
 
       {/* ====== BOTTOM NAVIGATION ====== */}
