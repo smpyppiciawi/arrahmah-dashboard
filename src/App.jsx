@@ -14,6 +14,7 @@ import Pengaturan from './pages/Pengaturan';
 import { ActiveAcademicYearProvider } from './context/ActiveAcademicYearContext';
 import SiswaPortal from './pages/SiswaPortal';
 import Kepsek from './pages/Kepsek';
+import HomeVisit from './pages/HomeVisit';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -70,6 +71,11 @@ const AuthenticatedApp = () => {
       <Route path="/Kepsek" element={
         isAuthenticated
           ? <Kepsek />
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/HomeVisit" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="HomeVisit"><HomeVisit /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

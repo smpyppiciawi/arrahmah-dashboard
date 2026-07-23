@@ -13,6 +13,7 @@ import {
   GraduationCap, BookOpen, Calendar, Trophy, AlertTriangle,
   Stethoscope, Wallet, TrendingUp, X
 } from "lucide-react";
+import SekolahLanjutanCard from "@/components/lulusan/SekolahLanjutanCard";
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -143,6 +144,9 @@ export default function DetailRiwayatSiswa({ siswa, open, onOpenChange }) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Sekolah Lanjutan */}
+          <SekolahLanjutanCard siswa={siswa} />
 
           {/* Summary Stats */}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">

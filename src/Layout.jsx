@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
-  UserCircle, TrendingUp, Bell, Search, CalendarDays
+  UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,6 +20,7 @@ const FULL_ACCESS_MENU = {
     { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
     { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
     { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+    { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
     { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
     { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
     { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -91,6 +92,7 @@ const ROLE_MENU = {
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: []
@@ -98,6 +100,7 @@ const ROLE_MENU = {
   bendahara: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
     ],
     groups: [
       {

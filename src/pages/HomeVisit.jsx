@@ -1,0 +1,195 @@
+import React, { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Home, Search, Edit2, MapPin } from "lucide-react";
+import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
+import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import HomeVisitForm from "@/components/homevisit/HomeVisitForm";
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+function parseCoord(v) {
+  if (!v) return null;
+  const parts = v.split(',');
+  if (parts.length === 2) {
+    const lat = parseFloat(parts[0]);
+    const lng = parseFloat(parts[1]);
+    if (!isNaN(lat) && !isNaN(lng)) return [lat, lng];
+  }
+  return null;
+}
+
+export default function HomeVisit() {
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingData, setEditingData] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterKelas, setFilterKelas] = useState('all');
+  const [currentUser, setCurrentUser] = useState(null);
+  const { activeAcademicYear } = useActiveAcademicYear();
+
+  useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
+
+  const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
+  const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
+  const { data: homeVisitList = [], isLoading } = useQuery({ queryKey: ['homeVisit'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
+
+  const siswaSudahHomeVisit = new Set(homeVisitList.map(hv => hv.siswa_id));
+  const belumHomeVisit = siswaList.filter(s => !siswaSudahHomeVisit.has(s.id));
+
+  const filteredList = homeVisitList.filter(hv => {
+    const matchSearch = !searchQuery || hv.nama_siswa?.toLowerCase().includes(searchQuery.toLowerCase()) || hv.nis?.includes(searchQuery);
+    const matchKelas = filterKelas === 'all' || hv.kelas_id === filterKelas;
+    return matchSearch && matchKelas;
+  });
+
+  const markersWithCoord = homeVisitList.filter(hv => hv.koordinat_rumah).map(hv => ({ ...hv, pos: parseCoord(hv.koordinat_rumah) })).filter(hv => hv.pos);
+
+  const stats = {
+    sudah: homeVisitList.length,
+    belum: belumHomeVisit.length,
+    layak: homeVisitList.filter(h => h.keadaan_rumah === 'Layak Huni').length,
+    tidakLayak: homeVisitList.filter(h => h.keadaan_rumah === 'Tidak Layak Huni').length,
+    yatim: homeVisitList.filter(h => h.keadaan_orang_tua?.includes('Yatim')).length,
+  };
+
+  const columns = [
+    { key: 'nama_siswa', label: 'Nama Siswa' },
+    { key: 'nis', label: 'NIS' },
+    { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge className="bg-blue-100 text-blue-700">{row.nama_kelas || '-'}</Badge> },
+    { key: 'tinggal_dengan', label: 'Tinggal Dengan', render: (row) => row.tinggal_dengan || '-' },
+    { key: 'keadaan_rumah', label: 'Keadaan Rumah', render: (row) => row.keadaan_rumah ? <Badge className={row.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.keadaan_rumah}</Badge> : '-' },
+    { key: 'pembiayaan_sekolah', label: 'Pembiayaan', render: (row) => row.pembiayaan_sekolah || '-' },
+    { key: 'tanggal_homevisit', label: 'Tgl Home Visit', render: (row) => row.tanggal_homevisit || '-' },
+    {
+      key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
+      render: (row) => (
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => { setEditingData(row); setIsOpen(true); }} title="Edit"><Edit2 className="w-4 h-4" /></Button>
+          {row.koordinat_rumah && (
+            <a href={`https://www.google.com/maps?q=${row.koordinat_rumah}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent" title="Lihat Lokasi">
+              <MapPin className="w-4 h-4 text-blue-500" />
+            </a>
+          )}
+        </div>
+      )
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 bg-indigo-100 rounded-xl"><Home className="w-7 h-7 text-indigo-600" /></div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Home Visit</h1>
+            <p className="text-slate-500 mt-0.5 text-sm">Hasil home visit wali kelas ke rumah siswa</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          {[
+            { label: 'Sudah Home Visit', value: stats.sudah, color: 'text-slate-700' },
+            { label: 'Belum Home Visit', value: stats.belum, color: 'text-amber-600' },
+            { label: 'Layak Huni', value: stats.layak, color: 'text-emerald-600' },
+            { label: 'Tidak Layak Huni', value: stats.tidakLayak, color: 'text-red-600' },
+            { label: 'Yatim/Piatu', value: stats.yatim, color: 'text-purple-600' },
+          ].map((stat, i) => (
+            <Card key={i} className="border-0 shadow-sm">
+              <CardContent className="p-4 text-center">
+                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {markersWithCoord.length > 0 && (
+          <Card className="border-0 shadow-sm mb-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-blue-500" /> Penyebaran Rumah Siswa
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div style={{ height: '400px' }} className="rounded-lg overflow-hidden border border-slate-200 z-0">
+                <MapContainer center={markersWithCoord[0]?.pos || [-6.2, 106.8]} zoom={13} style={{ height: '100%', width: '100%' }}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+                  {markersWithCoord.map(hv => (
+                    <Marker key={hv.id} position={hv.pos}>
+                      <Popup>
+                        <strong>{hv.nama_siswa}</strong><br />
+                        Kelas: {hv.nama_kelas}<br />
+                        {hv.keadaan_rumah && <span>Rumah: {hv.keadaan_rumah}</span>}
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="border-0 shadow-sm mb-4">
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input className="pl-9" placeholder="Cari nama atau NIS siswa..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              </div>
+              <Select value={filterKelas} onValueChange={setFilterKelas}>
+                <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kelas</SelectItem>
+                  {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-sm">
+          <CardHeader><CardTitle className="text-base">Daftar Home Visit ({filteredList.length})</CardTitle></CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-10 text-slate-400">Memuat data...</div>
+            ) : filteredList.length === 0 ? (
+              <div className="text-center py-10">
+                <Home className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-400">Belum ada data home visit</p>
+              </div>
+            ) : (
+              <DataTable columns={columns} data={filteredList} pageSize={10} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Home Visit" color="indigo" icon={Home} />
+
+      {isOpen && (
+        <HomeVisitForm
+          isOpen={isOpen}
+          onClose={() => { setIsOpen(false); setEditingData(null); }}
+          editingData={editingData}
+          siswaList={siswaList}
+          kelasList={kelasList}
+          currentUser={currentUser}
+          activeAcademicYear={activeAcademicYear}
+        />
+      )}
+    </div>
+  );
+}

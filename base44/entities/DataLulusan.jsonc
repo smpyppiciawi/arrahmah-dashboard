@@ -41,7 +41,7 @@
     },
     "siswa_id": {
       "type": "string",
-      "description": "ID siswa asli untuk relasi data riwayat (Nilai, Absensi, dll)"
+      "description": "ID siswa asli untuk relasi data riwayat"
     },
     "status": {
       "type": "string",
@@ -54,6 +54,28 @@
     },
     "keterangan": {
       "type": "string"
+    },
+    "jenis_sekolah_lanjutan": {
+      "type": "string",
+      "enum": [
+        "SMA",
+        "SMK",
+        "MA",
+        "PONPES"
+      ],
+      "description": "Jenis sekolah lanjutan"
+    },
+    "nama_sekolah_lanjutan": {
+      "type": "string",
+      "description": "Nama sekolah lanjutan"
+    },
+    "npsn_sekolah_lanjutan": {
+      "type": "string",
+      "description": "NPSN sekolah lanjutan"
+    },
+    "alamat_sekolah_lanjutan": {
+      "type": "string",
+      "description": "Alamat sekolah lanjutan"
     }
   },
   "required": [

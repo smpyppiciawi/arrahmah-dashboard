@@ -1,0 +1,249 @@
+{
+  "name": "HomeVisit",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "tanggal_homevisit": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal home visit"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID guru wali kelas"
+    },
+    "nama_guru": {
+      "type": "string"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "tinggal_dengan": {
+      "type": "string",
+      "enum": [
+        "Orang Tua Kandung/Sambung",
+        "Kakek/Nenek",
+        "Saudara Kandung",
+        "Bibi/Paman",
+        "Panti"
+      ]
+    },
+    "keadaan_orang_tua": {
+      "type": "string",
+      "enum": [
+        "Lengkap",
+        "Pisah/Cerai",
+        "Yatim/Piatu/Yatim Piatu"
+      ]
+    },
+    "pekerjaan_orang_tua": {
+      "type": "string"
+    },
+    "status_tempat_tinggal": {
+      "type": "string",
+      "enum": [
+        "Milik Pribadi",
+        "Bukan Milik",
+        "Sewa/Kontrak",
+        "Rumah Bersama"
+      ]
+    },
+    "keadaan_lingkungan": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Pesantren",
+          "Padat Penduduk",
+          "Kawasan Industri",
+          "Perkebunan"
+        ]
+      }
+    },
+    "keadaan_rumah": {
+      "type": "string",
+      "enum": [
+        "Layak Huni",
+        "Tidak Layak Huni"
+      ]
+    },
+    "kendaraan": {
+      "type": "string",
+      "enum": [
+        "Ada",
+        "Pribeli/Angsuran",
+        "Tidak"
+      ]
+    },
+    "kendaraan_jenis": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Roda 2",
+          "Roda 4"
+        ]
+      }
+    },
+    "kendaraan_roda2_unit": {
+      "type": "number"
+    },
+    "kendaraan_roda4_unit": {
+      "type": "number"
+    },
+    "transportasi_sekolah": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Motor Pribadi",
+          "Mobil Pribadi",
+          "Jalan Kaki",
+          "Sepeda",
+          "Ojek/Ojol",
+          "Angkot",
+          "Mini Bus/Bus/Omprengan"
+        ]
+      }
+    },
+    "siswa_mengaji": {
+      "type": "string",
+      "enum": [
+        "Mengaji",
+        "Tidak"
+      ]
+    },
+    "tempat_mengaji": {
+      "type": "string",
+      "enum": [
+        "Rumah",
+        "Madrasah"
+      ]
+    },
+    "orang_tua_merokok": {
+      "type": "string",
+      "enum": [
+        "Ya",
+        "Tidak"
+      ]
+    },
+    "perokok": {
+      "type": "string",
+      "enum": [
+        "Ayah",
+        "Ibu",
+        "Keduanya"
+      ]
+    },
+    "koordinat_rumah": {
+      "type": "string"
+    },
+    "punya_hp_pribadi": {
+      "type": "string",
+      "enum": [
+        "Ya",
+        "Tidak"
+      ]
+    },
+    "frekuensi_cek_hp": {
+      "type": "string",
+      "enum": [
+        "Sangat Sering",
+        "Jarang",
+        "Tidak Pernah"
+      ]
+    },
+    "foto_hp_url": {
+      "type": "string"
+    },
+    "ada_wifi": {
+      "type": "string",
+      "enum": [
+        "Ya",
+        "Tidak"
+      ]
+    },
+    "merk_internet": {
+      "type": "string"
+    },
+    "jaringan_internet": {
+      "type": "string",
+      "enum": [
+        "Telkomsel",
+        "Indosat/Tri",
+        "XL/Axis",
+        "Smartfren",
+        "Lainnya"
+      ]
+    },
+    "pembiayaan_sekolah": {
+      "type": "string",
+      "enum": [
+        "Orang Tua",
+        "Wali Siswa",
+        "Donatur",
+        "Beasiswa Sekolah"
+      ]
+    },
+    "penghasilan_orang_tua": {
+      "type": "number"
+    },
+    "penghasilan_tambahan": {
+      "type": "string",
+      "enum": [
+        "Ada",
+        "Tidak"
+      ]
+    },
+    "keterangan_penghasilan_tambahan": {
+      "type": "string"
+    },
+    "periode_uang_jajan": {
+      "type": "string",
+      "enum": [
+        "Hari",
+        "Minggu",
+        "Bulan"
+      ]
+    },
+    "nominal_uang_jajan": {
+      "type": "number",
+      "description": "Nominal uang jajan siswa"
+    },
+    "foto_rumah_dalam": {
+      "type": "string",
+      "description": "URL foto rumah tampak dalam"
+    },
+    "foto_rumah_luar": {
+      "type": "string",
+      "description": "URL foto rumah tampak luar"
+    },
+    "foto_bersama": {
+      "type": "string",
+      "description": "URL foto bersama orang tua/siswa"
+    },
+    "catatan_tambahan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "tanggal_homevisit"
+  ]
+}

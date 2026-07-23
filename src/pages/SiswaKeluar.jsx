@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, Search, Building2, Calendar } from "lucide-react";
+import { LogOut, Search, Building2, Calendar, LogIn } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
+import { Button } from "@/components/ui/button";
+import KembaliMasukDialog from "@/components/siswa/KembaliMasukDialog";
 
 const KATEGORI_STYLE = {
   'Pindah': 'bg-blue-100 text-blue-700',
@@ -18,10 +20,16 @@ const KATEGORI_STYLE = {
 export default function SiswaKeluar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKategori, setFilterKategori] = useState('all');
+  const [kembaliMasukSiswa, setKembaliMasukSiswa] = useState(null);
 
   const { data: siswaKeluarList = [], isLoading } = useQuery({
     queryKey: ['siswaKeluar'],
     queryFn: () => base44.entities.SiswaKeluar.list('-tanggal_keluar'),
+  });
+
+  const { data: kelasList = [] } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
   const filteredList = siswaKeluarList.filter(s => {
@@ -66,6 +74,17 @@ export default function SiswaKeluar() {
       )
     },
     { key: 'tahun_ajaran', label: 'Tahun Ajaran', render: (row) => row.tahun_ajaran || '-' },
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      sortable: false,
+      filterable: false,
+      render: (row) => (
+        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => setKembaliMasukSiswa(row)}>
+          <LogIn className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Kembali Masuk</span>
+        </Button>
+      )
+    },
   ];
 
   const stats = {
@@ -159,6 +178,13 @@ export default function SiswaKeluar() {
           </CardContent>
         </Card>
       </div>
+      {kembaliMasukSiswa && (
+        <KembaliMasukDialog
+          siswaKeluar={kembaliMasukSiswa}
+          kelasList={kelasList}
+          onClose={() => setKembaliMasukSiswa(null)}
+        />
+      )}
     </div>
   );
 }

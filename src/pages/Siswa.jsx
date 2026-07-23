@@ -3,11 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
 import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut } from "lucide-react";
 import { Link } from 'react-router-dom';
@@ -42,19 +39,6 @@ export default function Siswa() {
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'tu'].includes(userRole);
 
-  const [formData, setFormData] = useState({
-    nis: '',
-    nama: '',
-    jenis_kelamin: 'Laki-laki',
-    kelas_id: '',
-    nama_kelas: '',
-    tanggal_lahir: '',
-    alamat: '',
-    nama_ortu: '',
-    no_telp_ortu: '',
-    status: 'Aktif'
-  });
-
   const { data: siswaList = [], isLoading } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
@@ -63,22 +47,6 @@ export default function Siswa() {
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
-  });
-
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Siswa.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['siswa'] });
-      resetForm();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Siswa.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['siswa'] });
-      resetForm();
-    },
   });
 
   const deleteMutation = useMutation({
@@ -134,43 +102,9 @@ export default function Siswa() {
     a.click();
   };
 
-  const resetForm = () => {
-    setFormData({
-      nis: '',
-      nama: '',
-      jenis_kelamin: 'Laki-laki',
-      kelas_id: '',
-      nama_kelas: '',
-      tanggal_lahir: '',
-      alamat: '',
-      nama_ortu: '',
-      no_telp_ortu: '',
-      status: 'Aktif'
-    });
-    setEditingData(null);
-    setIsOpen(false);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (editingData) {
-      updateMutation.mutate({ id: editingData.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
   const handleEdit = (siswa) => {
     setEditingData(siswa);
-    setFormData(siswa);
     setIsOpen(true);
-  };
-
-  const handleKelasChange = (kelasId) => {
-    const kelas = kelasList.find(k => k.id === kelasId);
-    if (kelas) {
-      setFormData({ ...formData, kelas_id: kelasId, nama_kelas: kelas.nama_kelas });
-    }
   };
 
   const siswaColumns = [
@@ -279,93 +213,17 @@ export default function Siswa() {
           </CardContent>
         </Card>
 
-        {/* Dialog Form */}
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingData ? 'Edit Data Siswa' : 'Tambah Siswa Baru'}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>NIS</Label>
-                  <Input value={formData.nis} onChange={(e) => setFormData({...formData, nis: e.target.value})} required />
-                </div>
-                <div>
-                  <Label>Nama Lengkap</Label>
-                  <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Jenis Kelamin</Label>
-                  <Select value={formData.jenis_kelamin} onValueChange={(v) => setFormData({...formData, jenis_kelamin: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Laki-laki">Laki-laki</SelectItem>
-                      <SelectItem value="Perempuan">Perempuan</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Kelas</Label>
-                  <Select value={formData.kelas_id} onValueChange={handleKelasChange}>
-                    <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                    <SelectContent>
-                      {kelasList.map(kelas => (
-                        <SelectItem key={kelas.id} value={kelas.id}>{kelas.nama_kelas}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {!editingData && (
-                    <p className="text-xs text-slate-500 mt-1">Pilih kelas yang tersedia. Tambah kelas di Menu Kelas.</p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Tanggal Lahir</Label>
-                  <Input type="date" value={formData.tanggal_lahir} onChange={(e) => setFormData({...formData, tanggal_lahir: e.target.value})} />
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({...formData, status: v})}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Aktif">Aktif</SelectItem>
-                      <SelectItem value="Lulus">Lulus</SelectItem>
-                      <SelectItem value="Pindah">Pindah</SelectItem>
-                      <SelectItem value="Keluar">Keluar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div>
-                <Label>Alamat</Label>
-                <Input value={formData.alamat} onChange={(e) => setFormData({...formData, alamat: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>Nama Orang Tua/Wali</Label>
-                  <Input value={formData.nama_ortu} onChange={(e) => setFormData({...formData, nama_ortu: e.target.value})} />
-                </div>
-                <div>
-                  <Label>No. Telp Orang Tua</Label>
-                  <Input value={formData.no_telp_ortu} onChange={(e) => setFormData({...formData, no_telp_ortu: e.target.value})} />
-                </div>
-              </div>
-              <div className="flex gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
-                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700">
-                  {editingData ? 'Simpan Perubahan' : 'Tambah Siswa'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {isOpen && (
+          <SiswaForm
+            isOpen={isOpen}
+            onClose={() => { setIsOpen(false); setEditingData(null); }}
+            editingData={editingData}
+            kelasList={kelasList}
+          />
+        )}
       </div>
     </div>
-    {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Siswa" color="blue" icon={Plus} />}
+    {canEdit && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Siswa" color="blue" icon={Plus} />}
     {keluarSiswa && <SiswaKeluarDialog siswa={keluarSiswa} onClose={() => setKeluarSiswa(null)} />}
     </>
   );
