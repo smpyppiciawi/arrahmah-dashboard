@@ -15,8 +15,15 @@ import ScanAbsensi from '@/components/absensi/ScanAbsensi';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
 import { ScanLine, CreditCard, User as UserIcon } from "lucide-react";
+import { useAuth } from '@/lib/AuthContext';
+
+const ADMIN_ROLES = ['admin', 'tu', 'operator', 'kepsek'];
 
 export default function Absensi() {
+  const { user: currentUser } = useAuth();
+  const userRole = currentUser?.role || 'guru';
+  const canManageKartu = ADMIN_ROLES.includes(userRole);
+
   const [activeTab, setActiveTab] = useState('rekap');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -41,7 +48,7 @@ export default function Absensi() {
 
   const dates = Object.keys(rekapByDate).sort().reverse();
 
-  const tabs = [
+  const allTabs = [
     { key: 'scan', label: 'Scan Absensi', icon: ScanLine, color: 'bg-emerald-500' },
     { key: 'rekap', label: 'Rekap Harian', icon: CalendarDays, color: 'bg-emerald-500' },
     { key: 'kehadiran', label: 'Absensi Kehadiran', icon: CheckCircle, color: 'bg-emerald-500' },
@@ -50,6 +57,7 @@ export default function Absensi() {
     { key: 'idcard', label: 'Kartu ID', icon: UserIcon, color: 'bg-blue-500' },
     { key: 'riwayat', label: 'Riwayat', icon: History, color: 'bg-blue-500' },
   ];
+  const tabs = allTabs.filter(t => (t.key === 'kartu' || t.key === 'idcard') ? canManageKartu : true);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -149,8 +157,8 @@ export default function Absensi() {
         {activeTab === 'scan' && <ScanAbsensi personType="Siswa" />}
         {activeTab === 'kehadiran' && <AbsensiKehadiran />}
         {activeTab === 'jumat' && <AbsensiJumat />}
-        {activeTab === 'kartu' && <PendaftaranKartu personType="Siswa" />}
-        {activeTab === 'idcard' && <IDCardPreview personType="Siswa" />}
+        {canManageKartu && activeTab === 'kartu' && <PendaftaranKartu personType="Siswa" />}
+        {canManageKartu && activeTab === 'idcard' && <IDCardPreview personType="Siswa" />}
         {activeTab === 'riwayat' && <RiwayatAbsensi />}
       </div>
     </div>
