@@ -1,0 +1,62 @@
+{
+  "name": "KartuAbsensi",
+  "type": "object",
+  "properties": {
+    "card_id": {
+      "type": "string",
+      "description": "ID unik kartu (RFID UID, QR code, atau fingerprint ID)"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "RFID",
+        "QRCode",
+        "Fingerprint"
+      ],
+      "description": "Jenis kartu/metode"
+    },
+    "person_type": {
+      "type": "string",
+      "enum": [
+        "Siswa",
+        "Pegawai"
+      ],
+      "description": "Tipe pemilik kartu"
+    },
+    "person_id": {
+      "type": "string",
+      "description": "ID siswa atau pegawai"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama pemilik kartu"
+    },
+    "nip_nis": {
+      "type": "string",
+      "description": "NIS atau NIP"
+    },
+    "info": {
+      "type": "string",
+      "description": "Kelas atau jabatan"
+    },
+    "no_telp": {
+      "type": "string",
+      "description": "No WA untuk notifikasi absensi"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Nonaktif"
+      ],
+      "default": "Aktif"
+    }
+  },
+  "required": [
+    "card_id",
+    "jenis",
+    "person_type",
+    "person_id",
+    "nama"
+  ]
+}

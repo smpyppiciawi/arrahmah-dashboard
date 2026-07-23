@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/badge";
 const FULL_ACCESS_MENU = {
   topItems: [
     { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
-    { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
     { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
     { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
     { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
@@ -59,7 +60,8 @@ const ROLE_MENU = {
   operator: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -69,7 +71,8 @@ const ROLE_MENU = {
   tu: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
@@ -92,7 +95,8 @@ const ROLE_MENU = {
   piket: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -126,7 +130,8 @@ const ROLE_MENU = {
       { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' },
       { name: 'Wali Kelas', icon: Users, page: 'WaliKelas', color: '#8b5cf6' },
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
-      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },

@@ -11,6 +11,10 @@ import { Calendar, Users, AlertTriangle, CalendarDays, History, CheckCircle, Use
 import AbsensiKehadiran from '@/components/absensi/AbsensiKehadiran';
 import AbsensiJumat from '@/components/absensi/AbsensiJumat';
 import RiwayatAbsensi from '@/components/absensi/RiwayatAbsensi';
+import ScanAbsensi from '@/components/absensi/ScanAbsensi';
+import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
+import IDCardPreview from '@/components/absensi/IDCardPreview';
+import { ScanLine, CreditCard, User as UserIcon } from "lucide-react";
 
 export default function Absensi() {
   const [activeTab, setActiveTab] = useState('rekap');
@@ -38,9 +42,12 @@ export default function Absensi() {
   const dates = Object.keys(rekapByDate).sort().reverse();
 
   const tabs = [
+    { key: 'scan', label: 'Scan Absensi', icon: ScanLine, color: 'bg-emerald-500' },
     { key: 'rekap', label: 'Rekap Harian', icon: CalendarDays, color: 'bg-emerald-500' },
     { key: 'kehadiran', label: 'Absensi Kehadiran', icon: CheckCircle, color: 'bg-emerald-500' },
     { key: 'jumat', label: 'Absensi Jumat', icon: Users, color: 'bg-emerald-500' },
+    { key: 'kartu', label: 'Pendaftaran Kartu', icon: CreditCard, color: 'bg-purple-500' },
+    { key: 'idcard', label: 'Kartu ID', icon: UserIcon, color: 'bg-blue-500' },
     { key: 'riwayat', label: 'Riwayat', icon: History, color: 'bg-blue-500' },
   ];
 
@@ -139,8 +146,11 @@ export default function Absensi() {
           </div>
         )}
 
+        {activeTab === 'scan' && <ScanAbsensi personType="Siswa" />}
         {activeTab === 'kehadiran' && <AbsensiKehadiran />}
         {activeTab === 'jumat' && <AbsensiJumat />}
+        {activeTab === 'kartu' && <PendaftaranKartu personType="Siswa" />}
+        {activeTab === 'idcard' && <IDCardPreview personType="Siswa" />}
         {activeTab === 'riwayat' && <RiwayatAbsensi />}
       </div>
     </div>

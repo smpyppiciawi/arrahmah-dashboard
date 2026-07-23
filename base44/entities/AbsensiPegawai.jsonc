@@ -1,5 +1,5 @@
 {
-  "name": "Absensi",
+  "name": "AbsensiPegawai",
   "type": "object",
   "properties": {
     "tanggal": {
@@ -7,45 +7,41 @@
       "format": "date",
       "description": "Tanggal absensi"
     },
-    "siswa_id": {
+    "guru_id": {
       "type": "string",
-      "description": "ID siswa"
+      "description": "ID pegawai"
     },
-    "nis": {
-      "type": "string"
+    "nip": {
+      "type": "string",
+      "description": "NIP pegawai"
     },
-    "nama_siswa": {
-      "type": "string"
+    "nama_pegawai": {
+      "type": "string",
+      "description": "Nama pegawai"
     },
-    "kelas_id": {
-      "type": "string"
+    "jabatan": {
+      "type": "string",
+      "description": "Jabatan pegawai"
     },
-    "nama_kelas": {
-      "type": "string"
+    "jam_masuk": {
+      "type": "string",
+      "description": "Jam masuk (HH:mm)"
+    },
+    "jam_keluar": {
+      "type": "string",
+      "description": "Jam keluar (HH:mm)"
     },
     "status": {
       "type": "string",
       "enum": [
         "Hadir",
-        "Sakit",
+        "Terlambat",
         "Izin",
-        "Alfa",
-        "Terlambat"
+        "Sakit",
+        "Alfa"
       ],
-      "default": "Hadir"
-    },
-    "jenis_absensi": {
-      "type": "string",
-      "enum": [
-        "Kehadiran",
-        "Jumat"
-      ],
-      "default": "Kehadiran",
-      "description": "Jenis absensi"
-    },
-    "jam_masuk": {
-      "type": "string",
-      "description": "Jam masuk (format HH:mm)"
+      "default": "Hadir",
+      "description": "Status kehadiran"
     },
     "metode": {
       "type": "string",
@@ -68,9 +64,8 @@
   },
   "required": [
     "tanggal",
-    "siswa_id",
-    "nama_siswa",
-    "nama_kelas",
+    "guru_id",
+    "nama_pegawai",
     "status"
   ]
 }

@@ -58,6 +58,7 @@ import Kepsek from './pages/Kepsek';
 import LaporanKeuangan from './pages/LaporanKeuangan';
 import Materi from './pages/Materi';
 import Absensi from './pages/Absensi';
+import AbsensiPegawai from './pages/AbsensiPegawai';
 import Guru from './pages/Guru';
 import Masuk from './pages/Masuk';
 import Nilai from './pages/Nilai';
@@ -82,6 +83,7 @@ export const PAGES = {
     "LaporanKeuangan": LaporanKeuangan,
     "Materi": Materi,
     "Absensi": Absensi,
+    "AbsensiPegawai": AbsensiPegawai,
     "Guru": Guru,
     "Masuk": Masuk,
     "Nilai": Nilai,
