@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { ScanLine, CheckCircle, XCircle, Clock, User, MessageCircle, Loader2 } from "lucide-react";
+import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi } from "lucide-react";
+import QRCameraScanner from '@/components/absensi/QRCameraScanner';
 
 export default function ScanAbsensi({ personType = 'Siswa' }) {
+  const [scanMode, setScanMode] = useState('kartu');
+  const [qrSubMode, setQrSubMode] = useState('kamera');
   const [scanInput, setScanInput] = useState('');
   const [lastResult, setLastResult] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -26,7 +29,21 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     queryFn: () => base44.entities[entityName].filter({ tanggal: today }),
   });
 
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  // Multi-device real-time sync
+  useEffect(() => {
+    const unsubscribe = base44.entities[entityName].subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
+      }
+    });
+    return unsubscribe;
+  }, [entityName, personType, today]);
+
+  useEffect(() => {
+    if (scanMode === 'kartu' || scanMode === 'fingerprint' || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [scanMode, qrSubMode]);
 
   const addLog = (result) => {
     const entry = { ...result, time: format(new Date(), 'HH:mm:ss') };
@@ -51,9 +68,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     }
   };
 
-  const handleScan = async (e) => {
-    if (e) e.preventDefault();
-    const cardId = scanInput.trim();
+  const processScan = async (cardIdValue) => {
+    const cardId = String(cardIdValue || '').trim();
     if (!cardId || processing) return;
     setProcessing(true);
 
@@ -139,9 +155,36 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     } finally {
       setProcessing(false);
       setScanInput('');
-      setTimeout(() => inputRef.current?.focus(), 100);
+      if (scanMode === 'kartu' || scanMode === 'fingerprint' || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
+        setTimeout(() => inputRef.current?.focus(), 100);
+      }
     }
   };
+
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    processScan(scanInput);
+  };
+
+  const modes = [
+    { id: 'kartu', label: 'Scan Kartu', icon: CreditCard, color: 'purple', desc: 'RFID Card Reader' },
+    { id: 'qrcode', label: 'QR Code', icon: QrCode, color: 'blue', desc: 'Kamera / Scanner' },
+    { id: 'fingerprint', label: 'Fingerprint', icon: Fingerprint, color: 'orange', desc: 'Fingerprint Reader' },
+  ];
+
+  const modeColorMap = {
+    purple: { active: 'bg-purple-600 text-white', idle: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
+    blue: { active: 'bg-blue-600 text-white', idle: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
+    orange: { active: 'bg-orange-600 text-white', idle: 'text-orange-600 bg-orange-50 hover:bg-orange-100' },
+  };
+
+  const inputPlaceholder = scanMode === 'kartu'
+    ? 'Tempel kartu RFID pada reader...'
+    : scanMode === 'fingerprint'
+    ? 'Letakkan jari pada fingerprint reader...'
+    : 'Arahkan scanner ke QR Code...';
+
+  const isCameraMode = scanMode === 'qrcode' && qrSubMode === 'kamera';
 
   return (
     <div className="space-y-4">
@@ -152,23 +195,92 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
               <ScanLine className="w-8 h-8 text-emerald-600" />
             </div>
             <h3 className="text-lg font-bold text-slate-800">Scan Absensi {personType}</h3>
-            <p className="text-sm text-slate-500">Tempel kartu / scan QR / scan fingerprint pada reader</p>
+            <p className="text-sm text-slate-500">Pilih metode absensi sesuai perangkat</p>
           </div>
-          <form onSubmit={handleScan}>
-            <Input
-              ref={inputRef}
-              value={scanInput}
-              onChange={(e) => setScanInput(e.target.value)}
-              placeholder="Menunggu scan kartu..."
-              className="text-center text-lg font-mono h-14 border-2 border-emerald-300 focus:border-emerald-500"
-              autoComplete="off"
-              readOnly={processing}
-            />
-            <Button type="submit" className="w-full mt-3 h-12 bg-emerald-600 hover:bg-emerald-700" disabled={processing || !scanInput.trim()}>
-              {processing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ScanLine className="w-5 h-5 mr-2" />}
-              {processing ? 'Memproses...' : 'Proses Scan'}
-            </Button>
-          </form>
+
+          {/* Mode Selector */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            {modes.map(m => {
+              const Icon = m.icon;
+              const isActive = scanMode === m.id;
+              const colors = modeColorMap[m.color];
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => { setScanMode(m.id); setScanInput(''); setLastResult(null); }}
+                  className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
+                    isActive ? `${colors.active} border-transparent shadow-md` : `${colors.idle} border-transparent`
+                  }`}
+                >
+                  <Icon className="w-6 h-6" />
+                  <span className="text-xs font-semibold">{m.label}</span>
+                  <span className={`text-[9px] ${isActive ? 'text-white/70' : 'text-slate-400'}`}>{m.desc}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* QR Sub-mode */}
+          {scanMode === 'qrcode' && (
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setQrSubMode('kamera')}
+                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
+                  qrSubMode === 'kamera' ? 'bg-blue-600 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-transparent hover:bg-blue-100'
+                }`}
+              >
+                <Camera className="w-4 h-4" />
+                <span className="text-xs font-semibold">Kamera (HP)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setQrSubMode('pembaca')}
+                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
+                  qrSubMode === 'pembaca' ? 'bg-blue-600 text-white border-transparent' : 'bg-blue-50 text-blue-600 border-transparent hover:bg-blue-100'
+                }`}
+              >
+                <Monitor className="w-4 h-4" />
+                <span className="text-xs font-semibold">Pembaca (Scanner)</span>
+              </button>
+            </div>
+          )}
+
+          {/* Camera Mode */}
+          {isCameraMode ? (
+            <QRCameraScanner active={isCameraMode && !processing} onScan={processScan} />
+          ) : (
+            <form onSubmit={handleFormSubmit}>
+              <Input
+                ref={inputRef}
+                value={scanInput}
+                onChange={(e) => setScanInput(e.target.value)}
+                placeholder={inputPlaceholder}
+                className="text-center text-lg font-mono h-14 border-2 border-emerald-300 focus:border-emerald-500"
+                autoComplete="off"
+                readOnly={processing}
+              />
+              <Button type="submit" className="w-full mt-3 h-12 bg-emerald-600 hover:bg-emerald-700" disabled={processing || !scanInput.trim()}>
+                {processing ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <ScanLine className="w-5 h-5 mr-2" />}
+                {processing ? 'Memproses...' : 'Proses Scan'}
+              </Button>
+            </form>
+          )}
+
+          {/* Fingerprint info */}
+          {scanMode === 'fingerprint' && (
+            <div className="mt-3 bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
+              <Fingerprint className="w-6 h-6 text-orange-500 mx-auto mb-1" />
+              <p className="text-xs text-orange-700">Pastikan fingerprint reader terhubung. ID fingerprint akan otomatis muncul saat jari ditempel.</p>
+            </div>
+          )}
+
+          {/* Multi-device indicator */}
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
+            <Wifi className="w-3 h-3 text-emerald-500" />
+            <span>Multi-device aktif — sinkron real-time antar perangkat</span>
+          </div>
         </CardContent>
       </Card>
 
@@ -203,8 +315,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
             {todayList.length === 0 ? (
               <p className="text-center text-slate-400 text-sm py-4">Belum ada absensi hari ini</p>
-            ) : todayList.sort((a, b) => (b.jam_masuk || '').localeCompare(a.jam_masuk || '')).map((a, i) => (
-              <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+            ) : todayList.slice().sort((a, b) => (b.jam_masuk || '').localeCompare(a.jam_masuk || '')).map((a, i) => (
+              <div key={a.id || i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
                     <User className="w-4 h-4 text-emerald-600" />
