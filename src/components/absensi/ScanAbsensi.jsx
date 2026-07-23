@@ -7,12 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi } from "lucide-react";
+import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc } from "lucide-react";
 import QRCameraScanner from '@/components/absensi/QRCameraScanner';
+import NfcScanner from '@/components/absensi/NfcScanner';
+import FingerprintScanner from '@/components/absensi/FingerprintScanner';
 
 export default function ScanAbsensi({ personType = 'Siswa' }) {
   const [scanMode, setScanMode] = useState('kartu');
   const [qrSubMode, setQrSubMode] = useState('kamera');
+  const [fpSubMode, setFpSubMode] = useState('reader');
   const [scanInput, setScanInput] = useState('');
   const [lastResult, setLastResult] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -40,10 +43,10 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   }, [entityName, personType, today]);
 
   useEffect(() => {
-    if (scanMode === 'kartu' || scanMode === 'fingerprint' || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
+    if (scanMode === 'kartu' || (scanMode === 'fingerprint' && fpSubMode === 'reader') || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [scanMode, qrSubMode]);
+  }, [scanMode, qrSubMode, fpSubMode]);
 
   const addLog = (result) => {
     const entry = { ...result, time: format(new Date(), 'HH:mm:ss') };
@@ -155,7 +158,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     } finally {
       setProcessing(false);
       setScanInput('');
-      if (scanMode === 'kartu' || scanMode === 'fingerprint' || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
+      if (scanMode === 'kartu' || (scanMode === 'fingerprint' && fpSubMode === 'reader') || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
         setTimeout(() => inputRef.current?.focus(), 100);
       }
     }
@@ -167,13 +170,15 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   };
 
   const modes = [
-    { id: 'kartu', label: 'Scan Kartu', icon: CreditCard, color: 'purple', desc: 'RFID Card Reader' },
+    { id: 'kartu', label: 'RFID Reader', icon: CreditCard, color: 'purple', desc: 'Reader eksternal' },
+    { id: 'nfc', label: 'NFC HP', icon: Nfc, color: 'emerald', desc: 'Tap kartu di HP' },
     { id: 'qrcode', label: 'QR Code', icon: QrCode, color: 'blue', desc: 'Kamera / Scanner' },
-    { id: 'fingerprint', label: 'Fingerprint', icon: Fingerprint, color: 'orange', desc: 'Fingerprint Reader' },
+    { id: 'fingerprint', label: 'Fingerprint', icon: Fingerprint, color: 'orange', desc: 'Reader / HP' },
   ];
 
   const modeColorMap = {
     purple: { active: 'bg-purple-600 text-white', idle: 'text-purple-600 bg-purple-50 hover:bg-purple-100' },
+    emerald: { active: 'bg-emerald-600 text-white', idle: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
     blue: { active: 'bg-blue-600 text-white', idle: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
     orange: { active: 'bg-orange-600 text-white', idle: 'text-orange-600 bg-orange-50 hover:bg-orange-100' },
   };
@@ -184,7 +189,9 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     ? 'Letakkan jari pada fingerprint reader...'
     : 'Arahkan scanner ke QR Code...';
 
+  const isNfcMode = scanMode === 'nfc';
   const isCameraMode = scanMode === 'qrcode' && qrSubMode === 'kamera';
+  const isFingerprintHpMode = scanMode === 'fingerprint' && fpSubMode === 'hp';
 
   return (
     <div className="space-y-4">
@@ -199,7 +206,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           </div>
 
           {/* Mode Selector */}
-          <div className="grid grid-cols-3 gap-2 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             {modes.map(m => {
               const Icon = m.icon;
               const isActive = scanMode === m.id;
@@ -247,9 +254,57 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             </div>
           )}
 
-          {/* Camera Mode */}
-          {isCameraMode ? (
+          {/* Fingerprint Sub-mode */}
+          {scanMode === 'fingerprint' && (
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setFpSubMode('reader')}
+                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
+                  fpSubMode === 'reader' ? 'bg-orange-600 text-white border-transparent' : 'bg-orange-50 text-orange-600 border-transparent hover:bg-orange-100'
+                }`}
+              >
+                <Monitor className="w-4 h-4" />
+                <span className="text-xs font-semibold">Reader Eksternal</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFpSubMode('hp')}
+                className={`flex-1 flex items-center justify-center gap-2 p-2.5 rounded-xl border-2 transition-all ${
+                  fpSubMode === 'hp' ? 'bg-orange-600 text-white border-transparent' : 'bg-orange-50 text-orange-600 border-transparent hover:bg-orange-100'
+                }`}
+              >
+                <Fingerprint className="w-4 h-4" />
+                <span className="text-xs font-semibold">HP (Biometrik)</span>
+              </button>
+            </div>
+          )}
+
+          {/* NFC HP Mode */}
+          {isNfcMode ? (
+            <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-2xl">
+                <Nfc className="w-7 h-7 text-emerald-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-slate-700">Tempelkan Kartu NFC</p>
+                <p className="text-xs text-slate-500 mt-0.5">Dekatkan kartu E-money/RFID ke belakang HP</p>
+              </div>
+              <NfcScanner onScan={processScan} disabled={processing} />
+            </div>
+          ) : isCameraMode ? (
             <QRCameraScanner active={isCameraMode && !processing} onScan={processScan} />
+          ) : isFingerprintHpMode ? (
+            <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-orange-300 rounded-xl bg-orange-50/50">
+              <div className="inline-flex items-center justify-center w-14 h-14 bg-orange-100 rounded-2xl">
+                <Fingerprint className="w-7 h-7 text-orange-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-slate-700">Verifikasi Fingerprint</p>
+                <p className="text-xs text-slate-500 mt-0.5">Sentuh sensor fingerprint/FaceID HP untuk absensi</p>
+              </div>
+              <FingerprintScanner mode="scan" onScan={processScan} disabled={processing} />
+            </div>
           ) : (
             <form onSubmit={handleFormSubmit}>
               <Input
@@ -269,7 +324,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           )}
 
           {/* Fingerprint info */}
-          {scanMode === 'fingerprint' && (
+          {scanMode === 'fingerprint' && fpSubMode === 'reader' && (
             <div className="mt-3 bg-orange-50 border border-orange-200 rounded-xl p-3 text-center">
               <Fingerprint className="w-6 h-6 text-orange-500 mx-auto mb-1" />
               <p className="text-xs text-orange-700">Pastikan fingerprint reader terhubung. ID fingerprint akan otomatis muncul saat jari ditempel.</p>

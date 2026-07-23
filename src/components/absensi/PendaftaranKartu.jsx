@@ -12,6 +12,7 @@ import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User } from "lucide-reac
 import GenerateQRMassal from '@/components/absensi/GenerateQRMassal';
 import PersonSearch from '@/components/absensi/PersonSearch';
 import NfcScanner from '@/components/absensi/NfcScanner';
+import FingerprintScanner from '@/components/absensi/FingerprintScanner';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function PendaftaranKartu({ personType = 'Pegawai' }) {
@@ -160,6 +161,14 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
                   <Button type="button" size="sm" variant={newJenis === 'Fingerprint' ? 'default' : 'outline'} className={newJenis === 'Fingerprint' ? 'bg-orange-600' : ''} onClick={() => setNewJenis('Fingerprint')}>
                     <Fingerprint className="w-3 h-3 mr-1" /> Fingerprint
                   </Button>
+                  {canUseNfc && (
+                    <FingerprintScanner
+                      mode="register"
+                      disabled={!selectedPersonData}
+                      userInfo={{ id: selectedPersonData?.id, name: selectedPersonData?.nama }}
+                      onScan={(credId) => { setNewCardId(credId); setNewJenis('Fingerprint'); }}
+                    />
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <Input
