@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { School, Printer, QrCode } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import PersonSearch from '@/components/absensi/PersonSearch';
 
 export default function IDCardPreview({ personType = 'Pegawai' }) {
   const { toast } = useToast();
@@ -130,15 +131,8 @@ export default function IDCardPreview({ personType = 'Pegawai' }) {
       <Card className="border-0 shadow-sm print:hidden">
         <CardContent className="p-4 space-y-3">
           <div>
-            <Label className="text-xs">Pilih {personType}</Label>
-            <Select value={selectedPerson} onValueChange={setSelectedPerson}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder={`Pilih ${personType}...`} /></SelectTrigger>
-              <SelectContent>
-                {personList.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nama}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs mb-2 block">Pilih {personType}</Label>
+            <PersonSearch personType={personType} personList={personList} selectedPerson={selectedPerson} onPersonSelect={setSelectedPerson} />
           </div>
         </CardContent>
       </Card>

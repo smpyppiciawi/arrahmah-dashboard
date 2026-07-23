@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User } from "lucide-react";
 import GenerateQRMassal from '@/components/absensi/GenerateQRMassal';
+import PersonSearch from '@/components/absensi/PersonSearch';
 
 export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const [selectedPerson, setSelectedPerson] = useState('');
@@ -101,17 +102,8 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
         <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="w-4 h-4 text-emerald-500" /> Pendaftaran Kartu {personType}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label className="text-xs">Pilih {personType}</Label>
-            <Select value={selectedPerson} onValueChange={setSelectedPerson}>
-              <SelectTrigger className="mt-1"><SelectValue placeholder={`Pilih ${personType}...`} /></SelectTrigger>
-              <SelectContent>
-                {personList.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nama} — {personType === 'Pegawai' ? (p.nip || 'No NIP') : (p.nis || 'No NIS')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label className="text-xs mb-2 block">Pilih {personType}</Label>
+            <PersonSearch personType={personType} personList={personList} selectedPerson={selectedPerson} onPersonSelect={setSelectedPerson} />
           </div>
 
           {selectedPerson && (
