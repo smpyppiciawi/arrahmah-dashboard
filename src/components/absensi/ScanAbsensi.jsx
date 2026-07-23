@@ -33,18 +33,22 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     setScanLog(prev => [entry, ...prev].slice(0, 20));
   };
 
-  const sendWANotif = (k, status, now) => {
+  const sendWANotif = async (k, status, now) => {
     if (!k.no_telp) return;
     const cleanPhone = k.no_telp.replace(/\D/g, '').replace(/^0/, '62');
     const msg = personType === 'Pegawai'
-      ? `Notifikasi Absensi Pegawai:\n\nNama: ${k.nama}\nJabatan: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: ${status}\nMetode: ${k.jenis}`
-      : `Notifikasi Absensi Siswa:\n\nNama: ${k.nama}\nKelas: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: ${status}\nMetode: ${k.jenis}`;
-    const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
-    toast({
-      title: '📲 Notifikasi WA Siap',
-      description: `Klik untuk kirim ke ${k.nama}`,
-      action: <Button size="sm" onClick={() => window.open(waUrl, '_blank')}><MessageCircle className="w-3 h-3 mr-1" /> Kirim</Button>,
-    });
+      ? `*Notifikasi Absensi Pegawai*\n\nNama: ${k.nama}\nJabatan: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`
+      : `*Notifikasi Absensi Siswa*\n\nNama: ${k.nama}\nKelas: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
+    try {
+      const res = await base44.functions.invoke('sendWANotif', { phone: cleanPhone, message: msg });
+      if (res.data?.success) {
+        toast({ title: '📲 WA Terkirim', description: `Notifikasi terkirim ke ${k.nama}` });
+      } else {
+        toast({ title: '⚠️ WA Gagal', description: res.data?.error || 'Gagal mengirim WA', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: '⚠️ WA Error', description: err.message, variant: 'destructive' });
+    }
   };
 
   const handleScan = async (e) => {
