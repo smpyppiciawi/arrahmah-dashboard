@@ -12,7 +12,8 @@
         "SPP",
         "Ujian",
         "Mutasi",
-        "Awal Tahun"
+        "Awal Tahun",
+        "PPDB"
       ],
       "default": "SPP",
       "description": "Jenis iuran untuk pengelompokan"
