@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User } from "lucide-react";
+import { CreditCard, QrCode, Fingerprint, Plus, Trash2, User, ScanFace, CheckCircle } from "lucide-react";
 import GenerateQRMassal from '@/components/absensi/GenerateQRMassal';
 import PersonSearch from '@/components/absensi/PersonSearch';
 import NfcScanner from '@/components/absensi/NfcScanner';
 import FingerprintScanner from '@/components/absensi/FingerprintScanner';
+import FaceRecognition from '@/components/absensi/FaceRecognition';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function PendaftaranKartu({ personType = 'Pegawai' }) {
@@ -20,6 +21,7 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const [newCardId, setNewCardId] = useState('');
   const [newJenis, setNewJenis] = useState('RFID');
   const [scanMode, setScanMode] = useState(false);
+  const [showFaceRegistration, setShowFaceRegistration] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
@@ -37,6 +39,12 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
     enabled: !!selectedPerson,
   });
 
+  const { data: wajahList = [] } = useQuery({
+    queryKey: ['wajah-person', personType, selectedPerson],
+    queryFn: () => base44.entities.DataWajah.filter({ person_type: personType, person_id: selectedPerson, status: 'Aktif' }),
+    enabled: !!selectedPerson,
+  });
+
   const createKartuMutation = useMutation({
     mutationFn: (data) => base44.entities.KartuAbsensi.create(data),
     onSuccess: () => {
@@ -51,6 +59,22 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['kartu-person'] });
       toast({ title: '🗑️ Kartu dihapus' });
+    },
+  });
+
+  const deleteWajahMutation = useMutation({
+    mutationFn: async (id) => {
+      const wajah = await base44.entities.DataWajah.get(id);
+      await base44.entities.DataWajah.delete(id);
+      if (wajah?.card_id_virtual) {
+        const kartuList = await base44.entities.KartuAbsensi.filter({ card_id: wajah.card_id_virtual });
+        if (kartuList.length > 0) await base44.entities.KartuAbsensi.delete(kartuList[0].id);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['wajah-person'] });
+      queryClient.invalidateQueries({ queryKey: ['kartu-person'] });
+      toast({ title: '🗑️ Data wajah dihapus' });
     },
   });
 
@@ -84,6 +108,50 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
     toast({ title: 'QR Code di-generate', description: qrId });
   };
 
+  const dataURLtoFile = (dataUrl, filename) => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  const handleFaceRegister = async (descriptor, fotoDataUrl) => {
+    if (!selectedPersonData) return;
+    const p = selectedPersonData;
+    const cardId = `FACE-${p.id}`;
+    try {
+      let fotoUrl = '';
+      try {
+        const fotoFile = dataURLtoFile(fotoDataUrl, `wajah-${p.nama}.jpg`);
+        const res = await base44.integrations.Core.UploadFile({ file: fotoFile });
+        fotoUrl = res.file_url || '';
+      } catch (e) { /* photo upload optional */ }
+      await base44.entities.DataWajah.create({
+        person_type: personType, person_id: p.id, nama: p.nama,
+        nip_nis: personType === 'Pegawai' ? p.nip : p.nis,
+        info: personType === 'Pegawai' ? p.jabatan : p.nama_kelas,
+        descriptor, card_id_virtual: cardId, foto_url: fotoUrl, status: 'Aktif',
+      });
+      await base44.entities.KartuAbsensi.create({
+        card_id: cardId, jenis: 'FaceRecognition', person_type: personType,
+        person_id: p.id, nama: p.nama,
+        nip_nis: personType === 'Pegawai' ? p.nip : p.nis,
+        info: personType === 'Pegawai' ? p.jabatan : p.nama_kelas,
+        no_telp: personType === 'Pegawai' ? p.no_telp : (p.kontak_list?.[0]?.no_telp || p.no_telp_ortu || ''),
+        status: 'Aktif',
+      });
+      queryClient.invalidateQueries({ queryKey: ['kartu-person'] });
+      queryClient.invalidateQueries({ queryKey: ['wajah-person'] });
+      toast({ title: '✅ Wajah berhasil didaftarkan!' });
+      setShowFaceRegistration(false);
+    } catch (err) {
+      toast({ title: '❌ Gagal mendaftarkan wajah', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const handleScanRFID = () => {
     setScanMode(true);
     setNewJenis('RFID');
@@ -97,8 +165,8 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
     }, 100);
   };
 
-  const jenisIcon = { RFID: CreditCard, QRCode: QrCode, Fingerprint: Fingerprint };
-  const jenisColor = { RFID: 'bg-purple-100 text-purple-700', QRCode: 'bg-blue-100 text-blue-700', Fingerprint: 'bg-orange-100 text-orange-700' };
+  const jenisIcon = { RFID: CreditCard, QRCode: QrCode, Fingerprint: Fingerprint, FaceRecognition: ScanFace };
+  const jenisColor = { RFID: 'bg-purple-100 text-purple-700', QRCode: 'bg-blue-100 text-blue-700', Fingerprint: 'bg-orange-100 text-orange-700', FaceRecognition: 'bg-indigo-100 text-indigo-700' };
 
   return (
     <div className="space-y-4">
@@ -188,6 +256,29 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
                   </div>
                 )}
               </div>
+
+              {canUseNfc && (
+                <div className="border-t pt-4 space-y-2">
+                  <p className="text-xs font-semibold text-slate-600 flex items-center gap-1">
+                    <ScanFace className="w-3 h-3 text-indigo-600" /> Pendaftaran Wajah (Face Recognition)
+                  </p>
+                  {wajahList.length > 0 ? (
+                    <div className="flex items-center gap-2 p-2.5 bg-indigo-50 rounded-xl">
+                      <CheckCircle className="w-4 h-4 text-indigo-600" />
+                      <span className="text-xs text-indigo-700 font-medium">Wajah terdaftar</span>
+                      <Button size="sm" variant="ghost" className="text-red-500 ml-auto h-7 text-xs" onClick={() => deleteWajahMutation.mutate(wajahList[0].id)}>
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ) : showFaceRegistration ? (
+                    <FaceRecognition mode="register" onRegister={handleFaceRegister} />
+                  ) : (
+                    <Button type="button" size="sm" variant="outline" className="text-indigo-600 border-indigo-200" onClick={() => setShowFaceRegistration(true)}>
+                      <ScanFace className="w-3 h-3 mr-1" /> Daftarkan Wajah
+                    </Button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </CardContent>

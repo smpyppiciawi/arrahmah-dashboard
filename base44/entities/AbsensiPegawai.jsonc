@@ -49,6 +49,7 @@
         "RFID",
         "QRCode",
         "Fingerprint",
+        "FaceRecognition",
         "Manual"
       ],
       "default": "Manual",

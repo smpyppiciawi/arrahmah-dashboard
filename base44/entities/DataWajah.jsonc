@@ -1,28 +1,14 @@
 {
-  "name": "KartuAbsensi",
+  "name": "DataWajah",
   "type": "object",
   "properties": {
-    "card_id": {
-      "type": "string",
-      "description": "ID unik kartu (RFID UID, QR code, fingerprint ID, atau FACE-{person_id})"
-    },
-    "jenis": {
-      "type": "string",
-      "enum": [
-        "RFID",
-        "QRCode",
-        "Fingerprint",
-        "FaceRecognition"
-      ],
-      "description": "Jenis kartu/metode"
-    },
     "person_type": {
       "type": "string",
       "enum": [
         "Siswa",
         "Pegawai"
       ],
-      "description": "Tipe pemilik kartu"
+      "description": "Tipe pemilik data wajah"
     },
     "person_id": {
       "type": "string",
@@ -30,7 +16,7 @@
     },
     "nama": {
       "type": "string",
-      "description": "Nama pemilik kartu"
+      "description": "Nama pemilik wajah"
     },
     "nip_nis": {
       "type": "string",
@@ -40,9 +26,20 @@
       "type": "string",
       "description": "Kelas atau jabatan"
     },
-    "no_telp": {
+    "descriptor": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "description": "128-dimension face embedding dari face-api.js"
+    },
+    "card_id_virtual": {
       "type": "string",
-      "description": "No WA untuk notifikasi absensi"
+      "description": "Virtual card ID untuk KartuAbsensi (FACE-{person_id})"
+    },
+    "foto_url": {
+      "type": "string",
+      "description": "URL foto wajah hasil upload"
     },
     "status": {
       "type": "string",
@@ -54,10 +51,9 @@
     }
   },
   "required": [
-    "card_id",
-    "jenis",
     "person_type",
     "person_id",
-    "nama"
+    "nama",
+    "descriptor"
   ]
 }

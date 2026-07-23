@@ -7,10 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc } from "lucide-react";
+import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc, ScanFace } from "lucide-react";
 import QRCameraScanner from '@/components/absensi/QRCameraScanner';
 import NfcScanner from '@/components/absensi/NfcScanner';
 import FingerprintScanner from '@/components/absensi/FingerprintScanner';
+import FaceRecognition from '@/components/absensi/FaceRecognition';
 
 export default function ScanAbsensi({ personType = 'Siswa' }) {
   const [scanMode, setScanMode] = useState('kartu');
@@ -174,6 +175,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     { id: 'nfc', label: 'NFC HP', icon: Nfc, color: 'emerald', desc: 'Tap kartu di HP' },
     { id: 'qrcode', label: 'QR Code', icon: QrCode, color: 'blue', desc: 'Kamera / Scanner' },
     { id: 'fingerprint', label: 'Fingerprint', icon: Fingerprint, color: 'orange', desc: 'Reader / HP' },
+    { id: 'wajah', label: 'Wajah', icon: ScanFace, color: 'indigo', desc: 'Face Recognition' },
   ];
 
   const modeColorMap = {
@@ -181,6 +183,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     emerald: { active: 'bg-emerald-600 text-white', idle: 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' },
     blue: { active: 'bg-blue-600 text-white', idle: 'text-blue-600 bg-blue-50 hover:bg-blue-100' },
     orange: { active: 'bg-orange-600 text-white', idle: 'text-orange-600 bg-orange-50 hover:bg-orange-100' },
+    indigo: { active: 'bg-indigo-600 text-white', idle: 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100' },
   };
 
   const inputPlaceholder = scanMode === 'kartu'
@@ -189,6 +192,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     ? 'Letakkan jari pada fingerprint reader...'
     : 'Arahkan scanner ke QR Code...';
 
+  const isWajahMode = scanMode === 'wajah';
   const isNfcMode = scanMode === 'nfc';
   const isCameraMode = scanMode === 'qrcode' && qrSubMode === 'kamera';
   const isFingerprintHpMode = scanMode === 'fingerprint' && fpSubMode === 'hp';
@@ -206,7 +210,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           </div>
 
           {/* Mode Selector */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-4">
             {modes.map(m => {
               const Icon = m.icon;
               const isActive = scanMode === m.id;
@@ -280,8 +284,10 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             </div>
           )}
 
-          {/* NFC HP Mode */}
-          {isNfcMode ? (
+          {/* Wajah Mode */}
+          {isWajahMode ? (
+            <FaceRecognition mode="scan" personType={personType} onMatch={processScan} disabled={processing} />
+          ) : isNfcMode ? (
             <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50">
               <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-2xl">
                 <Nfc className="w-7 h-7 text-emerald-600" />
