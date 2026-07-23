@@ -130,7 +130,16 @@ export default function Kepsek() {
     const datesWithAbsensi = [...new Set(absensiList.filter(a => last5Days.includes(a.tanggal)).map(a => a.tanggal))].sort().reverse().slice(0, 3);
     const siswaAlfa3Hari = aktiveSiswa.filter(s => datesWithAbsensi.length >= 3 && datesWithAbsensi.every(date => absensiList.some(a => a.siswa_id === s.id && a.tanggal === date && a.status === 'Alfa')));
     const siswaSakit3Hari = aktiveSiswa.filter(s => datesWithAbsensi.length >= 3 && datesWithAbsensi.every(date => absensiList.some(a => a.siswa_id === s.id && a.tanggal === date && a.status === 'Sakit')));
-    const pelanggaranBerat = pelanggaranList.filter(p => p.status === 'Proses' && (p.jenis_pelanggaran?.includes('Berat') || p.jenis_pelanggaran?.includes('Sangat Berat')));
+    const pelanggaranSangatBerat = pelanggaranList.filter(p => {
+      if (p.status !== 'Proses' || p.jenis_pelanggaran !== 'Sangat Berat') return false;
+      const siswa = siswaList.find(s => s.id === p.siswa_id);
+      return siswa && siswa.status === 'Aktif';
+    });
+    const pelanggaranBerat = pelanggaranList.filter(p => {
+      if (p.status !== 'Proses' || p.jenis_pelanggaran !== 'Berat') return false;
+      const siswa = siswaList.find(s => s.id === p.siswa_id);
+      return siswa && siswa.status === 'Aktif';
+    });
     const prestasiPeriod = prestasiList.filter(p => p.tanggal >= dateFrom && p.tanggal <= dateTo);
     const h2Date = new Date(); h2Date.setDate(h2Date.getDate() + 2);
     const h2Events = kalenderList.filter(k => k.tanggal_mulai === format(h2Date, 'yyyy-MM-dd'));
@@ -143,7 +152,7 @@ export default function Kepsek() {
       sakitHariIni: absensiHariIni.filter(a => a.status === 'Sakit').length, alfaHariIni: absensiHariIni.filter(a => a.status === 'Alfa').length,
       izinHariIni: absensiHariIni.filter(a => a.status === 'Izin').length,
       saldo: totalPemasukan - totalPengeluaran, totalPemasukan, totalPengeluaran,
-      siswaAlfa3Hari, siswaSakit3Hari, pelanggaranBerat, prestasiPeriod,
+      siswaAlfa3Hari, siswaSakit3Hari, pelanggaranBerat, pelanggaranSangatBerat, prestasiPeriod,
       h2Events, izinCount: izinList.length, uksCount: uksList.filter(u => u.tanggal === todayStr).length,
       homeVisitTotal: homeVisitList.length, homeVisitVisited: visitedSiswa.length,
       homeVisitNotVisited: notVisitedSiswa, homeVisitNotVisitedCount: notVisitedSiswa.length,
@@ -154,7 +163,8 @@ export default function Kepsek() {
     const list = [];
     stats.siswaAlfa3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `alfa3-${s.id}`, severity: 'critical', category: 'Absensi', title: 'Alfa 3 Hari Berturut-turut', person: s.nama, kelas: s.nama_kelas, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
     stats.siswaSakit3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `sakit3-${s.id}`, severity: 'warning', category: 'Absensi', title: 'Sakit 3 Hari Berturut-turut', person: s.nama, kelas: s.nama_kelas, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
-    stats.pelanggaranBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'critical', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
+    stats.pelanggaranSangatBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'critical', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
+    stats.pelanggaranBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'warning', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.h2Events.forEach(ev => { list.push({ id: `h2-${ev.id}`, severity: 'warning', category: 'Kalender', title: 'Kegiatan H-2', event: ev.judul, date: format(parseISO(ev.tanggal_mulai), 'd MMM yyyy', { locale: idLocale }) }); });
     return list;
   }, [stats, siswaList, guruList, kelasList]);
@@ -194,10 +204,13 @@ export default function Kepsek() {
         { key: 'nama', label: 'Nama' }, { key: 'nama_kelas', label: 'Kelas' },
         { key: 'aksi', label: 'Hubungi', render: r => { const info = getWaliKelasInfo(r.id); return (<div className="flex gap-1">{info.waliPhone && <button onClick={() => handleWhatsApp(info.waliPhone, `Yth. ${info.waliName}, siswa ${r.nama} alfa 3 hari.`)} className="text-emerald-500"><MessageCircle className="w-4 h-4" /></button>}{info.ortuPhone && <button onClick={() => handleWhatsApp(info.ortuPhone, `Yth. Orang Tua ${r.nama},`)} className="text-blue-500"><MessageCircle className="w-4 h-4" /></button>}</div>); } },
       ]},
-      pelanggaran: { title: 'Pelanggaran Berat/Sangat Berat (Aktif)', data: stats.pelanggaranBerat, columns: [
+      pelanggaran: { title: 'Pelanggaran Berat (Aktif)', data: stats.pelanggaranBerat, columns: [
         { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' },
-        { key: 'jenis_pelanggaran', label: 'Jenis', render: r => <Badge className={isDark ? 'bg-red-500/20 text-red-300' : 'bg-red-100 text-red-700'}>{r.jenis_pelanggaran}</Badge> },
-        { key: 'poin', label: 'Poin' }, { key: 'status', label: 'Status' },
+        { key: 'uraian', label: 'Pelanggaran' },
+        { key: 'poin', label: 'Poin' },
+        { key: 'durasi_sanksi', label: 'Durasi', render: r => r.durasi_sanksi ? `${r.durasi_sanksi} ${r.satuan_durasi || 'Hari'}` : '-' },
+        { key: 'progress', label: 'Progress', render: r => r.progress_sanksi?.length ? `${r.progress_sanksi.filter(s => s.selesai).length}/${r.progress_sanksi.length}` : '-' },
+        { key: 'status', label: 'Status', render: r => <Badge className={r.status === 'Selesai' ? (isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700')}>{r.status}</Badge> },
       ]},
       keuangan: { title: 'Transaksi Keuangan', data: keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo).slice(0, 50), columns: [
         { key: 'tanggal', label: 'Tanggal' }, { key: 'jenis', label: 'Jenis', render: r => <Badge className={bdg[r.jenis] || 'bg-slate-500/20 text-slate-300'}>{r.jenis}</Badge> },
@@ -234,7 +247,7 @@ export default function Kepsek() {
   const statCards = [
     { label: 'Kehadiran', value: `${stats.persenHadir}%`, subtitle: `${stats.hadirHariIni}/${stats.absensiHariIni} siswa`, icon: Calendar, gradient: 'from-emerald-500 to-emerald-600', alert: stats.alfaHariIni, onClick: () => openDrillDown('kehadiran') },
     { label: 'Alfa 3 Hari', value: stats.siswaAlfa3Hari.length, subtitle: 'siswa', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: stats.siswaAlfa3Hari.length, onClick: () => openDrillDown('alfa3') },
-    { label: 'Pelanggaran', value: stats.pelanggaranBerat.length, subtitle: 'berat/aktif', icon: AlertTriangle, gradient: 'from-orange-500 to-red-500', alert: stats.pelanggaranBerat.length, onClick: () => openDrillDown('pelanggaran') },
+    { label: 'Pelanggaran', value: stats.pelanggaranBerat.length, subtitle: 'berat/aktif', icon: AlertTriangle, gradient: 'from-orange-500 to-red-500', alert: stats.pelanggaranBerat.length + stats.pelanggaranSangatBerat.length, onClick: () => openDrillDown('pelanggaran') },
     { label: 'Saldo', value: formatRupiah(stats.saldo).replace('Rp', '').trim(), subtitle: `+${formatRupiah(stats.totalPemasukan).replace('Rp','').trim()} / -${formatRupiah(stats.totalPengeluaran).replace('Rp','').trim()}`, icon: Wallet, gradient: stats.saldo >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-red-600', onClick: () => openDrillDown('keuangan') },
     { label: 'Prestasi', value: stats.prestasiPeriod.length, subtitle: 'prestasi', icon: Award, gradient: 'from-yellow-500 to-amber-600', onClick: () => openDrillDown('prestasi') },
     { label: 'Kegiatan H-2', value: stats.h2Events.length, subtitle: 'lusa', icon: CalendarDays, gradient: 'from-indigo-500 to-purple-600', alert: stats.h2Events.length },

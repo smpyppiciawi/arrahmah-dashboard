@@ -9,6 +9,7 @@ const JENIS_TABS = [
   { key: 'SPP', label: 'SPP' },
   { key: 'Ujian', label: 'Ujian Sekolah' },
   { key: 'Mutasi', label: 'Mutasi' },
+  { key: 'PPDB', label: 'PPDB' },
   { key: 'Awal Tahun', label: 'Awal Tahun' },
 ];
 
@@ -32,6 +33,17 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     queryFn: () => base44.entities.BiayaKhusus.filter({ siswa_id: siswa.id }),
     enabled: !!siswa?.id,
   });
+
+  const tarifJenisMap = useMemo(() => {
+    const map = {};
+    tarifList.forEach(t => { if (t.id) map[t.id] = t.jenis_iuran; });
+    return map;
+  }, [tarifList]);
+
+  const filteredBiayaKhusus = useMemo(() => {
+    if (activeIuran !== 'Mutasi' && activeIuran !== 'PPDB') return [];
+    return biayaKhususList.filter(b => tarifJenisMap[b.tarif_iuran_id] === activeIuran);
+  }, [biayaKhususList, tarifJenisMap, activeIuran]);
 
   const relevantTarif = useMemo(() => {
     return tarifList.filter(t => t.tingkat === 'Semua' || t.tingkat === tingkat);
@@ -152,13 +164,13 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
           </div>
         )}
 
-        {/* Mutasi (BiayaKhusus) */}
-        {activeIuran === 'Mutasi' && (
+        {/* Mutasi & PPDB (BiayaKhusus) */}
+        {(activeIuran === 'Mutasi' || activeIuran === 'PPDB') && (
           <div className="bg-white rounded-3xl shadow-sm p-4">
-            <p className="text-sm font-bold text-slate-800 mb-3">Iuran Mutasi / Biaya Khusus</p>
-            {biayaKhususList.length > 0 ? (
+            <p className="text-sm font-bold text-slate-800 mb-3">Iuran {activeIuran}</p>
+            {filteredBiayaKhusus.length > 0 ? (
               <div className="space-y-2">
-                {biayaKhususList.map((b, i) => (
+                {filteredBiayaKhusus.map((b, i) => (
                   <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{b.nama_iuran}</p>
@@ -171,7 +183,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
             ) : (
               <div className="text-center py-6 text-slate-400">
                 <span className="text-3xl block mb-2">✅</span>
-                <p className="text-sm">Tidak ada iuran mutasi untuk Anda</p>
+                <p className="text-sm">Tidak ada iuran {activeIuran} untuk Anda</p>
               </div>
             )}
           </div>

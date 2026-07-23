@@ -115,15 +115,44 @@ export default function SiswaPortal() {
   const handleEditProfil = () => {
     setProfilForm({
       alamat: currentSiswa?.alamat || '',
-      no_telp_ortu: currentSiswa?.no_telp_ortu || '',
-      nama_ortu: currentSiswa?.nama_ortu || '',
+      koordinat: currentSiswa?.koordinat || '',
+      nama_ayah_kandung: currentSiswa?.nama_ayah_kandung || '',
+      nama_ibu_kandung: currentSiswa?.nama_ibu_kandung || '',
+      nama_wali: currentSiswa?.nama_wali || '',
+      no_ayah: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ayah')?.no_telp || '',
+      no_ibu: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ibu')?.no_telp || '',
+      no_wali: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Wali')?.no_telp || '',
     });
     setEditingProfil(true);
   };
 
   const handleSaveProfil = () => {
     if (!currentSiswa?.id) return;
-    updateSiswaMutation.mutate({ id: currentSiswa.id, data: profilForm });
+    const kontak_list = [];
+    if (profilForm.no_ayah) kontak_list.push({ no_telp: profilForm.no_ayah, hubungan: 'Ayah' });
+    if (profilForm.no_ibu) kontak_list.push({ no_telp: profilForm.no_ibu, hubungan: 'Ibu' });
+    if (profilForm.no_wali) kontak_list.push({ no_telp: profilForm.no_wali, hubungan: 'Wali' });
+    updateSiswaMutation.mutate({ id: currentSiswa.id, data: {
+      alamat: profilForm.alamat,
+      koordinat: profilForm.koordinat,
+      nama_ayah_kandung: profilForm.nama_ayah_kandung,
+      nama_ibu_kandung: profilForm.nama_ibu_kandung,
+      nama_wali: profilForm.nama_wali,
+      kontak_list,
+    }});
+  };
+
+  const handleSetCoordinate = () => {
+    if (!navigator.geolocation) { toast({ title: 'GPS tidak tersedia', variant: 'destructive' }); return; }
+    toast({ title: '📍 Mendapatkan lokasi...' });
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coord = `${position.coords.latitude},${position.coords.longitude}`;
+        updateSiswaMutation.mutate({ id: currentSiswa.id, data: { koordinat: coord } });
+        if (profilForm) setProfilForm(prev => ({ ...prev, koordinat: coord }));
+      },
+      () => toast({ title: 'Gagal mendapatkan lokasi', description: 'Pastikan GPS aktif', variant: 'destructive' })
+    );
   };
 
   // === PROFIL SCREEN ===
@@ -132,7 +161,7 @@ export default function SiswaPortal() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center">
       <div className="w-full max-w-lg">
         {/* Header */}
-        <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-4 pt-10 pb-14 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-violet-600 to-indigo-600 px-4 pt-14 pb-14 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -translate-y-16 translate-x-16" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-12 -translate-x-8" />
           <button onClick={() => { setShowProfil(false); setEditingProfil(false); }} className="flex items-center gap-2 text-white/80 mb-4">
@@ -181,6 +210,15 @@ export default function SiswaPortal() {
                       placeholder="Alamat lengkap..."
                     />
                   </div>
+                  <div>
+                    <label className="text-xs text-slate-500 font-medium">🗺️ Titik Koordinat Rumah</label>
+                    <div className="flex gap-2 mt-1">
+                      <input className="flex-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm" value={profilForm?.koordinat || ''} readOnly placeholder="Klik GPS untuk dapat koordinat" />
+                      <button type="button" onClick={handleSetCoordinate} className="px-3 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium flex items-center gap-1 shrink-0">
+                        <MapPin className="w-4 h-4" /> GPS
+                      </button>
+                    </div>
+                  </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setEditingProfil(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-medium">
                       Batal
@@ -191,15 +229,26 @@ export default function SiswaPortal() {
                   </div>
                 </div>
               ) : (
-                <InfoItem icon="📍" label="Alamat" value={currentSiswa?.alamat} />
+                <>
+                  <InfoItem icon="📍" label="Alamat" value={currentSiswa?.alamat} />
+                  <InfoItem icon="🗺️" label="Koordinat Rumah" value={currentSiswa?.koordinat} />
+                  {currentSiswa?.koordinat && (
+                    <a href={`https://maps.google.com/?q=${currentSiswa.koordinat}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs flex items-center gap-1 ml-9 mt-0.5">
+                      <MapPin className="w-3 h-3" /> Lihat di Maps
+                    </a>
+                  )}
+                  <button onClick={handleSetCoordinate} className="ml-9 mt-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 w-fit">
+                    <MapPin className="w-3 h-3" /> {currentSiswa?.koordinat ? 'Update Koordinat' : 'Tambah Koordinat'}
+                  </button>
+                </>
               )}
             </div>
           </div>
 
-          {/* Data Ortu Card */}
+          {/* Data Keluarga Card */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <span className="font-bold text-slate-800">Orang Tua / Wali</span>
+              <span className="font-bold text-slate-800">Data Keluarga</span>
               {!editingProfil && (
                 <button onClick={handleEditProfil} className="flex items-center gap-1 text-indigo-600 text-sm font-medium">
                   <Edit2 className="w-3.5 h-3.5" /> Edit
@@ -209,37 +258,34 @@ export default function SiswaPortal() {
             <div className="px-5 py-4 space-y-3">
               {editingProfil ? (
                 <div className="space-y-3">
-                  <div>
-                    <label className="text-xs text-slate-500 font-medium">👨‍👩‍👧 Nama Orang Tua/Wali</label>
-                    <input
-                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                      value={profilForm?.nama_ortu || ''}
-                      onChange={(e) => setProfilForm({...profilForm, nama_ortu: e.target.value})}
-                      placeholder="Nama orang tua/wali..."
-                    />
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-600">👨 Ayah</p>
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_ayah_kandung || ''} onChange={(e) => setProfilForm({...profilForm, nama_ayah_kandung: e.target.value})} placeholder="Nama Ayah" />
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_ayah || ''} onChange={(e) => setProfilForm({...profilForm, no_ayah: e.target.value})} placeholder="No. Telp Ayah" />
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-500 font-medium">📱 No. Telpon</label>
-                    <input
-                      className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
-                      value={profilForm?.no_telp_ortu || ''}
-                      onChange={(e) => setProfilForm({...profilForm, no_telp_ortu: e.target.value})}
-                      placeholder="08xx-xxxx-xxxx"
-                    />
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-600">👩 Ibu</p>
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_ibu_kandung || ''} onChange={(e) => setProfilForm({...profilForm, nama_ibu_kandung: e.target.value})} placeholder="Nama Ibu" />
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_ibu || ''} onChange={(e) => setProfilForm({...profilForm, no_ibu: e.target.value})} placeholder="No. Telp Ibu" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-600">🧑 Wali (Jika Ada)</p>
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_wali || ''} onChange={(e) => setProfilForm({...profilForm, nama_wali: e.target.value})} placeholder="Nama Wali" />
+                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_wali || ''} onChange={(e) => setProfilForm({...profilForm, no_wali: e.target.value})} placeholder="No. Telp Wali" />
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={() => setEditingProfil(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-medium">
-                      Batal
-                    </button>
-                    <button onClick={handleSaveProfil} className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium">
-                      {updateSiswaMutation.isPending ? 'Menyimpan...' : 'Simpan'}
-                    </button>
+                    <button onClick={() => setEditingProfil(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-medium">Batal</button>
+                    <button onClick={handleSaveProfil} className="flex-1 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium">{updateSiswaMutation.isPending ? 'Menyimpan...' : 'Simpan'}</button>
                   </div>
                 </div>
               ) : (
                 <>
-                  <InfoItem icon="👨‍👩‍👧" label="Nama Orang Tua/Wali" value={currentSiswa?.nama_ortu} />
-                  <InfoItem icon="📱" label="No. Telpon" value={currentSiswa?.no_telp_ortu} />
+                  <InfoItem icon="👨" label="Nama Ayah" value={currentSiswa?.nama_ayah_kandung} />
+                  <InfoItem icon="📱" label="No. Telp Ayah" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ayah')?.no_telp} />
+                  <InfoItem icon="👩" label="Nama Ibu" value={currentSiswa?.nama_ibu_kandung} />
+                  <InfoItem icon="📱" label="No. Telp Ibu" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ibu')?.no_telp} />
+                  <InfoItem icon="🧑" label="Nama Wali" value={currentSiswa?.nama_wali} />
+                  <InfoItem icon="📱" label="No. Telp Wali" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Wali')?.no_telp} />
                 </>
               )}
             </div>

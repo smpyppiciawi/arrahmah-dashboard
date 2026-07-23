@@ -1,0 +1,162 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Users, Check, Loader2 } from 'lucide-react';
+
+export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, kelasList, activeAcademicYear }) {
+  const queryClient = useQueryClient();
+  const [selectedKelas, setSelectedKelas] = useState('all');
+  const [checkedIds, setCheckedIds] = useState(new Set());
+  const [saving, setSaving] = useState(false);
+
+  const { data: existingBiayaKhusus = [], isLoading } = useQuery({
+    queryKey: ['biaya-khusus-tarif', tarif?.id],
+    queryFn: () => base44.entities.BiayaKhusus.filter({ tarif_iuran_id: tarif.id }),
+    enabled: !!tarif?.id && isOpen,
+  });
+
+  useEffect(() => {
+    if (isOpen && existingBiayaKhusus.length >= 0) {
+      setCheckedIds(new Set(existingBiayaKhusus.map(b => b.siswa_id)));
+      setSelectedKelas('all');
+    }
+  }, [isOpen, existingBiayaKhusus]);
+
+  const filteredSiswa = useMemo(() => {
+    if (selectedKelas === 'all') return siswaList;
+    const kelas = kelasList.find(k => k.id === selectedKelas);
+    return siswaList.filter(s => s.kelas_id === selectedKelas || (kelas && s.nama_kelas === kelas.nama_kelas));
+  }, [siswaList, selectedKelas, kelasList]);
+
+  const toggleSiswa = (siswaId) => {
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(siswaId)) next.delete(siswaId);
+      else next.add(siswaId);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    const allFilteredIds = filteredSiswa.map(s => s.id);
+    const allChecked = allFilteredIds.every(id => checkedIds.has(id));
+    setCheckedIds(prev => {
+      const next = new Set(prev);
+      if (allChecked) {
+        allFilteredIds.forEach(id => next.delete(id));
+      } else {
+        allFilteredIds.forEach(id => next.add(id));
+      }
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const existingIds = new Set(existingBiayaKhusus.map(b => b.siswa_id));
+      const toAdd = [...checkedIds].filter(id => !existingIds.has(id));
+      const toRemove = existingBiayaKhusus.filter(b => !checkedIds.has(b.siswa_id));
+
+      const addRecords = toAdd.map(siswaId => {
+        const siswa = siswaList.find(s => s.id === siswaId);
+        return {
+          siswa_id: siswa.id,
+          nama_siswa: siswa.nama,
+          nama_kelas: siswa.nama_kelas,
+          tarif_iuran_id: tarif.id,
+          nama_iuran: tarif.nama,
+          nominal_khusus: tarif.nominal,
+          kategori: 'Lainnya',
+          tahun_ajaran: activeAcademicYear || '',
+        };
+      });
+
+      if (addRecords.length > 0) {
+        await base44.entities.BiayaKhusus.bulkCreate(addRecords);
+      }
+      for (const biaya of toRemove) {
+        await base44.entities.BiayaKhusus.delete(biaya.id);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['biaya-khusus'] });
+      queryClient.invalidateQueries({ queryKey: ['biaya-khusus-siswa'] });
+      queryClient.invalidateQueries({ queryKey: ['biaya-khusus-tarif'] });
+      onClose();
+    } catch (e) {
+      console.error('Save error:', e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const allFilteredChecked = filteredSiswa.length > 0 && filteredSiswa.every(s => checkedIds.has(s.id));
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-purple-600" />
+            Pilih Siswa — {tarif?.nama}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm whitespace-nowrap">Filter Kelas:</Label>
+            <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+              <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kelas</SelectItem>
+                {kelasList.map(k => (
+                  <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-center justify-between text-xs text-slate-500">
+            <span>{checkedIds.size} siswa dipilih</span>
+            <button onClick={toggleAll} className="text-purple-600 font-medium hover:underline">
+              {allFilteredChecked ? 'Hapus Semua' : 'Pilih Semua'}
+            </button>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+            </div>
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
+              {filteredSiswa.map(siswa => (
+                <label key={siswa.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                  <Checkbox checked={checkedIds.has(siswa.id)} onCheckedChange={() => toggleSiswa(siswa.id)} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{siswa.nama}</p>
+                    <p className="text-xs text-slate-400">{siswa.nis} · {siswa.nama_kelas}</p>
+                  </div>
+                </label>
+              ))}
+              {filteredSiswa.length === 0 && (
+                <p className="text-center text-slate-400 text-sm py-4">Tidak ada siswa</p>
+              )}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">Batal</Button>
+            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1 bg-purple-600 hover:bg-purple-700">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+              {saving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

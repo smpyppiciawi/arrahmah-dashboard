@@ -17,6 +17,7 @@ import {
 import RupiahInput from '@/components/ui/RupiahInput';
 import HonorariumTab from '@/components/keuangan/HonorariumTab';
 import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
+import PilihSiswaDialog from '@/components/keuangan/PilihSiswaDialog';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function KelolaDataKeuangan() {
@@ -69,6 +70,8 @@ export default function KelolaDataKeuangan() {
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
   const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
+  const [pilihSiswaOpen, setPilihSiswaOpen] = useState(false);
+  const [pilihSiswaTarif, setPilihSiswaTarif] = useState(null);
   const [biayaKhususForm, setBiayaKhususForm] = useState({ 
     siswa_id: '', nama_siswa: '', nama_kelas: '', 
     tarif_iuran_id: '', nama_iuran: '', 
@@ -265,6 +268,9 @@ export default function KelolaDataKeuangan() {
       key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
       render: (row) => (
         <div className="flex gap-2">
+          {(row.jenis_iuran === 'Mutasi' || row.jenis_iuran === 'PPDB') && (
+            <Button size="sm" variant="ghost" className="text-purple-600" onClick={() => { setPilihSiswaTarif(row); setPilihSiswaOpen(true); }} title="Pilih Siswa"><Users className="w-4 h-4" /></Button>
+          )}
           <Button size="sm" variant="ghost" onClick={() => handleEdit('tarif', row)}><Edit2 className="w-4 h-4" /></Button>
           <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteTarifMutation.mutate(row.id)}><Trash2 className="w-4 h-4" /></Button>
         </div>
@@ -511,6 +517,15 @@ export default function KelolaDataKeuangan() {
           siswaList={siswaList}
           kelasList={kelasList}
           tarifIuranList={tarifIuranList}
+          activeAcademicYear={activeAcademicYear}
+        />
+
+        <PilihSiswaDialog
+          isOpen={pilihSiswaOpen}
+          onClose={() => { setPilihSiswaOpen(false); setPilihSiswaTarif(null); }}
+          tarif={pilihSiswaTarif}
+          siswaList={siswaList}
+          kelasList={kelasList}
           activeAcademicYear={activeAcademicYear}
         />
       </div>

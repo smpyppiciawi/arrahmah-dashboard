@@ -65,6 +65,14 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = tru
                   <p className={`${c.textMuted} text-xs truncate`}>
                     {alert.person || alert.event} {alert.kelas ? `• ${alert.kelas}` : ''} {alert.date ? `• ${alert.date}` : ''}
                   </p>
+                  {alert.poin !== undefined && (
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-500/20 text-red-400">{alert.poin} poin</span>
+                      {alert.durasi && alert.durasi !== '-' && <span className="text-[10px] text-slate-400">⏱ {alert.durasi}</span>}
+                      {alert.progress && alert.progress !== '-' && <span className="text-[10px] text-slate-400">📊 {alert.progress}</span>}
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${alert.status === 'Selesai' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>{alert.status}</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex gap-1 flex-shrink-0">
