@@ -51,19 +51,19 @@ export default function AbsensiPegawai() {
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-5">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Clock className="w-7 h-7 text-emerald-500" /> Absensi Pegawai
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <Clock className="w-6 h-6 md:w-7 md:h-7 text-emerald-500" /> Absensi Pegawai
           </h1>
-          <p className="text-slate-500 mt-1">Sistem absensi otomatis dengan RFID/NFC, QR Code, dan Fingerprint</p>
+          <p className="text-slate-500 mt-1 text-xs md:text-sm">Sistem absensi otomatis dengan RFID/NFC, QR Code, dan Fingerprint</p>
         </div>
 
-        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit overflow-x-auto">
+        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm overflow-x-auto scrollbar-thin w-full lg:w-fit">
           {tabs.map(tab => {
             const Icon = tab.icon;
             return (
               <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.key ? `${tab.color} text-white` : 'text-slate-500 hover:text-slate-700'}`}>
-                <Icon className="w-4 h-4" /> {tab.label}
+                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.key ? `${tab.color} text-white shadow-sm` : 'text-slate-500 hover:text-slate-700'}`}>
+                <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" /> {tab.label}
               </button>
             );
           })}

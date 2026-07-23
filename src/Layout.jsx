@@ -179,13 +179,16 @@ export default function Layout({ children, currentPageName }) {
   return (
     <div className="min-h-screen bg-slate-950 font-inter">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50">
         <div className="flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
               <School className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-white text-sm tracking-wide">YPPI ARRAHMAH</span>
+            <div>
+              <span className="font-bold text-white text-sm tracking-tight leading-none">YPPI ARRAHMAH</span>
+              <p className="text-slate-500 text-[10px] leading-none mt-0.5">Sistem Informasi Sekolah</p>
+            </div>
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -344,13 +347,13 @@ export default function Layout({ children, currentPageName }) {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen bg-slate-50">
+      <main className="lg:ml-64 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen bg-slate-50">
         {children}
       </main>
 
       {/* Bottom Navigation - Mobile */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-sm border-t border-slate-800">
-        <div className="flex items-center justify-around px-2 h-16 pb-safe">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-700/50">
+        <div className="flex items-stretch justify-evenly px-1 h-16 pb-safe">
           {menuConfig.topItems.slice(0, 4).map((item) => {
             const Icon = item.icon;
             const isActive = currentPageName === item.page;
@@ -359,16 +362,14 @@ export default function Layout({ children, currentPageName }) {
                 key={item.page}
                 to={createPageUrl(item.page)}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
-                  isActive ? '' : 'opacity-50'
-                }`}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-all min-w-0"
               >
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                  isActive ? 'bg-blue-600/20' : ''
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all ${
+                  isActive ? 'bg-white/10' : ''
                 }`}>
-                  <Icon className="w-5 h-5" style={{ color: isActive ? item.color : '#94a3b8' }} />
+                  <Icon className="w-[18px] h-[18px]" style={{ color: isActive ? item.color : '#64748b' }} />
                 </div>
-                <span className="text-[9px] font-medium" style={{ color: isActive ? item.color : '#64748b' }}>
+                <span className="text-[10px] font-medium leading-none truncate w-full text-center px-1" style={{ color: isActive ? item.color : '#64748b' }}>
                   {item.name.split(' ')[0]}
                 </span>
               </Link>
@@ -376,12 +377,12 @@ export default function Layout({ children, currentPageName }) {
           })}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl opacity-50"
+            className="flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-all min-w-0"
           >
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center">
-              <Menu className="w-5 h-5 text-slate-400" />
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-white/5">
+              <Menu className="w-[18px] h-[18px] text-slate-400" />
             </div>
-            <span className="text-[9px] font-medium text-slate-500">Menu</span>
+            <span className="text-[10px] font-medium leading-none text-slate-400">Menu</span>
           </button>
         </div>
       </nav>
