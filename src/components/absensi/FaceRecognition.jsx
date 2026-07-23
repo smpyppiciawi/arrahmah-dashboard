@@ -25,7 +25,7 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
   useEffect(() => { cameraActiveRef.current = cameraActive; }, [cameraActive]);
 
   const loadModels = useCallback(async () => {
-    if (modelsLoaded || loadingModels) return;
+    if (modelsLoaded || loadingModels) return modelsLoaded;
     setLoadingModels(true);
     try {
       await Promise.all([
@@ -34,8 +34,10 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
       ]);
       setModelsLoaded(true);
+      return true;
     } catch (err) {
       toast({ title: 'Gagal memuat model AI', description: 'Periksa koneksi internet.', variant: 'destructive' });
+      return false;
     } finally {
       setLoadingModels(false);
     }
@@ -129,26 +131,35 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
       toast({ title: 'Kamera tidak didukung', description: 'Gunakan browser modern dengan HTTPS.', variant: 'destructive' });
       return;
     }
-    await loadModels();
-    if (!modelsLoaded) return;
+    const ok = await loadModels();
+    if (!ok) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
       setCameraActive(true);
       setResult(null);
+
       if (mode === 'scan') {
         const allFaces = await base44.entities.DataWajah.filter({ person_type: personType, status: 'Aktif' });
         faceDataRef.current = allFaces;
+      }
+
+      // Wait for React to mount the video element after setCameraActive(true)
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => {});
+      }
+
+      if (mode === 'scan') {
         startScanLoop();
       }
     } catch (err) {
       toast({ title: 'Gagal mengakses kamera', description: err.message, variant: 'destructive' });
+      stopCamera();
     }
   };
 
