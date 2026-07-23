@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import UangKasTab from '@/components/walikelas/UangKasTab';
+import WaContactPopup from '@/components/siswa/WaContactPopup';
 import { Users, Megaphone, Plus, Trash2, Building, User, Phone, Bell, Edit2, MessageCircle, X, Save, Wallet } from 'lucide-react';
 
 export default function WaliKelas() {
@@ -25,6 +26,18 @@ export default function WaliKelas() {
   const [pengumumanForm, setPengumumanForm] = useState({ judul: '', isi: '', penting: false });
   const [editingTelpId, setEditingTelpId] = useState(null);
   const [editingTelpVal, setEditingTelpVal] = useState('');
+  const [waPopupSiswa, setWaPopupSiswa] = useState(null);
+
+  const getSiswaContacts = (siswa) => {
+    const contacts = [];
+    if (siswa.kontak_list && siswa.kontak_list.length > 0) {
+      siswa.kontak_list.forEach(k => { if (k.no_telp) contacts.push({ no_telp: k.no_telp, hubungan: k.hubungan || 'Ortu' }); });
+    }
+    if (siswa.no_telp_ortu && !contacts.find(c => c.no_telp === siswa.no_telp_ortu)) {
+      contacts.push({ no_telp: siswa.no_telp_ortu, hubungan: 'Ortu' });
+    }
+    return contacts;
+  };
 
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
@@ -210,8 +223,8 @@ export default function WaliKelas() {
                         <TableHead className="text-xs">NIS</TableHead>
                         <TableHead className="text-xs">Nama Siswa</TableHead>
                         <TableHead className="text-xs w-8">L/P</TableHead>
-                        <TableHead className="text-xs">No. Telp Ortu</TableHead>
-                        <TableHead className="text-xs">Nama Ortu</TableHead>
+                        <TableHead className="text-xs">Kontak Ortu</TableHead>
+                        <TableHead className="text-xs">Ayah / Ibu</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -257,20 +270,24 @@ export default function WaliKelas() {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                {siswa.no_telp_ortu ? (
-                                  <>
-                                    <span className="text-slate-600">{siswa.no_telp_ortu}</span>
-                                    <button
-                                      onClick={() => openWA(siswa.no_telp_ortu)}
-                                      className="p-1 bg-green-500 text-white rounded-lg hover:bg-green-600 shrink-0"
-                                      title="Kirim pesan WhatsApp"
-                                    >
+                                {(() => {
+                                  const contacts = getSiswaContacts(siswa);
+                                  if (contacts.length === 0) return <span className="text-slate-300 italic">-</span>;
+                                  if (contacts.length === 1) return (
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-slate-600 text-xs">{contacts[0].no_telp}</span>
+                                      <button onClick={() => openWA(contacts[0].no_telp)} className="p-1 bg-green-500 text-white rounded-lg hover:bg-green-600 shrink-0" title={`WA ${contacts[0].hubungan}`}>
+                                        <MessageCircle className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  );
+                                  return (
+                                    <button onClick={() => setWaPopupSiswa(siswa)} className="flex items-center gap-1.5 text-green-600 hover:text-green-700">
                                       <MessageCircle className="w-3 h-3" />
+                                      <span className="text-xs font-medium">{contacts.length} Kontak</span>
                                     </button>
-                                  </>
-                                ) : (
-                                  <span className="text-slate-300 italic">-</span>
-                                )}
+                                  );
+                                })()}
                                 <button
                                   onClick={() => { setEditingTelpId(siswa.id); setEditingTelpVal(siswa.no_telp_ortu || ''); }}
                                   className="p-1 text-slate-400 hover:text-purple-600 rounded-lg hover:bg-purple-50 shrink-0"
@@ -281,7 +298,10 @@ export default function WaliKelas() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell className="text-xs text-slate-500">{siswa.nama_ortu || '-'}</TableCell>
+                          <TableCell className="text-xs text-slate-500">
+                            <div>{siswa.nama_ayah_kandung || siswa.nama_ortu || '-'}</div>
+                            {siswa.nama_ibu_kandung && <div className="text-slate-400">{siswa.nama_ibu_kandung}</div>}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -387,6 +407,10 @@ export default function WaliKelas() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {waPopupSiswa && (
+        <WaContactPopup siswa={waPopupSiswa} onClose={() => setWaPopupSiswa(null)} />
+      )}
     </div>
   );
 }

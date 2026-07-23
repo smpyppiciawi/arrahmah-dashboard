@@ -56,7 +56,16 @@ const FULL_ACCESS_MENU = {
 
 const ROLE_MENU = {
   admin: FULL_ACCESS_MENU,
-  operator: FULL_ACCESS_MENU,
+  operator: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
+    ],
+    groups: []
+  },
   tu: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
@@ -86,6 +95,7 @@ const ROLE_MENU = {
       { name: 'Absensi', icon: Calendar, page: 'Absensi', color: '#10b981' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: []
   },

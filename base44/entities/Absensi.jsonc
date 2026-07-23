@@ -34,6 +34,15 @@
       ],
       "default": "Hadir"
     },
+    "jenis_absensi": {
+      "type": "string",
+      "enum": [
+        "Kehadiran",
+        "Jumat"
+      ],
+      "default": "Kehadiran",
+      "description": "Jenis absensi"
+    },
     "jam_masuk": {
       "type": "string",
       "description": "Jam masuk (format HH:mm)"

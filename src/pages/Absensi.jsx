@@ -1,421 +1,147 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, History } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Calendar, Users, AlertTriangle, CalendarDays, History, CheckCircle, UserX } from "lucide-react";
+import AbsensiKehadiran from '@/components/absensi/AbsensiKehadiran';
+import AbsensiJumat from '@/components/absensi/AbsensiJumat';
 import RiwayatAbsensi from '@/components/absensi/RiwayatAbsensi';
 
-const STATUS_CONFIG = {
-  'Hadir':     { icon: CheckCircle, active: 'bg-emerald-500 text-white shadow-sm shadow-emerald-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600' },
-  'Sakit':     { icon: AlertCircle, active: 'bg-amber-500 text-white shadow-sm shadow-amber-200',   inactive: 'bg-slate-100 text-slate-400 hover:bg-amber-50 hover:text-amber-600' },
-  'Izin':      { icon: FileText,    active: 'bg-blue-500 text-white shadow-sm shadow-blue-200',     inactive: 'bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600' },
-  'Alfa':      { icon: UserX,       active: 'bg-red-500 text-white shadow-sm shadow-red-200',       inactive: 'bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-600' },
-  'Terlambat': { icon: Clock,       active: 'bg-orange-500 text-white shadow-sm shadow-orange-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-orange-50 hover:text-orange-600' },
-};
-
 export default function Absensi() {
-  const [activeTab, setActiveTab] = useState('input'); // 'input' | 'riwayat'
-  const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [selectedKelas, setSelectedKelas] = useState('');
-  const [absensiData, setAbsensiData] = useState({});
-  const [currentUser, setCurrentUser] = useState(null);
-  const [bulkJamMasuk, setBulkJamMasuk] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('rekap');
+  const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
 
-  React.useEffect(() => {
-    base44.auth.me().then(setCurrentUser).catch(console.error);
-  }, []);
-
-  const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'guru', 'tu'].includes(userRole);
-
-  const { data: kelasList = [] } = useQuery({
-    queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  const { data: allAbsensi = [] } = useQuery({
+    queryKey: ['absensi-rekap', dateFrom, dateTo],
+    queryFn: () => base44.entities.Absensi.list('-tanggal', 2000),
+    enabled: activeTab === 'rekap',
   });
 
-  const { data: guruList = [] } = useQuery({
-    queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama'), staleTime: 60000,
-  });
+  const filteredAbsensi = useMemo(() => allAbsensi.filter(a => a.tanggal >= dateFrom && a.tanggal <= dateTo), [allAbsensi, dateFrom, dateTo]);
 
-  const guruData = guruList.find(g => g.email === currentUser?.email);
-  const isGuruRole = userRole === 'guru';
-
-  const { data: pembelajaranGuru = [] } = useQuery({
-    queryKey: ['pembelajaran-guru-absensi', guruData?.id],
-    queryFn: () => base44.entities.Pembelajaran.filter({ guru_id: guruData?.id }),
-    enabled: isGuruRole && !!guruData?.id,
-    staleTime: 60000,
-  });
-
-  const assignedKelasIds = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.kelas_id))] : [], [isGuruRole, pembelajaranGuru]);
-  const availableKelas = isGuruRole ? kelasList.filter(k => assignedKelasIds.includes(k.id)) : kelasList;
-
-  const { data: siswaList = [] } = useQuery({
-    queryKey: ['siswa', selectedKelas],
-    queryFn: () => selectedKelas ? base44.entities.Siswa.filter({ kelas_id: selectedKelas, status: 'Aktif' }) : [],
-    enabled: !!selectedKelas,
-  });
-
-  const { data: existingAbsensi = [] } = useQuery({
-    queryKey: ['absensi', selectedDate, selectedKelas],
-    queryFn: () => selectedKelas ? base44.entities.Absensi.filter({ tanggal: selectedDate, kelas_id: selectedKelas }) : [],
-    enabled: !!selectedKelas,
-  });
-
-  const { data: jadwalList = [] } = useQuery({
-    queryKey: ['jadwal-pelajaran', selectedKelas],
-    queryFn: () => selectedKelas ? base44.entities.JadwalPelajaran.filter({ kelas_id: selectedKelas }) : [],
-    enabled: !!selectedKelas,
-  });
-
-  const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-  const todayJadwal = jadwalList
-    .filter(j => j.hari === HARI_INDONESIA[new Date(selectedDate).getDay()])
-    .sort((a, b) => (a.jam_ke || 0) - (b.jam_ke || 0));
-
-  // Detect duplicates
-  const siswaIdCounts = {};
-  existingAbsensi.forEach(a => { siswaIdCounts[a.siswa_id] = (siswaIdCounts[a.siswa_id] || 0) + 1; });
-  const duplicateCount = Object.values(siswaIdCounts).filter(c => c > 1).length;
-
-  // Sync local state from DB data
-  React.useEffect(() => {
-    const newData = {};
-    siswaList.forEach(siswa => {
-      const existing = existingAbsensi.find(a => a.siswa_id === siswa.id);
-      newData[siswa.id] = {
-        status: existing?.status || 'Hadir',
-        jam_masuk: existing?.jam_masuk || '',
-        keterangan: existing?.keterangan || '',
-        existing_id: existing?.id,
-      };
+  const rekapByDate = useMemo(() => {
+    const byDate = {};
+    filteredAbsensi.forEach(a => {
+      if (!byDate[a.tanggal]) byDate[a.tanggal] = { kehadiran: [], jumat: [] };
+      if (a.jenis_absensi === 'Jumat') byDate[a.tanggal].jumat.push(a);
+      else byDate[a.tanggal].kehadiran.push(a);
     });
-    setAbsensiData(newData);
-  }, [siswaList, existingAbsensi]);
+    return byDate;
+  }, [filteredAbsensi]);
 
-  // Auto-select kelas for guru role
-  React.useEffect(() => {
-    if (isGuruRole && availableKelas.length > 0 && !selectedKelas) {
-      setSelectedKelas(availableKelas[0].id);
-    }
-  }, [isGuruRole, availableKelas, selectedKelas]);
+  const dates = Object.keys(rekapByDate).sort().reverse();
 
-  const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Absensi.create(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['absensi'] }),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Absensi.update(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['absensi'] }),
-  });
-
-  const handleStatusChange = (siswaId, status) => {
-    setAbsensiData(prev => ({ ...prev, [siswaId]: { ...prev[siswaId], status } }));
-  };
-
-  const handleBulkJamMasuk = () => {
-    if (!bulkJamMasuk) return;
-    setAbsensiData(prev => {
-      const updated = { ...prev };
-      siswaList.forEach(siswa => {
-        if (updated[siswa.id]) updated[siswa.id] = { ...updated[siswa.id], jam_masuk: bulkJamMasuk };
-      });
-      return updated;
-    });
-  };
-
-  const sortedSiswaList = [...siswaList].sort((a, b) => a.nama.localeCompare(b.nama));
-
-  const handleSaveAll = async () => {
-    setIsSaving(true);
-    const kelas = kelasList.find(k => k.id === selectedKelas);
-    let createdCount = 0, updatedCount = 0, duplicateCount = 0;
-
-    for (const siswa of siswaList) {
-      const data = absensiData[siswa.id];
-      if (!data) continue;
-
-      const payload = {
-        tanggal: selectedDate, siswa_id: siswa.id, nis: siswa.nis,
-        nama_siswa: siswa.nama, kelas_id: selectedKelas,
-        nama_kelas: kelas?.nama_kelas || '',
-        status: data.status, jam_masuk: data.jam_masuk, keterangan: data.keterangan,
-      };
-
-      if (data.existing_id) {
-        await updateMutation.mutateAsync({ id: data.existing_id, data: payload });
-        updatedCount++;
-      } else {
-        // Cek duplikat — ambil data pertama, hapus sisanya
-        const cekDuplikat = existingAbsensi.filter(a => a.siswa_id === siswa.id);
-        if (cekDuplikat.length > 0) {
-          await updateMutation.mutateAsync({ id: cekDuplikat[0].id, data: payload });
-          for (let i = 1; i < cekDuplikat.length; i++) {
-            await base44.entities.Absensi.delete(cekDuplikat[i].id);
-          }
-          duplicateCount++;
-        } else {
-          await createMutation.mutateAsync(payload);
-          createdCount++;
-        }
-      }
-    }
-
-    await queryClient.invalidateQueries({ queryKey: ['absensi'] });
-    setIsSaving(false);
-
-    if (duplicateCount > 0) {
-      toast({ title: '⚠️ Data Ganda Diperbaiki', description: `${duplicateCount} duplikat diperbarui. ${createdCount} baru, ${updatedCount} diupdate.`, duration: 5000 });
-    } else if (updatedCount > 0 && createdCount === 0) {
-      toast({ title: '✅ Absensi Diperbarui', description: `${updatedCount} data berhasil diupdate.`, duration: 4000 });
-    } else {
-      toast({ title: '✅ Absensi Tersimpan', description: `${createdCount} data baru${updatedCount > 0 ? `, ${updatedCount} diperbarui` : ''}.`, duration: 4000 });
-    }
-  };
-
-  const stats = {
-    hadir: Object.values(absensiData).filter(d => d.status === 'Hadir').length,
-    sakit: Object.values(absensiData).filter(d => d.status === 'Sakit').length,
-    izin: Object.values(absensiData).filter(d => d.status === 'Izin').length,
-    alfa: Object.values(absensiData).filter(d => d.status === 'Alfa').length,
-    terlambat: Object.values(absensiData).filter(d => d.status === 'Terlambat').length,
-  };
-
-  const total = sortedSiswaList.length;
-  const hadirPct = total > 0 ? Math.round((stats.hadir / total) * 100) : 0;
+  const tabs = [
+    { key: 'rekap', label: 'Rekap Harian', icon: CalendarDays, color: 'bg-emerald-500' },
+    { key: 'kehadiran', label: 'Absensi Kehadiran', icon: CheckCircle, color: 'bg-emerald-500' },
+    { key: 'jumat', label: 'Absensi Jumat', icon: Users, color: 'bg-emerald-500' },
+    { key: 'riwayat', label: 'Riwayat', icon: History, color: 'bg-blue-500' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-              <Calendar className="w-7 h-7 text-emerald-500" />
-              Absensi Siswa
-            </h1>
-            <p className="text-slate-500 mt-0.5 text-sm">
-              {format(new Date(selectedDate), 'EEEE, d MMMM yyyy', { locale: idLocale })}
-            </p>
-          </div>
-          {canEdit && activeTab === 'input' && selectedKelas && siswaList.length > 0 && (
-            <Button
-              onClick={handleSaveAll}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 gap-2"
-              disabled={isSaving}
-            >
-              <Save className="w-4 h-4" />
-              {isSaving ? 'Menyimpan...' : 'Simpan Absensi'}
-            </Button>
-          )}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
+            <Calendar className="w-7 h-7 text-emerald-500" /> Absensi Siswa
+          </h1>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit">
-          <button
-            onClick={() => setActiveTab('input')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'input' ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <Calendar className="w-4 h-4" /> Input Absensi
-          </button>
-          <button
-            onClick={() => setActiveTab('riwayat')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'riwayat' ? 'bg-blue-500 text-white shadow-md shadow-blue-500/25' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <History className="w-4 h-4" /> Riwayat
-          </button>
+        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit overflow-x-auto">
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.key ? `${tab.color} text-white` : 'text-slate-500 hover:text-slate-700'}`}>
+                <Icon className="w-4 h-4" /> {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {activeTab === 'riwayat' && <RiwayatAbsensi />}
-        {activeTab === 'input' && (<>
-
-        {/* Filter Bar */}
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="flex-1">
-                <Label className="text-xs text-slate-500 font-medium mb-1 block">Tanggal</Label>
-                <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-9" />
-              </div>
-              <div className="flex-1">
-                <Label className="text-xs text-slate-500 font-medium mb-1 block">Kelas</Label>
-                <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                  <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
-                  <SelectContent>
-                    {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              {canEdit && (
-                <div className="flex-1">
-                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Set Jam Masuk (semua)</Label>
-                  <div className="flex gap-2">
-                    <Select value={bulkJamMasuk || undefined} onValueChange={setBulkJamMasuk}>
-                      <SelectTrigger className="h-9 flex-1"><SelectValue placeholder="Pilih Jam..." /></SelectTrigger>
-                      <SelectContent>
-                        {todayJadwal.length === 0 ? (
-                          <SelectItem value="none" disabled>Tidak ada jadwal hari ini</SelectItem>
-                        ) : todayJadwal.map(j => (
-                          <SelectItem key={j.id} value={j.jam_mulai || ''}>
-                            Jam {j.jam_ke} ({j.jam_mulai} - {j.jam_selesai})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button variant="outline" onClick={handleBulkJamMasuk} disabled={!selectedKelas || !bulkJamMasuk} className="h-9 gap-1 text-xs">
-                      <Clock className="w-3.5 h-3.5" /> Set
-                    </Button>
-                  </div>
+        {activeTab === 'rekap' && (
+          <div className="space-y-4">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Dari Tanggal</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9" /></div>
+                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Sampai Tanggal</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9" /></div>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        {/* Stats */}
-        {selectedKelas && siswaList.length > 0 && (
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {[
-              { label: 'Hadir', val: stats.hadir, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-              { label: 'Sakit', val: stats.sakit, color: 'bg-amber-50 border-amber-200 text-amber-700' },
-              { label: 'Izin', val: stats.izin, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-              { label: 'Alfa', val: stats.alfa, color: 'bg-red-50 border-red-200 text-red-700' },
-              { label: 'Terlambat', val: stats.terlambat, color: 'bg-orange-50 border-orange-200 text-orange-700' },
-              { label: 'Kehadiran', val: `${hadirPct}%`, color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-            ].map(s => (
-              <div key={s.label} className={`rounded-xl border p-3 text-center ${s.color}`}>
-                <p className="text-xl font-bold">{s.val}</p>
-                <p className="text-[11px] font-medium mt-0.5">{s.label}</p>
-              </div>
-            ))}
+            {dates.length === 0 ? (
+              <Card className="border-0 shadow-sm"><CardContent className="p-16 text-center"><CalendarDays className="w-12 h-12 text-slate-300 mx-auto mb-3" /><p className="text-slate-500">Tidak ada data absensi pada rentang tanggal ini</p></CardContent></Card>
+            ) : dates.map(tanggal => {
+              const data = rekapByDate[tanggal];
+              const dateObj = new Date(tanggal);
+              const isFriday = dateObj.getDay() === 5;
+              const tidakHadir = data.kehadiran.filter(a => a.status !== 'Hadir');
+              const jumatTidakHadir = data.jumat.filter(a => a.status === 'Alfa');
+              const hadirSekolahIds = data.kehadiran.filter(a => a.status === 'Hadir').map(a => a.siswa_id);
+              const jumatAlfaIds = data.jumat.filter(a => a.status === 'Alfa').map(a => a.siswa_id);
+              const anomalies = jumatAlfaIds.filter(id => hadirSekolahIds.includes(id));
+              const anomalyStudents = data.jumat.filter(a => anomalies.includes(a.siswa_id));
+
+              return (
+                <Card key={tanggal} className="border-0 shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-emerald-500" />
+                      {format(dateObj, 'EEEE, d MMMM yyyy', { locale: idLocale })}
+                      {isFriday && <Badge className="bg-indigo-100 text-indigo-700">Jumat</Badge>}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="bg-emerald-50 rounded-lg p-2 text-center"><p className="text-lg font-bold text-emerald-700">{data.kehadiran.filter(a => a.status === 'Hadir').length}</p><p className="text-xs text-emerald-600">Hadir</p></div>
+                      <div className="bg-red-50 rounded-lg p-2 text-center"><p className="text-lg font-bold text-red-700">{tidakHadir.length}</p><p className="text-xs text-red-600">Tidak Hadir</p></div>
+                      {isFriday && <div className="bg-indigo-50 rounded-lg p-2 text-center"><p className="text-lg font-bold text-indigo-700">{jumatTidakHadir.length}</p><p className="text-xs text-indigo-600">Tidak Jumat</p></div>}
+                      {anomalies.length > 0 && <div className="bg-amber-50 rounded-lg p-2 text-center"><p className="text-lg font-bold text-amber-700">{anomalies.length}</p><p className="text-xs text-amber-600">Hadir≠Jumat</p></div>}
+                    </div>
+
+                    {tidakHadir.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1"><UserX className="w-3 h-3 text-red-500" /> Tidak Hadir Sekolah:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {tidakHadir.map(a => <Badge key={a.id} className={`text-xs ${a.status === 'Sakit' ? 'bg-amber-100 text-amber-700' : a.status === 'Izin' ? 'bg-blue-100 text-blue-700' : a.status === 'Alfa' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{a.nama_siswa} ({a.status})</Badge>)}
+                        </div>
+                      </div>
+                    )}
+
+                    {isFriday && jumatTidakHadir.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1"><Users className="w-3 h-3 text-indigo-500" /> Tidak Ikut Jumat/Keputrian:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {jumatTidakHadir.map(a => <Badge key={a.id} className="text-xs bg-indigo-100 text-indigo-700">{a.nama_siswa}</Badge>)}
+                        </div>
+                      </div>
+                    )}
+
+                    {anomalyStudents.length > 0 && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-xs font-semibold text-amber-700 mb-1 flex items-center gap-1"><AlertTriangle className="w-3 h-3" /> Hadir Sekolah tapi Tidak Ikut Jumat/Keputrian:</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {anomalyStudents.map(a => <Badge key={a.id} className="text-xs bg-amber-100 text-amber-800 border border-amber-300">{a.nama_siswa}</Badge>)}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
 
-        {/* Table */}
-        {selectedKelas ? (
-          <Card className="border-0 shadow-sm overflow-hidden">
-            <CardHeader className="pb-0 pt-4 px-4 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                  <Users className="w-4 h-4 text-emerald-500" />
-                  Daftar Siswa — {kelasList.find(k => k.id === selectedKelas)?.nama_kelas}
-                  <Badge className="bg-slate-100 text-slate-600 text-xs border-0 ml-1">{total} siswa</Badge>
-                </CardTitle>
-                {existingAbsensi.length > 0 && (
-                  <Badge className="bg-emerald-50 text-emerald-700 text-xs border-0">Data tersimpan</Badge>
-                )}
-                {duplicateCount > 0 && (
-                  <Badge className="bg-amber-50 text-amber-700 text-xs border border-amber-200">⚠️ {duplicateCount} duplikat</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50/80">
-                      <TableHead className="w-10 text-center text-xs">#</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs">NIS</TableHead>
-                      <TableHead className="text-xs">Nama Siswa</TableHead>
-                      <TableHead className="text-xs">Status Kehadiran</TableHead>
-                      <TableHead className="hidden sm:table-cell text-xs">Jam Masuk</TableHead>
-                      <TableHead className="hidden md:table-cell text-xs">Keterangan</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedSiswaList.map((siswa, index) => (
-                      <TableRow key={siswa.id} className="hover:bg-slate-50/60 transition-colors">
-                        <TableCell className="text-center text-xs text-slate-400 font-medium">{index + 1}</TableCell>
-                        <TableCell className="hidden sm:table-cell text-xs text-slate-500 font-mono">{siswa.nis}</TableCell>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium text-sm text-slate-800">{siswa.nama}</p>
-                            {absensiData[siswa.id]?.existing_id && (
-                              <p className="text-[10px] text-emerald-500">✓ tersimpan</p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {Object.entries(STATUS_CONFIG).map(([status, cfg]) => {
-                              const isActive = absensiData[siswa.id]?.status === status;
-                              const Icon = cfg.icon;
-                              return (
-                                <button
-                                  key={status}
-                                  type="button"
-                                  onClick={() => canEdit && handleStatusChange(siswa.id, status)}
-                                  disabled={!canEdit}
-                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? cfg.active : cfg.inactive}`}
-                                >
-                                  <Icon className="w-3 h-3" />
-                                  <span className="hidden sm:inline">{status}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Input
-                            type="time"
-                            value={absensiData[siswa.id]?.jam_masuk || ''}
-                            onChange={(e) => setAbsensiData(prev => ({
-                              ...prev, [siswa.id]: { ...prev[siswa.id], jam_masuk: e.target.value }
-                            }))}
-                            className="w-28 h-8 text-xs"
-                            disabled={!canEdit}
-                          />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Input
-                            placeholder="Keterangan..."
-                            value={absensiData[siswa.id]?.keterangan || ''}
-                            onChange={(e) => setAbsensiData(prev => ({
-                              ...prev, [siswa.id]: { ...prev[siswa.id], keterangan: e.target.value }
-                            }))}
-                            className="w-40 h-8 text-xs"
-                            disabled={!canEdit}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {siswaList.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-slate-400">
-                          <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                          <p className="text-sm">Tidak ada siswa aktif di kelas ini</p>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-0 shadow-sm">
-            <CardContent className="p-16 text-center">
-              <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-emerald-400" />
-              </div>
-              <p className="text-slate-700 font-semibold">Pilih tanggal dan kelas</p>
-              <p className="text-slate-400 text-sm mt-1">untuk memulai pencatatan absensi</p>
-            </CardContent>
-          </Card>
-        )}
-        </>)}
+        {activeTab === 'kehadiran' && <AbsensiKehadiran />}
+        {activeTab === 'jumat' && <AbsensiJumat />}
+        {activeTab === 'riwayat' && <RiwayatAbsensi />}
       </div>
     </div>
   );

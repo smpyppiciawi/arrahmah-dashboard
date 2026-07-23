@@ -163,11 +163,6 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
             <MapPicker value={formData.koordinat} onChange={(v) => set('koordinat', v)} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><Label>Nama Orang Tua/Wali (Lama)</Label><Input value={formData.nama_ortu} onChange={(e) => set('nama_ortu', e.target.value)} /></div>
-            <div><Label>No. Telp Orang Tua (Lama)</Label><Input value={formData.no_telp_ortu} onChange={(e) => set('no_telp_ortu', e.target.value)} /></div>
-          </div>
-
           <div>
             <Label>Status</Label>
             <Select value={formData.status} onValueChange={(v) => set('status', v)}>

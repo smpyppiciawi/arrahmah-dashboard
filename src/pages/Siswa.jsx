@@ -92,8 +92,8 @@ export default function Siswa() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['NIS', 'Nama', 'Jenis Kelamin', 'Kelas', 'Tanggal Lahir', 'Alamat', 'Nama Orang Tua', 'No Telp Orang Tua'];
-    const csvContent = headers.join(',') + '\n' + '12345,Contoh Siswa,Laki-laki,7A,2010-01-01,Jl. Contoh,Nama Ortu,08123456789';
+    const headers = ['NIS', 'NISN', 'Nama', 'Jenis Kelamin', 'Kelas', 'Tanggal Lahir', 'Alamat', 'Nama Ayah', 'Nama Ibu', 'Nama Wali', 'Pekerjaan Ayah', 'Pekerjaan Ibu', 'Pekerjaan Wali', 'No WA Ayah', 'No WA Ibu', 'No WA Wali', 'Penghasilan Ayah', 'Penghasilan Ibu', 'Penghasilan Wali', 'Koordinat'];
+    const csvContent = headers.join(',') + '\n' + '12345,1234567890,Contoh Siswa,Laki-laki,7A,2010-01-01,Jl. Contoh,Budi Sutomo,Siti Aminah,,Wiraswasta,Ibu Rumah Tangga,,08123456789,08123456790,,5000000,3000000,,';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -124,8 +124,18 @@ export default function Siswa() {
       )
     },
     { key: 'jenis_kelamin', label: 'JK' },
-    { key: 'nama_ortu', label: 'Nama Orang Tua', render: (row) => row.nama_ortu || '-' },
-    { key: 'no_telp_ortu', label: 'No. Telp', render: (row) => row.no_telp_ortu || '-' },
+    { key: 'nama_ayah', label: 'Ayah / Ibu', render: (row) => (
+      <div>
+        <div className="text-xs">{row.nama_ayah_kandung || row.nama_ortu || '-'}</div>
+        {row.nama_ibu_kandung && <div className="text-xs text-slate-400">{row.nama_ibu_kandung}</div>}
+      </div>
+    ) },
+    { key: 'kontak', label: 'Kontak WA', render: (row) => {
+      const contacts = [];
+      if (row.kontak_list?.length > 0) row.kontak_list.forEach(k => { if (k.no_telp) contacts.push(k.no_telp); });
+      if (row.no_telp_ortu && !contacts.includes(row.no_telp_ortu)) contacts.push(row.no_telp_ortu);
+      return contacts.length > 0 ? <span className="text-xs">{contacts.length} kontak</span> : <span className="text-slate-300 text-xs">-</span>;
+    }},
     { 
       key: 'status', 
       label: 'Status',

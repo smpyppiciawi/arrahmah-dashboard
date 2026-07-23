@@ -6,6 +6,10 @@
       "type": "string",
       "description": "Nomor Induk Siswa"
     },
+    "nisn": {
+      "type": "string",
+      "description": "Nomor Induk Siswa Nasional"
+    },
     "nama": {
       "type": "string",
       "description": "Nama lengkap siswa"
@@ -34,10 +38,65 @@
     },
     "nama_ortu": {
       "type": "string",
-      "description": "Nama orang tua/wali"
+      "description": "Nama orang tua/wali (legacy)"
     },
     "no_telp_ortu": {
+      "type": "string",
+      "description": "No telp orang tua (legacy)"
+    },
+    "nama_ayah_kandung": {
+      "type": "string",
+      "description": "Nama ayah kandung"
+    },
+    "nama_ibu_kandung": {
+      "type": "string",
+      "description": "Nama ibu kandung"
+    },
+    "nama_wali": {
+      "type": "string",
+      "description": "Nama wali (opsional)"
+    },
+    "kontak_list": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "no_telp": {
+            "type": "string"
+          },
+          "hubungan": {
+            "type": "string",
+            "enum": [
+              "Ibu",
+              "Ayah",
+              "Wali"
+            ]
+          }
+        }
+      },
+      "description": "Daftar kontak HP/WA orang tua/wali"
+    },
+    "pekerjaan_ayah": {
       "type": "string"
+    },
+    "pekerjaan_ibu": {
+      "type": "string"
+    },
+    "pekerjaan_wali": {
+      "type": "string"
+    },
+    "penghasilan_ayah": {
+      "type": "number"
+    },
+    "penghasilan_ibu": {
+      "type": "number"
+    },
+    "penghasilan_wali": {
+      "type": "number"
+    },
+    "koordinat": {
+      "type": "string",
+      "description": "Koordinat rumah (lat,lng)"
     },
     "status": {
       "type": "string",
