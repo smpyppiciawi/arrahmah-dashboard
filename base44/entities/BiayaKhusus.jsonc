@@ -21,18 +21,24 @@
     },
     "nominal_khusus": {
       "type": "number",
-      "description": "Nominal khusus untuk siswa ini"
+      "description": "Nominal khusus untuk siswa ini (0 jika gratis)"
+    },
+    "is_gratis": {
+      "type": "boolean",
+      "default": false,
+      "description": "True jika iuran ini digratiskan"
     },
     "kategori": {
       "type": "string",
       "enum": [
+        "Yatim/Yatim Piatu Full",
         "Yatim",
-        "Piatu",
-        "Yatim Piatu",
         "Kurang Mampu",
+        "Beasiswa Yayasan",
         "Prestasi",
         "Lainnya"
       ],
+      "default": "Yatim",
       "description": "Kategori keringanan"
     },
     "keterangan": {
@@ -45,7 +51,6 @@
   "required": [
     "siswa_id",
     "nama_siswa",
-    "tarif_iuran_id",
-    "nominal_khusus"
+    "tarif_iuran_id"
   ]
 }

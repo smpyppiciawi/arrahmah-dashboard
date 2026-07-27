@@ -45,6 +45,23 @@ export default function LaporanKeuangan() {
     queryFn: () => base44.entities.TarifIuran.filter({ status: 'Aktif' }),
   });
 
+  const { data: sumberDanaList = [] } = useQuery({
+    queryKey: ['sumber-dana'],
+    queryFn: () => base44.entities.SumberDana.list('nama'),
+  });
+
+  // Calculate saldo per sumber dana
+  const saldoPerSumberDana = useMemo(() => {
+    const map = {};
+    sumberDanaList.forEach(s => { map[s.nama] = 0; });
+    keuanganList.forEach(k => {
+      if (!k.sumber_rekening) return;
+      if (!map[k.sumber_rekening]) map[k.sumber_rekening] = 0;
+      map[k.sumber_rekening] += k.jenis === 'Pemasukan' ? (k.jumlah || 0) : -(k.jumlah || 0);
+    });
+    return map;
+  }, [keuanganList, sumberDanaList]);
+
   const formatRupiah = (value) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -397,6 +414,28 @@ export default function LaporanKeuangan() {
             <p className="text-slate-500 mt-1">Rekap dan cetak laporan keuangan</p>
           </div>
         </div>
+
+        {/* Saldo per Sumber Dana */}
+        {sumberDanaList.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            {sumberDanaList.map(s => {
+              const saldo = saldoPerSumberDana[s.nama] || 0;
+              return (
+                <Card key={s.id} className="border-0 shadow-sm">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wallet className="w-4 h-4 text-teal-500" />
+                      <p className="text-xs text-slate-500 font-medium truncate">{s.nama}</p>
+                    </div>
+                    <p className={`text-lg font-bold ${saldo >= 0 ? 'text-slate-800' : 'text-red-600'}`}>
+                      {formatRupiah(saldo)}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
         {/* Filter Tanggal */}
         <Card className="border-0 shadow-sm mb-6">

@@ -10,31 +10,52 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import RupiahInput from '@/components/ui/RupiahInput';
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, X, Check, Users } from "lucide-react";
+import { Loader2, X, Users, Search, Gift, Coins } from "lucide-react";
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
-const KATEGORI_OPTIONS = ['Yatim', 'Piatu', 'Yatim Piatu', 'Kurang Mampu', 'Prestasi', 'Lainnya'];
+const KATEGORI_OPTIONS = [
+  'Yatim/Yatim Piatu Full',
+  'Yatim',
+  'Kurang Mampu',
+  'Beasiswa Yayasan',
+  'Prestasi',
+  'Lainnya',
+];
 
 export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList, tarifIuranList, activeAcademicYear }) {
   const queryClient = useQueryClient();
   const [selectedKategori, setSelectedKategori] = useState('Yatim');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedSiswaIds, setSelectedSiswaIds] = useState([]);
-  const [selectedTarifId, setSelectedTarifId] = useState('');
+  const [selectedTarifIds, setSelectedTarifIds] = useState([]);
+  const [nominalMode, setNominalMode] = useState('khusus'); // 'gratis' | 'khusus'
   const [nominalKhusus, setNominalKhusus] = useState('');
   const [keterangan, setKeterangan] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  const sortedSiswaList = useMemo(() => {
+    return [...siswaList].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [siswaList]);
+
   const filteredSiswa = useMemo(() => {
-    if (!selectedKelas) return siswaList;
-    return siswaList.filter(s => s.kelas_id === selectedKelas);
-  }, [siswaList, selectedKelas]);
+    let list = sortedSiswaList;
+    if (selectedKelas) list = list.filter(s => s.kelas_id === selectedKelas);
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(s =>
+        (s.nama || '').toLowerCase().includes(q) ||
+        (s.nis || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [sortedSiswaList, selectedKelas, searchQuery]);
 
   const selectedSiswaList = useMemo(() => {
-    return siswaList.filter(s => selectedSiswaIds.includes(s.id));
-  }, [siswaList, selectedSiswaIds]);
+    return sortedSiswaList.filter(s => selectedSiswaIds.includes(s.id));
+  }, [sortedSiswaList, selectedSiswaIds]);
 
   const toggleSiswa = (siswaId) => {
     setSelectedSiswaIds(prev =>
@@ -44,11 +65,19 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
     );
   };
 
-  const handleTarifSelect = (tarifId) => {
-    setSelectedTarifId(tarifId);
-    const tarif = tarifIuranList.find(t => t.id === tarifId);
-    if (tarif) {
-      setNominalKhusus(String(tarif.nominal));
+  const toggleTarif = (tarifId) => {
+    setSelectedTarifIds(prev =>
+      prev.includes(tarifId)
+        ? prev.filter(id => id !== tarifId)
+        : [...prev, tarifId]
+    );
+  };
+
+  const handleKategoriChange = (kat) => {
+    setSelectedKategori(kat);
+    if (kat === 'Yatim/Yatim Piatu Full') {
+      setSelectedTarifIds(tarifIuranList.map(t => t.id));
+      setNominalMode('gratis');
     }
   };
 
@@ -56,9 +85,11 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
     setSelectedKategori('Yatim');
     setSelectedKelas('');
     setSelectedSiswaIds([]);
-    setSelectedTarifId('');
+    setSelectedTarifIds([]);
+    setNominalMode('khusus');
     setNominalKhusus('');
     setKeterangan('');
+    setSearchQuery('');
   };
 
   const handleClose = () => {
@@ -72,29 +103,41 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
       toast({ title: "Pilih minimal 1 siswa", variant: "destructive" });
       return;
     }
-    if (!nominalKhusus || Number(nominalKhusus) <= 0) {
+    if (selectedTarifIds.length === 0) {
+      toast({ title: "Pilih minimal 1 iuran", variant: "destructive" });
+      return;
+    }
+    if (nominalMode === 'khusus' && (!nominalKhusus || Number(nominalKhusus) <= 0)) {
       toast({ title: "Nominal khusus harus diisi", variant: "destructive" });
       return;
     }
 
-    const tarif = tarifIuranList.find(t => t.id === selectedTarifId);
-
     setSubmitting(true);
     try {
-      const records = selectedSiswaIds.map(siswaId => {
+      const isGratis = nominalMode === 'gratis';
+      const nominalValue = isGratis ? 0 : Number(nominalKhusus);
+
+      const records = [];
+      for (const siswaId of selectedSiswaIds) {
         const siswa = siswaList.find(s => s.id === siswaId);
-        return {
-          siswa_id: siswa.id,
-          nama_siswa: siswa.nama,
-          nama_kelas: siswa.nama_kelas,
-          tarif_iuran_id: tarif?.id || '',
-          nama_iuran: tarif?.nama || '',
-          nominal_khusus: Number(nominalKhusus),
-          kategori: selectedKategori,
-          keterangan,
-          tahun_ajaran: activeAcademicYear || '',
-        };
-      });
+        if (!siswa) continue;
+        for (const tarifId of selectedTarifIds) {
+          const tarif = tarifIuranList.find(t => t.id === tarifId);
+          if (!tarif) continue;
+          records.push({
+            siswa_id: siswa.id,
+            nama_siswa: siswa.nama,
+            nama_kelas: siswa.nama_kelas,
+            tarif_iuran_id: tarif.id,
+            nama_iuran: tarif.nama,
+            nominal_khusus: nominalValue,
+            is_gratis: isGratis,
+            kategori: selectedKategori,
+            keterangan,
+            tahun_ajaran: activeAcademicYear || '',
+          });
+        }
+      }
 
       await base44.entities.BiayaKhusus.bulkCreate(records);
       queryClient.invalidateQueries({ queryKey: ['biaya-khusus'] });
@@ -119,27 +162,44 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
           {/* 1. Kategori Biaya Khusus */}
           <div>
             <Label>Kategori Biaya Khusus</Label>
-            <Select value={selectedKategori} onValueChange={setSelectedKategori}>
+            <Select value={selectedKategori} onValueChange={handleKategoriChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {KATEGORI_OPTIONS.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
               </SelectContent>
             </Select>
+            {selectedKategori === 'Yatim/Yatim Piatu Full' && (
+              <p className="text-xs text-purple-600 mt-1">Semua iuran otomatis dipilih & digratiskan untuk kategori ini.</p>
+            )}
           </div>
 
-          {/* 2. Pilih Kelas */}
-          <div>
-            <Label>Pilih Kelas</Label>
-            <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-              <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={null}>Semua Kelas</SelectItem>
-                {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          {/* 2. Pilih Kelas & Search */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Pilih Kelas</Label>
+              <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+                <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={null}>Semua Kelas</SelectItem>
+                  {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Cari Siswa</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Nama atau NIS..."
+                  className="pl-9"
+                />
+              </div>
+            </div>
           </div>
 
-          {/* 3. Pilih Siswa (multi-select) */}
+          {/* 3. Pilih Siswa (multi-select, A-Z) */}
           <div>
             <Label className="flex items-center gap-2">
               <Users className="w-4 h-4" /> Pilih Siswa ({selectedSiswaIds.length} dipilih)
@@ -167,66 +227,87 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
             </div>
           </div>
 
-          {/* 4. Daftar Siswa Terpilih */}
-          {selectedSiswaList.length > 0 && (
-            <div>
-              <Label>Daftar Siswa Terpilih & Nominal</Label>
-              <div className="border rounded-lg max-h-40 overflow-y-auto">
-                {selectedSiswaList.map(siswa => (
-                  <div key={siswa.id} className="flex items-center justify-between p-2.5 border-b last:border-0">
+          {/* 4. Pilih Iuran (multi-select checkboxes) */}
+          <div>
+            <Label>Pilih Iuran ({selectedTarifIds.length} dipilih)</Label>
+            <div className="border rounded-lg max-h-40 overflow-y-auto">
+              {tarifIuranList.length === 0 ? (
+                <p className="text-sm text-slate-400 p-4 text-center">Belum ada tarif iuran</p>
+              ) : (
+                tarifIuranList.map(tarif => (
+                  <label
+                    key={tarif.id}
+                    className="flex items-center gap-3 p-2.5 hover:bg-slate-50 cursor-pointer border-b last:border-0"
+                  >
+                    <Checkbox
+                      checked={selectedTarifIds.includes(tarif.id)}
+                      onCheckedChange={() => toggleTarif(tarif.id)}
+                    />
                     <div className="flex-1">
-                      <span className="text-sm font-medium">{siswa.nama}</span>
-                      <span className="text-xs text-slate-400 ml-2">{siswa.nama_kelas}</span>
+                      <span className="text-sm font-medium">{tarif.nama}</span>
+                      <span className="text-xs text-slate-400 ml-2">{formatRupiah(tarif.nominal)}</span>
                     </div>
-                    <span className="text-sm font-semibold text-amber-600 mr-3">
-                      {formatRupiah(nominalKhusus)}
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-500 h-7 w-7 p-0"
-                      onClick={() => toggleSiswa(siswa.id)}
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                ))}
-                <div className="flex justify-between p-2.5 bg-amber-50 font-semibold">
-                  <span className="text-sm">Total ({selectedSiswaList.length} siswa):</span>
-                  <span className="text-amber-700">{formatRupiah(Number(nominalKhusus || 0) * selectedSiswaList.length)}</span>
-                </div>
-              </div>
+                    <Badge variant="outline" className="text-xs">{tarif.periode}</Badge>
+                  </label>
+                ))
+              )}
             </div>
-          )}
-
-          {/* 5. Pilih Iuran */}
-          <div>
-            <Label>Pilih Iuran</Label>
-            <Select value={selectedTarifId} onValueChange={handleTarifSelect}>
-              <SelectTrigger><SelectValue placeholder="Pilih iuran untuk auto-fill nominal" /></SelectTrigger>
-              <SelectContent>
-                {tarifIuranList.map(t => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.nama} — {formatRupiah(t.nominal)}
-                    {t.tingkat && t.tingkat !== 'Semua' ? ` (Tingkat ${t.tingkat})` : ''} ({t.periode})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
-          {/* 6. Nominal Khusus */}
+          {/* 5. Nominal Mode: GRATIS / NOMINAL KHUSUS */}
           <div>
-            <Label>Nominal Khusus (Rp)</Label>
-            <RupiahInput value={nominalKhusus} onChange={setNominalKhusus} placeholder="0" required />
+            <Label>Nominal Khusus</Label>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => setNominalMode('gratis')}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition ${
+                  nominalMode === 'gratis'
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <Gift className="w-4 h-4" /> GRATIS
+              </button>
+              <button
+                type="button"
+                onClick={() => setNominalMode('khusus')}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl border-2 text-sm font-medium transition ${
+                  nominalMode === 'khusus'
+                    ? 'border-amber-500 bg-amber-50 text-amber-700'
+                    : 'border-slate-200 text-slate-500 hover:border-slate-300'
+                }`}
+              >
+                <Coins className="w-4 h-4" /> NOMINAL KHUSUS
+              </button>
+            </div>
+            {nominalMode === 'gratis' ? (
+              <p className="text-xs text-emerald-600 mt-2">Seluruh iuran yang dipilih akan ditandai LUNAS/GRATIS.</p>
+            ) : (
+              <div className="mt-2">
+                <Label className="text-xs">Nominal per Iuran (Rp)</Label>
+                <RupiahInput value={nominalKhusus} onChange={setNominalKhusus} placeholder="0" required />
+              </div>
+            )}
           </div>
 
-          {/* 7. Keterangan */}
+          {/* 6. Keterangan */}
           <div>
             <Label>Keterangan</Label>
             <Input value={keterangan} onChange={(e) => setKeterangan(e.target.value)} placeholder="Keterangan tambahan" />
           </div>
+
+          {/* Summary */}
+          {selectedSiswaList.length > 0 && selectedTarifIds.length > 0 && (
+            <div className="p-3 bg-slate-50 rounded-lg flex items-center justify-between">
+              <span className="text-sm text-slate-600">
+                {selectedSiswaIds.length} siswa × {selectedTarifIds.length} iuran = {selectedSiswaIds.length * selectedTarifIds.length} record
+              </span>
+              <span className="text-sm font-bold text-amber-700">
+                {nominalMode === 'gratis' ? 'GRATIS' : formatRupiah(Number(nominalKhusus || 0) * selectedTarifIds.length * selectedSiswaIds.length)}
+              </span>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
@@ -240,7 +321,7 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
                   Menyimpan...
                 </>
               ) : (
-                `Simpan (${selectedSiswaIds.length} Siswa)`
+                `Simpan (${selectedSiswaIds.length * selectedTarifIds.length} record)`
               )}
             </Button>
           </div>

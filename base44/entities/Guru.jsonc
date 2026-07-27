@@ -69,6 +69,52 @@
       "type": "number",
       "description": "Nominal gaji/honorarium berdasarkan golongan"
     },
+    "rincian_gaji": {
+      "type": "object",
+      "description": "Rincian komponen gaji per pegawai (boleh berbeda dari template golongan)",
+      "properties": {
+        "gaji_pokok": {
+          "type": "number",
+          "default": 0
+        },
+        "jabatan": {
+          "type": "number",
+          "default": 0
+        },
+        "bpjs": {
+          "type": "number",
+          "default": 0
+        },
+        "t_transport": {
+          "type": "number",
+          "default": 0
+        },
+        "pembina": {
+          "type": "number",
+          "default": 0
+        },
+        "lembur": {
+          "type": "number",
+          "default": 0
+        },
+        "wali_kelas": {
+          "type": "number",
+          "default": 0
+        },
+        "pulsa": {
+          "type": "number",
+          "default": 0
+        },
+        "t_tidak_tetap": {
+          "type": "number",
+          "default": 0
+        },
+        "pensiun": {
+          "type": "number",
+          "default": 0
+        }
+      }
+    },
     "data_anak": {
       "type": "array",
       "items": {

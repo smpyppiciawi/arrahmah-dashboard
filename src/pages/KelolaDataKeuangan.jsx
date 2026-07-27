@@ -68,7 +68,7 @@ export default function KelolaDataKeuangan() {
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [pilihSiswaOpen, setPilihSiswaOpen] = useState(false);
   const [pilihSiswaTarif, setPilihSiswaTarif] = useState(null);
@@ -158,7 +158,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif' });
+    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -268,7 +268,7 @@ export default function KelolaDataKeuangan() {
       key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
       render: (row) => (
         <div className="flex gap-2">
-          {(row.jenis_iuran === 'Mutasi' || row.jenis_iuran === 'PPDB') && (
+          {(row.jenis_iuran === 'Mutasi' || row.jenis_iuran === 'PPDB Gel 1' || row.jenis_iuran === 'PPDB Gel 2') && (
             <Button size="sm" variant="ghost" className="text-purple-600" onClick={() => { setPilihSiswaTarif(row); setPilihSiswaOpen(true); }} title="Pilih Siswa"><Users className="w-4 h-4" /></Button>
           )}
           <Button size="sm" variant="ghost" onClick={() => handleEdit('tarif', row)}><Edit2 className="w-4 h-4" /></Button>
@@ -282,8 +282,8 @@ export default function KelolaDataKeuangan() {
     { key: 'nama_siswa', label: 'Siswa' },
     { key: 'nama_kelas', label: 'Kelas' },
     { key: 'nama_iuran', label: 'Iuran' },
-    { key: 'nominal_khusus', label: 'Nominal Khusus', render: (row) => <span className="font-medium text-amber-600">{formatRupiah(row.nominal_khusus)}</span> },
-    { key: 'kategori', label: 'Kategori Biaya Khusus', render: (row) => <Badge className="bg-pink-100 text-pink-700">{row.kategori}</Badge> },
+    { key: 'nominal_khusus', label: 'Nominal', render: (row) => row.is_gratis ? <Badge className="bg-emerald-100 text-emerald-700">GRATIS</Badge> : <span className="font-medium text-amber-600">{formatRupiah(row.nominal_khusus)}</span> },
+    { key: 'kategori', label: 'Kategori', render: (row) => <Badge className="bg-pink-100 text-pink-700">{row.kategori}</Badge> },
     {
       key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
       render: (row) => (
@@ -456,7 +456,8 @@ export default function KelolaDataKeuangan() {
                         <SelectItem value="Ujian">Ujian</SelectItem>
                         <SelectItem value="Mutasi">Mutasi</SelectItem>
                         <SelectItem value="Awal Tahun">Awal Tahun</SelectItem>
-                        <SelectItem value="PPDB">PPDB</SelectItem>
+                        <SelectItem value="PPDB Gel 1">PPDB Gel 1</SelectItem>
+                        <SelectItem value="PPDB Gel 2">PPDB Gel 2</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -487,6 +488,15 @@ export default function KelolaDataKeuangan() {
                       </Select>
                     </div>
                   </div>
+                  {tarifForm.jenis_iuran === 'PPDB Gel 1' && (
+                    <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+                      <input type="checkbox" checked={tarifForm.spp_gratis_bulan_pertama || false} onChange={(e) => setTarifForm({...tarifForm, spp_gratis_bulan_pertama: e.target.checked})} className="w-4 h-4" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">SPP Bulan Pertama (Juli) Digratiskan</p>
+                        <p className="text-xs text-slate-500">Siswa iuran ini SPP Juli dianggap sudah bayar tanpa riwayat pembayaran</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid grid-cols-2 gap-4">
                     <div><Label>Tahun Ajaran</Label><Input value={tarifForm.tahun_ajaran} onChange={(e) => setTarifForm({...tarifForm, tahun_ajaran: e.target.value})} placeholder="2024/2025" /></div>
                     <div>

@@ -152,11 +152,17 @@ export default function Transaksi() {
       <div class="row"><span>Jenis:</span><span>${transaksi.jenis}</span></div>
       <div class="row"><span>Tipe:</span><span>${transaksi.tipe_transaksi || '-'}</span></div>
       ${transaksi.bulan_dibayar?.length ? `<div class="row"><span>Bulan:</span><span>${transaksi.bulan_dibayar.join(', ')}</span></div>` : ''}
+      ${transaksi.bulan ? `<div class="row"><span>Periode:</span><span>${transaksi.bulan}</span></div>` : ''}
       <div class="divider"></div>
       <div class="row"><span>Uraian:</span></div>
       <div style="padding: 5px 0;">${transaksi.uraian || '-'}</div>
       <div class="divider"></div>
       <div class="amount">${formatRupiah(transaksi.jumlah)}</div>
+      ${transaksi.terbilang ? `<div style="text-align: center; font-style: italic; font-size: 10px; padding: 3px 0;">${transaksi.terbilang}</div>` : ''}
+      <div class="divider"></div>
+      ${transaksi.penerima ? `<div class="row"><span>Penerima:</span><span>${transaksi.penerima}</span></div>` : ''}
+      ${transaksi.pic ? `<div class="row"><span>Pencatat:</span><span>${transaksi.pic}</span></div>` : ''}
+      ${transaksi.sumber_rekening ? `<div class="row"><span>Sumber Dana:</span><span>${transaksi.sumber_rekening}</span></div>` : ''}
       <div class="row"><span>Status:</span><span>${transaksi.status_bayar || 'Lunas'}</span></div>
       <div class="divider"></div>
       <div class="footer"><p>Terima kasih</p><p>Dicetak: ${format(new Date(), 'd/M/yyyy HH:mm')}</p></div>

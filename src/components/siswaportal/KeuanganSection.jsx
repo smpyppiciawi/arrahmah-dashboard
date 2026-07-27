@@ -9,7 +9,8 @@ const JENIS_TABS = [
   { key: 'SPP', label: 'SPP' },
   { key: 'Ujian', label: 'Ujian Sekolah' },
   { key: 'Mutasi', label: 'Mutasi' },
-  { key: 'PPDB', label: 'PPDB' },
+  { key: 'PPDB Gel 1', label: 'PPDB Gel 1' },
+  { key: 'PPDB Gel 2', label: 'PPDB Gel 2' },
   { key: 'Awal Tahun', label: 'Awal Tahun' },
 ];
 
@@ -41,7 +42,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
   }, [tarifList]);
 
   const filteredBiayaKhusus = useMemo(() => {
-    if (activeIuran !== 'Mutasi' && activeIuran !== 'PPDB') return [];
+    if (activeIuran !== 'Mutasi' && activeIuran !== 'PPDB Gel 1' && activeIuran !== 'PPDB Gel 2') return [];
     return biayaKhususList.filter(b => tarifJenisMap[b.tarif_iuran_id] === activeIuran);
   }, [biayaKhususList, tarifJenisMap, activeIuran]);
 
@@ -165,7 +166,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
         )}
 
         {/* Mutasi & PPDB (BiayaKhusus) */}
-        {(activeIuran === 'Mutasi' || activeIuran === 'PPDB') && (
+        {(activeIuran === 'Mutasi' || activeIuran === 'PPDB Gel 1' || activeIuran === 'PPDB Gel 2') && (
           <div className="bg-white rounded-3xl shadow-sm p-4">
             <p className="text-sm font-bold text-slate-800 mb-3">Iuran {activeIuran}</p>
             {filteredBiayaKhusus.length > 0 ? (
@@ -174,9 +175,13 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
                   <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
                     <div>
                       <p className="text-sm font-medium text-slate-700">{b.nama_iuran}</p>
-                      <p className="text-xs text-slate-400">{b.kategori} · {formatRupiah(b.nominal_khusus)}</p>
+                      <p className="text-xs text-slate-400">{b.kategori}{b.is_gratis ? ' · GRATIS' : ` · ${formatRupiah(b.nominal_khusus)}`}</p>
                     </div>
-                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Perlu Dibayar</span>
+                    {b.is_gratis ? (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">GRATIS</span>
+                    ) : (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Perlu Dibayar</span>
+                    )}
                   </div>
                 ))}
               </div>

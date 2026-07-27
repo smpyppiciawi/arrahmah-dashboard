@@ -16,6 +16,7 @@ import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
 import BuktiUpload from './BuktiUpload';
 import RupiahInput from '@/components/ui/RupiahInput';
+import { terbilang } from '@/lib/terbilang';
 
 const TIPE_TO_KATEGORI = {
   'SPP/Bulanan': 'SPP',
@@ -51,10 +52,13 @@ const DEFAULT_FORM = {
   guru_id: '', nip_pegawai: '', nama_pegawai: '', jabatan_pegawai: '',
   nama_donatur: '',
   bulan_dibayar: [],
+  bulan: '',
   sumber_rekening: '',
   bukti_file: '',
   status_bayar: 'Lunas',
   tahun_ajaran: '',
+  penerima: '',
+  penerima_jabatan: '',
 };
 
 export default function TransaksiForm({
@@ -95,6 +99,25 @@ export default function TransaksiForm({
   }, [isOpen, editingData, activeAcademicYear]);
 
   const set = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
+
+  const bendaharaList = useMemo(() => {
+    return guruList.filter(g => (g.tugas_tambahan || '').toLowerCase().includes('bendahara'));
+  }, [guruList]);
+
+  const jabatanOptions = useMemo(() => {
+    const jabatans = [...new Set(guruList.map(g => g.jabatan).filter(Boolean))];
+    return jabatans.includes('Bendahara') ? jabatans : [...jabatans, 'Bendahara'];
+  }, [guruList]);
+
+  const penerimaPegawaiList = useMemo(() => {
+    if (!formData.penerima_jabatan) return [];
+    if (formData.penerima_jabatan === 'Bendahara') return bendaharaList;
+    return guruList.filter(g => g.jabatan === formData.penerima_jabatan);
+  }, [guruList, bendaharaList, formData.penerima_jabatan]);
+
+  const terbilangText = useMemo(() => {
+    return formData.jumlah ? terbilang(formData.jumlah) : '';
+  }, [formData.jumlah]);
 
   const paidMonths = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -181,6 +204,9 @@ export default function TransaksiForm({
       guru_id: '', nip_pegawai: '', nama_pegawai: '', jabatan_pegawai: '',
       nama_donatur: '',
       bulan_dibayar: [],
+      bulan: '',
+      penerima: '',
+      penerima_jabatan: '',
       tipe_transaksi: '',
       kategori: type === 'donatur' ? 'Donasi' : '',
       uraian: '',
@@ -275,7 +301,7 @@ export default function TransaksiForm({
       toast({ title: "Jumlah harus diisi", variant: "destructive" });
       return;
     }
-    if (!formData.kategori) {
+    if (jenisTransaksi !== 'donatur' && !formData.kategori) {
       toast({ title: "Kategori harus dipilih", variant: "destructive" });
       return;
     }
@@ -284,8 +310,10 @@ export default function TransaksiForm({
     const payload = {
       ...formData,
       jumlah: Number(formData.jumlah),
-      pic: currentUser?.full_name || '',
+      terbilang: terbilangText,
+      pic: formData.pic || currentUser?.full_name || '',
       tahun_ajaran: activeAcademicYear || '',
+      ...(jenisTransaksi === 'donatur' ? { kategori: 'Donasi', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
     };
 
     try {
@@ -463,30 +491,70 @@ export default function TransaksiForm({
           )}
 
           {/* Section: Detail Transaksi */}
-          <div className="grid grid-cols-2 gap-4">
+          {jenisTransaksi !== 'donatur' && (
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label>Tipe Transaksi</Label>
+                <Select value={formData.tipe_transaksi} onValueChange={handleTipeChange}>
+                  <SelectTrigger><SelectValue placeholder="Pilih tipe" /></SelectTrigger>
+                  <SelectContent>
+                    {tipeOptions.map(tipe => (
+                      <SelectItem key={tipe} value={tipe}>{tipe}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {jenisTransaksi === 'pegawai' ? (
+                <div>
+                  <Label>Bulan</Label>
+                  <Select value={formData.bulan} onValueChange={(v) => set('bulan', v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih bulan" /></SelectTrigger>
+                    <SelectContent>
+                      {['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'].map(b => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div>
+                  <Label>Kategori</Label>
+                  <Select value={formData.kategori} onValueChange={(v) => set('kategori', v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                    <SelectContent>
+                      {filteredKategori.map(kat => (
+                        <SelectItem key={kat.id} value={kat.nama}>{kat.nama}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div>
+                <Label>Sumber Dana</Label>
+                <Select value={formData.sumber_rekening} onValueChange={(v) => set('sumber_rekening', v)}>
+                  <SelectTrigger><SelectValue placeholder="Pilih sumber" /></SelectTrigger>
+                  <SelectContent>
+                    {sumberDanaList.map(sumber => (
+                      <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          {jenisTransaksi === 'donatur' && (
             <div>
-              <Label>Tipe Transaksi</Label>
-              <Select value={formData.tipe_transaksi} onValueChange={handleTipeChange}>
-                <SelectTrigger><SelectValue placeholder="Pilih tipe" /></SelectTrigger>
+              <Label>Sumber Dana</Label>
+              <Select value={formData.sumber_rekening} onValueChange={(v) => set('sumber_rekening', v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih sumber" /></SelectTrigger>
                 <SelectContent>
-                  {tipeOptions.map(tipe => (
-                    <SelectItem key={tipe} value={tipe}>{tipe}</SelectItem>
+                  {sumberDanaList.map(sumber => (
+                    <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Kategori</Label>
-              <Select value={formData.kategori} onValueChange={(v) => set('kategori', v)}>
-                <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
-                <SelectContent>
-                  {filteredKategori.map(kat => (
-                    <SelectItem key={kat.id} value={kat.nama}>{kat.nama}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          )}
 
           <div>
             <Label>Uraian / Deskripsi</Label>
@@ -521,27 +589,63 @@ export default function TransaksiForm({
             </div>
           </div>
 
-          {/* Section: Sumber Dana & PIC */}
+          {terbilangText && (
+            <div className="p-3 bg-teal-50 rounded-lg border border-teal-100">
+              <p className="text-sm text-teal-700 italic">Terbilang: {terbilangText}</p>
+            </div>
+          )}
+
+          {/* Section: Pencatat & Penerima */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Sumber Dana</Label>
-              <Select value={formData.sumber_rekening} onValueChange={(v) => set('sumber_rekening', v)}>
-                <SelectTrigger><SelectValue placeholder="Pilih sumber" /></SelectTrigger>
+              <Label>Pencatat</Label>
+              <Select value={formData.pic} onValueChange={(v) => set('pic', v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih bendahara" /></SelectTrigger>
                 <SelectContent>
-                  {sumberDanaList.map(sumber => (
-                    <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
+                  {bendaharaList.map(g => (
+                    <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>PIC / Penanggung Jawab</Label>
-              <Input
-                value={currentUser?.full_name || formData.pic || ''}
-                readOnly
-                className="bg-slate-50 text-slate-600"
-              />
-            </div>
+            {(jenisTransaksi === 'siswa' || jenisTransaksi === 'donatur') ? (
+              <div>
+                <Label>Penerima</Label>
+                <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
+                  <SelectTrigger><SelectValue placeholder="Pilih penerima" /></SelectTrigger>
+                  <SelectContent>
+                    {bendaharaList.map(g => (
+                      <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label>Penerima (Jabatan)</Label>
+                  <Select value={formData.penerima_jabatan} onValueChange={(v) => { set('penerima_jabatan', v); set('penerima', ''); }}>
+                    <SelectTrigger><SelectValue placeholder="Pilih jabatan" /></SelectTrigger>
+                    <SelectContent>
+                      {jabatanOptions.map(j => (
+                        <SelectItem key={j} value={j}>{j}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Penerima (Nama)</Label>
+                  <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih pegawai" /></SelectTrigger>
+                    <SelectContent>
+                      {penerimaPegawaiList.map(g => (
+                        <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section: Bukti Upload */}

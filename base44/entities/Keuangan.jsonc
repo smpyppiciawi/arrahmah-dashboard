@@ -65,6 +65,10 @@
       "type": "number",
       "description": "Nominal transaksi"
     },
+    "terbilang": {
+      "type": "string",
+      "description": "Terbilang nominal dalam huruf"
+    },
     "siswa_id": {
       "type": "string",
       "description": "ID siswa (untuk transaksi siswa)"
@@ -108,13 +112,71 @@
       },
       "description": "Bulan SPP yang dibayar dalam transaksi ini"
     },
+    "bulan": {
+      "type": "string",
+      "description": "Bulan (untuk transaksi pegawai, Januari-Desember)"
+    },
     "sumber_rekening": {
       "type": "string",
       "description": "Sumber atau rekening terkait"
     },
     "pic": {
       "type": "string",
-      "description": "Penanggung jawab"
+      "description": "Pencatat transaksi (bendahara)"
+    },
+    "penerima": {
+      "type": "string",
+      "description": "Nama penerima transaksi"
+    },
+    "penerima_jabatan": {
+      "type": "string",
+      "description": "Jabatan penerima transaksi"
+    },
+    "rincian_gaji": {
+      "type": "object",
+      "description": "Rincian komponen gaji (untuk transaksi honorarium)",
+      "properties": {
+        "gaji_pokok": {
+          "type": "number",
+          "default": 0
+        },
+        "jabatan": {
+          "type": "number",
+          "default": 0
+        },
+        "bpjs": {
+          "type": "number",
+          "default": 0
+        },
+        "t_transport": {
+          "type": "number",
+          "default": 0
+        },
+        "pembina": {
+          "type": "number",
+          "default": 0
+        },
+        "lembur": {
+          "type": "number",
+          "default": 0
+        },
+        "wali_kelas": {
+          "type": "number",
+          "default": 0
+        },
+        "pulsa": {
+          "type": "number",
+          "default": 0
+        },
+        "t_tidak_tetap": {
+          "type": "number",
+          "default": 0
+        },
+        "pensiun": {
+          "type": "number",
+          "default": 0
+        }
+      }
     },
     "bukti_file": {
       "type": "string",
