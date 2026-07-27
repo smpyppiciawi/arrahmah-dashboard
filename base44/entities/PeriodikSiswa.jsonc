@@ -1,0 +1,69 @@
+{
+  "name": "PeriodikSiswa",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal pengukuran"
+    },
+    "tinggi_badan": {
+      "type": "number",
+      "description": "Tinggi badan (cm)"
+    },
+    "berat_badan": {
+      "type": "number",
+      "description": "Berat badan (kg)"
+    },
+    "lingkar_kepala": {
+      "type": "number",
+      "description": "Lingkar kepala (cm)"
+    },
+    "input_by": {
+      "type": "string",
+      "description": "Nama petugas yang input"
+    },
+    "input_by_id": {
+      "type": "string",
+      "description": "ID user yang input"
+    },
+    "is_locked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Status sedang diinput (lock concurrent editing)"
+    },
+    "locked_by": {
+      "type": "string",
+      "description": "Nama petugas yang sedang input"
+    },
+    "locked_by_id": {
+      "type": "string",
+      "description": "ID user yang sedang input"
+    },
+    "locked_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat lock dimulai"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "tanggal"
+  ]
+}

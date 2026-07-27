@@ -16,6 +16,7 @@ import SiswaPortal from './pages/SiswaPortal';
 import Kepsek from './pages/Kepsek';
 import HomeVisit from './pages/HomeVisit';
 import AbsensiPegawai from './pages/AbsensiPegawai';
+import PeriodikSiswa from './pages/PeriodikSiswa';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -82,6 +83,11 @@ const AuthenticatedApp = () => {
       <Route path="/AbsensiPegawai" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="AbsensiPegawai"><AbsensiPegawai /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/PeriodikSiswa" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="PeriodikSiswa"><PeriodikSiswa /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

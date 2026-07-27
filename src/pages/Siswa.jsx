@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
+import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
+import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -22,6 +24,7 @@ export default function Siswa() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [keluarSiswa, setKeluarSiswa] = useState(null);
+  const [detailSiswa, setDetailSiswa] = useState(null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -124,11 +127,8 @@ export default function Siswa() {
       )
     },
     { key: 'jenis_kelamin', label: 'JK' },
-    { key: 'nama_ayah', label: 'Ayah / Ibu', render: (row) => (
-      <div>
-        <div className="text-xs">{row.nama_ayah_kandung || row.nama_ortu || '-'}</div>
-        {row.nama_ibu_kandung && <div className="text-xs text-slate-400">{row.nama_ibu_kandung}</div>}
-      </div>
+    { key: 'alamat', label: 'Alamat', render: (row) => (
+      <span className="text-xs text-slate-600 line-clamp-2 max-w-[200px] block">{formatAlamatLengkap(row)}</span>
     ) },
     { key: 'kontak', label: 'Kontak WA', render: (row) => {
       const contacts = [];
@@ -156,6 +156,9 @@ export default function Siswa() {
       filterable: false,
       render: (row) => canEdit ? (
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setDetailSiswa(row)} title="Detail">
+            <Eye className="w-4 h-4" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)} title="Edit">
             <Edit2 className="w-4 h-4" />
           </Button>
@@ -235,6 +238,7 @@ export default function Siswa() {
     </div>
     {canEdit && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Siswa" color="blue" icon={Plus} />}
     {keluarSiswa && <SiswaKeluarDialog siswa={keluarSiswa} onClose={() => setKeluarSiswa(null)} />}
+    {detailSiswa && <SiswaDetailDialog siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
     </>
   );
 }

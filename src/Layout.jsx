@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
-  UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon
+  UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -49,6 +49,7 @@ const FULL_ACCESS_MENU = {
         { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
         { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
+        { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
       ],
       separated: true
     }
@@ -88,6 +89,7 @@ const ROLE_MENU = {
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
           { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
           { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
+          { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         ]
       }
     ]

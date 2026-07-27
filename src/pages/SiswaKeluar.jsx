@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { LogOut, Search, Building2, Calendar, LogIn } from "lucide-react";
+import { LogOut, Search, Building2, Calendar, LogIn, Edit2 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import KembaliMasukDialog from "@/components/siswa/KembaliMasukDialog";
+import SiswaKeluarEditDialog from "@/components/siswa/SiswaKeluarEditDialog";
 
 const KATEGORI_STYLE = {
   'Pindah': 'bg-blue-100 text-blue-700',
@@ -21,6 +22,7 @@ export default function SiswaKeluar() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKategori, setFilterKategori] = useState('all');
   const [kembaliMasukSiswa, setKembaliMasukSiswa] = useState(null);
+  const [editSiswa, setEditSiswa] = useState(null);
 
   const { data: siswaKeluarList = [], isLoading } = useQuery({
     queryKey: ['siswaKeluar'],
@@ -80,9 +82,14 @@ export default function SiswaKeluar() {
       sortable: false,
       filterable: false,
       render: (row) => (
-        <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => setKembaliMasukSiswa(row)}>
-          <LogIn className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Kembali Masuk</span>
-        </Button>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" onClick={() => setEditSiswa(row)} title="Edit">
+            <Edit2 className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50" onClick={() => setKembaliMasukSiswa(row)}>
+            <LogIn className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Kembali</span>
+          </Button>
+        </div>
       )
     },
   ];
@@ -184,6 +191,9 @@ export default function SiswaKeluar() {
           kelasList={kelasList}
           onClose={() => setKembaliMasukSiswa(null)}
         />
+      )}
+      {editSiswa && (
+        <SiswaKeluarEditDialog siswaKeluar={editSiswa} onClose={() => setEditSiswa(null)} />
       )}
     </div>
   );

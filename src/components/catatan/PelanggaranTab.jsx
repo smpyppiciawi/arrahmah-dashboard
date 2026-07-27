@@ -16,6 +16,7 @@ import { format, addDays } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { calculateAutoDurasi } from '@/lib/dapodikConstants';
 
 export default function PelanggaranTab() {
   const [isOpen, setIsOpen] = useState(false);
@@ -138,12 +139,17 @@ export default function PelanggaranTab() {
   const handleSelectKodePelanggaran = (kode) => {
     const selected = kodePelanggaranList.find(k => k.kode === kode);
     if (selected) {
+      const auto = calculateAutoDurasi(selected.poin);
+      const progress = generateProgressSanksi(auto.durasi, auto.satuan, formData.tanggal);
       setFormData({
         ...formData,
         kode_pelanggaran: selected.kode,
         uraian: selected.uraian,
         jenis_pelanggaran: selected.tingkatan,
-        poin: selected.poin
+        poin: selected.poin,
+        durasi_sanksi: auto.durasi,
+        satuan_durasi: auto.satuan,
+        progress_sanksi: progress
       });
       setOpenPelanggaranSearch(false);
       setSearchPelanggaran('');
@@ -512,7 +518,12 @@ export default function PelanggaranTab() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Poin</Label>
-                <Input type="number" value={formData.poin} onChange={(e) => setFormData({...formData, poin: parseInt(e.target.value)})} required readOnly className="bg-slate-50" />
+                <Input type="number" value={formData.poin} onChange={(e) => {
+                  const newPoin = parseInt(e.target.value) || 0;
+                  const auto = calculateAutoDurasi(newPoin);
+                  const progress = generateProgressSanksi(auto.durasi, auto.satuan, formData.tanggal);
+                  setFormData({...formData, poin: newPoin, durasi_sanksi: auto.durasi, satuan_durasi: auto.satuan, progress_sanksi: progress});
+                }} required className="bg-slate-50" />
               </div>
               <div>
                 <Label>Status</Label>
@@ -537,7 +548,7 @@ export default function PelanggaranTab() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>Durasi Sanksi</Label>
+                <Label>Durasi Sanksi <span className="text-xs text-slate-400">(Auto dari poin, bisa diubah)</span></Label>
                 <Input 
                   type="number" 
                   min="0"

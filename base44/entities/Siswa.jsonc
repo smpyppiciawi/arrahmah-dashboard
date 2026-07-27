@@ -4,7 +4,7 @@
   "properties": {
     "nis": {
       "type": "string",
-      "description": "Nomor Induk Siswa"
+      "description": "Nomor Induk Siswa (Kunci Utama)"
     },
     "nisn": {
       "type": "string",
@@ -29,12 +29,50 @@
       "type": "string",
       "description": "Nama kelas untuk tampilan"
     },
+    "tempat_lahir": {
+      "type": "string",
+      "description": "Tempat lahir siswa"
+    },
     "tanggal_lahir": {
       "type": "string",
       "format": "date"
     },
+    "nik": {
+      "type": "string",
+      "description": "NIK siswa"
+    },
+    "agama": {
+      "type": "string",
+      "enum": [
+        "Islam",
+        "Kristen",
+        "Katolik",
+        "Hindu",
+        "Buddha",
+        "Konghucu",
+        "Kepercayaan"
+      ],
+      "default": "Islam"
+    },
     "alamat": {
-      "type": "string"
+      "type": "string",
+      "description": "Alamat lengkap (jalan)"
+    },
+    "rt": {
+      "type": "string",
+      "description": "RT"
+    },
+    "rw": {
+      "type": "string",
+      "description": "RW"
+    },
+    "kelurahan": {
+      "type": "string",
+      "description": "Kelurahan/Desa"
+    },
+    "kecamatan": {
+      "type": "string",
+      "description": "Kecamatan"
     },
     "nama_ortu": {
       "type": "string",
@@ -76,23 +114,70 @@
       },
       "description": "Daftar kontak HP/WA orang tua/wali"
     },
+    "tahun_lahir_ayah": {
+      "type": "string",
+      "description": "Tahun lahir ayah"
+    },
+    "pendidikan_ayah": {
+      "type": "string",
+      "description": "Pendidikan ayah (Dapodik)"
+    },
     "pekerjaan_ayah": {
       "type": "string"
+    },
+    "penghasilan_ayah": {
+      "type": "string",
+      "description": "Penghasilan ayah (Dapodik range text)"
+    },
+    "nik_ayah": {
+      "type": "string",
+      "description": "NIK ayah"
+    },
+    "tahun_lahir_ibu": {
+      "type": "string",
+      "description": "Tahun lahir ibu"
+    },
+    "pendidikan_ibu": {
+      "type": "string",
+      "description": "Pendidikan ibu (Dapodik)"
     },
     "pekerjaan_ibu": {
       "type": "string"
     },
+    "penghasilan_ibu": {
+      "type": "string",
+      "description": "Penghasilan ibu (Dapodik range text)"
+    },
+    "nik_ibu": {
+      "type": "string",
+      "description": "NIK ibu"
+    },
+    "tahun_lahir_wali": {
+      "type": "string",
+      "description": "Tahun lahir wali"
+    },
+    "pendidikan_wali": {
+      "type": "string",
+      "description": "Pendidikan wali (Dapodik)"
+    },
     "pekerjaan_wali": {
       "type": "string"
     },
-    "penghasilan_ayah": {
-      "type": "number"
-    },
-    "penghasilan_ibu": {
-      "type": "number"
-    },
     "penghasilan_wali": {
-      "type": "number"
+      "type": "string",
+      "description": "Penghasilan wali (Dapodik range text)"
+    },
+    "nik_wali": {
+      "type": "string",
+      "description": "NIK wali"
+    },
+    "penerima_kip": {
+      "type": "string",
+      "enum": [
+        "Ya",
+        "Tidak"
+      ],
+      "default": "Tidak"
     },
     "koordinat": {
       "type": "string",
