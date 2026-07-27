@@ -8,11 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import JadwalTab from '@/components/dashboard/JadwalTab';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const userRole = user?.role || 'guru';
+  const canSeeCariSiswa = ['admin', 'operator'].includes(userRole);
+  const isOperator = userRole === 'operator';
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
@@ -76,7 +81,12 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 mt-0.5 text-sm">Ringkasan data & aktivitas sekolah hari ini</p>
           </div>
-          <BellAlarmSystem />
+          {isOperator ? <BellAlarmSystem /> : (
+            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 shadow-sm">
+              <Calendar className="w-4 h-4 text-blue-500" />
+              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}
@@ -114,8 +124,10 @@ export default function Dashboard() {
                 { value: 'uks', label: 'UKS', icon: Heart },
                 { value: 'menstruasi', label: 'Menstruasi', icon: Droplets },
                 { value: 'izin', label: 'Izin', icon: FileText },
-                { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
-                { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
+                ...(canSeeCariSiswa ? [
+                  { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
+                  { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
+                ] : []),
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -447,15 +459,17 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Cari Siswa */}
-          <TabsContent value="cari-siswa">
-            <CariSiswaDashboard />
-          </TabsContent>
+          {canSeeCariSiswa && (
+            <>
+              <TabsContent value="cari-siswa">
+                <CariSiswaDashboard />
+              </TabsContent>
 
-          {/* Jadwal */}
-          <TabsContent value="jadwal">
-            <JadwalTab />
-          </TabsContent>
+              <TabsContent value="jadwal">
+                <JadwalTab />
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
     </div>
