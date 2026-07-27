@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Upload, Loader2, CheckCircle } from "lucide-react";
 import { normalizePenghasilan } from '@/lib/dapodikConstants';
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function ImportSiswaCSV({ disabled }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -13,6 +14,7 @@ export default function ImportSiswaCSV({ disabled }) {
   const [progress, setProgress] = useState('');
   const [result, setResult] = useState(null);
   const queryClient = useQueryClient();
+  const { activeAcademicYear } = useActiveAcademicYear();
 
   const handleFileSelect = (e) => { const file = e.target.files[0]; if (!file) return; setPendingFile(file); setResult(null); setConfirmOpen(true); e.target.value = ''; };
 
@@ -95,79 +97,30 @@ export default function ImportSiswaCSV({ disabled }) {
       const dupes = Object.entries(nisCounts).filter(([, c]) => c > 1).map(([n]) => n);
       if (dupes.length > 0) throw new Error(`NIS duplikat dalam CSV: ${dupes.join(', ')}.`);
 
-      setProgress('Menyiapkan kelas...');
-      const currentKelas = await base44.entities.Kelas.list('nama_kelas', 200);
-      const classMap = new Map(); currentKelas.forEach(k => classMap.set(k.nama_kelas, k.id));
-      const tahunAjaran = new Date().getFullYear() + '/' + (new Date().getFullYear() + 1);
-      for (const row of parsed) {
-        if (row.nama_kelas && !classMap.has(row.nama_kelas)) {
-          const tingkat = row.nama_kelas.match(/\d+/)?.[0] || '7';
-          const newClass = await base44.entities.Kelas.create({ nama_kelas: row.nama_kelas, tingkat, tahun_ajaran: tahunAjaran });
-          classMap.set(row.nama_kelas, newClass.id);
-        }
-      }
-
-      setProgress('Mengambil data siswa existing...');
-      const existingSiswa = await base44.entities.Siswa.list('nis', 500);
-      const nisToExisting = new Map(); existingSiswa.forEach(s => { if (s.nis) nisToExisting.set(s.nis, s); });
-
-      const toCreate = []; const toUpdate = []; let unchangedCount = 0; const updatedDetails = [];
-      const periodikToCreate = [];
-
-      for (const row of parsed) {
-        const kelasId = classMap.get(row.nama_kelas) || '';
-        const existing = nisToExisting.get(row.nis);
-
-        const buildPayload = (existing) => {
-          const changes = {};
-          const fieldsToSync = ['nisn', 'nama', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nik', 'agama', 'alamat', 'rt', 'rw', 'kelurahan', 'kecamatan',
-            'nama_ayah_kandung', 'nama_ibu_kandung', 'nama_wali', 'tahun_lahir_ayah', 'pendidikan_ayah', 'pekerjaan_ayah', 'penghasilan_ayah', 'nik_ayah',
-            'tahun_lahir_ibu', 'pendidikan_ibu', 'pekerjaan_ibu', 'penghasilan_ibu', 'nik_ibu',
-            'tahun_lahir_wali', 'pendidikan_wali', 'pekerjaan_wali', 'penghasilan_wali', 'nik_wali',
-            'penerima_kip', 'koordinat'];
-          for (const f of fieldsToSync) {
-            if (row[f] && (!existing || existing[f] !== row[f])) changes[f] = row[f];
-          }
-          if (kelasId && (!existing || existing.kelas_id !== kelasId)) { changes.kelas_id = kelasId; changes.nama_kelas = row.nama_kelas; }
-          return changes;
-        };
-
-        if (existing) {
-          const changes = buildPayload(existing);
-          if (Object.keys(changes).length > 0) { toUpdate.push({ id: existing.id, ...changes }); updatedDetails.push({ nis: row.nis, nama: row.nama, fields: Object.keys(changes) }); }
-          else unchangedCount++;
-          // Periodik data for existing student
-          if (row.berat_badan || row.tinggi_badan || row.lingkar_kepala) {
-            periodikToCreate.push({ siswa_id: existing.id, nis: row.nis, nama_siswa: row.nama, kelas_id: kelasId || existing.kelas_id, nama_kelas: row.nama_kelas || existing.nama_kelas, tanggal: new Date().toISOString().split('T')[0], berat_badan: row.berat_badan ? Number(row.berat_badan) : undefined, tinggi_badan: row.tinggi_badan ? Number(row.tinggi_badan) : undefined, lingkar_kepala: row.lingkar_kepala ? Number(row.lingkar_kepala) : undefined });
-          }
-        } else {
-          const payload = { ...buildPayload(null), nis: row.nis, status: 'Aktif' };
-          toCreate.push(payload);
-          // We can't create periodik for new students yet (no ID), will handle after bulkCreate
-        }
-      }
-
-      // Create new students
-      let createdSiswa = [];
-      if (toCreate.length > 0) {
-        setProgress(`Menyimpan ${toCreate.length} siswa baru...`);
-        createdSiswa = await base44.entities.Siswa.bulkCreate(toCreate);
-      }
-      // Build periodik for newly created students
-      for (let i = 0; i < createdSiswa.length; i++) {
-        const row = parsed.find(r => r.nis === createdSiswa[i].nis);
-        if (row && (row.berat_badan || row.tinggi_badan || row.lingkar_kepala)) {
-          periodikToCreate.push({ siswa_id: createdSiswa[i].id, nis: row.nis, nama_siswa: row.nama, kelas_id: createdSiswa[i].kelas_id, nama_kelas: createdSiswa[i].nama_kelas, tanggal: new Date().toISOString().split('T')[0], berat_badan: row.berat_badan ? Number(row.berat_badan) : undefined, tinggi_badan: row.tinggi_badan ? Number(row.tinggi_badan) : undefined, lingkar_kepala: row.lingkar_kepala ? Number(row.lingkar_kepala) : undefined });
-        }
-      }
-
-      if (toUpdate.length > 0) { setProgress(`Memperbarui ${toUpdate.length} siswa...`); await base44.entities.Siswa.bulkUpdate(toUpdate); }
-      if (periodikToCreate.length > 0) { setProgress(`Menyimpan ${periodikToCreate.length} data periodik...`); await base44.entities.PeriodikSiswa.bulkCreate(periodikToCreate); }
+      setProgress(`Mengirim ${parsed.length} data ke server untuk sinkronisasi...`);
+      const response = await base44.functions.invoke('syncSiswa', {
+        students: parsed,
+        activeAcademicYear
+      });
+      const data = response.data || response;
 
       ['siswa', 'kelas', 'absensi', 'nilai', 'periodikSiswa'].forEach(k => queryClient.invalidateQueries({ queryKey: [k] }));
-      setResult({ success: true, created: toCreate.length, updated: toUpdate.length, unchanged: unchangedCount, periodik: periodikToCreate.length, updatedDetails: updatedDetails.slice(0, 10) });
-    } catch (err) { console.error('Import CSV error:', err); setResult({ success: false, error: err.message || String(err) }); }
-    finally { setImporting(false); setProgress(''); setPendingFile(null); }
+      setResult({
+        success: true,
+        created: data.created || 0,
+        updated: data.updated || 0,
+        unchanged: data.unchanged || 0,
+        periodik: data.periodik || 0,
+        totalProcessed: data.totalProcessed || parsed.length,
+        updatedDetails: data.updatedDetails || [],
+      });
+    } catch (err) {
+      console.error('Import CSV error:', err);
+      const errMsg = err?.response?.data?.error || err.message || String(err);
+      setResult({ success: false, error: errMsg });
+    } finally {
+      setImporting(false); setProgress(''); setPendingFile(null);
+    }
   };
 
   return (
