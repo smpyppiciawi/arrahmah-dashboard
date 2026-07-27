@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAuth } from '@/lib/AuthContext';
+import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const isOperator = user?.role === 'operator';
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
@@ -101,6 +105,9 @@ export default function Dashboard() {
             );
           })}
         </div>
+
+        {/* Cari Siswa - Khusus Operator */}
+        {isOperator && <CariSiswaDashboard />}
 
         {/* Tabs */}
         <Tabs defaultValue="jumlah" className="w-full">

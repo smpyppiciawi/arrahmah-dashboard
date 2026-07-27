@@ -62,7 +62,6 @@ const ROLE_MENU = {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
-    { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -124,6 +123,18 @@ const ROLE_MENU = {
           { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
           { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
         ]
+      },
+      {
+        id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444',
+        items: [
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
+          { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+          { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
+          { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
+        ],
+        separated: true
       }
     ]
   },

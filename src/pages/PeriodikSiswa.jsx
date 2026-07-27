@@ -26,6 +26,9 @@ export default function PeriodikSiswa() {
     fetchUser();
   }, []);
 
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'tu', 'operator', 'piket'].includes(userRole);
+
   // Realtime subscription for lock changes
   useEffect(() => {
     const unsubscribe = base44.entities.PeriodikSiswa.subscribe(() => {
@@ -169,11 +172,13 @@ export default function PeriodikSiswa() {
             <p className="text-slate-500 mt-1">Pengukuran Tinggi Badan, Berat Badan & Lingkar Kepala</p>
           </div>
           <div className="flex gap-2">
-            <input type="file" accept=".csv" ref={fileRef} onChange={handleImport} className="hidden" />
-            <Button variant="outline" size="sm" disabled={!selectedKelas || importing} onClick={() => fileRef.current?.click()}>
-              {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
-              Import
-            </Button>
+            {canEdit && <input type="file" accept=".csv" ref={fileRef} onChange={handleImport} className="hidden" />}
+            {canEdit && (
+              <Button variant="outline" size="sm" disabled={!selectedKelas || importing} onClick={() => fileRef.current?.click()}>
+                {importing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                Import
+              </Button>
+            )}
             <Button variant="outline" size="sm" disabled={!selectedKelas} onClick={handleExport}>
               <Download className="w-4 h-4 mr-2" /> Export
             </Button>
@@ -264,9 +269,13 @@ export default function PeriodikSiswa() {
                                   )}
                                 </td>
                                 <td className="py-2 px-2 text-center">
-                                  <Button size="sm" variant="outline" disabled={isLockedByOther} onClick={() => handleStartInput(siswa)}>
-                                    {p ? 'Edit' : 'Input'}
-                                  </Button>
+                                  {canEdit ? (
+                                    <Button size="sm" variant="outline" disabled={isLockedByOther} onClick={() => handleStartInput(siswa)}>
+                                      {p ? 'Edit' : 'Input'}
+                                    </Button>
+                                  ) : (
+                                    <span className="text-xs text-slate-400">-</span>
+                                  )}
                                 </td>
                               </>
                             )}

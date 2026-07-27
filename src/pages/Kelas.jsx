@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
@@ -34,6 +34,17 @@ export default function Kelas() {
   const [viewMode, setViewMode] = useState('grid');
   const queryClient = useQueryClient();
   const { activeAcademicYear } = useActiveAcademicYear();
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try { const u = await base44.auth.me(); setCurrentUser(u); } catch {}
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'tu'].includes(userRole);
 
   const [formData, setFormData] = useState({
     wali_kelas: '', tahun_ajaran: ''
@@ -285,21 +296,25 @@ export default function Kelas() {
                   <List className="w-4 h-4" /> Detail
                 </button>
               </div>
-              <Button
-                onClick={() => setInputPembelajaranGuruOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                <GraduationCap className="w-4 h-4 mr-2" />
-                Input Pembelajaran Guru
-              </Button>
-              <Button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="bg-amber-500 hover:bg-amber-600 text-white"
-              >
-                {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
-                {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
-              </Button>
+              {canEdit && (
+                <>
+                  <Button
+                    onClick={() => setInputPembelajaranGuruOpen(true)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  >
+                    <GraduationCap className="w-4 h-4 mr-2" />
+                    Input Pembelajaran Guru
+                  </Button>
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={isGenerating}
+                    className="bg-amber-500 hover:bg-amber-600 text-white"
+                  >
+                    {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Wand2 className="w-4 h-4 mr-2" />}
+                    {isGenerating ? 'Memproses...' : 'Generate Siswa ke Kelas'}
+                  </Button>
+                </>
+              )}
             </div>
             {generateResult && !generateModalOpen && (
               <div className="px-4 py-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 cursor-pointer" onClick={() => setGenerateModalOpen(true)}>
@@ -381,14 +396,16 @@ export default function Kelas() {
                       <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}>
                         <Users className="w-3.5 h-3.5 mr-1" /> Detail Kelas
                       </Button>
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
-                          <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
+                      {canEdit && (
+                        <div className="flex gap-1">
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => handleEdit(kelas)}>
+                            <Edit2 className="w-3.5 h-3.5 mr-1" /> Edit
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-red-500 hover:text-red-700" onClick={() => handleDeleteClick(kelas.id)}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -438,8 +455,12 @@ export default function Kelas() {
                           <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 text-xs" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}><BookOpen className="w-3 h-3 mr-1" />Pembelajaran</Button>
                           <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 text-xs" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}><CalendarDays className="w-3 h-3 mr-1" />Jadwal</Button>
                           <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 text-xs" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}><Users className="w-3 h-3 mr-1" />Detail</Button>
-                          <Button size="sm" variant="outline" className="text-xs" onClick={() => handleEdit(kelas)}><Edit2 className="w-3 h-3 mr-1" />Edit</Button>
-                          <Button size="sm" variant="outline" className="text-red-500 text-xs" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3 h-3" /></Button>
+                          {canEdit && (
+                            <>
+                              <Button size="sm" variant="outline" className="text-xs" onClick={() => handleEdit(kelas)}><Edit2 className="w-3 h-3 mr-1" />Edit</Button>
+                              <Button size="sm" variant="outline" className="text-red-500 text-xs" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3 h-3" /></Button>
+                            </>
+                          )}
                         </div>
                       </div>
 
@@ -466,8 +487,12 @@ export default function Kelas() {
                           <Button size="sm" variant="outline" className="text-indigo-600 border-indigo-200 hover:bg-indigo-50 text-xs" onClick={() => { setSelectedKelas(kelas); setPembelajaranOpen(true); }}><BookOpen className="w-3.5 h-3.5 mr-1" />Pembelajaran</Button>
                           <Button size="sm" variant="outline" className="text-emerald-600 border-emerald-200 hover:bg-emerald-50 text-xs" onClick={() => { setSelectedKelas(kelas); setJadwalOpen(true); }}><CalendarDays className="w-3.5 h-3.5 mr-1" />Jadwal</Button>
                           <Button size="sm" variant="outline" className="text-purple-600 border-purple-200 hover:bg-purple-50 text-xs" onClick={() => { setSelectedKelas(kelas); setDetailOpen(true); }}><Users className="w-3.5 h-3.5 mr-1" />Detail</Button>
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(kelas)}><Edit2 className="w-3.5 h-3.5" /></Button>
-                          <Button size="sm" variant="outline" className="text-red-500" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                          {canEdit && (
+                            <>
+                              <Button size="sm" variant="outline" onClick={() => handleEdit(kelas)}><Edit2 className="w-3.5 h-3.5" /></Button>
+                              <Button size="sm" variant="outline" className="text-red-500" onClick={() => handleDeleteClick(kelas.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

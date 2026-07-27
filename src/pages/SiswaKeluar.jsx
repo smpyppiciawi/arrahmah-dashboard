@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,17 @@ export default function SiswaKeluar() {
   const [filterKategori, setFilterKategori] = useState('all');
   const [kembaliMasukSiswa, setKembaliMasukSiswa] = useState(null);
   const [editSiswa, setEditSiswa] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try { const u = await base44.auth.me(); setCurrentUser(u); } catch {}
+    };
+    fetchUser();
+  }, []);
+
+  const userRole = currentUser?.role || 'guru';
+  const canEdit = ['admin', 'tu'].includes(userRole);
 
   const { data: siswaKeluarList = [], isLoading } = useQuery({
     queryKey: ['siswaKeluar'],
@@ -81,7 +92,7 @@ export default function SiswaKeluar() {
       label: 'Aksi',
       sortable: false,
       filterable: false,
-      render: (row) => (
+      render: (row) => canEdit ? (
         <div className="flex gap-1">
           <Button size="sm" variant="ghost" onClick={() => setEditSiswa(row)} title="Edit">
             <Edit2 className="w-4 h-4" />
@@ -90,6 +101,8 @@ export default function SiswaKeluar() {
             <LogIn className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Kembali</span>
           </Button>
         </div>
+      ) : (
+        <span className="text-xs text-slate-400">-</span>
       )
     },
   ];
