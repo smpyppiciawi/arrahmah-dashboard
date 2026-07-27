@@ -4,12 +4,15 @@ import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Users } from "lucide-react";
+import { Search, Users, ChevronLeft, ChevronRight, Building2 } from "lucide-react";
 
 export default function CariSiswaDashboard() {
   const [selectedKelas, setSelectedKelas] = useState('all');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
@@ -43,6 +46,16 @@ export default function CariSiswaDashboard() {
     return [...list].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
   }, [siswaList, selectedKelas, search]);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredSiswa.length / pageSize) || 1;
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const paginatedSiswa = filteredSiswa.slice(startIndex, startIndex + pageSize);
+
+  // Reset page when filters change
+  const handleKelasChange = (v) => { setSelectedKelas(v); setCurrentPage(1); };
+  const handleSearchChange = (e) => { setSearch(e.target.value); setCurrentPage(1); };
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-3">
@@ -54,7 +67,7 @@ export default function CariSiswaDashboard() {
       <CardContent className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="sm:w-56">
-            <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+            <Select value={selectedKelas} onValueChange={handleKelasChange}>
               <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Kelas</SelectItem>
@@ -68,7 +81,7 @@ export default function CariSiswaDashboard() {
               className="pl-9"
               placeholder="Cari nama, NIS, atau NISN..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
         </div>
@@ -79,37 +92,83 @@ export default function CariSiswaDashboard() {
             <p className="text-slate-400 text-sm">Tidak ada siswa ditemukan</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-slate-50 border-b">
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">NIS</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">NISN</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Nama</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Kelas</th>
-                  <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Wali Kelas</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredSiswa.map((siswa, i) => {
-                  const kelas = kelasMap[siswa.kelas_id];
-                  return (
-                    <tr key={siswa.id} className={`border-b last:border-0 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
-                      <td className="px-4 py-2.5 text-xs font-mono text-slate-600">{siswa.nis || '-'}</td>
-                      <td className="px-4 py-2.5 text-xs font-mono text-slate-600">{siswa.nisn || '-'}</td>
-                      <td className="px-4 py-2.5 text-sm font-medium text-slate-800">{siswa.nama}</td>
-                      <td className="px-4 py-2.5">
-                        <Badge variant="outline" className="text-xs">{siswa.nama_kelas || '-'}</Badge>
-                      </td>
-                      <td className="px-4 py-2.5 text-sm text-slate-600">{kelas?.wali_kelas || '-'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-slate-50 border-b">
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">NIS</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">NISN</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Nama</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Kelas</th>
+                    <th className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wide px-4 py-2.5">Wali Kelas</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedSiswa.map((siswa, i) => {
+                    const kelas = kelasMap[siswa.kelas_id];
+                    return (
+                      <tr key={siswa.id} className={`border-b last:border-0 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                        <td className="px-4 py-2.5 text-xs font-mono text-slate-600">{siswa.nis || '-'}</td>
+                        <td className="px-4 py-2.5 text-xs font-mono text-slate-600">{siswa.nisn || '-'}</td>
+                        <td className="px-4 py-2.5 text-sm font-medium text-slate-800">{siswa.nama}</td>
+                        <td className="px-4 py-2.5">
+                          <Badge variant="outline" className="text-xs">{siswa.nama_kelas || '-'}</Badge>
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-slate-600">{kelas?.wali_kelas || '-'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span>Tampilkan</span>
+                <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-16 h-7 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span>data per halaman</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">
+                  {startIndex + 1}-{Math.min(startIndex + pageSize, filteredSiswa.length)} dari {filteredSiswa.length}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={safePage <= 1}
+                    onClick={() => setCurrentPage(safePage - 1)}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="text-xs font-medium text-slate-600 px-2">
+                    {safePage} / {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={safePage >= totalPages}
+                    onClick={() => setCurrentPage(safePage + 1)}
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
-        <p className="text-xs text-slate-400 text-right">{filteredSiswa.length} siswa ditemukan</p>
       </CardContent>
     </Card>
   );

@@ -3,17 +3,16 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
+import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
+import JadwalTab from '@/components/dashboard/JadwalTab';
 
 export default function Dashboard() {
-  const { user } = useAuth();
-  const isOperator = user?.role === 'operator';
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
@@ -77,10 +76,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 mt-0.5 text-sm">Ringkasan data & aktivitas sekolah hari ini</p>
           </div>
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 shadow-sm">
-            <Calendar className="w-4 h-4 text-blue-500" />
-            {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </div>
+          <BellAlarmSystem />
         </div>
 
         {/* Stats Cards */}
@@ -106,9 +102,6 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* Cari Siswa - Khusus Operator */}
-        {isOperator && <CariSiswaDashboard />}
-
         {/* Tabs */}
         <Tabs defaultValue="jumlah" className="w-full">
           <div className="overflow-x-auto -mx-1 px-1 mb-1">
@@ -121,6 +114,8 @@ export default function Dashboard() {
                 { value: 'uks', label: 'UKS', icon: Heart },
                 { value: 'menstruasi', label: 'Menstruasi', icon: Droplets },
                 { value: 'izin', label: 'Izin', icon: FileText },
+                { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
+                { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -450,6 +445,16 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Cari Siswa */}
+          <TabsContent value="cari-siswa">
+            <CariSiswaDashboard />
+          </TabsContent>
+
+          {/* Jadwal */}
+          <TabsContent value="jadwal">
+            <JadwalTab />
           </TabsContent>
         </Tabs>
       </div>

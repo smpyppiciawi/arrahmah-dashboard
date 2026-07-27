@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, AlertCircle, Check, Calendar, Search, Filter } from "lucide-react";
+import { Plus, Edit2, Trash2, AlertCircle, Check, Calendar, Search, Filter, GraduationCap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,6 +17,7 @@ import { id as idLocale } from 'date-fns/locale';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { calculateAutoDurasi } from '@/lib/dapodikConstants';
+import PoinSiswaLulusDialog from './PoinSiswaLulusDialog';
 
 export default function PelanggaranTab() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +28,7 @@ export default function PelanggaranTab() {
   const [filterDateTo, setFilterDateTo] = useState('');
   const [openPelanggaranSearch, setOpenPelanggaranSearch] = useState(false);
   const [searchPelanggaran, setSearchPelanggaran] = useState('');
+  const [poinLulusOpen, setPoinLulusOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -53,8 +55,15 @@ export default function PelanggaranTab() {
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
-    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+    queryFn: () => base44.entities.Siswa.list(),
   });
+
+  const activeSiswaList = useMemo(() => siswaList.filter(s => s.status === 'Aktif'), [siswaList]);
+  const siswaMap = useMemo(() => {
+    const map = {};
+    siswaList.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [siswaList]);
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
@@ -74,11 +83,13 @@ export default function PelanggaranTab() {
   // Filter pelanggaran berdasarkan tanggal
   const filteredPelanggaranList = useMemo(() => {
     return pelanggaranList.filter(p => {
+      const siswa = siswaMap[p.siswa_id];
+      if (!siswa || siswa.status !== 'Aktif') return false;
       if (filterDateFrom && p.tanggal < filterDateFrom) return false;
       if (filterDateTo && p.tanggal > filterDateTo) return false;
       return true;
     });
-  }, [pelanggaranList, filterDateFrom, filterDateTo]);
+  }, [pelanggaranList, siswaMap, filterDateFrom, filterDateTo]);
 
   // Search kode pelanggaran - cari berdasarkan kode atau uraian
   const filteredKodePelanggaran = useMemo(() => {
@@ -94,10 +105,10 @@ export default function PelanggaranTab() {
   // Filter siswa berdasarkan kelas yang dipilih, urut abjad
   const filteredSiswa = useMemo(() => {
     if (!selectedKelas) return [];
-    return siswaList
+    return activeSiswaList
       .filter(s => s.kelas_id === selectedKelas)
       .sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [siswaList, selectedKelas]);
+  }, [activeSiswaList, selectedKelas]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Pelanggaran.create(data),
@@ -341,9 +352,14 @@ export default function PelanggaranTab() {
                 Data Pelanggaran Siswa
               </CardTitle>
             </div>
-            <Button onClick={() => setIsOpen(true)} className="bg-red-600 hover:bg-red-700">
-              <Plus className="w-4 h-4 mr-2" /> Tambah Pelanggaran
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setPoinLulusOpen(true)} variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                <GraduationCap className="w-4 h-4 mr-2" /> Poin Siswa Lulus/Keluar
+              </Button>
+              <Button onClick={() => setIsOpen(true)} className="bg-red-600 hover:bg-red-700">
+                <Plus className="w-4 h-4 mr-2" /> Tambah Pelanggaran
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -629,6 +645,8 @@ export default function PelanggaranTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <PoinSiswaLulusDialog open={poinLulusOpen} onOpenChange={setPoinLulusOpen} />
     </div>
   );
 }

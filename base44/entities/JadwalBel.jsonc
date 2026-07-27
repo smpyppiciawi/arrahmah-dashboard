@@ -1,0 +1,39 @@
+{
+  "name": "JadwalBel",
+  "type": "object",
+  "properties": {
+    "hari": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Senin",
+          "Selasa",
+          "Rabu",
+          "Kamis",
+          "Jumat",
+          "Sabtu",
+          "Minggu"
+        ]
+      },
+      "description": "Hari bel berbunyi"
+    },
+    "jam": {
+      "type": "string",
+      "description": "Jam bel (HH:mm)"
+    },
+    "label": {
+      "type": "string",
+      "description": "Keterangan bel (mis: Jam Masuk, Istirahat, Jam Pulang)"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Status aktif bel"
+    }
+  },
+  "required": [
+    "hari",
+    "jam"
+  ]
+}

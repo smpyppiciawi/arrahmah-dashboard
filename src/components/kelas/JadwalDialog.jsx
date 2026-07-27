@@ -36,6 +36,12 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: pembelajaranList = [] } = useQuery({
+    queryKey: ['pembelajaran', kelas?.id],
+    queryFn: () => base44.entities.Pembelajaran.filter({ kelas_id: kelas?.id }),
+    enabled: !!kelas?.id && open,
+  });
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.JadwalPelajaran.create(data),
     onSuccess: () => {
@@ -133,7 +139,10 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
                 </div>
                 <div>
                   <Label>Mata Pelajaran</Label>
-                  <Select value={formData.mapel} onValueChange={(v) => setFormData({ ...formData, mapel: v })}>
+                  <Select value={formData.mapel} onValueChange={(v) => {
+                    const pembelajaran = pembelajaranList.find(p => p.mapel === v);
+                    setFormData({ ...formData, mapel: v, guru_id: pembelajaran?.guru_id || '', nama_guru: pembelajaran?.nama_guru || '' });
+                  }}>
                     <SelectTrigger><SelectValue placeholder="Pilih Mapel" /></SelectTrigger>
                     <SelectContent>
                       {mapelList.map(m => <SelectItem key={m.id} value={m.nama}>{m.nama}</SelectItem>)}
@@ -150,7 +159,7 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
                 </div>
               </div>
               <div>
-                <Label>Guru (Opsional)</Label>
+                <Label>Guru {formData.guru_id ? <span className="text-emerald-600 text-xs">(Auto dari Pembelajaran)</span> : '(Opsional)'}</Label>
                 <Select value={formData.guru_id} onValueChange={handleGuruChange}>
                   <SelectTrigger><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
                   <SelectContent>
