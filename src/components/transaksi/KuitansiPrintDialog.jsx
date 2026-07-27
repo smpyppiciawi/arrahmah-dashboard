@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
 const formatNumber = (v) => new Intl.NumberFormat('id-ID').format(v || 0);
-
+const MONO = `font-family:'Courier New',Courier,monospace`;
 const DEFAULT_MARGINS = { left: 6, right: 6, top: 4, bottom: 4, fontSize: 11 };
 
 export default function KuitansiPrintDialog({ isOpen, onClose, transaksi }) {
@@ -75,7 +75,7 @@ export default function KuitansiPrintDialog({ isOpen, onClose, transaksi }) {
           </div>
 
           {/* Preview Panel */}
-          <div className="p-5 bg-slate-100 flex flex-col items-center">
+          <div className="p-5 bg-slate-100 flex flex-col items-center overflow-auto">
             <p className="text-xs font-medium text-slate-500 mb-3">Preview Kuitansi</p>
             <div className="bg-white shadow-lg rounded-sm" style={{ width: '12cm', maxWidth: '100%' }}>
               <div
@@ -83,7 +83,7 @@ export default function KuitansiPrintDialog({ isOpen, onClose, transaksi }) {
                 style={{
                   padding: `${margins.top}mm ${margins.right}mm ${margins.bottom}mm ${margins.left}mm`,
                   fontSize: `${margins.fontSize}px`,
-                  fontFamily: '"Courier New", Courier, monospace',
+                  fontFamily: "'Courier New', Courier, monospace",
                   boxSizing: 'border-box',
                   lineHeight: 1.4,
                 }}
@@ -118,7 +118,21 @@ function MarginInput({ label, value, onChange }) {
   );
 }
 
-function buildKuitansiInnerHtml(transaksi, fontSize = 11) {
+function buildRow(label, value, fontSize) {
+  return `
+    <tr>
+      <td style="font-weight:bold;white-space:nowrap;vertical-align:top;padding:2px 6px 2px 0;width:140px;font-size:${fontSize}px;${MONO}">${label}</td>
+      <td style="vertical-align:top;padding:2px 4px 2px 0;width:8px;font-size:${fontSize}px;${MONO}">:</td>
+      <td style="vertical-align:top;padding:2px 0;word-break:break-word;font-size:${fontSize}px;${MONO}">${value || '-'}</td>
+    </tr>`;
+}
+
+function buildSpacer() {
+  return `<tr><td colspan="3" style="padding:5px 0"></td></tr>`;
+}
+
+function buildKuitansiInnerHtml(transaksi, fontSize) {
+  const fs = fontSize || 11;
   const tgl = format(new Date(transaksi.tanggal), 'd MMMM yyyy', { locale: idLocale });
   const nominal = formatNumber(transaksi.jumlah);
   const terbilang = transaksi.terbilang || '';
@@ -134,59 +148,47 @@ function buildKuitansiInnerHtml(transaksi, fontSize = 11) {
   else if (isDonatur) jenisLabel = 'DONATUR';
   else if (isPegawai) jenisLabel = 'PEGAWAI';
 
-  const row = (label, value) => `
-    <tr>
-      <td style="font-weight:bold;white-space:nowrap;vertical-align:top;padding:1px 4px 1px 0;width:125px;font-size:${fontSize}px">${label}</td>
-      <td style="vertical-align:top;padding:1px 2px 1px 0;width:6px;font-size:${fontSize}px">:</td>
-      <td style="vertical-align:top;padding:1px 0;word-break:break-word;font-size:${fontSize}px">${value || '-'}</td>
-    </tr>
-  `;
-
   let bodyRows = '';
   if (isSiswa) {
-    bodyRows = `
-      ${row('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR')}
-      ${row('TELAH TERIMA DARI', transaksi.nama_siswa || '-')}
-      ${row('NIS/KELAS', `${transaksi.nis || '-'} / ${transaksi.kelas || '-'}`)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('URAIAN TRANSAKSI', uraian)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('NOMINAL', `Rp. ${nominal}`)}
-      ${row('TERBILANG', `<em>${terbilang}</em>`)}
-    `;
+    bodyRows =
+      buildRow('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR', fs) +
+      buildRow('TELAH TERIMA DARI', transaksi.nama_siswa || '-', fs) +
+      buildRow('NIS/KELAS', `${transaksi.nis || '-'} / ${transaksi.kelas || '-'}`, fs) +
+      buildSpacer() +
+      buildRow('URAIAN TRANSAKSI', uraian, fs) +
+      buildSpacer() +
+      buildRow('NOMINAL', `Rp. ${nominal}`, fs) +
+      buildRow('TERBILANG', `<em>${terbilang}</em>`, fs);
   } else if (isDonatur) {
-    bodyRows = `
-      ${row('JENIS', 'MASUK')}
-      ${row('TELAH TERIMA DARI', 'BENDAHARA SEKOLAH')}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('URAIAN TRANSAKSI', uraian)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('NOMINAL', `Rp. ${nominal}`)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('TERBILANG', `<em>${terbilang}</em>`)}
-    `;
+    bodyRows =
+      buildRow('JENIS', 'MASUK', fs) +
+      buildRow('TELAH TERIMA DARI', 'BENDAHARA SEKOLAH', fs) +
+      buildSpacer() +
+      buildRow('URAIAN TRANSAKSI', uraian, fs) +
+      buildSpacer() +
+      buildRow('NOMINAL', `Rp. ${nominal}`, fs) +
+      buildSpacer() +
+      buildRow('TERBILANG', `<em>${terbilang}</em>`, fs);
   } else if (isPegawai) {
-    bodyRows = `
-      ${row('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR')}
-      ${row('TELAH TERIMA DARI', transaksi.nama_pegawai || '-')}
-      ${row('NIP/JABATAN', `${transaksi.nip_pegawai || '-'} / ${transaksi.jabatan_pegawai || '-'}`)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('URAIAN TRANSAKSI', uraian)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('NOMINAL', `Rp. ${nominal}`)}
-      ${row('TERBILANG', `<em>${terbilang}</em>`)}
-    `;
+    bodyRows =
+      buildRow('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR', fs) +
+      buildRow('TELAH TERIMA DARI', transaksi.nama_pegawai || '-', fs) +
+      buildRow('NIP/JABATAN', `${transaksi.nip_pegawai || '-'} / ${transaksi.jabatan_pegawai || '-'}`, fs) +
+      buildSpacer() +
+      buildRow('URAIAN TRANSAKSI', uraian, fs) +
+      buildSpacer() +
+      buildRow('NOMINAL', `Rp. ${nominal}`, fs) +
+      buildRow('TERBILANG', `<em>${terbilang}</em>`, fs);
   } else {
-    bodyRows = `
-      ${row('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR')}
-      ${row('TELAH TERIMA DARI', 'BENDAHARA SEKOLAH')}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('URAIAN TRANSAKSI', uraian)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('NOMINAL', `Rp. ${nominal}`)}
-      <tr><td colspan="3" style="padding:3px 0"></td></tr>
-      ${row('TERBILANG', `<em>${terbilang}</em>`)}
-    `;
+    bodyRows =
+      buildRow('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR', fs) +
+      buildRow('TELAH TERIMA DARI', 'BENDAHARA SEKOLAH', fs) +
+      buildSpacer() +
+      buildRow('URAIAN TRANSAKSI', uraian, fs) +
+      buildSpacer() +
+      buildRow('NOMINAL', `Rp. ${nominal}`, fs) +
+      buildSpacer() +
+      buildRow('TERBILANG', `<em>${terbilang}</em>`, fs);
   }
 
   const signerName = isSiswa
@@ -196,20 +198,20 @@ function buildKuitansiInnerHtml(transaksi, fontSize = 11) {
     : penerimaName;
 
   return `
-    <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:3px;margin-bottom:4px">
-      <div style="font-weight:bold;font-size:${fontSize + 2}px;letter-spacing:0.3px">YAYASAN PENDIDIKAN PEMUDA ISLAM</div>
-      <div style="font-weight:bold;font-size:${fontSize + 1}px;margin:1px 0">SMP YPPI AR-RAHMAH</div>
-      <div style="font-style:italic;font-size:${fontSize - 1}px;line-height:1.3">Jl. R.M. Toha blk 509/30 RT. 4/7 Ds. Bendungan Kec. Ciawi<br/>Kab. Bogor - Prov. Jawa Barat, 16720</div>
+    <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:3px;margin-bottom:4px;${MONO}">
+      <div style="font-weight:bold;font-size:${fs + 2}px;letter-spacing:0.3px;${MONO}">YAYASAN PENDIDIKAN PEMUDA ISLAM</div>
+      <div style="font-weight:bold;font-size:${fs + 1}px;margin:1px 0;${MONO}">SMP YPPI AR-RAHMAH</div>
+      <div style="font-style:italic;font-size:${fs - 1}px;line-height:1.3;${MONO}">Jl. R.M. Toha blk 509/30 RT. 4/7 Ds. Bendungan Kec. Ciawi<br/>Kab. Bogor - Prov. Jawa Barat, 16720</div>
     </div>
-    <div style="text-align:center;border-top:1px solid #000;border-bottom:1px solid #000;padding:1px 0;margin-bottom:2px">
-      <span style="font-weight:bold;font-size:${fontSize + 1}px;letter-spacing:4px">K U I T A N S I</span>
+    <div style="text-align:center;border-top:1px solid #000;border-bottom:1px solid #000;padding:2px 0;margin-bottom:3px;${MONO}">
+      <span style="font-weight:bold;font-size:${fs + 1}px;letter-spacing:4px;${MONO}">K U I T A N S I</span>
     </div>
-    <div style="text-align:center;font-weight:bold;font-size:${fontSize + 1}px;letter-spacing:6px;margin-bottom:6px">${jenisLabel}</div>
-    <table style="width:100%;border-collapse:collapse">${bodyRows}</table>
-    <div style="text-align:right;margin-top:24px;line-height:1.5">
-      <div>Ciawi, ${tgl}</div>
-      <div>Penerima,</div>
-      <div style="margin-top:36px;font-weight:bold;text-decoration:underline;display:inline-block">${signerName}</div>
+    <div style="text-align:center;font-weight:bold;font-style:italic;font-size:${fs + 1}px;letter-spacing:6px;margin-bottom:8px;${MONO}">${jenisLabel}</div>
+    <table style="width:100%;border-collapse:collapse;${MONO}">${bodyRows}</table>
+    <div style="text-align:right;margin-top:30px;line-height:1.6;${MONO}">
+      <div style="${MONO}">Ciawi, ${tgl}</div>
+      <div style="${MONO}">Penerima,</div>
+      <div style="margin-top:40px;font-weight:bold;text-decoration:underline;display:inline-block;${MONO}">${signerName}</div>
     </div>
   `;
 }
@@ -217,20 +219,20 @@ function buildKuitansiInnerHtml(transaksi, fontSize = 11) {
 function buildKuitansiHtml(transaksi, opts = {}) {
   const { left = 6, right = 6, top = 4, bottom = 4, fontSize = 11 } = opts;
   const inner = buildKuitansiInnerHtml(transaksi, fontSize);
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Kuitansi</title>
-      <style>
-        @page { size: 12cm 14cm; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', Courier, monospace; color: #000; }
-      </style>
-    </head>
-    <body>
-      ${inner}
-    </body>
-    </html>
-  `;
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <title>Kuitansi</title>
+  <style>
+    @page { size: 12cm 14cm; margin: ${top}mm ${right}mm ${bottom}mm ${left}mm; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Courier New', Courier, monospace !important; }
+    body { font-family: 'Courier New', Courier, monospace !important; color: #000 !important; font-size: ${fontSize}px !important; }
+    @media print {
+      * { font-family: 'Courier New', Courier, monospace !important; }
+      body { font-size: ${fontSize}px !important; }
+    }
+  </style>
+</head>
+<body>${inner}</body>
+</html>`;
 }
