@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Clock, Plus, Trash2, Volume2, VolumeX, Play, Calendar } from "lucide-react";
+import { Bell, Clock, Plus, Trash2, Volume2, VolumeX, Play, AlertCircle, X } from "lucide-react";
 
 const HARI_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
@@ -19,8 +19,11 @@ export default function BellAlarmSystem() {
   const [now, setNow] = useState(new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [activeAlarm, setActiveAlarm] = useState(null);
   const audioCtxRef = useRef(null);
-  const lastRungRef = useRef({});
+  const triggeredRef = useRef(new Set());
+  const alarmLoopRef = useRef(null);
+  const alarmAutoStopRef = useRef(null);
   const queryClient = useQueryClient();
 
   const [newSchedule, setNewSchedule] = useState({
@@ -63,65 +66,124 @@ export default function BellAlarmSystem() {
     return audioCtxRef.current;
   };
 
-  const playBell = () => {
+  // Play a burst of bell sound for `duration` seconds at max volume
+  const playBellBurst = (duration = 3) => {
     const ctx = ensureAudioContext();
     if (!ctx) return;
-    const t = ctx.currentTime;
-    for (let ring = 0; ring < 3; ring++) {
-      const start = t + ring * 0.35;
-      [1000, 1500].forEach((freq, i) => {
+    const startTime = ctx.currentTime;
+    const toneDuration = 0.12;
+    const gap = 0.04;
+    const cycle = toneDuration + gap;
+    const numCycles = Math.floor(duration / cycle);
+
+    for (let i = 0; i < numCycles; i++) {
+      const t = startTime + i * cycle;
+      [1200, 1800].forEach((freq) => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.type = 'sine';
+        osc.type = 'square';
         osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(0.25 / (i + 1), start + 0.01);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.3);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.7, t + 0.003);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + toneDuration);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + 0.3);
+        osc.start(t);
+        osc.stop(t + toneDuration);
       });
     }
   };
 
-  // Bell checking logic
+  // Start the continuous alarm loop: 3s sound, 1s silence, repeat
+  const startAlarmLoop = () => {
+    stopAlarmLoop();
+    const loop = () => {
+      playBellBurst(3);
+      alarmLoopRef.current = setTimeout(loop, 4000); // 3s ring + 1s silence
+    };
+    loop();
+  };
+
+  // Stop the alarm sound loop
+  const stopAlarmLoop = () => {
+    if (alarmLoopRef.current) {
+      clearTimeout(alarmLoopRef.current);
+      alarmLoopRef.current = null;
+    }
+    if (alarmAutoStopRef.current) {
+      clearTimeout(alarmAutoStopRef.current);
+      alarmAutoStopRef.current = null;
+    }
+  };
+
+  // Start an alarm (pre or on-time)
+  const startAlarm = (schedule, type) => {
+    setActiveAlarm({ schedule, type, startTime: Date.now() });
+    ensureAudioContext();
+    startAlarmLoop();
+    // Auto-stop after 5 minutes
+    alarmAutoStopRef.current = setTimeout(() => {
+      stopAlarm();
+    }, 5 * 60 * 1000);
+  };
+
+  // Stop the alarm completely
+  const stopAlarm = () => {
+    stopAlarmLoop();
+    setActiveAlarm(null);
+  };
+
+  // Bell checking logic - runs every second
   useEffect(() => {
     if (!soundEnabled || bellSchedules.length === 0) return;
+
     const checkBell = () => {
       const current = new Date();
       const dayName = getDayName();
       const currentHM = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`;
+      const dateStr = current.toDateString();
 
       bellSchedules.forEach(schedule => {
         if (!schedule.aktif || !schedule.hari?.includes(dayName)) return;
+
         const [h, m] = schedule.jam.split(':').map(Number);
         const schedDate = new Date();
         schedDate.setHours(h, m, 0, 0);
-        const preDate = new Date(schedDate.getTime() - 5 * 60 * 1000);
+
+        // Pre-alarm: 3 minutes before
+        const preDate = new Date(schedDate.getTime() - 3 * 60 * 1000);
         const preHM = `${String(preDate.getHours()).padStart(2, '0')}:${String(preDate.getMinutes()).padStart(2, '0')}`;
+        const preKey = `${schedule.id}-pre-${dateStr}`;
+        const onKey = `${schedule.id}-on-${dateStr}`;
 
-        const keyPre = `${schedule.id}-pre-${currentHM}`;
-        const keyOn = `${schedule.id}-on-${currentHM}`;
-
-        if (currentHM === preHM && !lastRungRef.current[keyPre]) {
-          lastRungRef.current[keyPre] = true;
-          playBell();
+        // Pre-alarm trigger (3 min before)
+        if (currentHM === preHM && !triggeredRef.current.has(preKey)) {
+          triggeredRef.current.add(preKey);
+          startAlarm(schedule, 'pre');
         }
-        if (currentHM === schedule.jam && !lastRungRef.current[keyOn]) {
-          lastRungRef.current[keyOn] = true;
-          playBell();
+
+        // On-time trigger
+        if (currentHM === schedule.jam && !triggeredRef.current.has(onKey)) {
+          triggeredRef.current.add(onKey);
+          startAlarm(schedule, 'on');
         }
       });
 
-      // Clean old keys
-      Object.keys(lastRungRef.current).forEach(key => {
-        if (!key.includes(currentHM)) delete lastRungRef.current[key];
+      // Clean old triggered keys (keep only today's)
+      const todayStr = dateStr;
+      triggeredRef.current.forEach(key => {
+        if (!key.endsWith(todayStr)) triggeredRef.current.delete(key);
       });
     };
+
     const timer = setInterval(checkBell, 1000);
     return () => clearInterval(timer);
   }, [soundEnabled, bellSchedules]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => stopAlarmLoop();
+  }, []);
 
   const handleToggleHari = (hari) => {
     setNewSchedule(prev => ({
@@ -155,7 +217,7 @@ export default function BellAlarmSystem() {
             setSoundEnabled(!soundEnabled);
             if (!soundEnabled) ensureAudioContext();
           }}
-          title={soundEnabled ? 'Matikan Suara Bel' : 'Aktifkan Suara Bel'}
+          title={soundEnabled ? 'Matikan Sistem Bel' : 'Aktifkan Sistem Bel'}
           className={soundEnabled ? 'border-blue-200 text-blue-600' : 'border-slate-200 text-slate-400'}
         >
           {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
@@ -181,6 +243,52 @@ export default function BellAlarmSystem() {
         </div>
       </div>
 
+      {/* Alarm Popup Overlay */}
+      {activeAlarm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center"
+          style={{ background: 'rgba(220, 38, 38, 0.85)', backdropFilter: 'blur(8px)' }}
+        >
+          <div className="bg-white rounded-2xl p-8 max-w-md w-[90%] shadow-2xl border-4 border-red-500">
+            <div className="text-center">
+              <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Bell className="w-10 h-10 text-red-500 animate-bounce" />
+              </div>
+              {activeAlarm.type === 'pre' ? (
+                <>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 rounded-full mb-3">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span className="text-xs font-bold text-amber-700 uppercase">Peringatan</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">{activeAlarm.schedule.label || 'Bel'}</h2>
+                  <p className="text-sm text-amber-600 mt-1">⚠ 3 menit lagi!</p>
+                </>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-red-100 rounded-full mb-3">
+                    <Bell className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-bold text-red-700 uppercase">Waktunya!</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-slate-800">{activeAlarm.schedule.label || 'Bel'}</h2>
+                </>
+              )}
+              <p className="text-4xl font-mono font-bold text-red-600 mt-3 mb-2">{activeAlarm.schedule.jam}</p>
+              <p className="text-xs text-slate-400 mb-4">
+                Alarm berhenti otomatis dalam 5 menit
+              </p>
+              <Button
+                onClick={stopAlarm}
+                size="lg"
+                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-lg h-12"
+              >
+                <X className="w-5 h-5 mr-2" /> Matikan Alarm
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Dialog */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -196,7 +304,7 @@ export default function BellAlarmSystem() {
               <p className="text-sm font-medium text-amber-800">Tes Suara Bel</p>
               <p className="text-xs text-amber-600">Pastikan volume perangkat menyala</p>
             </div>
-            <Button size="sm" onClick={playBell} className="bg-amber-500 hover:bg-amber-600">
+            <Button size="sm" onClick={() => { playBellBurst(3); }} className="bg-amber-500 hover:bg-amber-600">
               <Play className="w-4 h-4 mr-1" /> Tes Bel
             </Button>
           </div>
@@ -284,8 +392,8 @@ export default function BellAlarmSystem() {
 
           <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
             <p className="text-xs text-blue-700">
-              ℹ️ Bel akan berbunyi <b>2 kali</b>: 5 menit sebelum jadwal (peringatan) dan tepat pada waktunya.
-              Suara bel otomatis aktif selama Dashboard terbuka.
+              ℹ️ Bel berbunyi <b>2 kali</b>: 3 menit sebelum jadwal (popup peringatan) dan tepat pada waktunya.
+              Alarm berbunyi berulang (3 detik nyaring, jeda 1 detik) dan berhenti otomatis setelah 5 menit atau bisa dimatikan manual.
             </p>
           </div>
         </DialogContent>

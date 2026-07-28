@@ -106,7 +106,8 @@ export default function TransaksiForm({
 
   const jabatanOptions = useMemo(() => {
     const jabatans = [...new Set(guruList.map(g => g.jabatan).filter(Boolean))];
-    return jabatans.includes('Bendahara') ? jabatans : [...jabatans, 'Bendahara'];
+    const result = jabatans.includes('Bendahara') ? jabatans : [...jabatans, 'Bendahara'];
+    return [...result, 'Lainnya'];
   }, [guruList]);
 
   const penerimaPegawaiList = useMemo(() => {
@@ -252,6 +253,7 @@ export default function TransaksiForm({
         tipe_transaksi: tarif.nama,
         kategori: TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
         jumlah: tarif.nominal,
+        uraian: tarif.nama,
       }));
     }
   };
@@ -614,7 +616,7 @@ export default function TransaksiForm({
                 <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
                   <SelectTrigger><SelectValue placeholder="Pilih penerima" /></SelectTrigger>
                   <SelectContent>
-                    {bendaharaList.map(g => (
+                    {(jenisTransaksi === 'donatur' ? guruList : bendaharaList).map(g => (
                       <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
                     ))}
                   </SelectContent>
@@ -635,14 +637,22 @@ export default function TransaksiForm({
                 </div>
                 <div>
                   <Label>Penerima (Nama)</Label>
-                  <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
-                    <SelectTrigger><SelectValue placeholder="Pilih pegawai" /></SelectTrigger>
-                    <SelectContent>
-                      {penerimaPegawaiList.map(g => (
-                        <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {formData.penerima_jabatan === 'Lainnya' ? (
+                    <Input
+                      value={formData.penerima}
+                      onChange={(e) => set('penerima', e.target.value)}
+                      placeholder="Ketik nama penerima manual"
+                    />
+                  ) : (
+                    <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
+                      <SelectTrigger><SelectValue placeholder="Pilih pegawai" /></SelectTrigger>
+                      <SelectContent>
+                        {penerimaPegawaiList.map(g => (
+                          <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             )}

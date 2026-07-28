@@ -9,10 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import { Heart, Search, Calendar, CheckCircle, AlertTriangle, TrendingUp } from "lucide-react";
+import { Heart, Search, Calendar, CheckCircle, AlertTriangle, TrendingUp, GraduationCap } from "lucide-react";
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 import MenstruasiDetail from "./MenstruasiDetail";
+import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
 
 export default function MenstruasiTab() {
   const queryClient = useQueryClient();
@@ -23,11 +24,23 @@ export default function MenstruasiTab() {
   const [recapSearch, setRecapSearch] = useState('');
   const [detailSiswa, setDetailSiswa] = useState(null);
   const [haidRecords, setHaidRecords] = useState({});
+  const [lulusOpen, setLulusOpen] = useState(false);
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
+
+  const { data: allSiswaList = [] } = useQuery({
+    queryKey: ['siswa-all'],
+    queryFn: () => base44.entities.Siswa.list(),
+  });
+
+  const siswaMap = useMemo(() => {
+    const map = {};
+    allSiswaList.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [allSiswaList]);
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa-perempuan', selectedKelas],
@@ -131,6 +144,8 @@ export default function MenstruasiTab() {
     const map = {};
     allMenstruasi.forEach(r => {
       if (r.siswa_id && !map[r.siswa_id]) {
+        const siswa = siswaMap[r.siswa_id];
+        if (!siswa || siswa.status !== 'Aktif') return;
         map[r.siswa_id] = { siswa_id: r.siswa_id, nis: r.nis, nama_siswa: r.nama_siswa, nama_kelas: r.nama_kelas, kelas_id: r.kelas_id };
       }
     });
@@ -139,7 +154,7 @@ export default function MenstruasiTab() {
       list = list.filter(s => s.nama_siswa?.toLowerCase().includes(recapSearch.toLowerCase()) || s.nis?.includes(recapSearch));
     }
     return list.sort((a, b) => (a.nama_siswa || '').localeCompare(b.nama_siswa || ''));
-  }, [allMenstruasi, recapSearch]);
+  }, [allMenstruasi, recapSearch, siswaMap]);
 
   // Monthly recap stats
   const currentMonthStr = format(new Date(), 'yyyy-MM');
@@ -177,9 +192,14 @@ export default function MenstruasiTab() {
       {/* Daily Recording */}
       <Card className="border-0 shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Heart className="w-5 h-5 text-pink-500" /> Pendataan Harian Menstruasi
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Heart className="w-5 h-5 text-pink-500" /> Pendataan Harian Menstruasi
+            </CardTitle>
+            <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+              <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -293,6 +313,14 @@ export default function MenstruasiTab() {
       </Card>
 
       {detailSiswa && <MenstruasiDetail siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
+
+      <SiswaLulusRecordsDialog
+        open={lulusOpen}
+        onOpenChange={setLulusOpen}
+        entityName="Menstruasi"
+        queryKey="menstruasi-lulus"
+        title="Data Menstruasi Siswa Lulus/Keluar"
+      />
     </div>
   );
 }

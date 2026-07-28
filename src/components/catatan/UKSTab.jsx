@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Stethoscope, Filter } from "lucide-react";
+import { Plus, Edit2, Trash2, Stethoscope, Filter, GraduationCap } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
+import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
 
 export default function UKSTab() {
   const [isOpen, setIsOpen] = useState(false);
@@ -18,6 +19,7 @@ export default function UKSTab() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
+  const [lulusOpen, setLulusOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -34,8 +36,16 @@ export default function UKSTab() {
 
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
-    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+    queryFn: () => base44.entities.Siswa.list(),
   });
+
+  const siswaMap = useMemo(() => {
+    const map = {};
+    siswaList.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [siswaList]);
+
+  const activeSiswaIds = useMemo(() => new Set(siswaList.filter(s => s.status === 'Aktif').map(s => s.id)), [siswaList]);
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
@@ -46,13 +56,14 @@ export default function UKSTab() {
   const filteredSiswa = useMemo(() => {
     if (!selectedKelas) return [];
     return siswaList
-      .filter(s => s.kelas_id === selectedKelas)
+      .filter(s => s.kelas_id === selectedKelas && s.status === 'Aktif')
       .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [siswaList, selectedKelas]);
 
   // Filter UKS berdasarkan tanggal
   const filteredUksList = useMemo(() => {
     return uksList.filter(u => {
+      if (!activeSiswaIds.has(u.siswa_id)) return false;
       if (filterDateFrom && u.tanggal < filterDateFrom) return false;
       if (filterDateTo && u.tanggal > filterDateTo) return false;
       return true;
@@ -181,9 +192,14 @@ export default function UKSTab() {
                 Data Kunjungan UKS
               </CardTitle>
             </div>
-            <Button onClick={() => setIsOpen(true)} className="bg-rose-600 hover:bg-rose-700">
-              <Plus className="w-4 h-4 mr-2" /> Tambah Kunjungan
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setLulusOpen(true)} variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                <GraduationCap className="w-4 h-4 mr-2" /> Siswa Lulus/Keluar
+              </Button>
+              <Button onClick={() => setIsOpen(true)} className="bg-rose-600 hover:bg-rose-700">
+                <Plus className="w-4 h-4 mr-2" /> Tambah Kunjungan
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
@@ -315,6 +331,18 @@ export default function UKSTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SiswaLulusRecordsDialog
+        open={lulusOpen}
+        onOpenChange={setLulusOpen}
+        entityName="UKS"
+        queryKey="uks-lulus"
+        title="Data UKS Siswa Lulus/Keluar"
+        extraColumns={[
+          { key: 'keluhan', label: 'Keluhan', render: (row) => <span className="max-w-xs truncate block">{row.keluhan}</span> },
+          { key: 'status', label: 'Status' },
+        ]}
+      />
     </div>
   );
 }

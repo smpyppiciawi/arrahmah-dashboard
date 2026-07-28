@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from "@/context/ActiveAcademicYearContext";
-import { FileText, Plus, Trash2, MessageCircle, Clock } from "lucide-react";
+import { FileText, Plus, Trash2, MessageCircle, Clock, GraduationCap } from "lucide-react";
+import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -22,6 +23,7 @@ export default function IzinTab() {
   const { activeAcademicYear } = useActiveAcademicYear();
   const [isOpen, setIsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [lulusOpen, setLulusOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     tanggal: format(new Date(), 'yyyy-MM-dd'),
@@ -52,6 +54,24 @@ export default function IzinTab() {
     queryKey: ['izinSiswa', formData.tanggal],
     queryFn: () => base44.entities.IzinSiswa.filter({ tanggal: formData.tanggal }, '-jam_izin'),
   });
+
+  const { data: allSiswaList = [] } = useQuery({
+    queryKey: ['siswa-all'],
+    queryFn: () => base44.entities.Siswa.list(),
+  });
+
+  const siswaMap = useMemo(() => {
+    const map = {};
+    allSiswaList.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [allSiswaList]);
+
+  const filteredIzinList = useMemo(() => {
+    return izinList.filter(i => {
+      const siswa = siswaMap[i.siswa_id];
+      return siswa && siswa.status === 'Aktif';
+    });
+  }, [izinList, siswaMap]);
 
   // Auto-fill petugas piket if current user is a guru
   useEffect(() => {
@@ -146,21 +166,21 @@ export default function IzinTab() {
         <Card className="border-0 shadow-sm">
           <CardContent className="p-3 text-center">
             <FileText className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-slate-700">{izinList.length}</p>
+            <p className="text-xl font-bold text-slate-700">{filteredIzinList.length}</p>
             <p className="text-xs text-slate-500">Izin Hari Ini</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-3 text-center">
             <Clock className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-slate-700">{izinList.filter(i => i.alasan === 'Dispensasi').length}</p>
+            <p className="text-xl font-bold text-slate-700">{filteredIzinList.filter(i => i.alasan === 'Dispensasi').length}</p>
             <p className="text-xs text-slate-500">Dispensasi</p>
           </CardContent>
         </Card>
         <Card className="border-0 shadow-sm">
           <CardContent className="p-3 text-center">
             <MessageCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
-            <p className="text-xl font-bold text-slate-700">{izinList.filter(i => i.notif_wa_sent).length}</p>
+            <p className="text-xl font-bold text-slate-700">{filteredIzinList.filter(i => i.notif_wa_sent).length}</p>
             <p className="text-xs text-slate-500">Notif WA Terkirim</p>
           </CardContent>
         </Card>
@@ -172,13 +192,18 @@ export default function IzinTab() {
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="w-5 h-5 text-amber-500" /> Daftar Izin Siswa
             </CardTitle>
-            <Button size="sm" className="bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => setIsOpen(true)}>
-              <Plus className="w-4 h-4" /> Catat Izin
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
+              </Button>
+              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => setIsOpen(true)}>
+                <Plus className="w-4 h-4" /> Catat Izin
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {izinList.length === 0 ? (
+          {filteredIzinList.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
               <p className="text-slate-400 text-sm">Belum ada izin pada tanggal ini</p>
@@ -197,7 +222,7 @@ export default function IzinTab() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {izinList.map((item, i) => (
+                  {filteredIzinList.map((item, i) => (
                     <TableRow key={item.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                       <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
                       <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
@@ -312,6 +337,19 @@ export default function IzinTab() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <SiswaLulusRecordsDialog
+        open={lulusOpen}
+        onOpenChange={setLulusOpen}
+        entityName="IzinSiswa"
+        queryKey="izin-lulus"
+        title="Data Izin Siswa Lulus/Keluar"
+        extraColumns={[
+          { key: 'jam_izin', label: 'Jam Izin' },
+          { key: 'alasan', label: 'Alasan', render: (row) => row.alasan === 'Lainnya' && row.alasan_manual ? row.alasan_manual : row.alasan },
+          { key: 'petugas_piket', label: 'Petugas' },
+        ]}
+      />
     </div>
   );
 }
