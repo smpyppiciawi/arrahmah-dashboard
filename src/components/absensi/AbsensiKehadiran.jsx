@@ -10,8 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users } from "lucide-react";
+import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, WifiOff, CloudOff, RefreshCw, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useOfflineAbsensi } from '@/hooks/useOfflineAbsensi';
 
 const STATUS_CONFIG = {
   'Hadir':     { icon: CheckCircle, active: 'bg-emerald-500 text-white shadow-sm shadow-emerald-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600' },
@@ -85,19 +86,65 @@ export default function AbsensiKehadiran() {
 
   const sortedSiswaList = [...siswaList].sort((a, b) => a.nama.localeCompare(b.nama));
 
+  const { pendingCount, syncing, isOnline, queueAbsensi, syncNow } = useOfflineAbsensi();
+
   const handleSaveAll = async () => {
     setIsSaving(true);
     const kelas = kelasList.find(k => k.id === selectedKelas);
-    let created = 0, updated = 0;
-    for (const siswa of siswaList) {
-      const data = absensiData[siswa.id]; if (!data) continue;
+    const records = siswaList.map(siswa => {
+      const data = absensiData[siswa.id]; if (!data) return null;
       const payload = { tanggal: selectedDate, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: selectedKelas, nama_kelas: kelas?.nama_kelas || '', status: data.status, jam_masuk: data.jam_masuk, keterangan: data.keterangan, jenis_absensi: 'Kehadiran' };
-      if (data.existing_id) { await updateMutation.mutateAsync({ id: data.existing_id, data: payload }); updated++; }
-      else { await createMutation.mutateAsync(payload); created++; }
+      return { payload, existing_id: data.existing_id, siswa_id: siswa.id };
+    }).filter(Boolean);
+
+    // Offline — queue all to IndexedDB
+    if (!isOnline) {
+      await queueAbsensi(records);
+      toast({ title: '📴 Mode Offline', description: `${records.length} absensi disimpan offline. Akan disinkron otomatis saat online.`, duration: 5000 });
+      setIsSaving(false);
+      return;
     }
+
+    // Online — save individually, queue failures
+    let created = 0, updated = 0;
+    const failed = [];
+    const newIds = {};
+    for (const record of records) {
+      try {
+        if (record.existing_id) {
+          await base44.entities.Absensi.update(record.existing_id, record.payload);
+          updated++;
+        } else {
+          const result = await base44.entities.Absensi.create(record.payload);
+          newIds[record.siswa_id] = result.id;
+          created++;
+        }
+      } catch (err) {
+        failed.push(record);
+      }
+    }
+
+    // Update local state with newly created IDs to prevent duplicate creates
+    if (Object.keys(newIds).length > 0) {
+      setAbsensiData(prev => {
+        const next = { ...prev };
+        Object.entries(newIds).forEach(([sid, id]) => {
+          if (next[sid]) next[sid] = { ...next[sid], existing_id: id };
+        });
+        return next;
+      });
+    }
+
+    // Queue failures for background sync
+    if (failed.length > 0) {
+      await queueAbsensi(failed);
+      toast({ title: '⚠️ Sebagian Gagal', description: `${created} baru, ${updated} update, ${failed.length} antrian offline.`, variant: 'destructive', duration: 5000 });
+    } else {
+      toast({ title: '✅ Absensi Tersimpan', description: `${created} baru, ${updated} diupdate.`, duration: 4000 });
+    }
+
     await queryClient.invalidateQueries({ queryKey: ['absensi'] });
     setIsSaving(false);
-    toast({ title: '✅ Absensi Tersimpan', description: `${created} baru, ${updated} diupdate.`, duration: 4000 });
   };
 
   const stats = { hadir: Object.values(absensiData).filter(d => d.status === 'Hadir').length, sakit: Object.values(absensiData).filter(d => d.status === 'Sakit').length, izin: Object.values(absensiData).filter(d => d.status === 'Izin').length, alfa: Object.values(absensiData).filter(d => d.status === 'Alfa').length, terlambat: Object.values(absensiData).filter(d => d.status === 'Terlambat').length };
@@ -106,6 +153,29 @@ export default function AbsensiKehadiran() {
 
   return (
     <div className="space-y-4">
+      {(!isOnline || pendingCount > 0) && (
+        <div className={`flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl border ${!isOnline ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
+          <div className="flex items-center gap-2">
+            {!isOnline ? (
+              <>
+                <WifiOff className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-red-700">Mode Offline — data tersimpan lokal di perangkat</span>
+              </>
+            ) : (
+              <>
+                <CloudOff className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                <span className="text-sm font-medium text-amber-700">{pendingCount} absensi menunggu sinkronisasi</span>
+              </>
+            )}
+          </div>
+          {isOnline && pendingCount > 0 && (
+            <Button size="sm" variant="outline" onClick={syncNow} disabled={syncing} className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100">
+              {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              {syncing ? 'Menyinkron...' : 'Sinkron Sekarang'}
+            </Button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-slate-500 text-sm">{format(new Date(selectedDate), 'EEEE, d MMMM yyyy', { locale: idLocale })}</p>
         {canEdit && selectedKelas && siswaList.length > 0 && (

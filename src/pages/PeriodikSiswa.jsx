@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Ruler, Weight, Circle, Loader2, Lock, Save, X, Upload, Download, RefreshCw } from "lucide-react";
+import { Ruler, Weight, Circle, Loader2, Lock, Save, X, Upload, Download, RefreshCw, History } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import RiwayatPeriodikDialog from '@/components/periodik/RiwayatPeriodikDialog';
 
 export default function PeriodikSiswa() {
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -17,6 +18,7 @@ export default function PeriodikSiswa() {
   const [editingId, setEditingId] = useState(null);
   const [inputValues, setInputValues] = useState({});
   const [importing, setImporting] = useState(false);
+  const [riwayatSiswa, setRiwayatSiswa] = useState(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const fileRef = useRef(null);
@@ -269,13 +271,18 @@ export default function PeriodikSiswa() {
                                   )}
                                 </td>
                                 <td className="py-2 px-2 text-center">
-                                  {canEdit ? (
-                                    <Button size="sm" variant="outline" disabled={isLockedByOther} onClick={() => handleStartInput(siswa)}>
-                                      {p ? 'Edit' : 'Input'}
+                                  <div className="flex gap-1 justify-center">
+                                    <Button size="sm" variant="ghost" className="h-7 px-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50" onClick={() => setRiwayatSiswa(siswa)} title="Riwayat Pengukuran">
+                                      <History className="w-3.5 h-3.5" />
                                     </Button>
-                                  ) : (
-                                    <span className="text-xs text-slate-400">-</span>
-                                  )}
+                                    {canEdit ? (
+                                      <Button size="sm" variant="outline" disabled={isLockedByOther} onClick={() => handleStartInput(siswa)}>
+                                        {p ? 'Edit' : 'Input'}
+                                      </Button>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">-</span>
+                                    )}
+                                  </div>
                                 </td>
                               </>
                             )}
@@ -290,6 +297,7 @@ export default function PeriodikSiswa() {
           </Card>
         )}
       </div>
+      <RiwayatPeriodikDialog siswa={riwayatSiswa} open={!!riwayatSiswa} onClose={() => setRiwayatSiswa(null)} />
     </div>
   );
 }
