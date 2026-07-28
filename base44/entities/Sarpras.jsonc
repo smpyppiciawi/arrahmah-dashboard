@@ -1,0 +1,95 @@
+{
+  "name": "Sarpras",
+  "type": "object",
+  "properties": {
+    "kode_barang": {
+      "type": "string",
+      "description": "Kode unik barang untuk barcode"
+    },
+    "nama_barang": {
+      "type": "string",
+      "description": "Nama barang"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Sarana",
+        "Prasarana"
+      ],
+      "default": "Sarana",
+      "description": "Sarana (barang) atau Prasarana (fasilitas)"
+    },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Mebel",
+        "Elektronik",
+        "ATK",
+        "Olahraga",
+        "Laboratorium",
+        "Perpustakaan",
+        "Kebersihan",
+        "Keamanan",
+        "Lainnya"
+      ],
+      "default": "Lainnya"
+    },
+    "sub_kategori": {
+      "type": "string"
+    },
+    "kondisi": {
+      "type": "string",
+      "enum": [
+        "Baik",
+        "Rusak Ringan",
+        "Rusak Berat"
+      ],
+      "default": "Baik"
+    },
+    "lokasi": {
+      "type": "string",
+      "description": "Lokasi/ruangan penyimpanan"
+    },
+    "tanggal_pengadaan": {
+      "type": "string",
+      "format": "date"
+    },
+    "sumber_dana": {
+      "type": "string"
+    },
+    "harga_satuan": {
+      "type": "number",
+      "description": "Harga per satuan"
+    },
+    "jumlah": {
+      "type": "number",
+      "default": 1,
+      "description": "Jumlah unit"
+    },
+    "satuan": {
+      "type": "string",
+      "default": "unit"
+    },
+    "foto_url": {
+      "type": "string",
+      "description": "URL foto barang"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Diperbaiki",
+        "Dihapus"
+      ],
+      "default": "Aktif"
+    },
+    "keterangan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "kode_barang",
+    "nama_barang",
+    "jenis"
+  ]
+}

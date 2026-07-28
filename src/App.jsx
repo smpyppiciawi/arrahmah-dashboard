@@ -17,6 +17,7 @@ import Kepsek from './pages/Kepsek';
 import HomeVisit from './pages/HomeVisit';
 import AbsensiPegawai from './pages/AbsensiPegawai';
 import PeriodikSiswa from './pages/PeriodikSiswa';
+import Sarpras from './pages/Sarpras';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -88,6 +89,11 @@ const AuthenticatedApp = () => {
       <Route path="/PeriodikSiswa" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="PeriodikSiswa"><PeriodikSiswa /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/Sarpras" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="Sarpras"><Sarpras /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 
