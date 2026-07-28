@@ -18,6 +18,19 @@
     "nama_kelas": {
       "type": "string"
     },
+    "tingkat": {
+      "type": "string",
+      "enum": [
+        "7",
+        "8",
+        "9"
+      ],
+      "description": "Tingkat kelas saat pengukuran"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran saat pengukuran (contoh: 2025/2026)"
+    },
     "tanggal": {
       "type": "string",
       "format": "date",
