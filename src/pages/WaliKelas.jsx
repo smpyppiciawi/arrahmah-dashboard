@@ -14,8 +14,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import UangKasTab from '@/components/walikelas/UangKasTab';
+import TunggakanTab from '@/components/walikelas/TunggakanTab';
 import KontakOrtuFab from '@/components/walikelas/KontakOrtuFab';
-import { Users, Megaphone, Plus, Trash2, Building, User, Bell, Wallet } from 'lucide-react';
+import { Users, Megaphone, Plus, Trash2, Building, User, Bell, Wallet, ClipboardCheck } from 'lucide-react';
 
 export default function WaliKelas() {
   const { user: currentUser } = useAuth();
@@ -161,7 +162,7 @@ export default function WaliKelas() {
 
         {/* Tabs */}
         <Tabs defaultValue="siswa">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-2xl">
             <TabsTrigger value="siswa" className="gap-1.5">
               <User className="w-4 h-4" /> Data Siswa
             </TabsTrigger>
@@ -170,6 +171,9 @@ export default function WaliKelas() {
             </TabsTrigger>
             <TabsTrigger value="uangkas" className="gap-1.5">
               <Wallet className="w-4 h-4" /> Uang Kas
+            </TabsTrigger>
+            <TabsTrigger value="tunggakan" className="gap-1.5">
+              <ClipboardCheck className="w-4 h-4" /> Tunggakan
             </TabsTrigger>
           </TabsList>
 
@@ -265,6 +269,11 @@ export default function WaliKelas() {
           {/* Uang Kas */}
           <TabsContent value="uangkas">
             <UangKasTab kelasWali={kelasWali} guruData={guruData} />
+          </TabsContent>
+
+          {/* Tunggakan */}
+          <TabsContent value="tunggakan">
+            <TunggakanTab kelasWali={kelasWali} siswaKelas={siswaKelas} />
           </TabsContent>
         </Tabs>
       </div>

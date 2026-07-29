@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,11 +12,13 @@ import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 import JadwalTab from '@/components/dashboard/JadwalTab';
 import LiveClock from '@/components/ui/LiveClock';
+import { usePengingatMengajar } from '@/components/guru/PengingatMengajar';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const canSeeCariSiswa = ['admin', 'operator'].includes(userRole);
+  const { enabled: pengingatEnabled, toggle: togglePengingat } = usePengingatMengajar();
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
@@ -80,7 +82,19 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 mt-0.5 text-sm">Ringkasan data & aktivitas sekolah hari ini</p>
           </div>
-          <LiveClock />
+          <div className="flex items-center gap-2">
+            {userRole === 'guru' && (
+              <button
+                onClick={togglePengingat}
+                title={pengingatEnabled ? 'Pengingat Mengajar Aktif (klik untuk nonaktifkan)' : 'Pengingat Mengajar Nonaktif (klik untuk aktifkan)'}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium border transition-colors ${pengingatEnabled ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-slate-200 text-slate-400'}`}
+              >
+                {pengingatEnabled ? <BellRing className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+                <span className="hidden sm:inline">{pengingatEnabled ? 'On' : 'Off'}</span>
+              </button>
+            )}
+            <LiveClock />
+          </div>
         </div>
 
         {/* Stats Cards */}

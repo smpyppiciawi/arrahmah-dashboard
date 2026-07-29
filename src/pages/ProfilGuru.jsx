@@ -36,7 +36,7 @@ export default function ProfilGuru() {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState({});
   const [activeTab, setActiveTab] = useState('profil');
-  const [viewMode, setViewMode] = useState('mobile'); // 'mobile' | 'web'
+  const [viewMode, setViewMode] = useState('web'); // 'mobile' | 'web'
 
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru'],
