@@ -14,6 +14,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Badge } from "@/components/ui/badge";
 import LiveClock from '@/components/ui/LiveClock';
+import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 
 const FULL_ACCESS_MENU = {
   topItems: [
@@ -427,6 +428,9 @@ export default function Layout({ children, currentPageName }) {
           </button>
         </div>
       </nav>
+
+      {/* Global Bell Alarm — aktif di semua halaman untuk Operator/Piket */}
+      {userRole === 'operator' && <BellAlarmSystem floating />}
     </div>
   );
 }

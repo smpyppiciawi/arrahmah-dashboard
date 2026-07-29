@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
-import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import JadwalTab from '@/components/dashboard/JadwalTab';
 import LiveClock from '@/components/ui/LiveClock';
 
@@ -18,7 +17,6 @@ export default function Dashboard() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const canSeeCariSiswa = ['admin', 'operator'].includes(userRole);
-  const isOperator = userRole === 'operator';
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
@@ -82,7 +80,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 mt-0.5 text-sm">Ringkasan data & aktivitas sekolah hari ini</p>
           </div>
-          {isOperator ? <BellAlarmSystem /> : <LiveClock />}
+          <LiveClock />
         </div>
 
         {/* Stats Cards */}

@@ -15,7 +15,7 @@ function getDayName() {
   return days[new Date().getDay()];
 }
 
-export default function BellAlarmSystem() {
+export default function BellAlarmSystem({ floating = false }) {
   const [now, setNow] = useState(new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -209,7 +209,9 @@ export default function BellAlarmSystem() {
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className={floating
+        ? "fixed bottom-20 lg:bottom-4 right-4 z-40 flex items-center gap-1.5 bg-white/95 backdrop-blur rounded-xl shadow-lg border border-slate-200 p-1.5"
+        : "flex items-center gap-2"}>
         <Button
           variant="outline"
           size="icon"
@@ -236,11 +238,13 @@ export default function BellAlarmSystem() {
             </span>
           )}
         </Button>
-        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm">
-          <Clock className="w-4 h-4 text-blue-500" />
-          <span className="font-mono font-bold text-slate-800 tabular-nums text-base">{clockTime}</span>
-          <span className="text-slate-500 hidden md:inline">{dateString}</span>
-        </div>
+        {!floating && (
+          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm shadow-sm">
+            <Clock className="w-4 h-4 text-blue-500" />
+            <span className="font-mono font-bold text-slate-800 tabular-nums text-base">{clockTime}</span>
+            <span className="text-slate-500 hidden md:inline">{dateString}</span>
+          </div>
+        )}
       </div>
 
       {/* Alarm Popup Overlay */}

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CalendarDays, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Plus, Trash2, Pencil } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 const HARI = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -16,6 +16,7 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
   const [formData, setFormData] = useState({ hari: 'Senin', jam_mulai: '', jam_selesai: '', mapel: '', guru_id: '', nama_guru: '' });
+  const [editId, setEditId] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: jadwalList = [] } = useQuery({
@@ -47,6 +48,17 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['jadwal', kelas?.id] });
       setIsFormOpen(false);
+      setEditId(null);
+      setFormData({ hari: 'Senin', jam_mulai: '', jam_selesai: '', mapel: '', guru_id: '', nama_guru: '' });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.JadwalPelajaran.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['jadwal', kelas?.id] });
+      setIsFormOpen(false);
+      setEditId(null);
       setFormData({ hari: 'Senin', jam_mulai: '', jam_selesai: '', mapel: '', guru_id: '', nama_guru: '' });
     },
   });
@@ -61,11 +73,18 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    createMutation.mutate({
-      kelas_id: kelas.id,
-      nama_kelas: kelas.nama_kelas,
-      ...formData,
-    });
+    const payload = { kelas_id: kelas.id, nama_kelas: kelas.nama_kelas, ...formData };
+    if (editId) {
+      updateMutation.mutate({ id: editId, data: payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  };
+
+  const handleEdit = (j) => {
+    setFormData({ hari: j.hari, jam_mulai: j.jam_mulai || '', jam_selesai: j.jam_selesai || '', mapel: j.mapel || '', guru_id: j.guru_id || '', nama_guru: j.nama_guru || '' });
+    setEditId(j.id);
+    setIsFormOpen(true);
   };
 
   const handleGuruChange = (guruId) => {
@@ -111,10 +130,15 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
                             <span className="font-medium text-slate-800">{j.mapel}</span>
                             {j.nama_guru && <span className="text-xs text-slate-500 hidden sm:inline">({j.nama_guru})</span>}
                           </div>
-                          <Button size="sm" variant="ghost" className="text-red-500"
-                            onClick={() => { setDeleteId(j.id); setDeleteConfirmOpen(true); }}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          <div className="flex items-center gap-0.5">
+                            <Button size="sm" variant="ghost" className="text-blue-500 h-8 w-8 p-0" onClick={() => handleEdit(j)}>
+                              <Pencil className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-red-500 h-8 w-8 p-0"
+                              onClick={() => { setDeleteId(j.id); setDeleteConfirmOpen(true); }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -168,12 +192,12 @@ export default function JadwalDialog({ open, onOpenChange, kelas }) {
                 </Select>
               </div>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setIsFormOpen(false)}>Batal</Button>
-                <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700" disabled={!formData.mapel || !formData.jam_mulai}>Simpan</Button>
+                <Button type="button" variant="outline" className="flex-1" onClick={() => { setIsFormOpen(false); setEditId(null); }}>Batal</Button>
+                <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700" disabled={!formData.mapel || !formData.jam_mulai}>{editId ? 'Update' : 'Simpan'}</Button>
               </div>
             </form>
           ) : (
-            <Button onClick={() => setIsFormOpen(true)} className="w-full bg-emerald-600 hover:bg-emerald-700">
+            <Button onClick={() => { setFormData({ hari: 'Senin', jam_mulai: '', jam_selesai: '', mapel: '', guru_id: '', nama_guru: '' }); setEditId(null); setIsFormOpen(true); }} className="w-full bg-emerald-600 hover:bg-emerald-700">
               <Plus className="w-4 h-4 mr-2" /> Tambah Jadwal
             </Button>
           )}
