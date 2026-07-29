@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import JadwalTab from '@/components/dashboard/JadwalTab';
+import LiveClock from '@/components/ui/LiveClock';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -81,12 +82,7 @@ export default function Dashboard() {
             </h1>
             <p className="text-slate-500 mt-0.5 text-sm">Ringkasan data & aktivitas sekolah hari ini</p>
           </div>
-          {isOperator ? <BellAlarmSystem /> : (
-            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-600 shadow-sm">
-              <Calendar className="w-4 h-4 text-blue-500" />
-              {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </div>
-          )}
+          {isOperator ? <BellAlarmSystem /> : <LiveClock />}
         </div>
 
         {/* Stats Cards */}

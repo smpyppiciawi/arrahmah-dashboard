@@ -5,13 +5,15 @@ import {
   LayoutDashboard, Users, Building, Calendar, Wallet,
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
-  UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package
+  UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Badge } from "@/components/ui/badge";
+import LiveClock from '@/components/ui/LiveClock';
 
 const FULL_ACCESS_MENU = {
   topItems: [
@@ -174,6 +176,7 @@ const ROLE_COLORS = {
 
 export default function Layout({ children, currentPageName }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
   const { user: currentUser } = useAuth();
 
@@ -206,12 +209,15 @@ export default function Layout({ children, currentPageName }) {
               <p className="text-slate-500 text-[10px] leading-none mt-0.5">Sistem Informasi Sekolah</p>
             </div>
           </div>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <LiveClock compact />
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+            >
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -219,18 +225,26 @@ export default function Layout({ children, currentPageName }) {
       <aside className={`
         fixed top-0 left-0 z-40 h-full w-64 bg-slate-900 border-r border-slate-800
         transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 flex flex-col
+        flex flex-col
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${sidebarHidden ? 'lg:-translate-x-full' : 'lg:translate-x-0'}
       `}>
         {/* Logo Area */}
         <div className="flex items-center gap-3 px-5 h-[72px] border-b border-slate-800 flex-shrink-0">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 flex-shrink-0">
             <School className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-white text-sm font-bold leading-none">YPPI ARRAHMAH</h1>
             <p className="text-slate-500 text-xs mt-0.5">Sistem Informasi Sekolah</p>
           </div>
+          <button
+            onClick={() => setSidebarHidden(true)}
+            className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex-shrink-0"
+            title="Sembunyikan Menu"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -363,9 +377,20 @@ export default function Layout({ children, currentPageName }) {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen bg-slate-50">
+      <main className={`${sidebarHidden ? 'lg:ml-0' : 'lg:ml-64'} pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen bg-slate-50 transition-all duration-300`}>
         {children}
       </main>
+
+      {/* Floating show-sidebar button (desktop, when hidden) */}
+      {sidebarHidden && (
+        <button
+          onClick={() => setSidebarHidden(false)}
+          className="hidden lg:flex fixed top-3 left-3 z-40 p-2 rounded-lg bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 shadow-lg border border-slate-700 transition-colors"
+          title="Tampilkan Menu"
+        >
+          <PanelLeftOpen className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Bottom Navigation - Mobile */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-slate-900/95 backdrop-blur-md border-t border-slate-700/50">
