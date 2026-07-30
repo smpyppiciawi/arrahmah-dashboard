@@ -136,7 +136,7 @@ export default function HomeVisit() {
   ];
 
   const renderMap = () => (
-    <MapContainer center={mapCenter} zoom={13} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
       <MapResizer />
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       {markersWithCoord.map(hv => (
@@ -233,7 +233,7 @@ export default function HomeVisit() {
               </div>
             </CardHeader>
             <CardContent>
-              <div style={{ height: '450px' }} className="rounded-lg overflow-hidden border border-slate-200 z-0">
+              <div style={{ height: '450px' }} className="relative isolate rounded-lg overflow-hidden border border-slate-200">
                 {renderMap()}
               </div>
             </CardContent>
@@ -292,7 +292,7 @@ export default function HomeVisit() {
 
       <Dialog open={mapFullscreen} onOpenChange={setMapFullscreen}>
         <DialogContent className="max-w-4xl h-[85vh] p-0 overflow-hidden">
-          <div className="w-full h-full">{renderMap()}</div>
+          <div className="w-full h-full relative isolate">{renderMap()}</div>
         </DialogContent>
       </Dialog>
     </div>

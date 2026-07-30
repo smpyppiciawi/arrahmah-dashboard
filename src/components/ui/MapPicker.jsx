@@ -34,7 +34,7 @@ function parseCoord(v) {
 
 function MapView({ center, markerPos, onClick, interactive }) {
   return (
-    <MapContainer center={center} zoom={15} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
+    <MapContainer center={center} zoom={15} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
       <MapResizer />
       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
       {interactive && <LocationClicker onClick={onClick} />}
@@ -104,14 +104,14 @@ export default function MapPicker({ value, onChange, height = '320px' }) {
           <Maximize2 className="w-4 h-4 text-slate-600" />
         </Button>
       </div>
-      <div style={{ height }} className="rounded-lg overflow-hidden border border-slate-200 z-0">
+      <div style={{ height }} className="relative isolate rounded-lg overflow-hidden border border-slate-200">
         <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
       </div>
       <p className="text-xs text-slate-400">Klik peta untuk menentukan titik, gunakan tombol lokasi saat ini, atau buka fullscreen untuk tampilan penuh.</p>
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-3xl h-[80vh] p-0 overflow-hidden">
-          <div className="w-full h-full">
+          <div className="w-full h-full relative isolate">
             <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
           </div>
         </DialogContent>
