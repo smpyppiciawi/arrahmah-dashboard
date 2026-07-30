@@ -108,6 +108,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [showCatatanPopup, setShowCatatanPopup] = useState(false);
   const [fotoNames, setFotoNames] = useState({});
+  const [mapMounted, setMapMounted] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -115,6 +116,16 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
       setFilterKelas(editingData?.kelas_id || '');
     }
   }, [isOpen, editingData]);
+
+  // Tunda mount peta hingga animasi buka Dialog selesai agar ukuran container
+  // sudah final (mencegah Leaflet render hanya 1 tile / cramped).
+  useEffect(() => {
+    if (isOpen) {
+      const t = setTimeout(() => setMapMounted(true), 300);
+      return () => clearTimeout(t);
+    }
+    setMapMounted(false);
+  }, [isOpen]);
 
   const set = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
   const filteredSiswa = filterKelas ? siswaList.filter(s => s.kelas_id === filterKelas) : siswaList;
@@ -253,7 +264,11 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
 
             <div className="space-y-2 p-3 bg-violet-50/50 rounded-lg border border-violet-100">
               <Label className="text-xs text-violet-700 uppercase tracking-wide font-semibold">Titik Koordinat Rumah Siswa</Label>
-              <MapPicker value={formData.koordinat_rumah} onChange={(v) => set('koordinat_rumah', v)} />
+              {mapMounted ? (
+                <MapPicker value={formData.koordinat_rumah} onChange={(v) => set('koordinat_rumah', v)} />
+              ) : (
+                <div className="h-[320px] rounded-lg border border-violet-200 bg-violet-50/40 flex items-center justify-center text-xs text-violet-400">Memuat peta…</div>
+              )}
             </div>
 
             <div className="space-y-3 p-3 bg-slate-50 rounded-lg border">

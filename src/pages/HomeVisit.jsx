@@ -275,7 +275,7 @@ export default function HomeVisit() {
         </Card>
       </div>
 
-      {canCreate && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Home Visit" color="indigo" icon={Home} />}
+      {canCreate && !isOpen && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Home Visit" color="indigo" icon={Home} />}
 
       {isOpen && (
         <HomeVisitForm
