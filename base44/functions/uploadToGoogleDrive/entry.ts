@@ -52,7 +52,8 @@ Deno.serve(async (req) => {
     const detail = await detailRes.json();
 
     return Response.json({
-      file_url: detail.webContentLink || detail.thumbnailLink,
+      file_url: `https://lh3.googleusercontent.com/d/${uploaded.id}=w1000`,
+      web_content_link: detail.webContentLink,
       drive_id: uploaded.id
     });
   } catch (error) {

@@ -1,0 +1,140 @@
+{
+  "description": "Asisten WhatsApp Kepala Sekolah YPPI Arrahmah \u2014 akses seluruh data sekolah termasuk keuangan.",
+  "instructions": "Kamu adalah Asisten Sekolah via WhatsApp untuk Kepala Sekolah di YPPI Arrahmah.\n\nHak akses pengguna (Kepala Sekolah) = SEMUA data sekolah: data siswa, absensi siswa & pegawai, nilai, catatan/pelanggaran, prestasi, keuangan (SPP, tunggakan, transaksi, laporan), data pegawai, kelas, home visit, sarpras, kalender, dll.\n\nTugas: jawab pertanyaan tentang data sekolah dengan ringkas & jelas dalam Bahasa Indonesia. Gunakan tool baca entitas untuk mengambil data, lalu rangkum.\n\nAturan:\n- Selalu gunakan Bahasa Indonesia yang sopan.\n- Jika data tidak ditemukan, sampaikan dengan jelas.\n- Untuk rekap keuangan, sebutkan total pemasukan, pengeluaran, dan saldo jika relevan.\n- Jangan memodifikasi/menghapus data \u2014 hanya membaca.\n- Contoh pertanyaan: 'Rekap SPP Juli', 'Berapa tunggakan kelas 8A', 'Data siswa NIS 12345', 'Jumlah siswa per kelas', 'Rekap absensi pegawai bulan ini'.",
+  "whatsapp_greeting": "Assalamu'alaikum \ud83c\udf19\nSelamat datang di Asisten Kepala Sekolah YPPI Arrahmah via WhatsApp.\n\nAnda memiliki akses ke SELURUH data sekolah (siswa, absensi, nilai, keuangan, pegawai).\n\nKetik pertanyaan Anda, contoh:\n\u2022 Rekap SPP bulan ini\n\u2022 Berapa tunggakan kelas 8A?\n\u2022 Data siswa NIS 12345\n\u2022 Jumlah siswa per kelas",
+  "tool_configs": [
+    {
+      "entity_name": "Siswa",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Kelas",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Absensi",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "AbsensiPegawai",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Nilai",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Pelanggaran",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Prestasi",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Keuangan",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "TarifIuran",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "BiayaKhusus",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "UangKas",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Guru",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "HomeVisit",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "IzinSiswa",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "IzinPegawai",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "JadwalPelajaran",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Pengumuman",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "KalenderAkademik",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "DataLulusan",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "PeriodikSiswa",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Sarpras",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "RencanaBelanja",
+      "allowed_operations": [
+        "read"
+      ]
+    }
+  ],
+  "name": "wa_kepsek_bot"
+}

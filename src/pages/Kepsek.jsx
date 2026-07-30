@@ -26,6 +26,7 @@ import KepsekKalender from '@/components/kepsek/KepsekKalender';
 import DrillDownDialog from '@/components/kepsek/DrillDownDialog';
 import PenyebaranSiswaMap from '@/components/kepsek/PenyebaranSiswaMap';
 import GuruContactFab from '@/components/kepsek/GuruContactFab';
+import WaAssistantLink from '@/components/WaAssistantLink';
 
 const DATE_PRESETS = [
   { key: 'today', label: 'Hari Ini' },
@@ -373,6 +374,7 @@ export default function Kepsek() {
             <div className={`p-4 rounded-xl ${t.item}`}><p className={`text-xs ${t.textMuted}`}>Tahun Ajaran Aktif</p><p className={`text-xl font-bold ${t.text}`}>{currentSettings.tahun_ajaran_aktif || '-'}</p></div>
             <div className={`p-4 rounded-xl ${t.item}`}><p className={`text-xs ${t.textMuted}`}>Nama Sekolah</p><p className={`text-xl font-bold ${t.text}`}>{currentSettings.nama_sekolah || 'YPPI ARRAHMAH'}</p></div>
             <Link to="/Pengaturan" onClick={() => setSettingsOpen(false)}><Button className="w-full bg-indigo-500 hover:bg-indigo-600">Buka Pengaturan Lengkap</Button></Link>
+            <WaAssistantLink agentName="wa_kepsek_bot" className="mt-1" />
           </div>
         </DialogContent>
       </Dialog>

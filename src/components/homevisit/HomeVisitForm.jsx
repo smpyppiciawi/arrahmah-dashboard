@@ -40,15 +40,20 @@ function MultiToggleButton({ value = [], options, onChange }) {
 }
 
 function PhotoField({ label, value, onChange, uploading, onUpload, fileName }) {
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [value]);
   return (
     <div>
       <Label className="text-xs mb-1.5 block">{label}</Label>
-      {value ? (
+      {value && !imgError ? (
         <div className="space-y-1.5">
-          <div className="relative inline-block w-full">
-            <img src={value} alt={label} className="h-28 w-full object-cover rounded-lg border" />
-            <button type="button" onClick={() => onChange('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
-          </div>
+          <a href={value} target="_blank" rel="noopener noreferrer" className="relative block w-full group">
+            <img src={value} alt={label} className="h-28 w-full object-cover rounded-lg border" onError={() => setImgError(true)} />
+            <span className="absolute inset-0 rounded-lg flex items-center justify-center bg-black/0 group-hover:bg-black/30 transition pointer-events-none">
+              <span className="opacity-0 group-hover:opacity-100 text-white text-[11px] font-medium bg-black/60 px-2 py-1 rounded">Buka full</span>
+            </span>
+            <button type="button" onClick={(e) => { e.preventDefault(); onChange(''); }} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow"><X className="w-3 h-3" /></button>
+          </a>
           <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 bg-emerald-50 rounded px-2 py-1">
             <CheckCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{fileName || 'Foto terunggah'}</span>
           </div>
@@ -62,6 +67,17 @@ function PhotoField({ label, value, onChange, uploading, onUpload, fileName }) {
               <input type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
             </label>
           </div>
+        </div>
+      ) : value && imgError ? (
+        <div className="space-y-1.5">
+          <a href={value} target="_blank" rel="noopener noreferrer" className="block h-28 w-full rounded-lg border border-amber-200 bg-amber-50 flex flex-col items-center justify-center gap-1 text-amber-600">
+            <ImageIcon className="w-6 h-6" />
+            <span className="text-[11px] font-medium">Pratinjau gagal · Buka file</span>
+          </a>
+          <div className="flex items-center gap-1.5 text-[11px] text-amber-600 bg-amber-50 rounded px-2 py-1">
+            <CheckCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{fileName || 'Foto terunggah'}</span>
+          </div>
+          <button type="button" onClick={() => onChange('')} className="w-full text-xs text-red-600 border border-red-200 bg-red-50 rounded-lg py-1.5 hover:bg-red-100">Hapus Foto</button>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-1.5">

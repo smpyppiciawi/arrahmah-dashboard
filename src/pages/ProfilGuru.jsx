@@ -14,6 +14,7 @@ import {
   Building, Monitor, Smartphone, BookOpen, Home, LayoutDashboard,
   ChevronRight, Check, Plus, Trash2, School, Calendar, Menu
 } from 'lucide-react';
+import WaAssistantLink from '@/components/WaAssistantLink';
 
 const MAPEL_LIST = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
@@ -175,6 +176,7 @@ export default function ProfilGuru() {
                 {guruData.status || 'Aktif'}
               </Badge>
             </div>
+            <WaAssistantLink agentName="wa_guru_bot" />
           </div>
 
           {/* Main Content */}
@@ -400,6 +402,8 @@ export default function ProfilGuru() {
                   {guruData.status || 'Aktif'}
                 </Badge>
               </div>
+
+              <WaAssistantLink agentName="wa_guru_bot" />
 
               {/* Nav to detail */}
               <div className="flex items-center justify-between">
