@@ -262,7 +262,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
               {formData.orang_tua_merokok === 'Ya' && <div><Label className="text-xs mb-1.5 block">Siapa yang Merokok?</Label><ToggleButton value={formData.perokok} options={["Ayah","Ibu","Keduanya"]} onChange={(v) => set('perokok', v)} /></div>}
             </div>
 
-            <div className="space-y-2 p-3 bg-violet-50/50 rounded-lg border border-violet-100">
+            <div className="space-y-2 p-3 bg-violet-50/50 rounded-lg border border-violet-100 isolate">
               <Label className="text-xs text-violet-700 uppercase tracking-wide font-semibold">Titik Koordinat Rumah Siswa</Label>
               {mapMounted ? (
                 <MapPicker value={formData.koordinat_rumah} onChange={(v) => set('koordinat_rumah', v)} />

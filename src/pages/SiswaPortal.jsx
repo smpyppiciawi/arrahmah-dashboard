@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -35,6 +35,8 @@ export default function SiswaPortal() {
   const [editingProfil, setEditingProfil] = useState(false);
   const [showProfil, setShowProfil] = useState(false);
   const [profilForm, setProfilForm] = useState(null);
+  const [phoneForm, setPhoneForm] = useState({ no_telp_ortu: '', no_ayah: '', no_ibu: '', no_wali: '' });
+  const [savingPhone, setSavingPhone] = useState(false);
 
   const { data: absensiList = [] } = useQuery({
     queryKey: ['siswa-absensi', siswa?.id],
@@ -112,6 +114,35 @@ export default function SiswaPortal() {
 
   const currentSiswa = siswaData || siswa;
 
+  // Selalu sinkron form nomor telepon dengan data Siswa terbaru
+  useEffect(() => {
+    if (currentSiswa) {
+      setPhoneForm({
+        no_telp_ortu: currentSiswa.no_telp_ortu || '',
+        no_ayah: currentSiswa.kontak_list?.find(k => k.hubungan === 'Ayah')?.no_telp || '',
+        no_ibu: currentSiswa.kontak_list?.find(k => k.hubungan === 'Ibu')?.no_telp || '',
+        no_wali: currentSiswa.kontak_list?.find(k => k.hubungan === 'Wali')?.no_telp || '',
+      });
+    }
+  }, [currentSiswa?.id, currentSiswa?.no_telp_ortu, currentSiswa?.kontak_list]);
+
+  // Simpan nomor telepon -> update langsung ke Data Siswa (no_telp_ortu + kontak_list)
+  const handleSavePhone = () => {
+    if (!currentSiswa?.id) return;
+    const kontak_list = [];
+    if (phoneForm.no_ayah) kontak_list.push({ no_telp: phoneForm.no_ayah, hubungan: 'Ayah' });
+    if (phoneForm.no_ibu) kontak_list.push({ no_telp: phoneForm.no_ibu, hubungan: 'Ibu' });
+    if (phoneForm.no_wali) kontak_list.push({ no_telp: phoneForm.no_wali, hubungan: 'Wali' });
+    setSavingPhone(true);
+    base44.entities.Siswa.update(currentSiswa.id, { no_telp_ortu: phoneForm.no_telp_ortu, kontak_list })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['siswa-profil'] });
+        toast({ title: '✅ Nomor telepon tersimpan & terintegrasi ke Data Siswa' });
+      })
+      .catch(() => toast({ title: 'Gagal menyimpan nomor telepon', variant: 'destructive' }))
+      .finally(() => setSavingPhone(false));
+  };
+
   const handleEditProfil = () => {
     setProfilForm({
       alamat: currentSiswa?.alamat || '',
@@ -119,26 +150,18 @@ export default function SiswaPortal() {
       nama_ayah_kandung: currentSiswa?.nama_ayah_kandung || '',
       nama_ibu_kandung: currentSiswa?.nama_ibu_kandung || '',
       nama_wali: currentSiswa?.nama_wali || '',
-      no_ayah: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ayah')?.no_telp || '',
-      no_ibu: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ibu')?.no_telp || '',
-      no_wali: currentSiswa?.kontak_list?.find(k => k.hubungan === 'Wali')?.no_telp || '',
     });
     setEditingProfil(true);
   };
 
   const handleSaveProfil = () => {
     if (!currentSiswa?.id) return;
-    const kontak_list = [];
-    if (profilForm.no_ayah) kontak_list.push({ no_telp: profilForm.no_ayah, hubungan: 'Ayah' });
-    if (profilForm.no_ibu) kontak_list.push({ no_telp: profilForm.no_ibu, hubungan: 'Ibu' });
-    if (profilForm.no_wali) kontak_list.push({ no_telp: profilForm.no_wali, hubungan: 'Wali' });
     updateSiswaMutation.mutate({ id: currentSiswa.id, data: {
       alamat: profilForm.alamat,
       koordinat: profilForm.koordinat,
       nama_ayah_kandung: profilForm.nama_ayah_kandung,
       nama_ibu_kandung: profilForm.nama_ibu_kandung,
       nama_wali: profilForm.nama_wali,
-      kontak_list,
     }});
   };
 
@@ -245,6 +268,35 @@ export default function SiswaPortal() {
             </div>
           </div>
 
+          {/* Kontak Telepon Card — selalu bisa diedit, terintegrasi ke Data Siswa */}
+          <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-slate-100">
+              <span className="font-bold text-slate-800 flex items-center gap-2"><Phone className="w-4 h-4 text-indigo-500" /> Kontak Telepon</span>
+              <p className="text-[11px] text-slate-400 mt-0.5">Nomor ini terintegrasi dengan Data Siswa. Perubahan langsung tersimpan ke data siswa.</p>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div>
+                <label className="text-xs text-slate-500 font-medium">📞 Nomor Telepon Utama (Orang Tua/Wali)</label>
+                <input className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={phoneForm.no_telp_ortu || ''} onChange={(e) => setPhoneForm({...phoneForm, no_telp_ortu: e.target.value})} placeholder="Contoh: 0812xxxxxxx" inputMode="tel" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 font-medium">👨 No. Telp Ayah</label>
+                <input className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={phoneForm.no_ayah || ''} onChange={(e) => setPhoneForm({...phoneForm, no_ayah: e.target.value})} placeholder="0812xxxxxxx" inputMode="tel" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 font-medium">👩 No. Telp Ibu</label>
+                <input className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={phoneForm.no_ibu || ''} onChange={(e) => setPhoneForm({...phoneForm, no_ibu: e.target.value})} placeholder="0812xxxxxxx" inputMode="tel" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 font-medium">🧑 No. Telp Wali</label>
+                <input className="w-full mt-1 px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={phoneForm.no_wali || ''} onChange={(e) => setPhoneForm({...phoneForm, no_wali: e.target.value})} placeholder="0812xxxxxxx" inputMode="tel" />
+              </div>
+              <button onClick={handleSavePhone} disabled={savingPhone} className="w-full py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-60">
+                <Save className="w-4 h-4" /> {savingPhone ? 'Menyimpan...' : 'Simpan Nomor Telepon'}
+              </button>
+            </div>
+          </div>
+
           {/* Data Keluarga Card */}
           <div className="bg-white rounded-3xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -261,17 +313,14 @@ export default function SiswaPortal() {
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-slate-600">👨 Ayah</p>
                     <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_ayah_kandung || ''} onChange={(e) => setProfilForm({...profilForm, nama_ayah_kandung: e.target.value})} placeholder="Nama Ayah" />
-                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_ayah || ''} onChange={(e) => setProfilForm({...profilForm, no_ayah: e.target.value})} placeholder="No. Telp Ayah" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-slate-600">👩 Ibu</p>
                     <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_ibu_kandung || ''} onChange={(e) => setProfilForm({...profilForm, nama_ibu_kandung: e.target.value})} placeholder="Nama Ibu" />
-                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_ibu || ''} onChange={(e) => setProfilForm({...profilForm, no_ibu: e.target.value})} placeholder="No. Telp Ibu" />
                   </div>
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-slate-600">🧑 Wali (Jika Ada)</p>
                     <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.nama_wali || ''} onChange={(e) => setProfilForm({...profilForm, nama_wali: e.target.value})} placeholder="Nama Wali" />
-                    <input className="w-full px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300" value={profilForm?.no_wali || ''} onChange={(e) => setProfilForm({...profilForm, no_wali: e.target.value})} placeholder="No. Telp Wali" />
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => setEditingProfil(false)} className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-600 text-sm font-medium">Batal</button>
@@ -281,11 +330,8 @@ export default function SiswaPortal() {
               ) : (
                 <>
                   <InfoItem icon="👨" label="Nama Ayah" value={currentSiswa?.nama_ayah_kandung} />
-                  <InfoItem icon="📱" label="No. Telp Ayah" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ayah')?.no_telp} />
                   <InfoItem icon="👩" label="Nama Ibu" value={currentSiswa?.nama_ibu_kandung} />
-                  <InfoItem icon="📱" label="No. Telp Ibu" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Ibu')?.no_telp} />
                   <InfoItem icon="🧑" label="Nama Wali" value={currentSiswa?.nama_wali} />
-                  <InfoItem icon="📱" label="No. Telp Wali" value={currentSiswa?.kontak_list?.find(k => k.hubungan === 'Wali')?.no_telp} />
                 </>
               )}
             </div>
