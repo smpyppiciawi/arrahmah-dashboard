@@ -16,6 +16,8 @@ const STATUS_STYLE = {
   Belum: 'bg-red-100 text-red-700 border-red-200',
 };
 
+const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
+
 export default function TunggakanTab({ kelasWali, siswaKelas }) {
   const { activeAcademicYear } = useActiveAcademicYear();
   const [search, setSearch] = useState('');
@@ -42,11 +44,12 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
   const kelasTingkat = kelasWali?.tingkat || (kelasWali?.nama_kelas?.charAt(0) || '');
 
   const activeTarif = useMemo(() => {
-    return tarifList.filter(t =>
-      t.status === 'Aktif' &&
-      (!t.tahun_ajaran || t.tahun_ajaran === activeAcademicYear) &&
-      (t.tingkat === 'Semua' || t.tingkat === kelasTingkat)
-    );
+    return tarifList.filter(t => {
+      if (t.status !== 'Aktif') return false;
+      if (t.tahun_ajaran && t.tahun_ajaran !== activeAcademicYear) return false;
+      const tk = Array.isArray(t.tingkat) ? t.tingkat : (t.tingkat ? [t.tingkat] : ['Semua']);
+      return tk.includes('Semua') || tk.includes(kelasTingkat);
+    });
   }, [tarifList, activeAcademicYear, kelasTingkat]);
 
   const siswaIds = useMemo(() => new Set(siswaKelas.map(s => s.id)), [siswaKelas]);
@@ -56,6 +59,17 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
   }, [keuanganList, siswaIds, activeAcademicYear]);
 
   const getStatus = (siswa, tarif) => {
+    if (PER_SISWA_JENIS.includes(tarif.jenis_iuran)) {
+      const khusus = getKhusus(siswa, tarif);
+      if (!khusus) return null;
+      if (khusus.is_gratis) return { status: 'Lunas', detail: 'Gratis' };
+      const tagihan = khusus.nominal_khusus || tarif.nominal || 0;
+      const sb = khusus.sudah_bayar || 0;
+      if (tagihan <= 0) return { status: 'Lunas', detail: 'Tanpa tagihan' };
+      if (sb >= tagihan) return { status: 'Lunas', detail: 'Lunas' };
+      if (sb > 0) return { status: 'Cicil', detail: 'Cicilan' };
+      return { status: 'Belum', detail: 'Belum Bayar' };
+    }
     const isSpp = (tarif.nama || '').toLowerCase().includes('spp') || tarif.jenis_iuran === 'SPP' || tarif.periode === 'Bulanan';
     const trans = siswaKeuangan.filter(k => k.siswa_id === siswa.id && (
       k.tipe_transaksi === tarif.nama ||
@@ -85,9 +99,10 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     return siswaKelas.map(s => {
       let belum = 0, cicil = 0, lunas = 0;
       activeTarif.forEach(t => {
-        const st = getStatus(s, t).status;
-        if (st === 'Belum') belum++;
-        else if (st === 'Cicil') cicil++;
+        const st = getStatus(s, t);
+        if (!st) return;
+        if (st.status === 'Belum') belum++;
+        else if (st.status === 'Cicil') cicil++;
         else lunas++;
       });
       return { siswa: s, belum, cicil, lunas };
@@ -169,6 +184,7 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                 <p className="text-center py-8 text-slate-400 text-sm">Tidak ada iuran aktif untuk tahun pelajaran ini.</p>
               ) : activeTarif.map(tarif => {
                 const st = getStatus(detailSiswa, tarif);
+                if (!st) return null;
                 const khusus = getKhusus(detailSiswa, tarif);
                 return (
                   <div key={tarif.id} className="flex items-center justify-between px-4 py-3 rounded-lg border bg-white">

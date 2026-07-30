@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
@@ -68,7 +69,7 @@ export default function KelolaDataKeuangan() {
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
+  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [pilihSiswaOpen, setPilihSiswaOpen] = useState(false);
   const [pilihSiswaTarif, setPilihSiswaTarif] = useState(null);
@@ -158,7 +159,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: 'Semua', periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
+    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -177,7 +178,7 @@ export default function KelolaDataKeuangan() {
     if (type === 'kategori') setKategoriForm(data);
     else if (type === 'tipe') setTipeForm(data);
     else if (type === 'sumber') setSumberForm(data);
-    else if (type === 'tarif') setTarifForm(data);
+    else if (type === 'tarif') setTarifForm({ ...data, tingkat: Array.isArray(data.tingkat) ? data.tingkat : (data.tingkat ? [data.tingkat] : ['Semua']) });
     else if (type === 'biaya-khusus') setBiayaKhususForm(data);
     setIsOpen(true);
   };
@@ -260,7 +261,10 @@ export default function KelolaDataKeuangan() {
     { key: 'nama', label: 'Nama Iuran' },
     { key: 'jenis_iuran', label: 'Jenis', render: (row) => <Badge className={row.jenis_iuran === 'SPP' ? 'bg-teal-100 text-teal-700' : row.jenis_iuran === 'Ujian' ? 'bg-blue-100 text-blue-700' : row.jenis_iuran === 'Mutasi' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'}>{row.jenis_iuran || 'SPP'}</Badge> },
     { key: 'nominal', label: 'Nominal', render: (row) => <span className="font-medium text-teal-600">{formatRupiah(row.nominal)}</span> },
-    { key: 'tingkat', label: 'Tingkat', render: (row) => <Badge className={row.tingkat === 'Semua' ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}>{row.tingkat || 'Semua'}</Badge> },
+    { key: 'tingkat', label: 'Tingkat', render: (row) => {
+      const arr = Array.isArray(row.tingkat) ? row.tingkat : (row.tingkat ? [row.tingkat] : ['Semua']);
+      return <Badge className={arr.includes('Semua') ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}>{arr.join(', ')}</Badge>;
+    } },
     { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
     { key: 'tahun_ajaran', label: 'Tahun Ajaran', render: (row) => row.tahun_ajaran || '-' },
     { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{row.status}</Badge> },
@@ -465,15 +469,34 @@ export default function KelolaDataKeuangan() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Tingkat Kelas</Label>
-                      <Select value={tarifForm.tingkat} onValueChange={(v) => setTarifForm({...tarifForm, tingkat: v})}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Semua">Semua Tingkat</SelectItem>
-                          <SelectItem value="7">Kelas 7</SelectItem>
-                          <SelectItem value="8">Kelas 8</SelectItem>
-                          <SelectItem value="9">Kelas 9</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex flex-wrap gap-3 mt-1.5">
+                        {['Semua','7','8','9'].map(opt => {
+                          const arr = Array.isArray(tarifForm.tingkat) ? tarifForm.tingkat : (tarifForm.tingkat ? [tarifForm.tingkat] : ['Semua']);
+                          const checked = arr.includes(opt);
+                          return (
+                            <label key={opt} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  setTarifForm(prev => {
+                                    let cur = Array.isArray(prev.tingkat) ? [...prev.tingkat] : (prev.tingkat ? [prev.tingkat] : ['Semua']);
+                                    if (opt === 'Semua') {
+                                      cur = v ? ['Semua'] : [];
+                                    } else {
+                                      cur = cur.filter(t => t !== 'Semua');
+                                      if (v) cur.push(opt);
+                                      else cur = cur.filter(t => t !== opt);
+                                      if (cur.length === 0) cur = ['Semua'];
+                                    }
+                                    return { ...prev, tingkat: cur };
+                                  });
+                                }}
+                              />
+                              <span>{opt === 'Semua' ? 'Semua Tingkat' : `Kelas ${opt}`}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                     <div>
                       <Label>Periode</Label>

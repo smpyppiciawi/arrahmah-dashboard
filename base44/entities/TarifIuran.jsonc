@@ -24,15 +24,20 @@
       "description": "Nominal iuran"
     },
     "tingkat": {
-      "type": "string",
-      "enum": [
-        "7",
-        "8",
-        "9",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "7",
+          "8",
+          "9",
+          "Semua"
+        ]
+      },
+      "default": [
         "Semua"
       ],
-      "default": "Semua",
-      "description": "Tingkat kelas yang berlaku"
+      "description": "Tingkat kelas yang berlaku (bisa lebih dari 1)"
     },
     "periode": {
       "type": "string",

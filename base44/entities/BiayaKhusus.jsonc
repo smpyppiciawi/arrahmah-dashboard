@@ -23,6 +23,11 @@
       "type": "number",
       "description": "Nominal khusus untuk siswa ini (0 jika gratis)"
     },
+    "sudah_bayar": {
+      "type": "number",
+      "default": 0,
+      "description": "Nominal yang sudah dibayarkan (untuk iuran Mutasi/PPDB)"
+    },
     "is_gratis": {
       "type": "boolean",
       "default": false,

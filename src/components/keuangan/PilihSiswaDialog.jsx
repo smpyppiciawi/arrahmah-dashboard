@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Check, Loader2 } from 'lucide-react';
+import RupiahInput from '@/components/ui/RupiahInput';
+import { Users, Check, Loader2, Lock } from 'lucide-react';
 
 export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, kelasList, activeAcademicYear }) {
   const queryClient = useQueryClient();
   const [selectedKelas, setSelectedKelas] = useState('all');
   const [checkedIds, setCheckedIds] = useState(new Set());
+  const [sudahBayar, setSudahBayar] = useState({});
   const [saving, setSaving] = useState(false);
 
   const { data: existingBiayaKhusus = [], isLoading } = useQuery({
@@ -23,6 +25,9 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
   useEffect(() => {
     if (isOpen && existingBiayaKhusus.length >= 0) {
       setCheckedIds(new Set(existingBiayaKhusus.map(b => b.siswa_id)));
+      const sbMap = {};
+      existingBiayaKhusus.forEach(b => { sbMap[b.siswa_id] = String(b.sudah_bayar || 0); });
+      setSudahBayar(sbMap);
       setSelectedKelas('all');
     }
   }, [isOpen, existingBiayaKhusus]);
@@ -37,7 +42,10 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
     setCheckedIds(prev => {
       const next = new Set(prev);
       if (next.has(siswaId)) next.delete(siswaId);
-      else next.add(siswaId);
+      else {
+        next.add(siswaId);
+        if (sudahBayar[siswaId] === undefined) setSudahBayar(s => ({ ...s, [siswaId]: '' }));
+      }
       return next;
     });
   };
@@ -50,7 +58,10 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
       if (allChecked) {
         allFilteredIds.forEach(id => next.delete(id));
       } else {
-        allFilteredIds.forEach(id => next.add(id));
+        allFilteredIds.forEach(id => {
+          next.add(id);
+          if (sudahBayar[id] === undefined) setSudahBayar(s => ({ ...s, [id]: '' }));
+        });
       }
       return next;
     });
@@ -62,6 +73,7 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
       const existingIds = new Set(existingBiayaKhusus.map(b => b.siswa_id));
       const toAdd = [...checkedIds].filter(id => !existingIds.has(id));
       const toRemove = existingBiayaKhusus.filter(b => !checkedIds.has(b.siswa_id));
+      const existingKept = existingBiayaKhusus.filter(b => checkedIds.has(b.siswa_id));
 
       const addRecords = toAdd.map(siswaId => {
         const siswa = siswaList.find(s => s.id === siswaId);
@@ -72,6 +84,7 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
           tarif_iuran_id: tarif.id,
           nama_iuran: tarif.nama,
           nominal_khusus: tarif.nominal,
+          sudah_bayar: Number(sudahBayar[siswaId] || 0),
           kategori: 'Lainnya',
           tahun_ajaran: activeAcademicYear || '',
         };
@@ -79,6 +92,12 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
 
       if (addRecords.length > 0) {
         await base44.entities.BiayaKhusus.bulkCreate(addRecords);
+      }
+      for (const biaya of existingKept) {
+        const newSb = Number(sudahBayar[biaya.siswa_id] ?? biaya.sudah_bayar ?? 0);
+        if (newSb !== (biaya.sudah_bayar || 0)) {
+          await base44.entities.BiayaKhusus.update(biaya.id, { sudah_bayar: newSb });
+        }
       }
       for (const biaya of toRemove) {
         await base44.entities.BiayaKhusus.delete(biaya.id);
@@ -127,21 +146,45 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
             </button>
           </div>
 
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+            <Lock className="w-3 h-3" />
+            <span>Isian "Sudah Bayar" terkunci hingga siswa diceklis.</span>
+          </div>
+
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
             </div>
           ) : (
-            <div className="max-h-[300px] overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
-              {filteredSiswa.map(siswa => (
-                <label key={siswa.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                  <Checkbox checked={checkedIds.has(siswa.id)} onCheckedChange={() => toggleSiswa(siswa.id)} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-700 truncate">{siswa.nama}</p>
-                    <p className="text-xs text-slate-400">{siswa.nis} · {siswa.nama_kelas}</p>
+            <div className="max-h-[340px] overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
+              {filteredSiswa.map(siswa => {
+                const checked = checkedIds.has(siswa.id);
+                return (
+                  <div key={siswa.id} className="rounded-lg hover:bg-slate-50">
+                    <label className="flex items-center gap-3 p-2 cursor-pointer">
+                      <Checkbox checked={checked} onCheckedChange={() => toggleSiswa(siswa.id)} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">{siswa.nama}</p>
+                        <p className="text-xs text-slate-400">{siswa.nis} · {siswa.nama_kelas}</p>
+                      </div>
+                    </label>
+                    {checked && (
+                      <div className="px-2 pb-2 pl-9">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500 whitespace-nowrap">Sudah Bayar:</span>
+                          <div className="flex-1">
+                            <RupiahInput
+                              value={sudahBayar[siswa.id] ?? ''}
+                              onChange={(val) => setSudahBayar(s => ({ ...s, [siswa.id]: val }))}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </label>
-              ))}
+                );
+              })}
               {filteredSiswa.length === 0 && (
                 <p className="text-center text-slate-400 text-sm py-4">Tidak ada siswa</p>
               )}
