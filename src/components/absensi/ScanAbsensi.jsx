@@ -35,6 +35,30 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     queryFn: () => base44.entities[entityName].filter({ tanggal: today }),
   });
 
+  // Jadwal Absensi dinamis (Jam Masuk + toleransi) untuk menentukan terlambat
+  const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+  const todayDay = HARI_ID[new Date().getDay()];
+
+  const { data: jadwalMasuk = [] } = useQuery({
+    queryKey: ['jadwal-absensi-masuk'],
+    queryFn: () => base44.entities.JadwalAbsensi.filter({ jenis: 'Masuk', aktif: true }),
+  });
+
+  const addMinutesToHHMM = (hhmm, mins) => {
+    const [h, m] = hhmm.split(':').map(Number);
+    const total = h * 60 + m + (Number(mins) || 0);
+    return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+  };
+
+  const getLateThreshold = () => {
+    const match = (jadwalMasuk || []).find(j =>
+      (j.person_type === personType || j.person_type === 'Semua') &&
+      Array.isArray(j.hari) && j.hari.includes(todayDay)
+    );
+    if (match && match.jam) return addMinutesToHHMM(match.jam, match.toleransi_menit);
+    return personType === 'Pegawai' ? '07:30' : '07:00';
+  };
+
   useEffect(() => {
     if (!popup) return;
     const t = setTimeout(() => setPopup(null), 5000);
@@ -106,7 +130,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
       }
 
       const now = format(new Date(), 'HH:mm');
-      const lateThreshold = personType === 'Pegawai' ? '07:30' : '07:00';
+      const lateThreshold = getLateThreshold();
       const isLate = now > lateThreshold;
       const status = isLate ? 'Terlambat' : 'Hadir';
 

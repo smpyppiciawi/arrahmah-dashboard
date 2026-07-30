@@ -1,0 +1,69 @@
+{
+  "name": "JadwalAbsensi",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "Nama / penanda jadwal (cth: Jam Masuk Pagi, Jam Pulang Jumat)"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Masuk",
+        "Pulang",
+        "Istirahat Mulai",
+        "Istirahat Selesai",
+        "Lainnya"
+      ],
+      "default": "Masuk",
+      "description": "Jenis penanda jadwal absensi"
+    },
+    "jam": {
+      "type": "string",
+      "description": "Jam jadwal (format HH:mm)"
+    },
+    "hari": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "Senin",
+          "Selasa",
+          "Rabu",
+          "Kamis",
+          "Jumat",
+          "Sabtu"
+        ]
+      },
+      "description": "Hari berlaku jadwal"
+    },
+    "toleransi_menit": {
+      "type": "number",
+      "default": 0,
+      "description": "Toleransi terlambat (menit) \u2014 khusus jenis Masuk"
+    },
+    "person_type": {
+      "type": "string",
+      "enum": [
+        "Semua",
+        "Siswa",
+        "Pegawai"
+      ],
+      "default": "Semua",
+      "description": "Berlaku untuk Siswa, Pegawai, atau Semua"
+    },
+    "keterangan": {
+      "type": "string"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "label",
+    "jenis",
+    "jam",
+    "hari"
+  ]
+}

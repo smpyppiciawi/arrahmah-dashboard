@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import ScanAbsensi from '@/components/absensi/ScanAbsensi';
-import { ScanLine, Users, User } from 'lucide-react';
+import { ScanLine, Users, User, Clock } from 'lucide-react';
+import JadwalAbsensiTab from '@/components/absensi/JadwalAbsensiTab';
 
 export default function ScanAbsensiPortal() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const allowed = ['admin', 'tu', 'operator'].includes(userRole);
   const [personType, setPersonType] = useState('Siswa');
+  const [view, setView] = useState('scan');
 
   if (!allowed) {
     return (
@@ -32,21 +34,41 @@ export default function ScanAbsensiPortal() {
         </div>
 
         <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-full sm:w-fit">
-          {[{ id: 'Siswa', icon: Users }, { id: 'Pegawai', icon: User }].map(t => {
-            const Icon = t.icon;
+          {[{ id: 'scan', icon: ScanLine, label: 'Scan' }, { id: 'jadwal', icon: Clock, label: 'Jadwal' }].map(v => {
+            const Icon = v.icon;
             return (
               <button
-                key={t.id}
-                onClick={() => setPersonType(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${personType === t.id ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                key={v.id}
+                onClick={() => setView(v.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${view === v.id ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                <Icon className="w-4 h-4" /> {t.id}
+                <Icon className="w-4 h-4" /> {v.label}
               </button>
             );
           })}
         </div>
 
-        <ScanAbsensi personType={personType} />
+        {view === 'jadwal' ? (
+          <JadwalAbsensiTab />
+        ) : (
+          <>
+            <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-full sm:w-fit">
+              {[{ id: 'Siswa', icon: Users }, { id: 'Pegawai', icon: User }].map(t => {
+                const Icon = t.icon;
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setPersonType(t.id)}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${personType === t.id ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Icon className="w-4 h-4" /> {t.id}
+                  </button>
+                );
+              })}
+            </div>
+            <ScanAbsensi personType={personType} />
+          </>
+        )}
       </div>
     </div>
   );
