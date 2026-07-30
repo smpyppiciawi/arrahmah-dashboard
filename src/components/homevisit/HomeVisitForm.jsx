@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, X, Camera } from "lucide-react";
+import { Loader2, X, Camera, Image as ImageIcon, CheckCircle2 } from "lucide-react";
 import RupiahInput from "@/components/ui/RupiahInput";
 import MapPicker from "@/components/ui/MapPicker";
 
@@ -39,21 +39,43 @@ function MultiToggleButton({ value = [], options, onChange }) {
   );
 }
 
-function PhotoField({ label, value, onChange, uploading, onUpload }) {
+function PhotoField({ label, value, onChange, uploading, onUpload, fileName }) {
   return (
     <div>
       <Label className="text-xs mb-1.5 block">{label}</Label>
       {value ? (
-        <div className="relative inline-block w-full">
-          <img src={value} alt={label} className="h-28 w-full object-cover rounded-lg border" />
-          <button type="button" onClick={() => onChange('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
+        <div className="space-y-1.5">
+          <div className="relative inline-block w-full">
+            <img src={value} alt={label} className="h-28 w-full object-cover rounded-lg border" />
+            <button type="button" onClick={() => onChange('')} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"><X className="w-3 h-3" /></button>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 bg-emerald-50 rounded px-2 py-1">
+            <CheckCircle2 className="w-3 h-3 shrink-0" /> <span className="truncate">{fileName || 'Foto terunggah'}</span>
+          </div>
+          <div className="flex gap-1.5">
+            <label className="flex-1 flex items-center justify-center gap-1.5 cursor-pointer text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-lg py-1.5 hover:bg-blue-100 transition">
+              <Camera className="w-3.5 h-3.5" /> Kamera
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
+            </label>
+            <label className="flex-1 flex items-center justify-center gap-1.5 cursor-pointer text-xs bg-slate-50 text-slate-600 border border-slate-200 rounded-lg py-1.5 hover:bg-slate-100 transition">
+              <ImageIcon className="w-3.5 h-3.5" /> Galeri
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
+            </label>
+          </div>
         </div>
       ) : (
-        <label className="flex items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-slate-300 rounded-lg hover:border-blue-400 transition h-28">
-          <Camera className="w-5 h-5 text-slate-400" />
-          <span className="text-xs text-slate-500">{uploading ? 'Mengunggah...' : 'Ambil/Pilih Foto'}</span>
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
-        </label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <label className="flex flex-col items-center justify-center gap-1 cursor-pointer border-2 border-dashed border-blue-300 rounded-lg hover:bg-blue-50 transition h-28 bg-blue-50/40">
+            <Camera className="w-5 h-5 text-blue-500" />
+            <span className="text-xs text-blue-600 font-medium">{uploading ? 'Mengunggah...' : 'Ambil Foto'}</span>
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
+          </label>
+          <label className="flex flex-col items-center justify-center gap-1 cursor-pointer border-2 border-dashed border-slate-300 rounded-lg hover:bg-slate-50 transition h-28">
+            <ImageIcon className="w-5 h-5 text-slate-400" />
+            <span className="text-xs text-slate-500 font-medium">{uploading ? 'Mengunggah...' : 'Dari Galeri'}</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => onUpload(e.target.files?.[0])} disabled={uploading} />
+          </label>
+        </div>
       )}
     </div>
   );
@@ -85,6 +107,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   const [filterKelas, setFilterKelas] = useState('');
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [showCatatanPopup, setShowCatatanPopup] = useState(false);
+  const [fotoNames, setFotoNames] = useState({});
 
   useEffect(() => {
     if (isOpen) {
@@ -112,6 +135,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
       } catch {
         set(field, result.file_url);
       }
+      setFotoNames(prev => ({ ...prev, [field]: file.name }));
     } catch { toast({ title: "Gagal upload foto", variant: "destructive" }); }
     finally { setUploadingFoto(false); }
   };
@@ -145,8 +169,15 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
       kendaraan_roda2_unit: formData.kendaraan_roda2_unit ? Number(formData.kendaraan_roda2_unit) : undefined,
       kendaraan_roda4_unit: formData.kendaraan_roda4_unit ? Number(formData.kendaraan_roda4_unit) : undefined,
     };
-    if (editingData) updateMutation.mutate({ id: editingData.id, data: payload });
-    else createMutation.mutate(payload);
+    if (editingData) {
+      updateMutation.mutate({ id: editingData.id, data: payload });
+    } else if (!navigator.onLine && addPending) {
+      addPending(payload);
+      toast({ title: "Data tersimpan offline", description: "Akan tersinkron saat ada koneksi" });
+      onClose();
+    } else {
+      createMutation.mutate(payload);
+    }
     setShowCatatanPopup(false);
   };
 
@@ -231,7 +262,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
               {formData.punya_hp_pribadi === 'Ya' && (
                 <div className="space-y-3 p-3 bg-blue-50 rounded-lg">
                   <div><Label className="text-xs mb-1.5 block">Seberapa sering Bapak/Ibu memeriksanya?</Label><ToggleButton value={formData.frekuensi_cek_hp} options={["Sangat Sering","Jarang","Tidak Pernah"]} onChange={(v) => set('frekuensi_cek_hp', v)} /></div>
-                  <PhotoField label="Foto Merk/Tipe HP" value={formData.foto_hp_url} onChange={(v) => set('foto_hp_url', v)} uploading={uploadingFoto} onUpload={(file) => handleFotoUpload(file, 'foto_hp_url')} />
+                  <PhotoField label="Foto Merk/Tipe HP" value={formData.foto_hp_url} onChange={(v) => set('foto_hp_url', v)} uploading={uploadingFoto} onUpload={(file) => handleFotoUpload(file, 'foto_hp_url')} fileName={fotoNames.foto_hp_url} />
                 </div>
               )}
               <div><Label className="text-xs mb-1.5 block">Di rumah terdapat Wifi?</Label><ToggleButton value={formData.ada_wifi} options={["Ya","Tidak"]} onChange={(v) => set('ada_wifi', v)} /></div>
@@ -257,7 +288,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
               <Label className="text-xs text-slate-700 uppercase tracking-wide font-semibold">Foto Dokumentasi</Label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {photoFields.map(item => (
-                  <PhotoField key={item.field} label={item.label} value={formData[item.field]} onChange={(v) => set(item.field, v)} uploading={uploadingFoto} onUpload={(file) => handleFotoUpload(file, item.field)} />
+                  <PhotoField key={item.field} label={item.label} value={formData[item.field]} onChange={(v) => set(item.field, v)} uploading={uploadingFoto} onUpload={(file) => handleFotoUpload(file, item.field)} fileName={fotoNames[item.field]} />
                 ))}
               </div>
             </div>

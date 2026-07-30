@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { Badge } from "@/components/ui/badge";
 import LiveClock from '@/components/ui/LiveClock';
@@ -70,6 +71,7 @@ const ROLE_MENU = {
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
@@ -84,6 +86,7 @@ const ROLE_MENU = {
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
@@ -108,6 +111,7 @@ const ROLE_MENU = {
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
     { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
@@ -116,6 +120,7 @@ const ROLE_MENU = {
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
     ],
     groups: []
   },
@@ -187,12 +192,31 @@ export default function Layout({ children, currentPageName }) {
 
   const userRole = currentUser?.role || 'guru';
   const baseMenu = ROLE_MENU[userRole] || ROLE_MENU['tu'];
-  const menuConfig = {
-    ...baseMenu,
-    topItems: baseMenu.topItems.some(i => i.page === 'ProfilGuru')
-      ? baseMenu.topItems
-      : [...baseMenu.topItems, { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' }],
-  };
+
+  // Untuk Guru: tampilkan menu Home Visit hanya jika menjadi Wali Kelas dengan siswa aktif
+  const isGuru = userRole === 'guru';
+  const { data: kelasForMenu = [] } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+    enabled: isGuru,
+  });
+  const { data: siswaForMenu = [] } = useQuery({
+    queryKey: ['siswa-aktif'],
+    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
+    enabled: isGuru,
+  });
+  const isWaliKelasWithSiswa = isGuru && (() => {
+    const waliIds = (kelasForMenu || []).filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id);
+    return waliIds.length > 0 && (siswaForMenu || []).some(s => waliIds.includes(s.kelas_id));
+  })();
+
+  let topItems = baseMenu.topItems.some(i => i.page === 'ProfilGuru')
+    ? baseMenu.topItems
+    : [...baseMenu.topItems, { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' }];
+  if (isWaliKelasWithSiswa) {
+    topItems = [...topItems, { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' }];
+  }
+  const menuConfig = { ...baseMenu, topItems };
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
 
   // Kepsek dashboard: full-screen, no sidebar

@@ -3,7 +3,9 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MapPin, Crosshair } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { MapPin, Crosshair, ExternalLink, Maximize2 } from "lucide-react";
+import MapResizer from "@/components/ui/MapResizer";
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -30,8 +32,20 @@ function parseCoord(v) {
   return null;
 }
 
-export default function MapPicker({ value, onChange, height = '280px' }) {
+function MapView({ center, markerPos, onClick, interactive }) {
+  return (
+    <MapContainer center={center} zoom={15} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
+      <MapResizer />
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
+      {interactive && <LocationClicker onClick={onClick} />}
+      {markerPos && <Marker position={[markerPos.lat, markerPos.lng]} />}
+    </MapContainer>
+  );
+}
+
+export default function MapPicker({ value, onChange, height = '320px' }) {
   const [manualInput, setManualInput] = useState(value || '');
+  const [fullscreen, setFullscreen] = useState(false);
   const parsed = parseCoord(value);
   const [center, setCenter] = useState(parsed ? [parsed.lat, parsed.lng] : DEFAULT_CENTER);
 
@@ -67,6 +81,7 @@ export default function MapPicker({ value, onChange, height = '280px' }) {
   };
 
   const markerPos = parseCoord(value);
+  const gmapsUrl = value ? `https://www.google.com/maps?q=${value}` : '#';
 
   return (
     <div className="space-y-2">
@@ -78,15 +93,29 @@ export default function MapPicker({ value, onChange, height = '280px' }) {
         <Button type="button" variant="outline" size="icon" onClick={handleGetCurrentLocation} title="Lokasi saat ini">
           <Crosshair className="w-4 h-4 text-blue-500" />
         </Button>
+        {value && (
+          <a href={gmapsUrl} target="_blank" rel="noopener noreferrer" title="Buka di Google Maps">
+            <Button type="button" variant="outline" size="icon">
+              <ExternalLink className="w-4 h-4 text-emerald-600" />
+            </Button>
+          </a>
+        )}
+        <Button type="button" variant="outline" size="icon" onClick={() => setFullscreen(true)} title="Peta fullscreen">
+          <Maximize2 className="w-4 h-4 text-slate-600" />
+        </Button>
       </div>
       <div style={{ height }} className="rounded-lg overflow-hidden border border-slate-200 z-0">
-        <MapContainer center={center} zoom={15} style={{ height: '100%', width: '100%' }}>
-          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; OpenStreetMap' />
-          <LocationClicker onClick={handleMapClick} />
-          {markerPos && <Marker position={[markerPos.lat, markerPos.lng]} />}
-        </MapContainer>
+        <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
       </div>
-      <p className="text-xs text-slate-400">Klik peta untuk menentukan titik, atau gunakan tombol lokasi saat ini.</p>
+      <p className="text-xs text-slate-400">Klik peta untuk menentukan titik, gunakan tombol lokasi saat ini, atau buka fullscreen untuk tampilan penuh.</p>
+
+      <Dialog open={fullscreen} onOpenChange={setFullscreen}>
+        <DialogContent className="max-w-3xl h-[80vh] p-0 overflow-hidden">
+          <div className="w-full h-full">
+            <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
