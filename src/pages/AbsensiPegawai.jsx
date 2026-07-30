@@ -6,8 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, TrendingUp } from "lucide-react";
-import ScanAbsensi from '@/components/absensi/ScanAbsensi';
+import { Calendar, Clock, User, TrendingUp, Send } from "lucide-react";
+import PengajuanIzin from '@/components/absensi/PengajuanIzin';
+import RekapFilter from '@/components/absensi/RekapFilter';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
 import { useAuth } from '@/lib/AuthContext';
@@ -17,7 +18,8 @@ export default function AbsensiPegawai() {
   const userRole = currentUser?.role || 'guru';
   const canManageCards = ['admin', 'tu'].includes(userRole);
 
-  const [activeTab, setActiveTab] = useState('scan');
+  const [activeTab, setActiveTab] = useState('pengajuan');
+  const [rekapMode, setRekapMode] = useState('hari');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -41,10 +43,10 @@ export default function AbsensiPegawai() {
   const dates = Object.keys(rekapByDate).sort().reverse();
 
   const tabs = [
-    { key: 'scan', label: 'Scan Absensi', icon: Clock, color: 'bg-emerald-500' },
+    { key: 'pengajuan', label: 'Pengajuan Izin', icon: Send, color: 'bg-emerald-500' },
     { key: 'kartu', label: 'Pendaftaran Kartu', icon: Calendar, color: 'bg-purple-500', adminOnly: true },
     { key: 'idcard', label: 'Kartu ID', icon: User, color: 'bg-blue-500', adminOnly: true },
-    { key: 'rekap', label: 'Rekap Bulanan', icon: TrendingUp, color: 'bg-indigo-500' },
+    { key: 'rekap', label: 'Rekap', icon: TrendingUp, color: 'bg-indigo-500' },
   ].filter(tab => !tab.adminOnly || canManageCards);
 
   return (
@@ -69,7 +71,7 @@ export default function AbsensiPegawai() {
           })}
         </div>
 
-        {activeTab === 'scan' && <ScanAbsensi personType="Pegawai" />}
+        {activeTab === 'pengajuan' && <PengajuanIzin />}
         {activeTab === 'kartu' && <PendaftaranKartu personType="Pegawai" />}
         {activeTab === 'idcard' && <IDCardPreview personType="Pegawai" />}
 
@@ -77,10 +79,7 @@ export default function AbsensiPegawai() {
           <div className="space-y-4">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Dari Tanggal</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9" /></div>
-                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Sampai Tanggal</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9" /></div>
-                </div>
+                <RekapFilter mode={rekapMode} setMode={setRekapMode} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
               </CardContent>
             </Card>
 

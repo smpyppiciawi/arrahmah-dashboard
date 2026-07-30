@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc, ScanFace } from "lucide-react";
 import QRCameraScanner from '@/components/absensi/QRCameraScanner';
@@ -19,6 +20,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   const [fpSubMode, setFpSubMode] = useState('reader');
   const [scanInput, setScanInput] = useState('');
   const [lastResult, setLastResult] = useState(null);
+  const [popup, setPopup] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [scanLog, setScanLog] = useState([]);
   const inputRef = useRef(null);
@@ -32,6 +34,12 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     queryKey: ['scan-today', personType, today],
     queryFn: () => base44.entities[entityName].filter({ tanggal: today }),
   });
+
+  useEffect(() => {
+    if (!popup) return;
+    const t = setTimeout(() => setPopup(null), 5000);
+    return () => clearTimeout(t);
+  }, [popup]);
 
   // Multi-device real-time sync
   useEffect(() => {
@@ -52,6 +60,13 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   const addLog = (result) => {
     const entry = { ...result, time: format(new Date(), 'HH:mm:ss') };
     setScanLog(prev => [entry, ...prev].slice(0, 20));
+  };
+
+  const notify = (result) => {
+    setLastResult(result);
+    addLog(result);
+    const jamAbsen = result.jamAbsen || format(new Date(), 'HH:mm:ss');
+    setPopup({ ...result, jamAbsen });
   };
 
   const sendWANotif = async (k, status, now) => {
@@ -80,19 +95,13 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     try {
       const kartuList = await base44.entities.KartuAbsensi.filter({ card_id: cardId, status: 'Aktif' });
       if (!kartuList || kartuList.length === 0) {
-        const result = { status: 'error', message: `Kartu "${cardId}" tidak terdaftar`, cardId };
-        setLastResult(result);
-        addLog(result);
-        toast({ title: '❌ Kartu tidak terdaftar', variant: 'destructive' });
+        notify({ status: 'error', message: `Kartu "${cardId}" tidak terdaftar`, cardId });
         return;
       }
 
       const k = kartuList[0];
       if (k.person_type !== personType) {
-        const result = { status: 'error', message: `Kartu ini untuk ${k.person_type}, bukan ${personType}`, cardId, person: k };
-        setLastResult(result);
-        addLog(result);
-        toast({ title: `❌ Kartu untuk ${k.person_type}`, variant: 'destructive' });
+        notify({ status: 'error', message: `Kartu ini untuk ${k.person_type}, bukan ${personType}`, cardId, person: k, nama: k.nama, statusAbsen: 'Salah Kartu' });
         return;
       }
 
@@ -104,37 +113,25 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
       if (personType === 'Pegawai') {
         const existing = await base44.entities.AbsensiPegawai.filter({ guru_id: k.person_id, tanggal: today });
         if (existing.length > 0 && existing[0].jam_keluar) {
-          const result = { status: 'error', message: `${k.nama} sudah absen masuk & keluar hari ini`, cardId, person: k };
-          setLastResult(result);
-          addLog(result);
-          toast({ title: '⚠️ Sudah lengkap', description: `${k.nama} sudah absen masuk & keluar` });
+          notify({ status: 'error', message: `${k.nama} sudah absen masuk & keluar hari ini`, cardId, person: k, nama: k.nama, statusAbsen: 'Sudah Lengkap' });
           return;
         }
         if (existing.length > 0) {
           await base44.entities.AbsensiPegawai.update(existing[0].id, { jam_keluar: now });
-          const result = { status: 'success', message: `${k.nama} — Keluar: ${now}`, cardId, person: k, type: 'keluar' };
-          setLastResult(result);
-          addLog(result);
-          toast({ title: '✅ Absensi Keluar', description: `${k.nama} — ${now}` });
+          notify({ status: 'success', message: `${k.nama} — Keluar: ${now}`, cardId, person: k, type: 'keluar', nama: k.nama, jamAbsen: now, statusAbsen: 'Keluar' });
         } else {
           await base44.entities.AbsensiPegawai.create({
             tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
             nama_pegawai: k.nama, jabatan: k.info,
             jam_masuk: now, status, metode: k.jenis, card_id: cardId,
           });
-          const result = { status: 'success', message: `${k.nama} — ${status} — Masuk: ${now}`, cardId, person: k, type: 'masuk' };
-          setLastResult(result);
-          addLog(result);
-          toast({ title: `✅ ${status}`, description: `${k.nama} — ${now}` });
+          notify({ status: 'success', message: `${k.nama} — ${status} — Masuk: ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
           sendWANotif(k, status, now);
         }
       } else {
         const existing = await base44.entities.Absensi.filter({ siswa_id: k.person_id, tanggal: today, jenis_absensi: 'Kehadiran' });
         if (existing.length > 0) {
-          const result = { status: 'error', message: `${k.nama} sudah absen hari ini (${existing[0].jam_masuk})`, cardId, person: k };
-          setLastResult(result);
-          addLog(result);
-          toast({ title: '⚠️ Sudah absen', description: `${k.nama} — ${existing[0].jam_masuk}` });
+          notify({ status: 'error', message: `${k.nama} sudah absen hari ini (${existing[0].jam_masuk})`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: 'Sudah Absen' });
           return;
         }
         await base44.entities.Absensi.create({
@@ -143,19 +140,13 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           status, jenis_absensi: 'Kehadiran', jam_masuk: now,
           metode: k.jenis, card_id: cardId,
         });
-        const result = { status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk' };
-        setLastResult(result);
-        addLog(result);
-        toast({ title: `✅ ${status}`, description: `${k.nama} — ${now}` });
+        notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
         sendWANotif(k, status, now);
       }
 
       queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
     } catch (err) {
-      const result = { status: 'error', message: `Error: ${err.message}`, cardId };
-      setLastResult(result);
-      addLog(result);
-      toast({ title: '❌ Error', description: err.message, variant: 'destructive' });
+      notify({ status: 'error', message: `Error: ${err.message}`, cardId });
     } finally {
       setProcessing(false);
       setScanInput('');
@@ -197,6 +188,10 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   const isCameraMode = scanMode === 'qrcode' && qrSubMode === 'kamera';
   const isFingerprintHpMode = scanMode === 'fingerprint' && fpSubMode === 'hp';
 
+  const popupStatusColor = popup?.status === 'success'
+    ? { bg: 'bg-emerald-50', ring: 'bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-700', border: 'border-emerald-200' }
+    : { bg: 'bg-red-50', ring: 'bg-red-100', icon: 'text-red-600', text: 'text-red-700', border: 'border-red-200' };
+
   return (
     <div className="space-y-4">
       <Card className="border-2 border-emerald-200 shadow-md">
@@ -219,7 +214,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => { setScanMode(m.id); setScanInput(''); setLastResult(null); }}
+                  onClick={() => { setScanMode(m.id); setScanInput(''); setLastResult(null); setPopup(null); }}
                   className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
                     isActive ? `${colors.active} border-transparent shadow-md` : `${colors.idle} border-transparent`
                   }`}
@@ -415,6 +410,57 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           </CardContent>
         </Card>
       )}
+
+      {/* Popup Informasi Hasil Scan */}
+      <Dialog open={!!popup} onOpenChange={(v) => !v && setPopup(null)}>
+        <DialogContent className="max-w-sm p-0 overflow-hidden border-0">
+          {popup && (
+            <div className={`text-center ${popupStatusColor.bg} px-6 pt-6 pb-5`}>
+              <div className={`inline-flex items-center justify-center w-20 h-20 ${popupStatusColor.ring} rounded-full mb-3`}>
+                {popup.status === 'success'
+                  ? <CheckCircle className={`w-12 h-12 ${popupStatusColor.icon}`} />
+                  : <XCircle className={`w-12 h-12 ${popupStatusColor.icon}`} />}
+              </div>
+              <h3 className={`text-lg font-bold ${popupStatusColor.text}`}>
+                {popup.status === 'success' ? 'Absensi Tercatat' : 'Gagal'}
+              </h3>
+              <p className="text-sm text-slate-600 mt-0.5">{popup.message}</p>
+
+              {popup.nama && (
+                <div className={`mt-4 mx-auto max-w-[240px] bg-white/80 rounded-xl border ${popupStatusColor.border} divide-y divide-slate-100 text-left`}>
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-xs text-slate-500">Nama</span>
+                    <span className="text-sm font-semibold text-slate-800 truncate ml-2">{popup.nama}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-xs text-slate-500">Jam Absen</span>
+                    <span className="text-sm font-mono font-semibold text-slate-800">{popup.jamAbsen}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2.5">
+                    <span className="text-xs text-slate-500">Status</span>
+                    <Badge className={
+                      popup.statusAbsen === 'Hadir' ? 'bg-emerald-100 text-emerald-700' :
+                      popup.statusAbsen === 'Terlambat' ? 'bg-orange-100 text-orange-700' :
+                      popup.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                    }>{popup.statusAbsen || (popup.status === 'success' ? 'Tercatat' : 'Gagal')}</Badge>
+                  </div>
+                </div>
+              )}
+
+              {popup.person && (
+                <div className="flex items-center justify-center gap-2 mt-3">
+                  <Badge className={popup.person.jenis === 'RFID' ? 'bg-purple-100 text-purple-700' : popup.person.jenis === 'QRCode' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}>
+                    {popup.person.jenis}
+                  </Badge>
+                  <span className="text-[10px] text-slate-400">ID: {popup.cardId}</span>
+                </div>
+              )}
+
+              <p className="text-[10px] text-slate-400 mt-3">Popup otomatis tertutup dalam 5 detik</p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

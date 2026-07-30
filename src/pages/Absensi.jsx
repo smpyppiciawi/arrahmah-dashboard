@@ -11,10 +11,10 @@ import { Calendar, Users, AlertTriangle, CalendarDays, History, CheckCircle, Use
 import AbsensiKehadiran from '@/components/absensi/AbsensiKehadiran';
 import AbsensiJumat from '@/components/absensi/AbsensiJumat';
 import RiwayatAbsensi from '@/components/absensi/RiwayatAbsensi';
-import ScanAbsensi from '@/components/absensi/ScanAbsensi';
+import RekapFilter from '@/components/absensi/RekapFilter';
 import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
 import IDCardPreview from '@/components/absensi/IDCardPreview';
-import { ScanLine, CreditCard, User as UserIcon } from "lucide-react";
+import { CreditCard, User as UserIcon } from "lucide-react";
 import { useAuth } from '@/lib/AuthContext';
 
 export default function Absensi() {
@@ -23,6 +23,7 @@ export default function Absensi() {
   const canManageCards = ['admin', 'tu'].includes(userRole);
 
   const [activeTab, setActiveTab] = useState('rekap');
+  const [rekapMode, setRekapMode] = useState('hari');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -47,8 +48,7 @@ export default function Absensi() {
   const dates = Object.keys(rekapByDate).sort().reverse();
 
   const tabs = [
-    { key: 'scan', label: 'Scan Absensi', icon: ScanLine, color: 'bg-emerald-500' },
-    { key: 'rekap', label: 'Rekap Harian', icon: CalendarDays, color: 'bg-emerald-500' },
+    { key: 'rekap', label: 'Rekap', icon: CalendarDays, color: 'bg-emerald-500' },
     { key: 'kehadiran', label: 'Absensi Kehadiran', icon: CheckCircle, color: 'bg-emerald-500' },
     { key: 'jumat', label: 'Absensi Jumat', icon: Users, color: 'bg-emerald-500' },
     { key: 'kartu', label: 'Pendaftaran Kartu', icon: CreditCard, color: 'bg-purple-500', adminOnly: true },
@@ -81,10 +81,7 @@ export default function Absensi() {
           <div className="space-y-4">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row gap-3 items-end">
-                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Dari Tanggal</Label><Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-9" /></div>
-                  <div className="flex-1"><Label className="text-xs text-slate-500 font-medium mb-1 block">Sampai Tanggal</Label><Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-9" /></div>
-                </div>
+                <RekapFilter mode={rekapMode} setMode={setRekapMode} dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo} />
               </CardContent>
             </Card>
 
@@ -151,7 +148,6 @@ export default function Absensi() {
           </div>
         )}
 
-        {activeTab === 'scan' && <ScanAbsensi personType="Siswa" />}
         {activeTab === 'kehadiran' && <AbsensiKehadiran />}
         {activeTab === 'jumat' && <AbsensiJumat />}
         {activeTab === 'kartu' && <PendaftaranKartu personType="Siswa" />}

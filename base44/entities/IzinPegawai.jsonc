@@ -1,0 +1,71 @@
+{
+  "name": "IzinPegawai",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal tidak masuk"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID pegawai yang mengajukan"
+    },
+    "nip": {
+      "type": "string"
+    },
+    "nama_pegawai": {
+      "type": "string"
+    },
+    "jabatan": {
+      "type": "string"
+    },
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Izin",
+        "Sakit"
+      ],
+      "description": "Jenis ketidakhadiran"
+    },
+    "keterangan": {
+      "type": "string"
+    },
+    "pengaju_id": {
+      "type": "string",
+      "description": "ID user yang mengajukan"
+    },
+    "pengaju_nama": {
+      "type": "string"
+    },
+    "status_approval": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "Disetujui",
+        "Ditolak"
+      ],
+      "default": "Pending"
+    },
+    "approver_id": {
+      "type": "string"
+    },
+    "approver_nama": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string"
+    },
+    "catatan_approver": {
+      "type": "string"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tanggal",
+    "nama_pegawai",
+    "jenis"
+  ]
+}
