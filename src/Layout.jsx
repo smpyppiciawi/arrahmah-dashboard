@@ -49,7 +49,7 @@ const FULL_ACCESS_MENU = {
       color: '#ef4444',
       items: [
         { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
-        { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+        { name: 'Pegawai', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
         { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
         { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
@@ -89,7 +89,7 @@ const ROLE_MENU = {
         id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444',
         items: [
           { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Pegawai', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
           { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
           { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
@@ -134,7 +134,7 @@ const ROLE_MENU = {
         id: 'admin', name: 'ADMIN', icon: Users, color: '#ef4444',
         items: [
           { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
-          { name: 'Guru', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Pegawai', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
           { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
           { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
           { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
@@ -183,7 +183,13 @@ export default function Layout({ children, currentPageName }) {
   const { user: currentUser } = useAuth();
 
   const userRole = currentUser?.role || 'guru';
-  const menuConfig = ROLE_MENU[userRole] || ROLE_MENU['tu'];
+  const baseMenu = ROLE_MENU[userRole] || ROLE_MENU['tu'];
+  const menuConfig = {
+    ...baseMenu,
+    topItems: baseMenu.topItems.some(i => i.page === 'ProfilGuru')
+      ? baseMenu.topItems
+      : [...baseMenu.topItems, { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' }],
+  };
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
 
   // Kepsek dashboard: full-screen, no sidebar
