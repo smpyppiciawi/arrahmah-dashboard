@@ -72,6 +72,7 @@ const ROLE_MENU = {
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -200,7 +201,9 @@ export default function Layout({ children, currentPageName }) {
   const { waliKelasIds: waliKelasIdsMenu, hasSiswa: hasSiswaMenu } = useWaliKelas();
   const isWaliKelasWithSiswa = isGuru && waliKelasIdsMenu.length > 0 && hasSiswaMenu;
 
-  let topItems = baseMenu.topItems.some(i => i.page === 'ProfilGuru')
+  // Operator: email tidak terdata sebagai Pegawai (dipakai bergiliran), sembunyikan Profil Saya
+  const showProfilSaya = userRole !== 'operator';
+  let topItems = (baseMenu.topItems.some(i => i.page === 'ProfilGuru') || !showProfilSaya)
     ? baseMenu.topItems
     : [...baseMenu.topItems, { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' }];
   if (isWaliKelasWithSiswa) {
