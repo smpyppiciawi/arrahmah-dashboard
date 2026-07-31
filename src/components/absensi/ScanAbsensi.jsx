@@ -136,26 +136,21 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
 
       if (personType === 'Pegawai') {
         const existing = await base44.entities.AbsensiPegawai.filter({ guru_id: k.person_id, tanggal: today });
-        if (existing.length > 0 && existing[0].jam_keluar) {
-          notify({ status: 'error', message: `${k.nama} sudah absen masuk & keluar hari ini`, cardId, person: k, nama: k.nama, statusAbsen: 'Sudah Lengkap' });
+        if (existing.length > 0) {
+          notify({ status: 'info', message: `${k.nama} sudah terdata hari ini`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: existing[0].status || 'Hadir' });
           return;
         }
-        if (existing.length > 0) {
-          await base44.entities.AbsensiPegawai.update(existing[0].id, { jam_keluar: now });
-          notify({ status: 'success', message: `${k.nama} — Keluar: ${now}`, cardId, person: k, type: 'keluar', nama: k.nama, jamAbsen: now, statusAbsen: 'Keluar' });
-        } else {
-          await base44.entities.AbsensiPegawai.create({
-            tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
-            nama_pegawai: k.nama, jabatan: k.info,
-            jam_masuk: now, status, metode: k.jenis, card_id: cardId,
-          });
-          notify({ status: 'success', message: `${k.nama} — ${status} — Masuk: ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
-          sendWANotif(k, status, now);
-        }
+        await base44.entities.AbsensiPegawai.create({
+          tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
+          nama_pegawai: k.nama, jabatan: k.info,
+          jam_masuk: now, status, metode: k.jenis, card_id: cardId,
+        });
+        notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
+        sendWANotif(k, status, now);
       } else {
         const existing = await base44.entities.Absensi.filter({ siswa_id: k.person_id, tanggal: today, jenis_absensi: 'Kehadiran' });
         if (existing.length > 0) {
-          notify({ status: 'error', message: `${k.nama} sudah absen hari ini (${existing[0].jam_masuk})`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: 'Sudah Absen' });
+          notify({ status: 'info', message: `${k.nama} sudah terdata hari ini`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: existing[0].status || 'Hadir' });
           return;
         }
         await base44.entities.Absensi.create({
@@ -214,6 +209,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
 
   const popupStatusColor = popup?.status === 'success'
     ? { bg: 'bg-emerald-50', ring: 'bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-700', border: 'border-emerald-200' }
+    : popup?.status === 'info'
+    ? { bg: 'bg-blue-50', ring: 'bg-blue-100', icon: 'text-blue-600', text: 'text-blue-700', border: 'border-blue-200' }
     : { bg: 'bg-red-50', ring: 'bg-red-100', icon: 'text-red-600', text: 'text-red-700', border: 'border-red-200' };
 
   return (
@@ -443,10 +440,12 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
               <div className={`inline-flex items-center justify-center w-20 h-20 ${popupStatusColor.ring} rounded-full mb-3`}>
                 {popup.status === 'success'
                   ? <CheckCircle className={`w-12 h-12 ${popupStatusColor.icon}`} />
+                  : popup.status === 'info'
+                  ? <Clock className={`w-12 h-12 ${popupStatusColor.icon}`} />
                   : <XCircle className={`w-12 h-12 ${popupStatusColor.icon}`} />}
               </div>
               <h3 className={`text-lg font-bold ${popupStatusColor.text}`}>
-                {popup.status === 'success' ? 'Absensi Tercatat' : 'Gagal'}
+                {popup.status === 'success' ? 'Absensi Tercatat' : popup.status === 'info' ? 'Sudah Terdata' : 'Gagal'}
               </h3>
               <p className="text-sm text-slate-600 mt-0.5">{popup.message}</p>
 
@@ -465,8 +464,9 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
                     <Badge className={
                       popup.statusAbsen === 'Hadir' ? 'bg-emerald-100 text-emerald-700' :
                       popup.statusAbsen === 'Terlambat' ? 'bg-orange-100 text-orange-700' :
-                      popup.status === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
-                    }>{popup.statusAbsen || (popup.status === 'success' ? 'Tercatat' : 'Gagal')}</Badge>
+                      popup.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
+                      popup.status === 'info' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                    }>{popup.statusAbsen || (popup.status === 'success' ? 'Tercatat' : popup.status === 'info' ? 'Terdata' : 'Gagal')}</Badge>
                   </div>
                 </div>
               )}

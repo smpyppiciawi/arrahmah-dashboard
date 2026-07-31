@@ -25,7 +25,7 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user: currentUser } = useAuth();
-  const canUseNfc = ['admin', 'tu'].includes(currentUser?.role);
+  const canUseNfc = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
 
   const entityName = personType === 'Pegawai' ? 'Guru' : 'Siswa';
   const { data: personList = [] } = useQuery({
@@ -80,9 +80,20 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
 
   const selectedPersonData = personList.find(p => p.id === selectedPerson);
 
-  const handleAddKartu = () => {
+  const handleAddKartu = async () => {
     if (!selectedPerson || !newCardId.trim()) {
       toast({ title: 'Pilih person dan isi card ID', variant: 'destructive' });
+      return;
+    }
+    // Cek duplikasi card_id — tidak boleh ada KODE/ID yang sama antar pegawai/siswa
+    try {
+      const dup = await base44.entities.KartuAbsensi.filter({ card_id: newCardId.trim() });
+      if (dup && dup.length > 0) {
+        toast({ title: '❌ ID sudah terdaftar', description: `"${newCardId.trim()}" dimiliki oleh ${dup[0].nama} (${dup[0].person_type})`, variant: 'destructive' });
+        return;
+      }
+    } catch (e) {
+      toast({ title: 'Gagal memeriksa duplikasi', description: e.message, variant: 'destructive' });
       return;
     }
     const p = selectedPersonData;
@@ -123,6 +134,16 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
     const p = selectedPersonData;
     const cardId = `FACE-${p.id}`;
     try {
+      // Hapus data wajah lama (re-register) agar tidak menumpuk duplikasi
+      for (const w of (wajahList || [])) {
+        try { await base44.entities.DataWajah.delete(w.id); } catch {}
+        if (w.card_id_virtual) {
+          try {
+            const oldKartu = await base44.entities.KartuAbsensi.filter({ card_id: w.card_id_virtual });
+            if (oldKartu.length > 0) await base44.entities.KartuAbsensi.delete(oldKartu[0].id);
+          } catch {}
+        }
+      }
       let fotoUrl = '';
       try {
         const fotoFile = dataURLtoFile(fotoDataUrl, `wajah-${p.nama}.jpg`);

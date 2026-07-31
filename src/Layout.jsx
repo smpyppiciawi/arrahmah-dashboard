@@ -121,6 +121,7 @@ const ROLE_MENU = {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
+      { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
     ],
     groups: []
   },

@@ -9,15 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, User, TrendingUp, Send } from "lucide-react";
 import PengajuanIzin from '@/components/absensi/PengajuanIzin';
 import RekapFilter from '@/components/absensi/RekapFilter';
-import PendaftaranKartu from '@/components/absensi/PendaftaranKartu';
-import IDCardPreview from '@/components/absensi/IDCardPreview';
-import { useAuth } from '@/lib/AuthContext';
-
 export default function AbsensiPegawai() {
-  const { user: currentUser } = useAuth();
-  const userRole = currentUser?.role || 'guru';
-  const canManageCards = ['admin', 'tu'].includes(userRole);
-
   const [activeTab, setActiveTab] = useState('pengajuan');
   const [rekapMode, setRekapMode] = useState('hari');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -44,10 +36,8 @@ export default function AbsensiPegawai() {
 
   const tabs = [
     { key: 'pengajuan', label: 'Pengajuan Izin', icon: Send, color: 'bg-emerald-500' },
-    { key: 'kartu', label: 'Pendaftaran Kartu', icon: Calendar, color: 'bg-purple-500', adminOnly: true },
-    { key: 'idcard', label: 'Kartu ID', icon: User, color: 'bg-blue-500', adminOnly: true },
     { key: 'rekap', label: 'Rekap', icon: TrendingUp, color: 'bg-indigo-500' },
-  ].filter(tab => !tab.adminOnly || canManageCards);
+  ];
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -72,8 +62,6 @@ export default function AbsensiPegawai() {
         </div>
 
         {activeTab === 'pengajuan' && <PengajuanIzin />}
-        {activeTab === 'kartu' && <PendaftaranKartu personType="Pegawai" />}
-        {activeTab === 'idcard' && <IDCardPreview personType="Pegawai" />}
 
         {activeTab === 'rekap' && (
           <div className="space-y-4">
