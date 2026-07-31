@@ -24,6 +24,7 @@ export default function PeriodikSiswa() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [editingId, setEditingId] = useState(null);
+  const [editingExistingId, setEditingExistingId] = useState(null);
   const [inputValues, setInputValues] = useState({});
   const [riwayatSiswa, setRiwayatSiswa] = useState(null);
   const [page, setPage] = useState(1);
@@ -50,12 +51,22 @@ export default function PeriodikSiswa() {
   }, [queryClient]);
 
   const userRole = currentUser?.role || 'guru';
-  const canEdit = ['admin', 'tu', 'operator', 'piket'].includes(userRole);
+  const isGuru = userRole === 'guru';
 
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
+
+  // Deteksi Wali Kelas untuk Guru
+  const waliKelasIds = useMemo(() => {
+    if (!isGuru) return [];
+    return kelasList.filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id);
+  }, [kelasList, isGuru, currentUser]);
+
+  const isWaliKelas = isGuru ? waliKelasIds.length > 0 : false;
+  // Guru Wali Kelas berhak Add & Edit; role lain sesuai kebijakan lama
+  const canEdit = isGuru ? isWaliKelas : ['admin', 'tu', 'operator', 'piket'].includes(userRole);
 
   const kelasMap = useMemo(() => {
     const m = {};
@@ -63,12 +74,23 @@ export default function PeriodikSiswa() {
     return m;
   }, [kelasList]);
 
+  // Untuk Guru Wali Kelas, kunci kelas ke kelas yang diampu
+  const availableKelas = isGuru ? kelasList.filter(k => waliKelasIds.includes(k.id)) : kelasList;
+
+  const effectiveKelas = isGuru ? (waliKelasIds[0] || '') : selectedKelas;
   const { data: siswaList = [], isLoading: siswaLoading } = useQuery({
-    queryKey: ['siswa-periodik', selectedKelas],
-    queryFn: () => selectedKelas
-      ? base44.entities.Siswa.filter({ status: 'Aktif', kelas_id: selectedKelas })
-      : base44.entities.Siswa.filter({ status: 'Aktif' }),
+    queryKey: ['siswa-periodik', isGuru ? effectiveKelas : selectedKelas],
+    queryFn: () => {
+      const k = isGuru ? effectiveKelas : selectedKelas;
+      return k
+        ? base44.entities.Siswa.filter({ status: 'Aktif', kelas_id: k })
+        : base44.entities.Siswa.filter({ status: 'Aktif' });
+    },
   });
+
+  useEffect(() => {
+    if (isGuru && waliKelasIds.length > 0) setSelectedKelas(waliKelasIds[0]);
+  }, [isGuru, waliKelasIds]);
 
   const { data: periodikList = [], isLoading: periodikLoading } = useQuery({
     queryKey: ['periodikSiswa', activeAcademicYear],
@@ -144,28 +166,46 @@ export default function PeriodikSiswa() {
 
   const handleStartInput = (siswa) => {
     setEditingId(siswa.id);
+    setEditingExistingId(null);
     setInputValues({ tinggi_badan: '', berat_badan: '', lingkar_kepala: '' });
+  };
+
+  const handleStartEdit = (siswa, p) => {
+    setEditingId(siswa.id);
+    setEditingExistingId(p.id);
+    setInputValues({ tinggi_badan: p.tinggi_badan || '', berat_badan: p.berat_badan || '', lingkar_kepala: p.lingkar_kepala || '' });
   };
 
   const handleSave = async (siswa) => {
     const kelas = kelasMap[siswa.kelas_id];
     try {
-      await base44.entities.PeriodikSiswa.create({
-        siswa_id: siswa.id,
-        nis: siswa.nis,
-        nama_siswa: siswa.nama,
-        kelas_id: siswa.kelas_id,
-        nama_kelas: siswa.nama_kelas,
-        tingkat: kelas?.tingkat || '',
-        tahun_ajaran: activeAcademicYear || '',
-        tanggal: new Date().toISOString().split('T')[0],
-        tinggi_badan: inputValues.tinggi_badan ? Number(inputValues.tinggi_badan) : undefined,
-        berat_badan: inputValues.berat_badan ? Number(inputValues.berat_badan) : undefined,
-        lingkar_kepala: inputValues.lingkar_kepala ? Number(inputValues.lingkar_kepala) : undefined,
-        input_by: currentUser?.full_name || 'Petugas',
-        input_by_id: currentUser?.id,
-      });
+      if (editingExistingId) {
+        await base44.entities.PeriodikSiswa.update(editingExistingId, {
+          tinggi_badan: inputValues.tinggi_badan ? Number(inputValues.tinggi_badan) : undefined,
+          berat_badan: inputValues.berat_badan ? Number(inputValues.berat_badan) : undefined,
+          lingkar_kepala: inputValues.lingkar_kepala ? Number(inputValues.lingkar_kepala) : undefined,
+          input_by: currentUser?.full_name || 'Petugas',
+          input_by_id: currentUser?.id,
+        });
+      } else {
+        await base44.entities.PeriodikSiswa.create({
+          siswa_id: siswa.id,
+          nis: siswa.nis,
+          nama_siswa: siswa.nama,
+          kelas_id: siswa.kelas_id,
+          nama_kelas: siswa.nama_kelas,
+          tingkat: kelas?.tingkat || '',
+          tahun_ajaran: activeAcademicYear || '',
+          tanggal: new Date().toISOString().split('T')[0],
+          tinggi_badan: inputValues.tinggi_badan ? Number(inputValues.tinggi_badan) : undefined,
+          berat_badan: inputValues.berat_badan ? Number(inputValues.berat_badan) : undefined,
+          lingkar_kepala: inputValues.lingkar_kepala ? Number(inputValues.lingkar_kepala) : undefined,
+          input_by: currentUser?.full_name || 'Petugas',
+          input_by_id: currentUser?.id,
+        });
+      }
       setEditingId(null);
+      setEditingExistingId(null);
       setInputValues({});
       queryClient.invalidateQueries({ queryKey: ['periodikSiswa'] });
       toast({ title: 'Tersimpan', description: `Data ${siswa.nama} berhasil disimpan.` });
@@ -176,6 +216,7 @@ export default function PeriodikSiswa() {
 
   const handleCancel = () => {
     setEditingId(null);
+    setEditingExistingId(null);
     setInputValues({});
   };
 
@@ -187,6 +228,18 @@ export default function PeriodikSiswa() {
   };
 
   const isLoading = siswaLoading || periodikLoading || yearLoading;
+
+  if (isGuru && kelasList.length > 0 && !isWaliKelas) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">
+          <Ruler className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+          <p className="text-slate-500 font-medium">Akses Ditolak</p>
+          <p className="text-slate-400 text-sm">Menu Periodik Siswa hanya untuk Guru Wali Kelas.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -240,8 +293,8 @@ export default function PeriodikSiswa() {
                 >
                   <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Kelas</SelectItem>
-                    {kelasList.map(k => (
+                    {!isGuru && <SelectItem value="all">Semua Kelas</SelectItem>}
+                    {availableKelas.map(k => (
                       <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
                     ))}
                   </SelectContent>
@@ -345,15 +398,22 @@ export default function PeriodikSiswa() {
                                 <td className="py-2 px-2 text-center">
                                   <div className="flex gap-1 justify-center">
                                     {p ? (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 px-2 text-slate-500 hover:text-violet-600 hover:bg-violet-50"
-                                        onClick={() => setRiwayatSiswa(siswa)}
-                                        title="Riwayat Pengukuran"
-                                      >
-                                        <History className="w-3.5 h-3.5" /> Riwayat
-                                      </Button>
+                                      <>
+                                        {canEdit && (
+                                          <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleStartEdit(siswa, p)}>
+                                            Edit
+                                          </Button>
+                                        )}
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 px-2 text-slate-500 hover:text-violet-600 hover:bg-violet-50"
+                                          onClick={() => setRiwayatSiswa(siswa)}
+                                          title="Riwayat Pengukuran"
+                                        >
+                                          <History className="w-3.5 h-3.5" /> Riwayat
+                                        </Button>
+                                      </>
                                     ) : canEdit ? (
                                       <Button size="sm" variant="outline" onClick={() => handleStartInput(siswa)}>
                                         Input

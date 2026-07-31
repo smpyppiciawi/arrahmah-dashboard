@@ -48,6 +48,10 @@
     "email": {
       "type": "string"
     },
+    "foto_url": {
+      "type": "string",
+      "description": "URL foto profil guru/pegawai"
+    },
     "status": {
       "type": "string",
       "enum": [

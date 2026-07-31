@@ -215,7 +215,7 @@ export default function Layout({ children, currentPageName }) {
     ? baseMenu.topItems
     : [...baseMenu.topItems, { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' }];
   if (isWaliKelasWithSiswa) {
-    topItems = [...topItems, { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' }];
+    topItems = [...topItems, { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' }, { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' }];
   }
   const menuConfig = { ...baseMenu, topItems };
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];

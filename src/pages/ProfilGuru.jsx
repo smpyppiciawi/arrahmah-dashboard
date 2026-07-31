@@ -15,6 +15,7 @@ import {
   ChevronRight, Check, Plus, Trash2, School, Calendar, Menu
 } from 'lucide-react';
 import WaAssistantLink from '@/components/WaAssistantLink';
+import ProfilePhotoUploader from '@/components/guru/ProfilePhotoUploader';
 
 const MAPEL_LIST = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
@@ -120,8 +121,8 @@ export default function ProfilGuru() {
             {/* Avatar + Name */}
             <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-3xl p-6 text-white">
               <div className="flex flex-col items-center text-center">
-                <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black mb-3">
-                  {guruData.nama?.charAt(0)}
+                <div className="mb-3">
+                  <ProfilePhotoUploader guruId={guruData.id} fotoUrl={guruData.foto_url} nama={guruData.nama} avatarClass="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black text-white" />
                 </div>
                 <h2 className="font-bold text-xl leading-tight">{guruData.nama}</h2>
                 <p className="text-violet-200 text-sm mt-1">{guruData.jabatan || 'Guru'}</p>
@@ -322,8 +323,8 @@ export default function ProfilGuru() {
 
               {/* Centered avatar + info */}
               <div className="relative flex flex-col items-center text-center pt-2">
-                <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black text-white mb-3">
-                  {guruData.nama?.charAt(0)}
+                <div className="mb-3">
+                  <ProfilePhotoUploader guruId={guruData.id} fotoUrl={guruData.foto_url} nama={guruData.nama} avatarClass="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center text-3xl font-black text-white" />
                 </div>
                 <h1 className="text-white font-black text-xl leading-tight">{guruData.nama}</h1>
                 <p className="text-violet-200 text-sm mt-1">{guruData.jabatan || 'Guru Mata Pelajaran'}</p>
