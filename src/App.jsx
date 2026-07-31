@@ -12,6 +12,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Masuk from './pages/Masuk';
 import Pengaturan from './pages/Pengaturan';
 import { ActiveAcademicYearProvider } from './context/ActiveAcademicYearContext';
+import RealtimeSyncProvider from './lib/RealtimeSyncProvider';
 import SiswaPortal from './pages/SiswaPortal';
 import Kepsek from './pages/Kepsek';
 import HomeVisit from './pages/HomeVisit';
@@ -125,10 +126,12 @@ function App() {
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
         <ActiveAcademicYearProvider>
-          <Router>
-            <NavigationTracker />
-            <AuthenticatedApp />
-          </Router>
+          <RealtimeSyncProvider>
+            <Router>
+              <NavigationTracker />
+              <AuthenticatedApp />
+            </Router>
+          </RealtimeSyncProvider>
           <Toaster />
           <VisualEditAgent />
         </ActiveAcademicYearProvider>
