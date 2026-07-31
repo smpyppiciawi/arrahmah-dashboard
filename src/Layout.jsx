@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
+import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { Badge } from "@/components/ui/badge";
 import LiveClock from '@/components/ui/LiveClock';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
@@ -194,22 +195,10 @@ export default function Layout({ children, currentPageName }) {
   const userRole = currentUser?.role || 'guru';
   const baseMenu = ROLE_MENU[userRole] || ROLE_MENU['tu'];
 
-  // Untuk Guru: tampilkan menu Home Visit hanya jika menjadi Wali Kelas dengan siswa aktif
+  // Untuk Guru: tampilkan menu Periodik Siswa & Home Visit hanya jika menjadi Wali Kelas dengan siswa aktif
   const isGuru = userRole === 'guru';
-  const { data: kelasForMenu = [] } = useQuery({
-    queryKey: ['kelas'],
-    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
-    enabled: isGuru,
-  });
-  const { data: siswaForMenu = [] } = useQuery({
-    queryKey: ['siswa-aktif'],
-    queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
-    enabled: isGuru,
-  });
-  const isWaliKelasWithSiswa = isGuru && (() => {
-    const waliIds = (kelasForMenu || []).filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id);
-    return waliIds.length > 0 && (siswaForMenu || []).some(s => waliIds.includes(s.kelas_id));
-  })();
+  const { waliKelasIds: waliKelasIdsMenu, hasSiswa: hasSiswaMenu } = useWaliKelas();
+  const isWaliKelasWithSiswa = isGuru && waliKelasIdsMenu.length > 0 && hasSiswaMenu;
 
   let topItems = baseMenu.topItems.some(i => i.page === 'ProfilGuru')
     ? baseMenu.topItems

@@ -16,6 +16,7 @@ import MapResizer from "@/components/ui/MapResizer";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAuth } from '@/lib/AuthContext';
+import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -55,9 +56,7 @@ export default function HomeVisit() {
 
   const userRole = currentUser?.role || 'guru';
   const isGuru = userRole === 'guru';
-  const waliKelasIds = isGuru
-    ? kelasList.filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id)
-    : [];
+  const { waliKelasIds } = useWaliKelas();
   const siswaList = isGuru ? siswaListAll.filter(s => waliKelasIds.includes(s.kelas_id)) : siswaListAll;
   const homeVisitList = isGuru ? homeVisitListAll.filter(hv => waliKelasIds.includes(hv.kelas_id)) : homeVisitListAll;
 

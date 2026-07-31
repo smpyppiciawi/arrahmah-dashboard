@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import RiwayatPeriodikDialog from '@/components/periodik/RiwayatPeriodikDialog';
+import { useWaliKelas } from '@/hooks/useWaliKelas';
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -58,11 +59,8 @@ export default function PeriodikSiswa() {
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
-  // Deteksi Wali Kelas untuk Guru
-  const waliKelasIds = useMemo(() => {
-    if (!isGuru) return [];
-    return kelasList.filter(k => k.wali_kelas === currentUser?.full_name).map(k => k.id);
-  }, [kelasList, isGuru, currentUser]);
+  // Deteksi Wali Kelas untuk Guru (cocokkan via nama Guru pada Data Kelas)
+  const { waliKelasIds } = useWaliKelas();
 
   const isWaliKelas = isGuru ? waliKelasIds.length > 0 : false;
   // Guru Wali Kelas berhak Add & Edit; role lain sesuai kebijakan lama
