@@ -26,6 +26,7 @@ import KepsekKalender from '@/components/kepsek/KepsekKalender';
 import DrillDownDialog from '@/components/kepsek/DrillDownDialog';
 import PenyebaranSiswaMap from '@/components/kepsek/PenyebaranSiswaMap';
 import GuruContactFab from '@/components/kepsek/GuruContactFab';
+import KepsekMenuDrawer from '@/components/kepsek/KepsekMenuDrawer';
 import WaAssistantLink from '@/components/WaAssistantLink';
 
 const DATE_PRESETS = [
@@ -259,6 +260,7 @@ export default function Kepsek() {
       <header className={`sticky top-0 z-40 ${t.header} border-b`}>
         <div className="max-w-[1800px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3">
+            <KepsekMenuDrawer isDark={isDark} />
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <School className="w-5 h-5 text-white" />
             </div>

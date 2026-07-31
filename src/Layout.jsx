@@ -122,10 +122,38 @@ const ROLE_MENU = {
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
-      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
+      { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
+      { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
-    groups: []
+    groups: [
+      {
+        id: 'kepsek-admin', name: 'ADMINISTRASI', icon: Users, color: '#ef4444',
+        items: [
+          { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+          { name: 'Pegawai', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
+          { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
+          { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+          { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
+          { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
+          { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+        ]
+      },
+      {
+        id: 'kepsek-keuangan', name: 'KEUANGAN', icon: Wallet, color: '#14b8a6',
+        items: [
+          { name: 'Transaksi', icon: Wallet, page: 'Transaksi', color: '#14b8a6' },
+          { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
+          { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
+        ]
+      }
+    ]
   },
   bendahara: {
     topItems: [
