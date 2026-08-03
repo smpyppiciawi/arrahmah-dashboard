@@ -25,7 +25,7 @@ export default function PersonSearch({ personType, personList, selectedPerson, o
       if (searchText.trim()) {
         const text = searchText.toLowerCase();
         const nama = (p.nama || '').toLowerCase();
-        const nipNis = (isPegawai ? p.nip : p.nis || '').toLowerCase();
+        const nipNis = ((isPegawai ? p.nip : p.nis) || '').toLowerCase();
         return nama.includes(text) || nipNis.includes(text);
       }
       return true;
