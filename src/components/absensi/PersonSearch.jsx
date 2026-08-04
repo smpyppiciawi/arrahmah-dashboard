@@ -29,7 +29,7 @@ export default function PersonSearch({ personType, personList, selectedPerson, o
         return nama.includes(text) || nipNis.includes(text);
       }
       return true;
-    });
+    }).sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
   }, [personList, filterValue, searchText, isPegawai]);
 
   const filterLabel = isPegawai ? 'Jabatan' : 'Kelas';

@@ -3,15 +3,17 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import RupiahInput from '@/components/ui/RupiahInput';
-import { Users, Check, Loader2, Lock } from 'lucide-react';
+import { Users, Check, Loader2, Lock, Search } from 'lucide-react';
 
 export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, kelasList, activeAcademicYear }) {
   const queryClient = useQueryClient();
   const [selectedKelas, setSelectedKelas] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [checkedIds, setCheckedIds] = useState(new Set());
   const [sudahBayar, setSudahBayar] = useState({});
   const [saving, setSaving] = useState(false);
@@ -29,14 +31,27 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
       existingBiayaKhusus.forEach(b => { sbMap[b.siswa_id] = String(b.sudah_bayar || 0); });
       setSudahBayar(sbMap);
       setSelectedKelas('all');
+      setSearchQuery('');
     }
   }, [isOpen, existingBiayaKhusus]);
 
   const filteredSiswa = useMemo(() => {
-    if (selectedKelas === 'all') return siswaList;
-    const kelas = kelasList.find(k => k.id === selectedKelas);
-    return siswaList.filter(s => s.kelas_id === selectedKelas || (kelas && s.nama_kelas === kelas.nama_kelas));
-  }, [siswaList, selectedKelas, kelasList]);
+    let result = siswaList;
+    if (selectedKelas !== 'all') {
+      const kelas = kelasList.find(k => k.id === selectedKelas);
+      result = result.filter(s => s.kelas_id === selectedKelas || (kelas && s.nama_kelas === kelas.nama_kelas));
+    }
+    const q = (searchQuery || '').toLowerCase().trim();
+    if (q) {
+      result = result.filter(s =>
+        (s.nama || '').toLowerCase().includes(q) ||
+        (s.nis || '').toLowerCase().includes(q) ||
+        (s.nama_kelas || '').toLowerCase().includes(q)
+      );
+    }
+    // Urut abjad berdasarkan nama
+    return [...result].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
+  }, [siswaList, selectedKelas, kelasList, searchQuery]);
 
   const toggleSiswa = (siswaId) => {
     setCheckedIds(prev => {
@@ -126,17 +141,29 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Label className="text-sm whitespace-nowrap">Filter Kelas:</Label>
-            <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-              <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kelas</SelectItem>
-                {kelasList.map(k => (
-                  <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm whitespace-nowrap">Filter Kelas:</Label>
+              <Select value={selectedKelas} onValueChange={setSelectedKelas}>
+                <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kelas</SelectItem>
+                  {kelasList.map(k => (
+                    <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari nama / NIS / kelas..."
+                className="pl-9"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-slate-500">
@@ -156,11 +183,11 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
               <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
             </div>
           ) : (
-            <div className="max-h-[340px] overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2">
+            <div className="max-h-[340px] overflow-y-auto space-y-1 border border-slate-200 rounded-xl p-2 bg-slate-50/30">
               {filteredSiswa.map(siswa => {
                 const checked = checkedIds.has(siswa.id);
                 return (
-                  <div key={siswa.id} className="rounded-lg hover:bg-slate-50">
+                  <div key={siswa.id} className={`rounded-lg transition-colors ${checked ? 'bg-purple-50 ring-1 ring-purple-200' : 'hover:bg-white'}`}>
                     <label className="flex items-center gap-3 p-2 cursor-pointer">
                       <Checkbox checked={checked} onCheckedChange={() => toggleSiswa(siswa.id)} />
                       <div className="flex-1 min-w-0">

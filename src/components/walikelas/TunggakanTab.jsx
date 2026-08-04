@@ -109,9 +109,11 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     });
   }, [siswaKelas, activeTarif, siswaKeuangan, biayaKhususList]);
 
-  const filtered = siswaSummary.filter(({ siswa }) =>
-    siswa.nama?.toLowerCase().includes(search.toLowerCase()) || siswa.nis?.includes(search)
-  );
+  const filtered = siswaSummary
+    .filter(({ siswa }) =>
+      siswa.nama?.toLowerCase().includes(search.toLowerCase()) || siswa.nis?.includes(search)
+    )
+    .sort((a, b) => (a.siswa?.nama || '').localeCompare(b.siswa?.nama || ''));
 
   return (
     <Card className="border-0 shadow-sm">
