@@ -10,7 +10,7 @@ import {
   School, Calendar, Users, Wallet, AlertTriangle, Award,
   TrendingUp, TrendingDown, MessageCircle, Mail, Settings,
   LogOut, RefreshCw, Clock, CalendarDays, Heart,
-  FileText, Sun, Moon, Home as HomeIcon, Building
+  FileText, Sun, Moon, Home as HomeIcon, Building, UserCheck, BookOpen
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -27,6 +27,7 @@ import DrillDownDialog from '@/components/kepsek/DrillDownDialog';
 import PenyebaranSiswaMap from '@/components/kepsek/PenyebaranSiswaMap';
 import GuruContactFab from '@/components/kepsek/GuruContactFab';
 import KepsekMenuDrawer from '@/components/kepsek/KepsekMenuDrawer';
+import AktivitasHariIni from '@/components/kepsek/AktivitasHariIni';
 import WaAssistantLink from '@/components/WaAssistantLink';
 
 const DATE_PRESETS = [
@@ -72,6 +73,8 @@ export default function Kepsek() {
   const { data: uksList = [] } = useQuery({ queryKey: ['uks-kepsek'], queryFn: () => base44.entities.UKS.list('-tanggal') });
   const { data: homeVisitList = [] } = useQuery({ queryKey: ['homeVisit-kepsek'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
   const { data: pengaturan = [] } = useQuery({ queryKey: ['pengaturan-kepsek'], queryFn: () => base44.entities.PengaturanAplikasi.list() });
+  const { data: absensiPegawaiList = [] } = useQuery({ queryKey: ['absensiPegawai-kepsek'], queryFn: () => base44.entities.AbsensiPegawai.list('-tanggal', 500) });
+  const { data: jadwalPelajaranList = [] } = useQuery({ queryKey: ['jadwalPelajaran-kepsek'], queryFn: () => base44.entities.JadwalPelajaran.list() });
   const currentSettings = pengaturan?.[0] || {};
   const todayStr = format(new Date(), 'yyyy-MM-dd');
 
@@ -105,6 +108,15 @@ export default function Kepsek() {
     const clean = phone.replace(/\D/g, '').replace(/^0/, '62');
     window.open(`https://wa.me/${clean}?text=${encodeURIComponent(message)}`, '_blank');
   };
+  const handleDirectWA = async (phone, message) => {
+    if (!phone) { toast({ title: 'Nomor tidak tersedia', variant: 'destructive' }); return; }
+    try {
+      await base44.functions.invoke('sendWANotif', { phone, message });
+      toast({ title: '✅ WA terkirim langsung', description: 'Pesan dikirim via Fonnte ke Wali Kelas' });
+    } catch (e) {
+      toast({ title: 'Gagal kirim WA', description: e?.message || 'Terjadi kesalahan', variant: 'destructive' });
+    }
+  };
   const handleEmail = async (subject, body) => {
     if (!currentUser?.email) { toast({ title: 'Email tidak tersedia', variant: 'destructive' }); return; }
     try { await base44.integrations.Core.SendEmail({ to: currentUser.email, subject, body }); toast({ title: '📧 Email terkirim', description: `Notifikasi dikirim ke ${currentUser.email}` }); }
@@ -127,11 +139,29 @@ export default function Kepsek() {
     const filteredKeuangan = keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo);
     const totalPemasukan = filteredKeuangan.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
     const totalPengeluaran = filteredKeuangan.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
-    const last5Days = [];
-    for (let i = 0; i < 5; i++) { const d = new Date(); d.setDate(d.getDate() - i); last5Days.push(format(d, 'yyyy-MM-dd')); }
-    const datesWithAbsensi = [...new Set(absensiList.filter(a => last5Days.includes(a.tanggal)).map(a => a.tanggal))].sort().reverse().slice(0, 3);
-    const siswaAlfa3Hari = aktiveSiswa.filter(s => datesWithAbsensi.length >= 3 && datesWithAbsensi.every(date => absensiList.some(a => a.siswa_id === s.id && a.tanggal === date && a.status === 'Alfa')));
-    const siswaSakit3Hari = aktiveSiswa.filter(s => datesWithAbsensi.length >= 3 && datesWithAbsensi.every(date => absensiList.some(a => a.siswa_id === s.id && a.tanggal === date && a.status === 'Sakit')));
+    // Logika persisten: siswa dengan absen (Alfa/Sakit) >= 3 hari sejak terakhir kali hadir,
+    // dan belum ada progress hadir kembali. Alert tetap muncul walau hari sudah lewat.
+    const siswaAbsen3Hari = aktiveSiswa.map(s => {
+      const records = absensiList.filter(a => a.siswa_id === s.id);
+      const hadirDates = records.filter(r => r.status === 'Hadir' || r.status === 'Terlambat').map(r => r.tanggal).sort();
+      const lastHadirDate = hadirDates.length > 0 ? hadirDates[hadirDates.length - 1] : null;
+      const absentsAfter = records
+        .filter(r => !lastHadirDate || r.tanggal > lastHadirDate)
+        .filter(r => r.status === 'Alfa' || r.status === 'Sakit')
+        .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+      if (absentsAfter.length < 3) return null;
+      return {
+        ...s,
+        _absenList: absentsAfter.map(r => ({ tanggal: r.tanggal, status: r.status, keterangan: r.keterangan })),
+        _alfaCount: absentsAfter.filter(r => r.status === 'Alfa').length,
+        _sakitCount: absentsAfter.filter(r => r.status === 'Sakit').length,
+        _lastAbsenDate: absentsAfter[absentsAfter.length - 1].tanggal,
+      };
+    }).filter(Boolean);
+    const siswaAlfa3Hari = siswaAbsen3Hari.filter(s => s._alfaCount > 0);
+    const siswaSakit3Hari = siswaAbsen3Hari.filter(s => s._sakitCount > 0 && s._alfaCount === 0);
+    const pegawaiHadirHariIni = absensiPegawaiList.filter(a => a.tanggal === todayStr && (a.status === 'Hadir' || a.status === 'Terlambat'));
+    const jadwalHariIni = jadwalPelajaranList.filter(j => j.hari === format(new Date(), 'EEEE', { locale: idLocale }));
     const pelanggaranSangatBerat = pelanggaranList.filter(p => {
       if (p.status !== 'Proses' || p.jenis_pelanggaran !== 'Sangat Berat') return false;
       const siswa = siswaList.find(s => s.id === p.siswa_id);
@@ -154,17 +184,18 @@ export default function Kepsek() {
       sakitHariIni: absensiHariIni.filter(a => a.status === 'Sakit').length, alfaHariIni: absensiHariIni.filter(a => a.status === 'Alfa').length,
       izinHariIni: absensiHariIni.filter(a => a.status === 'Izin').length,
       saldo: totalPemasukan - totalPengeluaran, totalPemasukan, totalPengeluaran,
-      siswaAlfa3Hari, siswaSakit3Hari, pelanggaranBerat, pelanggaranSangatBerat, prestasiPeriod,
+      siswaAbsen3Hari, siswaAlfa3Hari, siswaSakit3Hari, pegawaiHadirHariIni, jadwalHariIni,
+      pelanggaranBerat, pelanggaranSangatBerat, prestasiPeriod,
       h2Events, izinCount: izinList.length, uksCount: uksList.filter(u => u.tanggal === todayStr).length,
       homeVisitTotal: homeVisitList.length, homeVisitVisited: visitedSiswa.length,
       homeVisitNotVisited: notVisitedSiswa, homeVisitNotVisitedCount: notVisitedSiswa.length,
     };
-  }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, prestasiList, kalenderList, izinList, uksList, homeVisitList, dateFrom, dateTo, todayStr]);
+  }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, prestasiList, kalenderList, izinList, uksList, homeVisitList, absensiPegawaiList, jadwalPelajaranList, dateFrom, dateTo, todayStr]);
 
   const alerts = useMemo(() => {
     const list = [];
-    stats.siswaAlfa3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `alfa3-${s.id}`, severity: 'critical', category: 'Absensi', title: 'Alfa 3 Hari Berturut-turut', person: s.nama, kelas: s.nama_kelas, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
-    stats.siswaSakit3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `sakit3-${s.id}`, severity: 'warning', category: 'Absensi', title: 'Sakit 3 Hari Berturut-turut', person: s.nama, kelas: s.nama_kelas, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
+    stats.siswaAlfa3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `alfa3-${s.id}`, severity: 'critical', category: 'Absensi', title: `Alfa ${s._alfaCount} Hari (Belum Hadir Kembali)`, person: s.nama, kelas: s.nama_kelas, keterangan: s._absenList.map(d => `${format(parseISO(d.tanggal), 'd/MM')}: ${d.status}`).join(', '), waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
+    stats.siswaSakit3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `sakit3-${s.id}`, severity: 'warning', category: 'Absensi', title: `Sakit ${s._sakitCount} Hari (Belum Hadir Kembali)`, person: s.nama, kelas: s.nama_kelas, keterangan: s._absenList.map(d => `${format(parseISO(d.tanggal), 'd/MM')}: ${d.status}`).join(', '), waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
     stats.pelanggaranSangatBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'critical', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.pelanggaranBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'warning', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.h2Events.forEach(ev => { list.push({ id: `h2-${ev.id}`, severity: 'warning', category: 'Kalender', title: 'Kegiatan H-2', event: ev.judul, date: format(parseISO(ev.tanggal_mulai), 'd MMM yyyy', { locale: idLocale }) }); });
@@ -202,9 +233,10 @@ export default function Kepsek() {
         { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' },
         { key: 'status', label: 'Status', render: r => <Badge className={bdg[r.status] || 'bg-slate-500/20 text-slate-300'}>{r.status}</Badge> }, { key: 'jam_masuk', label: 'Jam Masuk' },
       ]},
-      alfa3: { title: 'Siswa Alfa 3 Hari Berturut-turut', data: stats.siswaAlfa3Hari, columns: [
+      alfa3: { title: 'Siswa Absen 3+ Hari (Alfa/Sakit — Belum Hadir Kembali)', data: stats.siswaAbsen3Hari, columns: [
         { key: 'nama', label: 'Nama' }, { key: 'nama_kelas', label: 'Kelas' },
-        { key: 'aksi', label: 'Hubungi', render: r => { const info = getWaliKelasInfo(r.id); return (<div className="flex gap-1">{info.waliPhone && <button onClick={() => handleWhatsApp(info.waliPhone, `Yth. ${info.waliName}, siswa ${r.nama} alfa 3 hari.`)} className="text-emerald-500"><MessageCircle className="w-4 h-4" /></button>}{info.ortuPhone && <button onClick={() => handleWhatsApp(info.ortuPhone, `Yth. Orang Tua ${r.nama},`)} className="text-blue-500"><MessageCircle className="w-4 h-4" /></button>}</div>); } },
+        { key: 'keterangan', label: 'Keterangan', render: r => (<div className="text-xs"><span className="font-medium text-red-500">Alfa: {r._alfaCount}x</span><span className="text-blue-500 ml-2">Sakit: {r._sakitCount}x</span><p className="text-slate-400 mt-0.5">Terakhir: {format(parseISO(r._lastAbsenDate), 'd MMM yyyy', { locale: idLocale })}</p></div>) },
+        { key: 'aksi', label: 'Hubungi', render: r => { const info = getWaliKelasInfo(r.id); const msg = `Yth. ${info.waliName || 'Wali Kelas'}, mohon tindak lanjut siswa ${r.nama} yang telah absen (Alfa ${r._alfaCount}x, Sakit ${r._sakitCount}x) selama 3+ hari dan belum hadir kembali. Mohon segera hubungi orang tua.`; return (<div className="flex gap-1">{info.waliPhone && <button onClick={() => handleWhatsApp(info.waliPhone, msg)} className="text-emerald-500" title="Buka WA Wali Kelas"><MessageCircle className="w-4 h-4" /></button>}{info.ortuPhone && <button onClick={() => handleWhatsApp(info.ortuPhone, `Yth. Orang Tua ${r.nama}, mohon konfirmasi kehadiran siswa yang telah absen 3+ hari.`)} className="text-blue-500" title="Buka WA Orang Tua"><MessageCircle className="w-4 h-4" /></button>}</div>); } },
       ]},
       pelanggaran: { title: 'Pelanggaran Berat (Aktif)', data: stats.pelanggaranBerat, columns: [
         { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' },
@@ -214,7 +246,7 @@ export default function Kepsek() {
         { key: 'progress', label: 'Progress', render: r => r.progress_sanksi?.length ? `${r.progress_sanksi.filter(s => s.selesai).length}/${r.progress_sanksi.length}` : '-' },
         { key: 'status', label: 'Status', render: r => <Badge className={r.status === 'Selesai' ? (isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700')}>{r.status}</Badge> },
       ]},
-      keuangan: { title: 'Transaksi Keuangan', data: keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo).slice(0, 50), columns: [
+      keuangan: { title: 'Transaksi Keuangan Hari Ini', data: keuanganList.filter(k => k.tanggal === todayStr).slice(0, 50), columns: [
         { key: 'tanggal', label: 'Tanggal' }, { key: 'jenis', label: 'Jenis', render: r => <Badge className={bdg[r.jenis] || 'bg-slate-500/20 text-slate-300'}>{r.jenis}</Badge> },
         { key: 'uraian', label: 'Uraian' }, { key: 'jumlah', label: 'Jumlah', render: r => <span className={r.jenis === 'Pemasukan' ? 'text-emerald-500' : 'text-red-500'}>{formatRupiah(r.jumlah)}</span> },
       ]},
@@ -242,15 +274,25 @@ export default function Kepsek() {
       uks: { title: 'Kunjungan UKS Hari Ini', data: uksList.filter(u => u.tanggal === todayStr), columns: [
         { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' }, { key: 'keluhan', label: 'Keluhan' }, { key: 'status', label: 'Status' },
       ]},
+      pegawaiHadir: { title: 'Pegawai Hadir Hari Ini', data: stats.pegawaiHadirHariIni, columns: [
+        { key: 'nama_pegawai', label: 'Nama' }, { key: 'jabatan', label: 'Jabatan' },
+        { key: 'status', label: 'Status', render: r => <Badge className={r.status === 'Terlambat' ? (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700') : (isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700')}>{r.status}</Badge> },
+        { key: 'jam_masuk', label: 'Jam Masuk' },
+      ]},
+      jadwalHariIni: { title: 'Jadwal Pelajaran Hari Ini', data: stats.jadwalHariIni, columns: [
+        { key: 'nama_kelas', label: 'Kelas' }, { key: 'jam', label: 'Jam', render: r => `${(r.jam_mulai || '').substring(0, 5)}-${(r.jam_selesai || '').substring(0, 5)}` },
+        { key: 'mapel', label: 'Mapel' }, { key: 'nama_guru', label: 'Guru' },
+      ]},
     };
     setDrillDown(configs[type]);
   };
 
   const statCards = [
     { label: 'Kehadiran', value: `${stats.persenHadir}%`, subtitle: `${stats.hadirHariIni}/${stats.absensiHariIni} siswa`, icon: Calendar, gradient: 'from-emerald-500 to-emerald-600', alert: stats.alfaHariIni, onClick: () => openDrillDown('kehadiran') },
-    { label: 'Alfa 3 Hari', value: stats.siswaAlfa3Hari.length, subtitle: 'siswa', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: stats.siswaAlfa3Hari.length, onClick: () => openDrillDown('alfa3') },
+    { label: 'Absen 3 Hari', value: stats.siswaAbsen3Hari.length, subtitle: 'belum hadir kembali', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: stats.siswaAbsen3Hari.length, onClick: () => openDrillDown('alfa3') },
     { label: 'Pelanggaran', value: stats.pelanggaranBerat.length, subtitle: 'berat/aktif', icon: AlertTriangle, gradient: 'from-orange-500 to-red-500', alert: stats.pelanggaranBerat.length + stats.pelanggaranSangatBerat.length, onClick: () => openDrillDown('pelanggaran') },
     { label: 'Saldo', value: formatRupiah(stats.saldo).replace('Rp', '').trim(), subtitle: `+${formatRupiah(stats.totalPemasukan).replace('Rp','').trim()} / -${formatRupiah(stats.totalPengeluaran).replace('Rp','').trim()}`, icon: Wallet, gradient: stats.saldo >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-red-600', onClick: () => openDrillDown('keuangan') },
+    { label: 'Pegawai Hadir', value: stats.pegawaiHadirHariIni.length, subtitle: 'hari ini', icon: UserCheck, gradient: 'from-teal-500 to-emerald-600', onClick: () => openDrillDown('pegawaiHadir') },
     { label: 'Prestasi', value: stats.prestasiPeriod.length, subtitle: 'prestasi', icon: Award, gradient: 'from-yellow-500 to-amber-600', onClick: () => openDrillDown('prestasi') },
     { label: 'Kegiatan H-2', value: stats.h2Events.length, subtitle: 'lusa', icon: CalendarDays, gradient: 'from-indigo-500 to-purple-600', alert: stats.h2Events.length },
   ];
@@ -298,17 +340,18 @@ export default function Kepsek() {
           </div>
         </div>
 
-        <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onEmail={handleEmail} isDark={isDark} />
+        <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onDirectWA={handleDirectWA} onEmail={handleEmail} isDark={isDark} />
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
           {statCards.map((card, i) => <StatCard key={i} {...card} />)}
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-2 md:gap-3">
           {[
             { label: 'Siswa Aktif', value: stats.totalSiswa, icon: Users, color: 'text-blue-500', onClick: () => openDrillDown('siswa') },
             { label: 'Guru Aktif', value: stats.totalGuru, icon: School, color: 'text-violet-500', onClick: () => openDrillDown('guru') },
             { label: 'Total Kelas', value: stats.totalKelas, icon: Building, color: 'text-emerald-500', onClick: () => openDrillDown('kelas') },
+            { label: 'Jadwal Hari Ini', value: stats.jadwalHariIni.length, icon: BookOpen, color: 'text-indigo-500', onClick: () => openDrillDown('jadwalHariIni') },
             { label: 'Izin Hari Ini', value: stats.izinCount, icon: FileText, color: 'text-amber-500', onClick: () => openDrillDown('izin') },
             { label: 'UKS Hari Ini', value: stats.uksCount, icon: Heart, color: 'text-pink-500', onClick: () => openDrillDown('uks') },
             { label: 'Home Visit', value: stats.homeVisitVisited, icon: HomeIcon, color: 'text-indigo-500', onClick: () => openDrillDown('homevisit') },
@@ -361,6 +404,8 @@ export default function Kepsek() {
           </div>
           <KepsekKalender events={kalenderList} onEmail={handleEmail} today={new Date()} isDark={isDark} />
         </div>
+
+        <AktivitasHariIni absensiPegawaiList={absensiPegawaiList} jadwalPelajaranList={jadwalPelajaranList} guruList={guruList} isDark={isDark} />
 
         <PenyebaranSiswaMap homeVisitList={homeVisitList} />
       </div>

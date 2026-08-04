@@ -1,9 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Mail, AlertTriangle, Bell } from 'lucide-react';
+import { MessageCircle, Mail, AlertTriangle, Bell, Send } from 'lucide-react';
 
-export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = true }) {
+export default function KepsekAlerts({ alerts, onWhatsApp, onDirectWA, onEmail, isDark = true }) {
+  const buildWaliMessage = (alert) => {
+    if (alert.category === 'Absensi') {
+      return `Yth. Bpk/Ibu ${alert.waliName || 'Wali Kelas'},\n\nMohon tindak lanjut siswa ${alert.person} (${alert.kelas}) yang telah ${alert.title}.\n${alert.keterangan ? `Rincian ketidakhadiran: ${alert.keterangan}\n` : ''}Mohon segera hubungi orang tua. Terima kasih.`;
+    }
+    return `Yth. ${alert.waliName || 'Wali Kelas'},\n\nMohon tindak lanjut terkait: ${alert.title}\nSiswa: ${alert.person} (${alert.kelas})\n${alert.keterangan ? `Keterangan: ${alert.keterangan}\n` : ''}Terima kasih.`;
+  };
   const c = isDark ? {
     container: 'bg-slate-800 border border-slate-700',
     text: 'text-slate-100', textMuted: 'text-slate-400',
@@ -77,10 +83,16 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onEmail, isDark = tru
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 {alert.waliPhone && (
-                  <button onClick={() => onWhatsApp(alert.waliPhone, `Yth. ${alert.waliName || 'Wali Kelas'},\n\nMenginformasikan mengenai: ${alert.title}\nSiswa: ${alert.person} (${alert.kelas})\n\nMohon tindak lanjutnya. Terima kasih.`)}
-                    className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center justify-center transition-colors" title={`WA Wali Kelas: ${alert.waliName || ''}`}>
-                    <MessageCircle className="w-4 h-4" />
-                  </button>
+                  <>
+                    <button onClick={() => onDirectWA(alert.waliPhone, buildWaliMessage(alert))}
+                      className="w-8 h-8 rounded-lg bg-emerald-500/30 text-emerald-400 hover:bg-emerald-500/40 flex items-center justify-center transition-colors" title={`Kirim WA Langsung (Fonnte) ke Wali Kelas: ${alert.waliName || ''}`}>
+                      <Send className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => onWhatsApp(alert.waliPhone, buildWaliMessage(alert))}
+                      className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400/70 hover:bg-emerald-500/20 flex items-center justify-center transition-colors" title={`Buka WA Wali Kelas: ${alert.waliName || ''}`}>
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  </>
                 )}
                 {alert.ortuPhone && (
                   <button onClick={() => onWhatsApp(alert.ortuPhone, `Yth. Orang Tua dari ${alert.person},\n\nMenginformasikan mengenai: ${alert.title}\n\nMohon konfirmasi dan tindak lanjutnya. Terima kasih.`)}
