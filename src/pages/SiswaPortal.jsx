@@ -75,7 +75,13 @@ export default function SiswaPortal() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [expandedMonth, setExpandedMonth] = useState(null);
 
-  // Group absensi by month for accordion view
+  const { data: absensiList = [] } = useQuery({
+    queryKey: ['siswa-absensi', siswa?.id],
+    queryFn: () => base44.entities.Absensi.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+
+  // Group absensi by month for accordion view (harus setelah deklarasi absensiList)
   const absensiByMonth = useMemo(() => {
     const map = new Map();
     absensiList.forEach(a => {
@@ -85,17 +91,9 @@ export default function SiswaPortal() {
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(a);
     });
-    // Sort each month's records descending by date
     map.forEach(list => list.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)));
-    // Sort months descending
     return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
   }, [absensiList]);
-
-  const { data: absensiList = [] } = useQuery({
-    queryKey: ['siswa-absensi', siswa?.id],
-    queryFn: () => base44.entities.Absensi.filter({ siswa_id: siswa.id }),
-    enabled: !!siswa?.id,
-  });
 
   const { data: nilaiList = [] } = useQuery({
     queryKey: ['siswa-nilai', siswa?.id],
