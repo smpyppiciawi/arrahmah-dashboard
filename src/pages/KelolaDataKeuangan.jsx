@@ -19,6 +19,7 @@ import RupiahInput from '@/components/ui/RupiahInput';
 import HonorariumTab from '@/components/keuangan/HonorariumTab';
 import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
 import PilihSiswaDialog from '@/components/keuangan/PilihSiswaDialog';
+import BiayaKhususPerSiswa from '@/components/keuangan/BiayaKhususPerSiswa';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function KelolaDataKeuangan() {
@@ -387,7 +388,12 @@ export default function KelolaDataKeuangan() {
                 </Button>
               </CardHeader>
               <CardContent>
-                <DataTable columns={biayaKhususColumns} data={biayaKhususList} pageSize={10} />
+                <BiayaKhususPerSiswa
+                  biayaKhususList={biayaKhususList}
+                  kelasList={kelasList}
+                  onDelete={(id) => deleteBiayaKhususMutation.mutate(id)}
+                  activeAcademicYear={activeAcademicYear}
+                />
               </CardContent>
             </Card>
           </TabsContent>

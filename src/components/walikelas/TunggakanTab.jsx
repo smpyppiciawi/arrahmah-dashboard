@@ -18,6 +18,9 @@ const STATUS_STYLE = {
 
 const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
 
+const formatRupiah = (v) =>
+  new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
+
 export default function TunggakanTab({ kelasWali, siswaKelas }) {
   const { activeAcademicYear } = useActiveAcademicYear();
   const [search, setSearch] = useState('');
@@ -62,13 +65,14 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     if (PER_SISWA_JENIS.includes(tarif.jenis_iuran)) {
       const khusus = getKhusus(siswa, tarif);
       if (!khusus) return null;
-      if (khusus.is_gratis) return { status: 'Lunas', detail: 'Gratis' };
+      if (khusus.is_gratis) return { status: 'Lunas', detail: 'Gratis', tagihan: 0, sudahBayar: 0, sisa: 0 };
       const tagihan = khusus.nominal_khusus || tarif.nominal || 0;
       const sb = khusus.sudah_bayar || 0;
-      if (tagihan <= 0) return { status: 'Lunas', detail: 'Tanpa tagihan' };
-      if (sb >= tagihan) return { status: 'Lunas', detail: 'Lunas' };
-      if (sb > 0) return { status: 'Cicil', detail: 'Cicilan' };
-      return { status: 'Belum', detail: 'Belum Bayar' };
+      if (tagihan <= 0) return { status: 'Lunas', detail: 'Tanpa tagihan', tagihan: 0, sudahBayar: 0, sisa: 0 };
+      const sisa = tagihan - sb;
+      if (sb >= tagihan) return { status: 'Lunas', detail: 'Sudah Bayar', tagihan, sudahBayar: sb, sisa: 0 };
+      if (sb > 0) return { status: 'Cicil', detail: 'Cicilan', tagihan, sudahBayar: sb, sisa };
+      return { status: 'Belum', detail: 'Belum Bayar', tagihan, sudahBayar: 0, sisa: tagihan };
     }
     const isSpp = (tarif.nama || '').toLowerCase().includes('spp') || tarif.jenis_iuran === 'SPP' || tarif.periode === 'Bulanan';
     const trans = siswaKeuangan.filter(k => k.siswa_id === siswa.id && (
@@ -92,7 +96,11 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     return { status: 'Belum', detail: 'Belum Lunas' };
   };
 
-  const getKhusus = (siswa, tarif) => biayaKhususList.find(b => b.siswa_id === siswa.id && b.tarif_iuran_id === tarif.id);
+  const getKhusus = (siswa, tarif) => biayaKhususList.find(b =>
+    b.siswa_id === siswa.id &&
+    b.tarif_iuran_id === tarif.id &&
+    (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+  );
 
   const siswaSummary = useMemo(() => {
     // eslint-disable-next-line
@@ -203,11 +211,18 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-slate-400">{st.detail}</span>
-                      <Badge className={`border ${STATUS_STYLE[st.status]}`}>
-                        {st.status === 'Lunas' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : st.status === 'Cicil' ? <Clock className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                        {st.status}
-                      </Badge>
+                      <div className="text-right">
+                        {st.tagihan > 0 && !khusus?.is_gratis && (
+                          <div className="text-[10px] text-slate-400 leading-tight">
+                            {st.sudahBayar > 0 && <div>Dibayar: <b className="text-emerald-600">{formatRupiah(st.sudahBayar)}</b></div>}
+                            {st.sisa > 0 && <div>Sisa: <b className="text-red-500">{formatRupiah(st.sisa)}</b></div>}
+                          </div>
+                        )}
+                        <Badge className={`border ${STATUS_STYLE[st.status]}`}>
+                          {st.status === 'Lunas' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : st.status === 'Cicil' ? <Clock className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
+                          {st.status}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 );

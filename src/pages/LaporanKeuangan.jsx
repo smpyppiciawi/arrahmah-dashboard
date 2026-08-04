@@ -16,8 +16,12 @@ import {
   Wallet, Calendar, Filter, Download, AlertCircle, Megaphone
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
+import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
+
+const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
 
 export default function LaporanKeuangan() {
+  const { activeAcademicYear } = useActiveAcademicYear();
   const [activeTab, setActiveTab] = useState('rekening-koran');
   const [filterDateFrom, setFilterDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [filterDateTo, setFilterDateTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -48,6 +52,12 @@ export default function LaporanKeuangan() {
   const { data: sumberDanaList = [] } = useQuery({
     queryKey: ['sumber-dana'],
     queryFn: () => base44.entities.SumberDana.list('nama'),
+  });
+
+  const { data: biayaKhususList = [] } = useQuery({
+    queryKey: ['biaya-khusus'],
+    queryFn: () => base44.entities.BiayaKhusus.list(),
+    staleTime: 5 * 60 * 1000,
   });
 
   // Calculate saldo per sumber dana
@@ -131,7 +141,7 @@ export default function LaporanKeuangan() {
   };
 
   // Helper: calculate expected total for a tingkat
-  const calculateExpected = (tingkat, iuranName = null) => {
+  const calculateExpected = (siswaId, tingkat, iuranName = null) => {
     return tarifIuranList
       .filter(t => {
         if (t.tingkat && t.tingkat !== 'Semua' && t.tingkat !== tingkat) return false;
@@ -139,6 +149,17 @@ export default function LaporanKeuangan() {
         return true;
       })
       .reduce((sum, t) => {
+        // Per-siswa iuran (Mutasi/PPDB): hanya berlaku jika ada BiayaKhusus record
+        if (PER_SISWA_JENIS.includes(t.jenis_iuran)) {
+          const khusus = biayaKhususList.find(b =>
+            b.siswa_id === siswaId &&
+            b.tarif_iuran_id === t.id &&
+            (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+          );
+          if (!khusus) return sum; // siswa tidak punya iuran ini
+          if (khusus.is_gratis) return sum; // gratis = tanpa tagihan
+          return sum + (khusus.nominal_khusus || t.nominal || 0);
+        }
         let multiplier = 1;
         switch (t.periode) {
           case 'Bulanan': multiplier = 12; break;
@@ -165,7 +186,7 @@ export default function LaporanKeuangan() {
 
   // Helper: calculate paid for siswa (all or specific iuran)
   const calculatePaid = (siswaId, iuranName = null) => {
-    return keuanganList
+    let total = keuanganList
       .filter(k => k.siswa_id === siswaId && k.jenis === 'Pemasukan')
       .filter(k => {
         if (!iuranName) return true;
@@ -173,6 +194,19 @@ export default function LaporanKeuangan() {
                k.kategori?.toLowerCase().includes(iuranName.toLowerCase());
       })
       .reduce((sum, k) => sum + (k.jumlah || 0), 0);
+
+    // Tambahkan "Sudah Bayar" dari BiayaKhusus (pembayaran tahun ajaran lalu)
+    biayaKhususList
+      .filter(b => b.siswa_id === siswaId && !b.is_gratis &&
+        (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear))
+      .forEach(b => {
+        const tarif = tarifIuranList.find(t => t.id === b.tarif_iuran_id);
+        if (!tarif || !PER_SISWA_JENIS.includes(tarif.jenis_iuran)) return;
+        if (iuranName && tarif.nama !== iuranName) return;
+        total += (b.sudah_bayar || 0);
+      });
+
+    return total;
   };
 
   // Filter siswa by kelas
@@ -185,7 +219,7 @@ export default function LaporanKeuangan() {
   const laporanTunggakan = useMemo(() => {
     return filteredSiswaList.map(siswa => {
       const tingkat = getTingkat(siswa);
-      const expected = calculateExpected(tingkat, selectedIuran || null);
+      const expected = calculateExpected(siswa.id, tingkat, selectedIuran || null);
       const totalDibayar = calculatePaid(siswa.id, selectedIuran || null);
       const tunggakan = Math.max(0, expected - totalDibayar);
       const periode = selectedIuran ? getIuranPeriode(selectedIuran, tingkat) : '-';
@@ -198,7 +232,7 @@ export default function LaporanKeuangan() {
         status: tunggakan > 0 ? 'Menunggak' : 'Lunas'
       };
     }).filter(s => selectedSiswa ? s.id === selectedSiswa : true);
-  }, [filteredSiswaList, keuanganList, tarifIuranList, selectedSiswa, selectedIuran, kelasTingkatMap]);
+  }, [filteredSiswaList, keuanganList, tarifIuranList, biayaKhususList, selectedSiswa, selectedIuran, kelasTingkatMap, activeAcademicYear]);
 
   // Print functions
   const printRekeningKoran = () => {

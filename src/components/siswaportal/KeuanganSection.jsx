@@ -171,19 +171,38 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
             <p className="text-sm font-bold text-slate-800 mb-3">Iuran {activeIuran}</p>
             {filteredBiayaKhusus.length > 0 ? (
               <div className="space-y-2">
-                {filteredBiayaKhusus.map((b, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700">{b.nama_iuran}</p>
-                      <p className="text-xs text-slate-400">{b.kategori}{b.is_gratis ? ' · GRATIS' : ` · ${formatRupiah(b.nominal_khusus)}`}</p>
+                {filteredBiayaKhusus.map((b, i) => {
+                  const tagihan = b.nominal_khusus || 0;
+                  const sb = b.sudah_bayar || 0;
+                  const sisa = Math.max(0, tagihan - sb);
+                  const isLunas = b.is_gratis || sb >= tagihan;
+                  const isCicil = !isLunas && sb > 0;
+                  return (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-700">{b.nama_iuran}</p>
+                        <p className="text-xs text-slate-400">
+                          {b.kategori}
+                          {b.is_gratis ? ' · GRATIS' : ` · ${formatRupiah(tagihan)}`}
+                        </p>
+                        {sb > 0 && !b.is_gratis && (
+                          <p className="text-[10px] text-emerald-600 mt-0.5">
+                            Sudah Bayar: {formatRupiah(sb)}{sisa > 0 ? ` · Sisa: ${formatRupiah(sisa)}` : ''}
+                          </p>
+                        )}
+                      </div>
+                      {b.is_gratis ? (
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">GRATIS</span>
+                      ) : isLunas ? (
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">Lunas</span>
+                      ) : isCicil ? (
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Sisa {formatRupiah(sisa)}</span>
+                      ) : (
+                        <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-700">Belum Bayar</span>
+                      )}
                     </div>
-                    {b.is_gratis ? (
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">GRATIS</span>
-                    ) : (
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Perlu Dibayar</span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-6 text-slate-400">
