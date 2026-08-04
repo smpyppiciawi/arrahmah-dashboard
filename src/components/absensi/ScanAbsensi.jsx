@@ -105,11 +105,33 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     setScanLog(prev => [entry, ...prev].slice(0, 20));
   };
 
+  // Voice feedback menggunakan Web Speech API (Bahasa Indonesia)
+  const speak = (text) => {
+    if (!('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID';
+      utterance.rate = 1;
+      window.speechSynthesis.speak(utterance);
+    } catch (e) { /* noop */ }
+  };
+
   const notify = (result) => {
     setLastResult(result);
     addLog(result);
     const jamAbsen = result.jamAbsen || format(new Date(), 'HH:mm:ss');
     setPopup({ ...result, jamAbsen });
+
+    // Voice feedback berdasarkan hasil scan
+    if (result.status === 'success') {
+      const keterangan = result.statusAbsen === 'Pulang' ? 'pulang' : 'masuk';
+      speak(`${result.nama}, absensi ${keterangan} sudah tercatat`);
+    } else if (result.status === 'info') {
+      speak(`${result.nama}, anda sudah terdata hari ini`);
+    } else {
+      speak('Maaf, data absensi gagal terbaca');
+    }
   };
 
   const sendWANotif = async (k, status, now) => {
