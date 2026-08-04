@@ -54,7 +54,7 @@ export default function Transaksi() {
 
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
-    queryFn: () => base44.entities.Keuangan.list('-tanggal'),
+    queryFn: () => base44.entities.Keuangan.list('-created_date'),
   });
 
   const { data: siswaList = [] } = useQuery({
@@ -105,7 +105,13 @@ export default function Transaksi() {
 
     if (filterDateFrom) data = data.filter(t => t.tanggal >= filterDateFrom);
     if (filterDateTo) data = data.filter(t => t.tanggal <= filterDateTo);
-    return data;
+    // Urutkan berdasarkan waktu input (created_date) terbaru di atas,
+    // sehingga transaksi yang diinput terakhir tampil paling atas meski tanggal sama
+    return [...data].sort((a, b) => {
+      const ca = new Date(a.created_date || 0).getTime();
+      const cb = new Date(b.created_date || 0).getTime();
+      return cb - ca;
+    });
   }, [keuanganList, activeTab, filterDateFrom, filterDateTo]);
 
   const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
