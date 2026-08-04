@@ -38,7 +38,8 @@
         "Terlambat",
         "Izin",
         "Sakit",
-        "Alfa"
+        "Alfa",
+        "Pulang"
       ],
       "default": "Hadir",
       "description": "Status kehadiran"

@@ -44,19 +44,38 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     queryFn: () => base44.entities.JadwalAbsensi.filter({ jenis: 'Masuk', aktif: true }),
   });
 
+  const { data: jadwalPulang = [] } = useQuery({
+    queryKey: ['jadwal-absensi-pulang'],
+    queryFn: () => base44.entities.JadwalAbsensi.filter({ jenis: 'Pulang', aktif: true }),
+  });
+
   const addMinutesToHHMM = (hhmm, mins) => {
     const [h, m] = hhmm.split(':').map(Number);
     const total = h * 60 + m + (Number(mins) || 0);
     return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   };
 
+  const findJadwal = (list) => (list || []).find(j =>
+    (j.person_type === personType || j.person_type === 'Semua') &&
+    Array.isArray(j.hari) && j.hari.includes(todayDay)
+  );
+
   const getLateThreshold = () => {
-    const match = (jadwalMasuk || []).find(j =>
-      (j.person_type === personType || j.person_type === 'Semua') &&
-      Array.isArray(j.hari) && j.hari.includes(todayDay)
-    );
+    const match = findJadwal(jadwalMasuk);
     if (match && match.jam) return addMinutesToHHMM(match.jam, match.toleransi_menit);
     return personType === 'Pegawai' ? '07:30' : '07:00';
+  };
+
+  // Jika toleransi nonaktif, jam berapapun = Masuk (tidak pernah Terlambat)
+  const isToleransiAktif = () => {
+    const match = findJadwal(jadwalMasuk);
+    return match ? match.toleransi_aktif !== false : true;
+  };
+
+  // Apakah waktu sekarang sudah melewati jam Pulang?
+  const getPulangJam = () => {
+    const match = findJadwal(jadwalPulang);
+    return match && match.jam ? match.jam : null;
   };
 
   useEffect(() => {
@@ -131,15 +150,38 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
 
       const now = format(new Date(), 'HH:mm');
       const lateThreshold = getLateThreshold();
-      const isLate = now > lateThreshold;
-      const status = isLate ? 'Terlambat' : 'Hadir';
+      const pulangJam = getPulangJam();
+      const isPulangTime = pulangJam && now >= pulangJam;
 
       if (personType === 'Pegawai') {
         const existing = await base44.entities.AbsensiPegawai.filter({ guru_id: k.person_id, tanggal: today });
+        // Scan setelah jam Pulang → catat jam keluar / status Pulang
+        if (isPulangTime) {
+          if (existing.length > 0 && existing[0].jam_keluar) {
+            notify({ status: 'info', message: `${k.nama} sudah scan pulang`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_keluar, statusAbsen: 'Pulang' });
+            return;
+          }
+          if (existing.length > 0) {
+            await base44.entities.AbsensiPegawai.update(existing[0].id, { jam_keluar: now, status: 'Pulang' });
+          } else {
+            await base44.entities.AbsensiPegawai.create({
+              tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
+              nama_pegawai: k.nama, jabatan: k.info,
+              jam_keluar: now, status: 'Pulang', metode: k.jenis, card_id: cardId,
+            });
+          }
+          notify({ status: 'success', message: `${k.nama} — Pulang — ${now}`, cardId, person: k, type: 'pulang', nama: k.nama, jamAbsen: now, statusAbsen: 'Pulang' });
+          sendWANotif(k, 'Pulang', now);
+          queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
+          return;
+        }
         if (existing.length > 0) {
           notify({ status: 'info', message: `${k.nama} sudah terdata hari ini`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: existing[0].status || 'Hadir' });
           return;
         }
+        // Jika toleransi nonaktif → selalu Hadir; jika aktif → cek terlambat
+        const isLate = isToleransiAktif() ? now > lateThreshold : false;
+        const status = isLate ? 'Terlambat' : 'Hadir';
         await base44.entities.AbsensiPegawai.create({
           tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
           nama_pegawai: k.nama, jabatan: k.info,
@@ -153,6 +195,9 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           notify({ status: 'info', message: `${k.nama} sudah terdata hari ini`, cardId, person: k, nama: k.nama, jamAbsen: existing[0].jam_masuk, statusAbsen: existing[0].status || 'Hadir' });
           return;
         }
+        // Siswa: toleransi nonaktif → selalu Hadir; aktif → cek terlambat (kecuali sudah jam pulang)
+        const isLate = (isPulangTime || !isToleransiAktif()) ? false : now > lateThreshold;
+        const status = isPulangTime ? 'Hadir' : (isLate ? 'Terlambat' : 'Hadir');
         await base44.entities.Absensi.create({
           tanggal: today, siswa_id: k.person_id, nis: k.nip_nis,
           nama_siswa: k.nama, nama_kelas: k.info,
@@ -407,7 +452,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
                   <p className="text-sm font-mono text-slate-600">{a.jam_masuk}{a.jam_keluar ? ` → ${a.jam_keluar}` : ''}</p>
                   <div className="flex items-center gap-1 justify-end">
                     {a.metode && a.metode !== 'Manual' && <span className="text-[9px] text-slate-400">{a.metode}</span>}
-                    <Badge className={`text-[9px] ${a.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'Terlambat' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>{a.status}</Badge>
+                    <Badge className={`text-[9px] ${a.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'Terlambat' ? 'bg-orange-100 text-orange-700' : a.status === 'Pulang' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{a.status}</Badge>
                   </div>
                 </div>
               </div>
@@ -464,6 +509,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
                     <Badge className={
                       popup.statusAbsen === 'Hadir' ? 'bg-emerald-100 text-emerald-700' :
                       popup.statusAbsen === 'Terlambat' ? 'bg-orange-100 text-orange-700' :
+                      popup.statusAbsen === 'Pulang' ? 'bg-blue-100 text-blue-700' :
                       popup.status === 'success' ? 'bg-emerald-100 text-emerald-700' :
                       popup.status === 'info' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
                     }>{popup.statusAbsen || (popup.status === 'success' ? 'Tercatat' : popup.status === 'info' ? 'Terdata' : 'Gagal')}</Badge>

@@ -37,10 +37,15 @@
       },
       "description": "Hari berlaku jadwal"
     },
+    "toleransi_aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Aktif/nonaktifkan toleransi terlambat. Jika false, jam berapapun selama belum jam pulang dinyatakan Masuk."
+    },
     "toleransi_menit": {
       "type": "number",
       "default": 0,
-      "description": "Toleransi terlambat (menit) \u2014 khusus jenis Masuk"
+      "description": "Toleransi terlambat (menit) \u2014 khusus jenis Masuk, hanya berlaku jika toleransi_aktif true"
     },
     "person_type": {
       "type": "string",

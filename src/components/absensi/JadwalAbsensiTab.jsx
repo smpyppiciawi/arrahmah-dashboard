@@ -25,7 +25,8 @@ const PERSON_OPTS = ['Semua', 'Siswa', 'Pegawai'];
 const emptyForm = {
   label: '', jenis: 'Masuk', jam: '07:00',
   hari: ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'],
-  toleransi_menit: 0, person_type: 'Semua', keterangan: '', aktif: true,
+  toleransi_aktif: true, toleransi_menit: 0,
+  person_type: 'Semua', keterangan: '', aktif: true,
 };
 
 const colorMap = {
@@ -57,7 +58,9 @@ export default function JadwalAbsensiTab() {
     setEditing(r);
     setForm({
       label: r.label || '', jenis: r.jenis || 'Masuk', jam: r.jam || '07:00',
-      hari: r.hari || [], toleransi_menit: r.toleransi_menit || 0,
+      hari: r.hari || [],
+      toleransi_aktif: r.toleransi_aktif !== false,
+      toleransi_menit: r.toleransi_menit || 0,
       person_type: r.person_type || 'Semua', keterangan: r.keterangan || '',
       aktif: r.aktif !== false,
     });
@@ -80,6 +83,7 @@ export default function JadwalAbsensiTab() {
         jam: form.jam,
         hari: form.hari,
         toleransi_menit: form.jenis === 'Masuk' ? Number(form.toleransi_menit) || 0 : 0,
+        toleransi_aktif: form.jenis === 'Masuk' ? form.toleransi_aktif !== false : true,
         person_type: form.person_type,
         keterangan: form.keterangan,
         aktif: form.aktif,
@@ -163,7 +167,7 @@ export default function JadwalAbsensiTab() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filtered.sort((a, b) => (a.jam || '').localeCompare(b.jam || '')).map(r => {
+              {filtered.sort((a, b) => (a.label || '').localeCompare(b.label || '')).map(r => {
                 const m = jenisMeta(r.jenis);
                 const Icon = m.icon;
                 return (
@@ -179,7 +183,11 @@ export default function JadwalAbsensiTab() {
                       </div>
                       <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
                         <span className="font-mono font-semibold text-slate-700">{r.jam}</span>
-                        {r.jenis === 'Masuk' && r.toleransi_menit > 0 && <span className="text-orange-500">+{r.toleransi_menit}m toleransi</span>}
+                        {r.jenis === 'Masuk' && r.toleransi_aktif === false
+                          ? <span className="text-emerald-500">Toleransi Off</span>
+                          : r.jenis === 'Masuk' && r.toleransi_menit > 0
+                          ? <span className="text-orange-500">+{r.toleransi_menit}m toleransi</span>
+                          : null}
                         <span className="text-slate-400">·</span>
                         <span className="truncate">{(r.hari || []).join(', ')}</span>
                       </div>
@@ -244,9 +252,18 @@ export default function JadwalAbsensiTab() {
             </div>
             {form.jenis === 'Masuk' && (
               <div>
-                <Label>Toleransi Terlambat (menit)</Label>
-                <Input type="number" min="0" value={form.toleransi_menit} onChange={e => setForm(f => ({ ...f, toleransi_menit: e.target.value }))} placeholder="0" />
-                <p className="text-[11px] text-slate-400 mt-1">Tambahan menit setelah jam masuk sebelum dinyatakan terlambat.</p>
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Toleransi Terlambat</Label>
+                  <Switch checked={form.toleransi_aktif !== false} onCheckedChange={v => setForm(f => ({ ...f, toleransi_aktif: v }))} />
+                </div>
+                {form.toleransi_aktif !== false ? (
+                  <>
+                    <Input type="number" min="0" value={form.toleransi_menit} onChange={e => setForm(f => ({ ...f, toleransi_menit: e.target.value }))} placeholder="0" />
+                    <p className="text-[11px] text-slate-400 mt-1">Tambahan menit setelah jam masuk sebelum dinyatakan terlambat.</p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-emerald-600 bg-emerald-50 rounded-lg p-2">Toleransi nonaktif — jam berapapun selama belum melewati jam pulang dinyatakan <b>Masuk</b>.</p>
+                )}
               </div>
             )}
             <div>
