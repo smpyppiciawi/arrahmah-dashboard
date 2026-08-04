@@ -5,6 +5,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 import { MapPin, User, Users, Home, Phone, Calendar, FileText } from "lucide-react";
+import { format as formatDateFns, parseISO } from 'date-fns';
+import { id as idLocale } from 'date-fns/locale';
+
+const formatTanggalLahir = (val) => {
+  if (!val) return '';
+  try {
+    const d = typeof val === 'string' ? parseISO(val) : new Date(val);
+    if (isNaN(d.getTime())) return val;
+    return formatDateFns(d, 'dd-MM-yyyy');
+  } catch { return val; }
+};
 
 const Field = ({ label, value }) => (
   <div>
@@ -72,7 +83,7 @@ export default function SiswaDetailDialog({ siswa, onClose }) {
               <Field label="Kelas" value={siswa.nama_kelas} />
               <Field label="Agama" value={siswa.agama} />
               <Field label="Tempat Lahir" value={siswa.tempat_lahir} />
-              <Field label="Tanggal Lahir" value={siswa.tanggal_lahir} />
+              <Field label="Tanggal Lahir" value={formatTanggalLahir(siswa.tanggal_lahir)} />
               <Field label="NIK" value={siswa.nik} />
               <Field label="Penerima KIP" value={siswa.penerima_kip} />
             </div>
