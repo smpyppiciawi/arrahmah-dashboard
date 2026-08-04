@@ -1,0 +1,85 @@
+{
+  "name": "LogTahunAjaran",
+  "type": "object",
+  "properties": {
+    "tahun_ajaran_lama": {
+      "type": "string",
+      "description": "Tahun ajaran yang diarsipkan"
+    },
+    "tahun_ajaran_baru": {
+      "type": "string",
+      "description": "Tahun ajaran baru yang diaktifkan"
+    },
+    "tanggal_migrasi": {
+      "type": "string",
+      "description": "Timestamp ISO saat migrasi dijalankan"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "ID user yang menjalankan migrasi"
+    },
+    "operator_nama": {
+      "type": "string",
+      "description": "Nama operator yang menjalankan migrasi"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pending",
+        "In Progress",
+        "Completed",
+        "Failed",
+        "Rolled Back"
+      ],
+      "default": "Pending",
+      "description": "Status proses migrasi"
+    },
+    "jumlah_siswa_diarsip": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah record HistoryStatusSiswa dibuat"
+    },
+    "jumlah_siswa_lulus": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah siswa kelas 9 yang diluluskan"
+    },
+    "jumlah_nilai_diarsip": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah record ArsipNilai dibuat"
+    },
+    "jumlah_tunggakan_diarsip": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah record ArsipKeuangan dibuat"
+    },
+    "total_saldo_keuangan_sebelum": {
+      "type": "number",
+      "default": 0,
+      "description": "Checksum: total sisa tunggakan sebelum migrasi"
+    },
+    "total_saldo_keuangan_sesudah": {
+      "type": "number",
+      "default": 0,
+      "description": "Checksum: total sisa tunggakan di ArsipKeuangan setelah migrasi"
+    },
+    "backup_file_url": {
+      "type": "string",
+      "description": "URL backup database di Google Drive"
+    },
+    "catatan": {
+      "type": "string",
+      "description": "Catatan tambahan operator"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat migrasi selesai"
+    }
+  },
+  "required": [
+    "tahun_ajaran_lama",
+    "tahun_ajaran_baru",
+    "status"
+  ]
+}

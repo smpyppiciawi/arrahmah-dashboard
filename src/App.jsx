@@ -20,6 +20,7 @@ import AbsensiPegawai from './pages/AbsensiPegawai';
 import PeriodikSiswa from './pages/PeriodikSiswa';
 import Sarpras from './pages/Sarpras';
 import ScanAbsensi from './pages/ScanAbsensi';
+import ProsesTahunAjaran from './pages/ProsesTahunAjaran';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -101,6 +102,11 @@ const AuthenticatedApp = () => {
       <Route path="/ScanAbsensi" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="ScanAbsensi"><ScanAbsensi /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/ProsesTahunAjaran" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="ProsesTahunAjaran"><ProsesTahunAjaran /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

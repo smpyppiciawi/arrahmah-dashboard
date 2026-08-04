@@ -1,0 +1,77 @@
+{
+  "name": "ArsipNilai",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Nama kelas saat nilai dicatat"
+    },
+    "tingkat": {
+      "type": "string",
+      "description": "Tingkat kelas saat nilai dicatat"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran nilai (cth: 2026/2027)"
+    },
+    "semester": {
+      "type": "string",
+      "enum": [
+        "Ganjil",
+        "Genap"
+      ]
+    },
+    "mapel": {
+      "type": "string",
+      "description": "Mata pelajaran"
+    },
+    "jenis_penilaian": {
+      "type": "string",
+      "enum": [
+        "Ulangan Harian",
+        "Tugas",
+        "PTS",
+        "PAS",
+        "Praktik"
+      ]
+    },
+    "nilai": {
+      "type": "number",
+      "description": "Nilai akhir"
+    },
+    "kkm": {
+      "type": "number",
+      "default": 75
+    },
+    "status_ketuntasan": {
+      "type": "string",
+      "enum": [
+        "Tuntas",
+        "Belum Tuntas"
+      ]
+    },
+    "migrated_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat diarsipkan"
+    },
+    "migrate_log_id": {
+      "type": "string",
+      "description": "ID LogTahunAjaran terkait"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "tahun_ajaran"
+  ]
+}

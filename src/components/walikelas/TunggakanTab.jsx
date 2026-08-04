@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag } from 'lucide-react';
+import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History } from 'lucide-react';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -43,6 +43,23 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     queryFn: () => base44.entities.BiayaKhusus.list(),
     staleTime: 5 * 60 * 1000,
   });
+
+  const { data: arsipKeuanganList = [] } = useQuery({
+    queryKey: ['arsipKeuangan', siswaKelas.map(s => s.id).join(',')],
+    queryFn: () => base44.entities.ArsipKeuangan.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const siswaArsipMap = useMemo(() => {
+    const map = new Map();
+    siswaIds.forEach(id => map.set(id, []));
+    arsipKeuanganList.forEach(a => {
+      if (map.has(a.siswa_id)) {
+        map.get(a.siswa_id).push(a);
+      }
+    });
+    return map;
+  }, [arsipKeuanganList, siswaIds]);
 
   const kelasTingkat = kelasWali?.tingkat || (kelasWali?.nama_kelas?.charAt(0) || '');
 
@@ -148,13 +165,14 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                 <TableHead className="text-xs">Nama Siswa</TableHead>
                 <TableHead className="text-xs text-center">Lunas</TableHead>
                 <TableHead className="text-xs text-center">Cicil</TableHead>
+                <TableHead className="text-xs text-center">Tunggakan Thn Lalu</TableHead>
                 <TableHead className="text-xs text-center">Belum</TableHead>
                 <TableHead className="text-xs w-28">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center text-slate-400 py-8">Tidak ada siswa</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center text-slate-400 py-8">Tidak ada siswa</TableCell></TableRow>
               ) : filtered.map(({ siswa, belum, cicil, lunas }, i) => (
                 <TableRow key={siswa.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                   <TableCell className="text-xs text-slate-400">{i + 1}</TableCell>
@@ -162,6 +180,15 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                   <TableCell className="font-medium text-sm">{siswa.nama}</TableCell>
                   <TableCell className="text-center"><Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">{lunas}</Badge></TableCell>
                   <TableCell className="text-center"><Badge className="bg-amber-100 text-amber-700 border-0 text-xs">{cicil}</Badge></TableCell>
+                  <TableCell className="text-center">
+                    {(() => {
+                      const arsip = siswaArsipMap.get(siswa.id) || [];
+                      const totalLalu = arsip.reduce((s, a) => s + (a.sisa_tunggakan || 0), 0);
+                      return totalLalu > 0
+                        ? <Badge className="bg-red-100 text-red-700 border-0 text-xs" title={formatRupiah(totalLalu)}>{arsip.length} ({formatRupiah(totalLalu)})</Badge>
+                        : <Badge className="bg-slate-100 text-slate-400 border-0 text-xs">—</Badge>;
+                    })()}
+                  </TableCell>
                   <TableCell className="text-center"><Badge className={belum > 0 ? 'bg-red-100 text-red-700 border-0 text-xs' : 'bg-slate-100 text-slate-400 border-0 text-xs'}>{belum}</Badge></TableCell>
                   <TableCell>
                     <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setDetailSiswa(siswa)}>
@@ -190,6 +217,36 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                 <span>•</span>
                 <span>Kelas: <b className="text-slate-600">{detailSiswa.nama_kelas}</b></span>
               </div>
+              {/* Tunggakan Tahun Lalu (Arsip Keuangan) */}
+              {(() => {
+                const arsip = siswaArsipMap.get(detailSiswa.id) || [];
+                const totalLalu = arsip.reduce((s, a) => s + (a.sisa_tunggakan || 0), 0);
+                if (arsip.length === 0) return null;
+                return (
+                  <div className="p-3 rounded-lg border border-red-200 bg-red-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
+                        <History className="w-4 h-4" /> Tunggakan Tahun Lalu
+                      </p>
+                      <Badge className="bg-red-100 text-red-700 border-0">{formatRupiah(totalLalu)}</Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      {arsip.map((a, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <div>
+                            <span className="text-slate-600 font-medium">{a.nama_iuran || '-'}</span>
+                            <span className="text-slate-400 ml-1.5">· {a.tahun_ajaran_asal}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-slate-400 line-through mr-1">{formatRupiah(a.nominal_tagihan)}</span>
+                            <span className="text-red-600 font-semibold">{formatRupiah(a.sisa_tunggakan)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {activeTarif.length === 0 ? (
                 <p className="text-center py-8 text-slate-400 text-sm">Tidak ada iuran aktif untuk tahun pelajaran ini.</p>
               ) : activeTarif.map(tarif => {

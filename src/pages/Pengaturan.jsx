@@ -18,7 +18,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, AlertTriangle } from 'lucide-react';
+import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 
@@ -239,6 +239,28 @@ export default function Pengaturan() {
                     Simpan
                   </Button>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Finalisasi Tahun Ajaran */}
+          <Card className="border-amber-300 bg-gradient-to-br from-amber-50 to-orange-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShieldCheck className="w-5 h-5 text-amber-600" />
+                Finalisasi & Pergantian Tahun Ajaran
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-amber-800">
+                Proses closing akhir tahun: arsip tunggakan, nilai, dan kelulusan siswa sebelum mengaktifkan tahun pelajaran baru. Sistem akan terkunci (Read-Only) selama migrasi berlangsung.
+              </p>
+              {isAdmin && (
+                <Link to="/ProsesTahunAjaran">
+                  <Button className="bg-amber-600 hover:bg-amber-700 gap-2 w-full sm:w-auto">
+                    <ShieldCheck className="w-4 h-4" /> Buka Proses Finalisasi <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
               )}
             </CardContent>
           </Card>
