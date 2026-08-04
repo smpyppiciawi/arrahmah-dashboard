@@ -12,10 +12,46 @@ import {
   LogOut, Award, School, TrendingUp, CheckCircle, User,
   Bell, Megaphone, Phone, MapPin, Edit2, Save, X,
   ChevronRight, Star, Zap, Heart, Shield, Home,
-  ArrowLeft, Trophy, Flame, Target
+  ArrowLeft, Trophy, Flame, Target, ChevronDown
 } from "lucide-react";
 import CatatanSection from '@/components/siswaportal/CatatanSection';
 import KeuanganSection from '@/components/siswaportal/KeuanganSection';
+
+// ===== Date Helpers (Indonesian) =====
+const HARI_NAMA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+const BULAN_NAMA = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+const formatDateDMY = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+const formatDateWithDay = (dateStr) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  return `${HARI_NAMA[d.getDay()]}, ${formatDateDMY(dateStr)}`;
+};
+
+const getCurrentWeekDays = () => {
+  const today = new Date();
+  const day = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
+  monday.setHours(0, 0, 0, 0);
+  const days = [];
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+  return days;
+};
 
 // ===================== BOTTOM NAV =====================
 const NAV_ITEMS = [
@@ -37,6 +73,23 @@ export default function SiswaPortal() {
   const [profilForm, setProfilForm] = useState(null);
   const [phoneForm, setPhoneForm] = useState({ no_telp_ortu: '', no_ayah: '', no_ibu: '', no_wali: '' });
   const [savingPhone, setSavingPhone] = useState(false);
+  const [expandedMonth, setExpandedMonth] = useState(null);
+
+  // Group absensi by month for accordion view
+  const absensiByMonth = useMemo(() => {
+    const map = new Map();
+    absensiList.forEach(a => {
+      const d = new Date(a.tanggal);
+      if (isNaN(d)) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(a);
+    });
+    // Sort each month's records descending by date
+    map.forEach(list => list.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)));
+    // Sort months descending
+    return Array.from(map.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  }, [absensiList]);
 
   const { data: absensiList = [] } = useQuery({
     queryKey: ['siswa-absensi', siswa?.id],
@@ -463,27 +516,48 @@ export default function SiswaPortal() {
             </div>
           )}
 
-          {/* Recent Absensi */}
+          {/* Absensi Minggu Ini (Senin-Jumat) */}
           <div className="px-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-slate-700 font-bold text-sm">Absensi Terkini</p>
+              <p className="text-slate-700 font-bold text-sm">Absensi Minggu Ini</p>
               <button onClick={() => setActiveTab('absensi')} className="text-xs text-indigo-600 font-medium flex items-center gap-0.5">
                 Lihat semua <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              {absensiList.length === 0 ? (
-                <div className="py-8 text-center text-slate-400">
+              {(() => {
+                const weekDays = getCurrentWeekDays();
+                const todayStr = formatDateDMY(new Date());
+                return weekDays.map((d, idx) => {
+                  const dStr = formatDateDMY(d);
+                  const record = absensiList.find(a => formatDateDMY(a.tanggal) === dStr);
+                  const isToday = dStr === todayStr;
+                  const isFuture = d > new Date() && !isToday;
+                  return (
+                    <div key={idx} className={`flex items-center justify-between px-4 py-3 ${idx > 0 ? 'border-t border-slate-50' : ''} ${isToday ? 'bg-indigo-50/50' : ''}`}>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-slate-700 font-semibold flex items-center gap-1.5">
+                          {HARI_NAMA[d.getDay()]}
+                          {isToday && <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-full font-bold">HARI INI</span>}
+                        </span>
+                        <span className="text-xs text-slate-400">{dStr}</span>
+                      </div>
+                      {record ? (
+                        <AbsensiBadge status={record.status} />
+                      ) : isFuture ? (
+                        <span className="text-xs text-slate-300 font-medium">—</span>
+                      ) : (
+                        <span className="text-xs text-slate-300 font-medium">Belum tercatat</span>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+              {absensiList.length === 0 && (
+                <div className="py-6 text-center text-slate-400">
                   <span className="text-3xl block mb-2">📅</span>
                   <p className="text-sm">Belum ada data absensi</p>
                 </div>
-              ) : (
-                absensiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).slice(0, 5).map((a, idx) => (
-                  <div key={idx} className={`flex items-center justify-between px-4 py-3 ${idx > 0 ? 'border-t border-slate-50' : ''}`}>
-                    <span className="text-sm text-slate-600 font-medium">{a.tanggal}</span>
-                    <AbsensiBadge status={a.status} />
-                  </div>
-                ))
               )}
             </div>
           </div>
@@ -495,7 +569,8 @@ export default function SiswaPortal() {
         <div className="pb-24">
           <PageHeader title="Absensi" emoji="📅" gradient="from-emerald-500 to-teal-500" />
           <div className="px-4 mt-4">
-            {/* Summary pills */}
+            {/* Total Tahun Ajaran Aktif */}
+            <p className="text-xs text-slate-400 font-medium mb-2 px-1">Total Tahun Ajaran Aktif</p>
             <div className="grid grid-cols-5 gap-2 mb-4">
               {[
                 { label: 'Hadir', val: stats.hadir, color: 'bg-emerald-50 text-emerald-700 border border-emerald-100' },
@@ -513,18 +588,61 @@ export default function SiswaPortal() {
                 <p className="text-[10px] font-semibold opacity-80 mt-1">Hadir</p>
               </div>
             </div>
-            <div className="space-y-2">
-              {absensiList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map((a, idx) => (
-                <div key={idx} className="bg-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-sm">
-                  <div>
-                    <p className="font-semibold text-slate-800 text-sm">{a.tanggal}</p>
-                    {a.keterangan && <p className="text-slate-400 text-xs mt-0.5">{a.keterangan}</p>}
-                  </div>
-                  <AbsensiBadge status={a.status} />
-                </div>
-              ))}
-              {absensiList.length === 0 && <EmptyState emoji="📅" text="Belum ada data absensi" />}
-            </div>
+
+            {/* Rekap per Bulan (Accordion) */}
+            <p className="text-xs text-slate-400 font-medium mb-2 px-1">Rekap per Bulan</p>
+            {absensiByMonth.length === 0 ? (
+              <EmptyState emoji="📅" text="Belum ada data absensi" />
+            ) : (
+              <div className="space-y-2">
+                {absensiByMonth.map(([monthKey, records]) => {
+                  const [year, monthIdx] = monthKey.split('-');
+                  const monthName = BULAN_NAMA[parseInt(monthIdx)];
+                  const hadir = records.filter(r => r.status === 'Hadir').length;
+                  const total = records.length;
+                  const pct = total > 0 ? Math.round((hadir / total) * 100) : 0;
+                  const isExpanded = expandedMonth === monthKey;
+                  return (
+                    <div key={monthKey} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                      <button
+                        onClick={() => setExpandedMonth(isExpanded ? null : monthKey)}
+                        className="w-full flex items-center justify-between px-4 py-3.5"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex flex-col items-center justify-center shrink-0">
+                            <span className="text-[9px] text-emerald-500 font-bold leading-none uppercase">{monthName.slice(0, 3)}</span>
+                            <span className="text-sm font-black text-emerald-700 leading-none mt-0.5">{year}</span>
+                          </div>
+                          <div className="text-left">
+                            <p className="font-bold text-slate-800 text-sm">{monthName} {year}</p>
+                            <p className="text-xs text-slate-400">{total} catatan · {hadir} hadir</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${pct >= 75 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
+                            {pct}%
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+                      {isExpanded && (
+                        <div className="border-t border-slate-100">
+                          {records.map((a, idx) => (
+                            <div key={idx} className="flex items-center justify-between px-4 py-3 border-b border-slate-50 last:border-b-0">
+                              <div>
+                                <p className="font-semibold text-slate-800 text-sm">{formatDateWithDay(a.tanggal)}</p>
+                                {a.keterangan && <p className="text-slate-400 text-xs mt-0.5">{a.keterangan}</p>}
+                              </div>
+                              <AbsensiBadge status={a.status} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

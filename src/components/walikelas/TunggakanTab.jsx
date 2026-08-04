@@ -50,18 +50,9 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const siswaArsipMap = useMemo(() => {
-    const map = new Map();
-    siswaIds.forEach(id => map.set(id, []));
-    arsipKeuanganList.forEach(a => {
-      if (map.has(a.siswa_id)) {
-        map.get(a.siswa_id).push(a);
-      }
-    });
-    return map;
-  }, [arsipKeuanganList, siswaIds]);
-
   const kelasTingkat = kelasWali?.tingkat || (kelasWali?.nama_kelas?.charAt(0) || '');
+
+  const siswaIds = useMemo(() => new Set(siswaKelas.map(s => s.id)), [siswaKelas]);
 
   const activeTarif = useMemo(() => {
     return tarifList.filter(t => {
@@ -72,7 +63,16 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     });
   }, [tarifList, activeAcademicYear, kelasTingkat]);
 
-  const siswaIds = useMemo(() => new Set(siswaKelas.map(s => s.id)), [siswaKelas]);
+  const siswaArsipMap = useMemo(() => {
+    const map = new Map();
+    siswaIds.forEach(id => map.set(id, []));
+    arsipKeuanganList.forEach(a => {
+      if (map.has(a.siswa_id)) {
+        map.get(a.siswa_id).push(a);
+      }
+    });
+    return map;
+  }, [arsipKeuanganList, siswaIds]);
 
   const siswaKeuangan = useMemo(() => {
     return keuanganList.filter(k => k.siswa_id && siswaIds.has(k.siswa_id) && (!activeAcademicYear || k.tahun_ajaran === activeAcademicYear));
