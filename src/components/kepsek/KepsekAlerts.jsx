@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { MessageCircle, Mail, AlertTriangle, Bell, Send } from 'lucide-react';
+import { MessageCircle, Mail, AlertTriangle, Bell, Send, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function KepsekAlerts({ alerts, onWhatsApp, onDirectWA, onEmail, isDark = true }) {
+export default function KepsekAlerts({ alerts, onWhatsApp, onDirectWA, onEmail, onApproveIzin, isDark = true }) {
   const buildWaliMessage = (alert) => {
     if (alert.category === 'Absensi') {
       return `Yth. Bpk/Ibu ${alert.waliName || 'Wali Kelas'},\n\nMohon tindak lanjut siswa ${alert.person} (${alert.kelas}) yang telah ${alert.title}.\n${alert.keterangan ? `Rincian ketidakhadiran: ${alert.keterangan}\n` : ''}Mohon segera hubungi orang tua. Terima kasih.`;
@@ -104,6 +104,16 @@ export default function KepsekAlerts({ alerts, onWhatsApp, onDirectWA, onEmail, 
                   className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 flex items-center justify-center transition-colors" title="Kirim Email">
                   <Mail className="w-4 h-4" />
                 </button>
+                {alert.category === 'Izin Pegawai' && onApproveIzin && (
+                  <>
+                    <button onClick={() => onApproveIzin(alert, 'Disetujui')} className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 flex items-center justify-center transition-colors" title="Setujui Izin">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </button>
+                    <button onClick={() => onApproveIzin(alert, 'Ditolak')} className="w-8 h-8 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 flex items-center justify-center transition-colors" title="Tolak Izin">
+                      <XCircle className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
               </div>
             </motion.div>
           );

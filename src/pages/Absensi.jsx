@@ -106,9 +106,27 @@ export default function Absensi() {
 
                     {tidakHadir.length > 0 && (
                       <div>
-                        <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1"><UserX className="w-3 h-3 text-red-500" /> Tidak Hadir Sekolah:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {tidakHadir.map(a => <Badge key={a.id} className={`text-xs ${a.status === 'Sakit' ? 'bg-amber-100 text-amber-700' : a.status === 'Izin' ? 'bg-blue-100 text-blue-700' : a.status === 'Alfa' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{a.nama_siswa} ({a.status})</Badge>)}
+                        <p className="text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1"><UserX className="w-3 h-3 text-red-500" /> Tidak Hadir Sekolah (per Kelas):</p>
+                        <div className="space-y-2">
+                          {(() => {
+                            const byKelas = {};
+                            tidakHadir.forEach(a => {
+                              const k = a.nama_kelas || 'Tanpa Kelas';
+                              if (!byKelas[k]) byKelas[k] = [];
+                              byKelas[k].push(a);
+                            });
+                            return Object.keys(byKelas).sort((a, b) => a.localeCompare(b, 'id')).map(kelas => {
+                              const items = byKelas[kelas].sort((a, b) => (a.nama_siswa || '').localeCompare(b.nama_siswa || '', 'id'));
+                              return (
+                                <div key={kelas} className="rounded-lg bg-slate-50 border border-slate-200 p-2">
+                                  <p className="text-[11px] font-bold text-slate-700 mb-1">{kelas} — {items.length} siswa</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {items.map(a => <Badge key={a.id} className={`text-xs ${a.status === 'Sakit' ? 'bg-amber-100 text-amber-700' : a.status === 'Izin' ? 'bg-blue-100 text-blue-700' : a.status === 'Alfa' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'}`}>{a.nama_siswa} ({a.status}{a.keterangan ? `: ${a.keterangan}` : ''})</Badge>)}
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </div>
                     )}

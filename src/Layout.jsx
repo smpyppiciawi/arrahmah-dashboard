@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import LiveClock from '@/components/ui/LiveClock';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import { PengingatMengajarProvider } from '@/components/guru/PengingatMengajar';
+import KepsekBackButton from '@/components/kepsek/KepsekBackButton';
 
 const FULL_ACCESS_MENU = {
   topItems: [
@@ -435,6 +436,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main Content */}
       <main className={`${sidebarHidden ? 'lg:ml-0' : 'lg:ml-64'} pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen bg-slate-50 transition-all duration-300`}>
         <PengingatMengajarProvider>
+          <KepsekBackButton />
           {children}
         </PengingatMengajarProvider>
       </main>
