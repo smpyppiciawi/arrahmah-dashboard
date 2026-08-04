@@ -1,0 +1,44 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 8 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Jakarta",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "notif_absen_3hari",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "send_absen_3hari_notification": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "notifAbsen3Hari"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Kirim Notifikasi Absen 3 Hari",
+            "description": "Cek siswa absen (Alfa/Sakit) 3+ hari yang belum hadir kembali, lalu kirim WA ke Wali Kelas via Fonnte"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Notifikasi Absen 3 Hari Siswa",
+  "description": "Setiap hari pukul 08:00 WIB, cek siswa yang absen (Alfa/Sakit) 3+ hari dan belum hadir kembali, lalu kirim WA notifikasi ke Wali Kelas terkait via Fonnte. Peringatan tetap muncul di Dashboard Kepsek untuk tindak lanjut manual."
+}

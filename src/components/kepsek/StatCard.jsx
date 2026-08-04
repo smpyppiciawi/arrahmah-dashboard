@@ -7,7 +7,7 @@ export default function StatCard({ label, value, icon: Icon, gradient, onClick, 
       whileHover={{ scale: 1.03, y: -2 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className={`relative cursor-pointer rounded-3xl p-3 md:p-4 bg-gradient-to-br ${gradient} text-white shadow-xl shadow-black/10 overflow-hidden transition-all hover:shadow-2xl hover:shadow-black/20`}
+      className={`relative cursor-pointer rounded-3xl p-3 md:p-4 h-full min-h-[104px] flex flex-col bg-gradient-to-br ${gradient} text-white shadow-xl shadow-black/10 overflow-hidden transition-all hover:shadow-2xl hover:shadow-black/20`}
     >
       {/* Decorative blurred circle for depth */}
       <div className="absolute -top-6 -right-6 w-24 h-24 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -16,10 +16,10 @@ export default function StatCard({ label, value, icon: Icon, gradient, onClick, 
           {alert}
         </div>
       )}
-      <div className="relative">
-        <Icon className="w-5 h-5 md:w-6 md:h-6 opacity-90 mb-2" />
-        <p className="text-lg md:text-2xl font-bold leading-tight">{value}</p>
-        <p className="text-[10px] md:text-xs opacity-80 mt-0.5">{label}</p>
+      <div className="relative flex flex-col flex-1">
+        <Icon className="w-5 h-5 md:w-6 md:h-6 opacity-90 mb-2 flex-shrink-0" />
+        <p className="text-lg md:text-2xl font-bold leading-tight truncate">{value}</p>
+        <p className="text-[10px] md:text-xs opacity-80 mt-0.5 truncate">{label}</p>
         {subtitle && <p className="text-[9px] md:text-[10px] opacity-60 mt-0.5 truncate">{subtitle}</p>}
       </div>
     </motion.div>
