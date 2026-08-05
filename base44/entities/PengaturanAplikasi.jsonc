@@ -13,6 +13,11 @@
     "keterangan": {
       "type": "string",
       "description": "Keterangan tambahan"
+    },
+    "tampilkan_status_kehadiran_piket": {
+      "type": "boolean",
+      "default": true,
+      "description": "Tampilkan status kehadiran petugas piket di Dashboard (diatur Admin/TU)"
     }
   },
   "required": [

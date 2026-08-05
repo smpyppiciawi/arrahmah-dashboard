@@ -1,0 +1,51 @@
+{
+  "name": "JadwalPiket",
+  "type": "object",
+  "properties": {
+    "hari": {
+      "type": "string",
+      "enum": [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu"
+      ],
+      "description": "Hari tugas piket"
+    },
+    "petugas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "guru_id": {
+            "type": "string",
+            "description": "ID pegawai/guru"
+          },
+          "nama_pegawai": {
+            "type": "string",
+            "description": "Nama petugas piket"
+          },
+          "nip": {
+            "type": "string",
+            "description": "NIP pegawai"
+          }
+        }
+      },
+      "description": "Daftar petugas piket untuk hari tersebut (bisa lebih dari 1)"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Status aktif jadwal piket hari ini"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran berlaku"
+    }
+  },
+  "required": [
+    "hari"
+  ]
+}

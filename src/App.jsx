@@ -21,6 +21,7 @@ import PeriodikSiswa from './pages/PeriodikSiswa';
 import Sarpras from './pages/Sarpras';
 import ScanAbsensi from './pages/ScanAbsensi';
 import ProsesTahunAjaran from './pages/ProsesTahunAjaran';
+import JadwalPiketPegawai from './pages/JadwalPiketPegawai';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -108,6 +109,11 @@ const AuthenticatedApp = () => {
       <Route path="/ProsesTahunAjaran" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="ProsesTahunAjaran"><ProsesTahunAjaran /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/JadwalPiketPegawai" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="JadwalPiketPegawai"><JadwalPiketPegawai /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

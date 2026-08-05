@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from '@/lib/AuthContext';
 import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 import JadwalTab from '@/components/dashboard/JadwalTab';
+import PiketInfo from '@/components/dashboard/PiketInfo';
+import JadwalPiketView from '@/components/dashboard/JadwalPiketView';
+import PiketHariIniBadge from '@/components/dashboard/PiketHariIniBadge';
 import LiveClock from '@/components/ui/LiveClock';
 import { usePengingatMengajar } from '@/components/guru/PengingatMengajar';
 
@@ -93,6 +96,7 @@ export default function Dashboard() {
                 <span className="hidden sm:inline">{pengingatEnabled ? 'On' : 'Off'}</span>
               </button>
             )}
+            {userRole === 'guru' && <PiketHariIniBadge />}
             <LiveClock />
           </div>
         </div>
@@ -132,6 +136,7 @@ export default function Dashboard() {
                 { value: 'uks', label: 'UKS', icon: Heart },
                 { value: 'menstruasi', label: 'Menstruasi', icon: Droplets },
                 { value: 'izin', label: 'Izin', icon: FileText },
+                { value: 'jadwal-piket', label: 'Jadwal Piket', icon: ShieldCheck },
                 ...(canSeeCariSiswa ? [
                   { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
                   { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
@@ -224,6 +229,7 @@ export default function Dashboard() {
                 </div>
               </CardHeader>
               <CardContent>
+                <PiketInfo dateFilter={dateFilter} />
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
                   {[
                     { label: 'Hadir', val: attendanceSummary.reduce((s, i) => s + i.hadir, 0), color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -465,6 +471,10 @@ export default function Dashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="jadwal-piket">
+            <JadwalPiketView />
           </TabsContent>
 
           {canSeeCariSiswa && (
