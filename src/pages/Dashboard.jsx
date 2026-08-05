@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import CariSiswaDashboard from '@/components/dashboard/CariSiswaDashboard';
 import JadwalTab from '@/components/dashboard/JadwalTab';
 import PiketInfo from '@/components/dashboard/PiketInfo';
 import JadwalPiketView from '@/components/dashboard/JadwalPiketView';
+import TugasPiketTab from '@/components/absensi/TugasPiketTab';
 import PiketHariIniBadge from '@/components/dashboard/PiketHariIniBadge';
 import LiveClock from '@/components/ui/LiveClock';
 import { usePengingatMengajar } from '@/components/guru/PengingatMengajar';
@@ -21,6 +22,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const canSeeCariSiswa = ['admin', 'operator'].includes(userRole);
+  const canSeeTugas = userRole === 'operator';
   const { enabled: pengingatEnabled, toggle: togglePengingat } = usePengingatMengajar();
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
@@ -140,6 +142,9 @@ export default function Dashboard() {
                 ...(canSeeCariSiswa ? [
                   { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
                   { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
+                ] : []),
+                ...(canSeeTugas ? [
+                  { value: 'tugas', label: 'Tugas', icon: ClipboardCheck },
                 ] : []),
               ].map(tab => {
                 const Icon = tab.icon;
@@ -487,6 +492,12 @@ export default function Dashboard() {
                 <JadwalTab />
               </TabsContent>
             </>
+          )}
+
+          {canSeeTugas && (
+            <TabsContent value="tugas">
+              <TugasPiketTab />
+            </TabsContent>
           )}
         </Tabs>
       </div>
