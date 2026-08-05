@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
-import { ClipboardList, CheckCircle, XCircle, Clock, Send, UserCheck } from "lucide-react";
+import { ClipboardList, CheckCircle, XCircle, Clock, Send, UserCheck, BookOpen } from "lucide-react";
+import TugasMateriDialog from './TugasMateriDialog';
 
 export default function PengajuanIzin() {
   const { user: currentUser } = useAuth();
@@ -26,6 +27,7 @@ export default function PengajuanIzin() {
   const [currentGuru, setCurrentGuru] = useState(null);
   const [form, setForm] = useState({ guru_id: '', tanggal: format(new Date(), 'yyyy-MM-dd'), jenis: 'Izin', keterangan: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [tugasDialogIzin, setTugasDialogIzin] = useState(null);
 
   useEffect(() => {
     const fetchGuru = async () => {
@@ -51,6 +53,16 @@ export default function PengajuanIzin() {
     queryKey: ['izin-pegawai'],
     queryFn: () => base44.entities.IzinPegawai.list('-tanggal', 200),
   });
+
+  const { data: tugasList = [] } = useQuery({
+    queryKey: ['tugas-materi-saya', currentUser?.id],
+    queryFn: () => base44.entities.TugasMateri.list('-tanggal', 200),
+  });
+  const myTugasMap = useMemo(() => {
+    const m = new Map();
+    tugasList.forEach(t => { if (t.izin_pegawai_id) m.set(t.izin_pegawai_id, t); });
+    return m;
+  }, [tugasList]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -247,29 +259,75 @@ export default function PengajuanIzin() {
         <CardContent className="space-y-2">
           {myList.length === 0 ? (
             <p className="text-center text-slate-400 text-sm py-4">Belum ada pengajuan</p>
-          ) : myList.map(iz => (
-            <div key={iz.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-slate-700">{format(new Date(iz.tanggal), 'd MMM yyyy', { locale: idLocale })}</p>
-                  <Badge className={iz.jenis === 'Sakit' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}>{iz.jenis}</Badge>
+          ) : myList.map(iz => {
+            const tugas = myTugasMap.get(iz.id);
+            const tugasVerified = tugas?.status_verifikasi === 'Sudah Diverifikasi';
+            return (
+              <div key={iz.id} className="p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-slate-700">{format(new Date(iz.tanggal), 'd MMM yyyy', { locale: idLocale })}</p>
+                      <Badge className={iz.jenis === 'Sakit' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}>{iz.jenis}</Badge>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">{iz.keterangan}</p>
+                    {iz.status_approval === 'Ditolak' && iz.catatan_approver && (
+                      <p className="text-xs text-red-500 mt-0.5">Ditolak: {iz.catatan_approver}</p>
+                    )}
+                    {iz.approver_nama && iz.status_approval !== 'Pending' && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">{iz.status_approval} oleh {iz.approver_nama}</p>
+                    )}
+                  </div>
+                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                    {statusBadge(iz.status_approval)}
+                    {iz.status_approval === 'Pending' && <Clock className="w-3 h-3 text-amber-500" />}
+                  </div>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">{iz.keterangan}</p>
-                {iz.status_approval === 'Ditolak' && iz.catatan_approver && (
-                  <p className="text-xs text-red-500 mt-0.5">Ditolak: {iz.catatan_approver}</p>
-                )}
-                {iz.approver_nama && iz.status_approval !== 'Pending' && (
-                  <p className="text-[10px] text-slate-400 mt-0.5">{iz.status_approval} oleh {iz.approver_nama}</p>
-                )}
+                <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2">
+                  {tugas ? (
+                    <>
+                      <div className="flex items-center gap-1.5 text-xs">
+                        {tugasVerified ? (
+                          <>
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                            <span className="text-emerald-600 font-medium">Tugas Terverifikasi</span>
+                            <span className="text-slate-400">· {tugas.kelas_tujuan}</span>
+                          </>
+                        ) : (
+                          <>
+                            <BookOpen className="w-3.5 h-3.5 text-amber-500" />
+                            <span className="text-amber-600 font-medium">Tugas Menunggu Verifikasi</span>
+                            <span className="text-slate-400">· {tugas.kelas_tujuan}</span>
+                          </>
+                        )}
+                      </div>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setTugasDialogIzin(iz)}>
+                        Ubah Tugas
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs text-slate-400">Belum ada tugas materi</span>
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50" onClick={() => setTugasDialogIzin(iz)}>
+                        <BookOpen className="w-3.5 h-3.5 mr-1" /> Tugas Materi
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col items-end gap-1">
-                {statusBadge(iz.status_approval)}
-                {iz.status_approval === 'Pending' && <Clock className="w-3 h-3 text-amber-500" />}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
+
+      {tugasDialogIzin && (
+        <TugasMateriDialog
+          open={!!tugasDialogIzin}
+          onClose={() => setTugasDialogIzin(null)}
+          izin={tugasDialogIzin}
+          currentGuru={currentGuru}
+        />
+      )}
     </div>
   );
 }

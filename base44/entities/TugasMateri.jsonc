@@ -1,0 +1,103 @@
+{
+  "name": "TugasMateri",
+  "type": "object",
+  "properties": {
+    "izin_pegawai_id": {
+      "type": "string",
+      "description": "ID IzinPegawai terkait"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal tugas berlaku"
+    },
+    "hari": {
+      "type": "string",
+      "enum": [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu"
+      ],
+      "description": "Hari (otomatis dari tanggal)"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID guru yang mengajukan tugas"
+    },
+    "nama_guru": {
+      "type": "string",
+      "description": "Nama guru"
+    },
+    "nip": {
+      "type": "string"
+    },
+    "jabatan": {
+      "type": "string"
+    },
+    "keterangan_izin": {
+      "type": "string",
+      "description": "Snapshot keterangan izin absensi"
+    },
+    "jenis_izin": {
+      "type": "string",
+      "enum": [
+        "Izin",
+        "Sakit"
+      ]
+    },
+    "mapel": {
+      "type": "string",
+      "description": "Mata pelajaran (dari JadwalPelajaran)"
+    },
+    "kelas_tujuan": {
+      "type": "string",
+      "description": "Nama kelas tujuan"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "jam_ke": {
+      "type": "number",
+      "description": "Jam ke (dari JadwalPelajaran)"
+    },
+    "keterangan_tugas": {
+      "type": "string",
+      "description": "Instruksi/keterangan tugas untuk kelas tujuan"
+    },
+    "pengaju_id": {
+      "type": "string"
+    },
+    "pengaju_nama": {
+      "type": "string"
+    },
+    "status_verifikasi": {
+      "type": "string",
+      "enum": [
+        "Belum Diverifikasi",
+        "Sudah Diverifikasi"
+      ],
+      "default": "Belum Diverifikasi"
+    },
+    "verifikator_id": {
+      "type": "string"
+    },
+    "verifikator_nama": {
+      "type": "string"
+    },
+    "verifikasi_at": {
+      "type": "string"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "tanggal",
+    "nama_guru",
+    "kelas_tujuan",
+    "keterangan_tugas"
+  ]
+}

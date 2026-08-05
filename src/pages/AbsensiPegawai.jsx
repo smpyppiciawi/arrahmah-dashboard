@@ -6,10 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Clock, User, TrendingUp, Send } from "lucide-react";
+import { Calendar, Clock, User, TrendingUp, Send, ClipboardCheck } from "lucide-react";
 import PengajuanIzin from '@/components/absensi/PengajuanIzin';
+import TugasPiketTab from '@/components/absensi/TugasPiketTab';
 import RekapFilter from '@/components/absensi/RekapFilter';
+import { useAuth } from '@/lib/AuthContext';
 export default function AbsensiPegawai() {
+  const { user: currentUser } = useAuth();
+  const userRole = currentUser?.role || 'guru';
   const [activeTab, setActiveTab] = useState('pengajuan');
   const [rekapMode, setRekapMode] = useState('hari');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -36,6 +40,7 @@ export default function AbsensiPegawai() {
 
   const tabs = [
     { key: 'pengajuan', label: 'Pengajuan Izin', icon: Send, color: 'bg-emerald-500' },
+    ...(userRole === 'operator' ? [{ key: 'tugas', label: 'Tugas', icon: ClipboardCheck, color: 'bg-amber-500' }] : []),
     { key: 'rekap', label: 'Rekap', icon: TrendingUp, color: 'bg-indigo-500' },
   ];
 
@@ -62,6 +67,8 @@ export default function AbsensiPegawai() {
         </div>
 
         {activeTab === 'pengajuan' && <PengajuanIzin />}
+
+        {activeTab === 'tugas' && <TugasPiketTab />}
 
         {activeTab === 'rekap' && (
           <div className="space-y-4">
