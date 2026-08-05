@@ -12,8 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from "@/context/ActiveAcademicYearContext";
-import { FileText, Plus, Trash2, MessageCircle, Clock, GraduationCap } from "lucide-react";
+import { FileText, Plus, Trash2, MessageCircle, Clock, GraduationCap, Send, UserCheck, LogOut, ArrowLeftRight } from "lucide-react";
 import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
+import WaSendDialog, { buildWaTargets } from './WaSendDialog';
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -24,6 +25,8 @@ export default function IzinTab() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [lulusOpen, setLulusOpen] = useState(false);
+  const [waTarget, setWaTarget] = useState(null);
+  const [tindakLanjutItem, setTindakLanjutItem] = useState(null);
 
   const [formData, setFormData] = useState({
     tanggal: format(new Date(), 'yyyy-MM-dd'),
@@ -84,40 +87,23 @@ export default function IzinTab() {
   }, [currentUser, guruList]);
 
   const createMutation = useMutation({
-    mutationFn: async (data) => {
-      const record = await base44.entities.IzinSiswa.create(data);
-      // Send WA notifications
-      try {
-        const kelas = kelasList.find(k => k.id === data.kelas_id);
-        const waliKelasName = kelas?.wali_kelas;
-        const waliGuru = guruList.find(g => g.nama === waliKelasName);
-        const siswa = siswaList.find(s => s.id === data.siswa_id);
-
-        const alasanText = data.alasan === 'Lainnya' ? (data.alasan_manual || 'Lainnya') : data.alasan;
-        const message = `*NOTIFIKASI IZIN SISWA*\n\nNama: ${data.nama_siswa}\nKelas: ${data.nama_kelas}\nTanggal: ${format(new Date(data.tanggal), 'd MMMM yyyy', { locale: idLocale })}\nJam Izin: ${data.jam_izin}\nAlasan: ${alasanText}\nKeterangan: ${data.keterangan || '-'}\nPetugas Piket: ${data.petugas_piket}`;
-
-        if (waliGuru?.no_telp) {
-          const cleaned = waliGuru.no_telp.replace(/\D/g, '').replace(/^0/, '62');
-          window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(message)}`, '_blank');
-        }
-
-        if (siswa?.no_telp_ortu) {
-          setTimeout(() => {
-            const cleanedOrtu = siswa.no_telp_ortu.replace(/\D/g, '').replace(/^0/, '62');
-            window.open(`https://wa.me/${cleanedOrtu}?text=${encodeURIComponent(message)}`, '_blank');
-          }, 1500);
-        }
-
-        await base44.entities.IzinSiswa.update(record.id, { notif_wa_sent: true });
-      } catch (e) {
-        console.error('WA notification error:', e);
-      }
-      return record;
-    },
+    mutationFn: (data) => base44.entities.IzinSiswa.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['izinSiswa'] });
-      toast({ title: '✅ Tersimpan', description: 'Notifikasi WA ke wali kelas & orang tua telah dibuka.' });
+      toast({ title: '✅ Tersimpan', description: 'Data izin tersimpan. Gunakan tombol Kirim WA untuk mengirim notifikasi.' });
       resetForm();
+    },
+  });
+
+  const tindakLanjutMutation = useMutation({
+    mutationFn: ({ id, status }) => base44.entities.IzinSiswa.update(id, {
+      tindak_lanjut: status,
+      tindak_lanjut_at: new Date().toISOString(),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['izinSiswa'] });
+      toast({ title: 'Tindak lanjut diperbarui' });
+      setTindakLanjutItem(null);
     },
   });
 
@@ -153,11 +139,16 @@ export default function IzinTab() {
     });
   };
 
-  const openWA = (noTelp, namaSiswa) => {
-    if (!noTelp) return;
-    const cleaned = noTelp.replace(/\D/g, '').replace(/^0/, '62');
-    const msg = `Informasi Izin Siswa: ${namaSiswa}`;
-    window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(msg)}`, '_blank');
+  const buildIzinMessage = (r) => {
+    const alasanText = r.alasan === 'Lainnya' ? (r.alasan_manual || 'Lainnya') : r.alasan;
+    const tindakText = r.tindak_lanjut ? `\nTindak Lanjut: ${r.tindak_lanjut}` : '';
+    return `*NOTIFIKASI IZIN SISWA*\n\nNama: ${r.nama_siswa}\nKelas: ${r.nama_kelas}\nTanggal: ${format(new Date(r.tanggal), 'd MMMM yyyy', { locale: idLocale })}\nJam Izin: ${r.jam_izin}\nAlasan: ${alasanText}\nKeterangan: ${r.keterangan || '-'}\nPetugas Piket: ${r.petugas_piket}${tindakText}`;
+  };
+
+  const handleSendWa = (item) => {
+    const siswa = siswaMap[item.siswa_id];
+    const kelas = kelasList.find(k => k.id === item.kelas_id);
+    setWaTarget({ item, targets: buildWaTargets(siswa, kelas, guruList), message: buildIzinMessage(item) });
   };
 
   return (
@@ -217,8 +208,9 @@ export default function IzinTab() {
                     <TableHead className="text-xs">Kelas</TableHead>
                     <TableHead className="text-xs">Jam</TableHead>
                     <TableHead className="text-xs">Alasan</TableHead>
+                    <TableHead className="text-xs">Tindak Lanjut</TableHead>
                     <TableHead className="text-xs">Petugas</TableHead>
-                    <TableHead className="text-xs w-16">Aksi</TableHead>
+                    <TableHead className="text-xs w-24">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,14 +224,32 @@ export default function IzinTab() {
                           {item.alasan === 'Lainnya' && item.alasan_manual ? item.alasan_manual : item.alasan}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        {item.tindak_lanjut ? (
+                          <Badge className={
+                            item.tindak_lanjut === 'Sudah Kembali'
+                              ? 'bg-emerald-100 text-emerald-700 text-xs border-0'
+                              : 'bg-red-100 text-red-700 text-xs border-0'
+                          }>
+                            {item.tindak_lanjut === 'Sudah Kembali' && <UserCheck className="w-3 h-3 mr-0.5 inline" />}
+                            {item.tindak_lanjut === 'Pulang' && <LogOut className="w-3 h-3 mr-0.5 inline" />}
+                            {item.tindak_lanjut}
+                          </Badge>
+                        ) : (
+                          <button
+                            onClick={() => setTindakLanjutItem(item)}
+                            className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-0.5"
+                          >
+                            <ArrowLeftRight className="w-3 h-3" /> Proses
+                          </button>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs text-slate-500">{item.petugas_piket}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          {item.no_telp_ortu && (
-                            <button onClick={() => openWA(item.no_telp_ortu, item.nama_siswa)} className="p-1 text-green-500 hover:bg-green-50 rounded" title="WA Ortu">
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button onClick={() => handleSendWa(item)} className="p-1 text-green-500 hover:bg-green-50 rounded" title="Kirim WA Gateway">
+                            <Send className="w-3.5 h-3.5" />
+                          </button>
                           <button onClick={() => deleteMutation.mutate(item.id)} className="p-1 text-slate-400 hover:text-red-500 rounded">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -298,6 +308,7 @@ export default function IzinTab() {
                 <SelectContent>
                   <SelectItem value="Dispensasi">Dispensasi</SelectItem>
                   <SelectItem value="Permintaan Orang Tua">Permintaan Orang Tua</SelectItem>
+                  <SelectItem value="Keluar Sekolah">Keluar Sekolah</SelectItem>
                   <SelectItem value="Lainnya">Lainnya</SelectItem>
                 </SelectContent>
               </Select>
@@ -325,8 +336,8 @@ export default function IzinTab() {
               </Select>
             </div>
             <div className="p-2 bg-amber-50 rounded-lg text-xs text-amber-700 flex items-center gap-1.5">
-              <MessageCircle className="w-3.5 h-3.5" />
-              Notifikasi WA akan otomatis terkirim ke Wali Kelas & Orang Tua siswa.
+              <Send className="w-3.5 h-3.5" />
+              Setelah simpan, gunakan tombol Kirim WA pada tabel untuk mengirim notifikasi via WA Gateway.
             </div>
             <div className="flex gap-3 pt-1">
               <Button type="button" variant="outline" className="flex-1" onClick={resetForm}>Batal</Button>
@@ -335,6 +346,55 @@ export default function IzinTab() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {waTarget && (
+        <WaSendDialog
+          open={!!waTarget}
+          onOpenChange={(open) => !open && setWaTarget(null)}
+          targets={waTarget.targets}
+          message={waTarget.message}
+          onSent={() => {
+            base44.entities.IzinSiswa.update(waTarget.item.id, { notif_wa_sent: true });
+            queryClient.invalidateQueries({ queryKey: ['izinSiswa'] });
+          }}
+        />
+      )}
+
+      {/* Dialog Tindak Lanjut */}
+      <Dialog open={!!tindakLanjutItem} onOpenChange={(open) => !open && setTindakLanjutItem(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowLeftRight className="w-5 h-5 text-amber-500" /> Tindak Lanjut Izin
+            </DialogTitle>
+          </DialogHeader>
+          {tindakLanjutItem && (
+            <div className="space-y-3">
+              <div className="p-3 bg-slate-50 rounded-lg text-sm">
+                <p className="font-medium text-slate-800">{tindakLanjutItem.nama_siswa}</p>
+                <p className="text-slate-500 text-xs">Kelas {tindakLanjutItem.nama_kelas} • Jam {tindakLanjutItem.jam_izin}</p>
+              </div>
+              <p className="text-sm text-slate-600">Pastikan status siswa:</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  disabled={tindakLanjutMutation.isPending}
+                  onClick={() => tindakLanjutMutation.mutate({ id: tindakLanjutItem.id, status: 'Sudah Kembali' })}
+                >
+                  <UserCheck className="w-4 h-4 mr-1.5" /> Sudah Kembali
+                </Button>
+                <Button
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={tindakLanjutMutation.isPending}
+                  onClick={() => tindakLanjutMutation.mutate({ id: tindakLanjutItem.id, status: 'Pulang' })}
+                >
+                  <LogOut className="w-4 h-4 mr-1.5" /> Pulang
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

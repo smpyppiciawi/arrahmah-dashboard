@@ -32,6 +32,7 @@
       "enum": [
         "Dispensasi",
         "Permintaan Orang Tua",
+        "Keluar Sekolah",
         "Lainnya"
       ],
       "description": "Alasan izin"
@@ -66,6 +67,18 @@
     },
     "tahun_ajaran": {
       "type": "string"
+    },
+    "tindak_lanjut": {
+      "type": "string",
+      "enum": [
+        "Sudah Kembali",
+        "Pulang"
+      ],
+      "description": "Status tindak lanjut: siswa sudah kembali ke sekolah atau pulang"
+    },
+    "tindak_lanjut_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat tindak lanjut dicatat"
     },
     "notif_wa_sent": {
       "type": "boolean",

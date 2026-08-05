@@ -303,7 +303,12 @@ export default function TransaksiForm({
       toast({ title: "Jumlah harus diisi", variant: "destructive" });
       return;
     }
-    if (jenisTransaksi !== 'donatur' && !formData.kategori) {
+    // Untuk pegawai, dropdown Kategori disembunyikan (diganti Bulan) — auto-derive dari tipe
+    let resolvedKategori = formData.kategori;
+    if (jenisTransaksi === 'pegawai' && !resolvedKategori && formData.tipe_transaksi) {
+      resolvedKategori = TIPE_TO_KATEGORI[formData.tipe_transaksi] || 'Lainnya';
+    }
+    if (jenisTransaksi !== 'donatur' && !resolvedKategori) {
       toast({ title: "Kategori harus dipilih", variant: "destructive" });
       return;
     }
@@ -311,6 +316,7 @@ export default function TransaksiForm({
     setSubmitting(true);
     const payload = {
       ...formData,
+      kategori: resolvedKategori || formData.kategori,
       jumlah: Number(formData.jumlah),
       terbilang: terbilangText,
       pic: formData.pic || currentUser?.full_name || '',

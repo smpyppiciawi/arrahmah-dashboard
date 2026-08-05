@@ -8,10 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit2, Trash2, Stethoscope, Filter, GraduationCap } from "lucide-react";
+import { Plus, Edit2, Trash2, Stethoscope, Filter, GraduationCap, Send } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
+import WaSendDialog, { buildWaTargets } from './WaSendDialog';
 
 export default function UKSTab() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,6 +21,7 @@ export default function UKSTab() {
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
   const [lulusOpen, setLulusOpen] = useState(false);
+  const [waTarget, setWaTarget] = useState(null);
   const queryClient = useQueryClient();
 
   const [formData, setFormData] = useState({
@@ -50,6 +52,12 @@ export default function UKSTab() {
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
+  const { data: guruList = [] } = useQuery({
+    queryKey: ['guru'],
+    queryFn: () => base44.entities.Guru.list('nama'),
+    staleTime: 60000,
   });
 
   // Filter siswa berdasarkan kelas yang dipilih, urut abjad
@@ -142,6 +150,16 @@ export default function UKSTab() {
     }
   };
 
+  const buildUksMessage = (r) => {
+    return `*NOTIFIKASI KUNJUNGAN UKS*\n\nNama: ${r.nama_siswa}\nKelas: ${r.nama_kelas}\nTanggal: ${r.tanggal}\nJam Masuk: ${r.jam_masuk || '-'}\nJam Keluar: ${r.jam_keluar || '-'}\nKeluhan: ${r.keluhan || '-'}\nDiagnosa: ${r.diagnosa || '-'}\nPenanganan: ${r.penanganan || '-'}\nSuhu Badan: ${r.suhu_badan ? r.suhu_badan + '°C' : '-'}\nStatus: ${r.status}\nKeterangan: ${r.keterangan || '-'}`;
+  };
+
+  const handleSendWa = (row) => {
+    const siswa = siswaMap[row.siswa_id];
+    const kelas = kelasList.find(k => k.id === row.kelas_id);
+    setWaTarget({ row, targets: buildWaTargets(siswa, kelas, guruList), message: buildUksMessage(row) });
+  };
+
   const uksColumns = [
     { key: 'tanggal', label: 'Tanggal' },
     { key: 'nama_siswa', label: 'Siswa' },
@@ -168,7 +186,10 @@ export default function UKSTab() {
       sortable: false,
       filterable: false,
       render: (row) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="text-green-600" onClick={() => handleSendWa(row)} title="Kirim WA Gateway">
+            <Send className="w-4 h-4" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
             <Edit2 className="w-4 h-4" />
           </Button>
@@ -343,6 +364,18 @@ export default function UKSTab() {
           { key: 'status', label: 'Status' },
         ]}
       />
+
+      {waTarget && (
+        <WaSendDialog
+          open={!!waTarget}
+          onOpenChange={(open) => !open && setWaTarget(null)}
+          targets={waTarget.targets}
+          message={waTarget.message}
+          onSent={() => {
+            queryClient.invalidateQueries({ queryKey: ['uks'] });
+          }}
+        />
+      )}
     </div>
   );
 }
