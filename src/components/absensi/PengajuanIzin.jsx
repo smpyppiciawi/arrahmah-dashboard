@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
-import { ClipboardList, CheckCircle, XCircle, Clock, Send, UserCheck, BookOpen } from "lucide-react";
+import { ClipboardList, CheckCircle, XCircle, Clock, Send, UserCheck, BookOpen, Eye } from "lucide-react";
 import TugasMateriDialog from './TugasMateriDialog';
+import DetailTugasDialog from './DetailTugasDialog';
 
 export default function PengajuanIzin() {
   const { user: currentUser } = useAuth();
@@ -28,6 +29,7 @@ export default function PengajuanIzin() {
   const [form, setForm] = useState({ guru_id: '', tanggal: format(new Date(), 'yyyy-MM-dd'), jenis: 'Izin', keterangan: '' });
   const [submitting, setSubmitting] = useState(false);
   const [tugasDialogIzin, setTugasDialogIzin] = useState(null);
+  const [detailDialogIzin, setDetailDialogIzin] = useState(null);
 
   useEffect(() => {
     const fetchGuru = async () => {
@@ -60,7 +62,7 @@ export default function PengajuanIzin() {
   });
   const myTugasMap = useMemo(() => {
     const m = new Map();
-    tugasList.forEach(t => { if (t.izin_pegawai_id) m.set(t.izin_pegawai_id, t); });
+    tugasList.forEach(t => { if (t.izin_pegawai_id) { if (!m.has(t.izin_pegawai_id)) m.set(t.izin_pegawai_id, []); m.get(t.izin_pegawai_id).push(t); } });
     return m;
   }, [tugasList]);
 
@@ -260,8 +262,9 @@ export default function PengajuanIzin() {
           {myList.length === 0 ? (
             <p className="text-center text-slate-400 text-sm py-4">Belum ada pengajuan</p>
           ) : myList.map(iz => {
-            const tugas = myTugasMap.get(iz.id);
-            const tugasVerified = tugas?.status_verifikasi === 'Sudah Diverifikasi';
+            const tugasArr = myTugasMap.get(iz.id) || [];
+            const hasTugas = tugasArr.length > 0;
+            const allVerified = hasTugas && tugasArr.every(t => t.status_verifikasi === 'Sudah Diverifikasi');
             return (
               <div key={iz.id} className="p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-start justify-between gap-2">
@@ -284,25 +287,25 @@ export default function PengajuanIzin() {
                   </div>
                 </div>
                 <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between gap-2">
-                  {tugas ? (
+                  {hasTugas ? (
                     <>
                       <div className="flex items-center gap-1.5 text-xs">
-                        {tugasVerified ? (
+                        {allVerified ? (
                           <>
                             <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
                             <span className="text-emerald-600 font-medium">Tugas Terverifikasi</span>
-                            <span className="text-slate-400">· {tugas.kelas_tujuan}</span>
+                            <span className="text-slate-400">· {tugasArr.length} tugas</span>
                           </>
                         ) : (
                           <>
                             <BookOpen className="w-3.5 h-3.5 text-amber-500" />
                             <span className="text-amber-600 font-medium">Tugas Menunggu Verifikasi</span>
-                            <span className="text-slate-400">· {tugas.kelas_tujuan}</span>
+                            <span className="text-slate-400">· {tugasArr.length} tugas</span>
                           </>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setTugasDialogIzin(iz)}>
-                        Ubah Tugas
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setDetailDialogIzin(iz)}>
+                        <Eye className="w-3.5 h-3.5 mr-1" /> Detail Tugas
                       </Button>
                     </>
                   ) : (
@@ -325,6 +328,14 @@ export default function PengajuanIzin() {
           open={!!tugasDialogIzin}
           onClose={() => setTugasDialogIzin(null)}
           izin={tugasDialogIzin}
+          currentGuru={currentGuru}
+        />
+      )}
+      {detailDialogIzin && (
+        <DetailTugasDialog
+          open={!!detailDialogIzin}
+          onClose={() => setDetailDialogIzin(null)}
+          izin={detailDialogIzin}
           currentGuru={currentGuru}
         />
       )}

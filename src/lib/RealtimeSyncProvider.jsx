@@ -10,7 +10,8 @@ const SYNCED_ENTITIES = [
   'JadwalBel', 'TarifIuran', 'BiayaKhusus', 'UangKas', 'Sarpras', 'DataLulusan',
   'SiswaKeluar', 'KalenderAkademik', 'Pengumuman', 'Materi', 'Pembelajaran',
   'JadwalPelajaran', 'Mapel', 'RencanaBelanja', 'TindakLanjut', 'KodePelanggaran',
-  'Golongan', 'TipeTransaksi', 'KategoriTransaksi', 'SumberDana', 'PengaturanAplikasi'
+  'Golongan', 'TipeTransaksi', 'KategoriTransaksi', 'SumberDana', 'PengaturanAplikasi',
+  'TugasMateri', 'JadwalPiket'
 ];
 
 /**
