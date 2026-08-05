@@ -6,9 +6,21 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, ArrowUpDown, ExternalLink, X } from 'lucide-react';
 
-export default function DrillDownDialog({ open, onOpenChange, title, data, columns, isDark = true, fullLink, sortFn }) {
+export default function DrillDownDialog({ open, onOpenChange, title, data, columns, isDark = true, fullLink, sortFn, summary }) {
   const [search, setSearch] = useState('');
   const [sortDir, setSortDir] = useState('asc');
+
+  const summaryColors = isDark ? {
+    emerald: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
+    blue: 'bg-blue-500/15 text-blue-300 border border-blue-500/30',
+    amber: 'bg-amber-500/15 text-amber-300 border border-amber-500/30',
+    red: 'bg-red-500/15 text-red-300 border border-red-500/30',
+  } : {
+    emerald: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    blue: 'bg-blue-50 text-blue-700 border border-blue-200',
+    amber: 'bg-amber-50 text-amber-700 border border-amber-200',
+    red: 'bg-red-50 text-red-700 border border-red-200',
+  };
 
   const c = isDark ? {
     dialog: 'bg-slate-900 border-slate-700',
@@ -64,6 +76,16 @@ export default function DrillDownDialog({ open, onOpenChange, title, data, colum
             )}
           </div>
         </DialogHeader>
+        {summary && summary.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3">
+            {summary.map(s => (
+              <div key={s.label} className={`rounded-lg px-3 py-2 text-center ${summaryColors[s.color] || (isDark ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-50 text-slate-700 border border-slate-200')}`}>
+                <p className="text-xl font-bold leading-none">{s.value}</p>
+                <p className="text-[11px] font-medium opacity-80 mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-2 pb-2">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />

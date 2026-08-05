@@ -33,12 +33,12 @@
           "then": "end",
           "x-base44": {
             "title": "Kirim Notifikasi Absen 3 Hari",
-            "description": "Cek siswa absen (Alfa/Sakit) 3+ hari yang belum hadir kembali, lalu kirim WA ke Wali Kelas via Fonnte"
+            "description": "Cek siswa absen (Alfa/Sakit) akumulasi 3+ hari dalam minggu berjalan (Senin-Jumat), lalu kirim WA ke Wali Kelas via Fonnte \u2014 sekali per minggu"
           }
         }
       }
     ]
   },
   "name": "Notifikasi Absen 3 Hari Siswa",
-  "description": "Setiap hari pukul 08:00 WIB, cek siswa yang absen (Alfa/Sakit) 3+ hari dan belum hadir kembali, lalu kirim WA notifikasi ke Wali Kelas terkait via Fonnte. Peringatan tetap muncul di Dashboard Kepsek untuk tindak lanjut manual."
+  "description": "Setiap hari pukul 08:00 WIB, cek siswa dengan akumulasi absen (Alfa/Sakit) 3+ hari dalam minggu berjalan (Senin-Jumat; Sabtu-Minggu libur). Jika tercapai 3 hari (berturut atau akumulasi) dan belum dinotifikasi minggu ini, kirim WA sekali ke Wali Kelas via Fonnte. Dedup per minggu \u2014 tidak mengirim ulang walaupun belum diverifikasi Wali Kelas. Panel Absen 3 Hari di Dashboard Kepsek muncul saat akumulasi 3 hari dalam minggu tsb."
 }

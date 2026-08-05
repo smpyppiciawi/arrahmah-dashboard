@@ -196,6 +196,10 @@
     "tahun_lulus": {
       "type": "string",
       "description": "Tahun ajaran saat lulus (contoh: 2024/2025)"
+    },
+    "notif_absen3hari_minggu": {
+      "type": "string",
+      "description": "Key minggu (ISO week, cth: 2026-32) saat WA peringatan absen 3 hari terakhir dikirim. Digunakan untuk dedup \u2014 hanya kirim sekali per minggu."
     }
   },
   "required": [
