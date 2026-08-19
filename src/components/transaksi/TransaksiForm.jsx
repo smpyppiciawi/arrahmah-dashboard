@@ -14,6 +14,7 @@ import SiswaSearch from './SiswaSearch';
 import SiswaRiwayat from './SiswaRiwayat';
 import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
+import PenerimaSearch from './PenerimaSearch';
 import BuktiUpload from './BuktiUpload';
 import RupiahInput from '@/components/ui/RupiahInput';
 import { terbilang } from '@/lib/terbilang';
@@ -320,6 +321,8 @@ export default function TransaksiForm({
       jumlah: Number(formData.jumlah),
       terbilang: terbilangText,
       pic: formData.pic || currentUser?.full_name || '',
+      // Transaksi Siswa: Pencatat & Penerima sama — penerima mengikuti pic
+      penerima: jenisTransaksi === 'siswa' ? (formData.pic || currentUser?.full_name || '') : formData.penerima,
       tahun_ajaran: activeAcademicYear || '',
       ...(jenisTransaksi === 'donatur' ? { kategori: 'Donasi', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
     };
@@ -616,17 +619,39 @@ export default function TransaksiForm({
                 </SelectContent>
               </Select>
             </div>
-            {(jenisTransaksi === 'siswa' || jenisTransaksi === 'donatur') ? (
+            {jenisTransaksi === 'siswa' ? (
+              <div>
+                <Label>Penerima</Label>
+                <Input
+                  value={formData.pic || ''}
+                  readOnly
+                  placeholder="Mengikuti Pencatat"
+                  className="bg-slate-50 text-slate-600"
+                />
+                <p className="text-xs text-blue-500 mt-1">Penerima sama dengan Pencatat untuk transaksi siswa</p>
+              </div>
+            ) : jenisTransaksi === 'donatur' ? (
               <div>
                 <Label>Penerima</Label>
                 <Select value={formData.penerima} onValueChange={(v) => set('penerima', v)}>
                   <SelectTrigger><SelectValue placeholder="Pilih penerima" /></SelectTrigger>
                   <SelectContent>
-                    {(jenisTransaksi === 'donatur' ? guruList : bendaharaList).map(g => (
+                    {guruList.map(g => (
                       <SelectItem key={g.id} value={g.nama}>{g.nama}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+            ) : jenisTransaksi === 'umum' ? (
+              <div>
+                <Label>Penerima (Cari Nama)</Label>
+                <PenerimaSearch
+                  guruList={guruList}
+                  value={formData.penerima}
+                  onChange={(v) => set('penerima', v)}
+                  placeholder="Cari nama pegawai / ketik nama manual"
+                />
+                <p className="text-xs text-slate-400 mt-1">Bisa pilih dari daftar pegawai atau ketik nama lain tetap tersimpan</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">

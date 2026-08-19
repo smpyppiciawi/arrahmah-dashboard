@@ -17,8 +17,9 @@ export function DataTable({ columns, data, pageSize = 5 }) {
     
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
+        const column = columns.find(c => c.key === key);
         filtered = filtered.filter(row => {
-          const cellValue = row[key];
+          const cellValue = column?.filterAccessor ? column.filterAccessor(row) : row[key];
           if (cellValue === null || cellValue === undefined) return false;
           return String(cellValue).toLowerCase().includes(String(value).toLowerCase());
         });
