@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, X, Camera, Image as ImageIcon, CheckCircle2 } from "lucide-react";
+import { Loader2, X, Camera, Image as ImageIcon, CheckCircle2, Search } from "lucide-react";
 import RupiahInput from "@/components/ui/RupiahInput";
 import MapPicker from "@/components/ui/MapPicker";
 
@@ -116,11 +116,12 @@ const DEFAULT_FORM = {
   catatan_tambahan: '',
 };
 
-export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList, kelasList, currentUser, activeAcademicYear, addPending }) {
+export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList, kelasList, currentUser, activeAcademicYear, addPending, waliKelasIds = [] }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [filterKelas, setFilterKelas] = useState('');
+  const [siswaSearch, setSiswaSearch] = useState('');
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [showCatatanPopup, setShowCatatanPopup] = useState(false);
   const [fotoNames, setFotoNames] = useState({});
@@ -129,7 +130,10 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   useEffect(() => {
     if (isOpen) {
       setFormData(editingData ? { ...DEFAULT_FORM, ...editingData } : { ...DEFAULT_FORM, tanggal_homevisit: new Date().toISOString().split('T')[0] });
-      setFilterKelas(editingData?.kelas_id || '');
+      // Auto-select first wali kelas class
+      const defaultKelas = editingData?.kelas_id || (waliKelasIds.length > 0 ? waliKelasIds[0] : '');
+      setFilterKelas(defaultKelas);
+      setSiswaSearch('');
     }
   }, [isOpen, editingData]);
 
@@ -144,7 +148,11 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   }, [isOpen]);
 
   const set = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
-  const filteredSiswa = filterKelas ? siswaList.filter(s => s.kelas_id === filterKelas) : siswaList;
+  const filteredSiswa = useMemo(() => {
+    let list = filterKelas ? siswaList.filter(s => s.kelas_id === filterKelas) : siswaList;
+    if (siswaSearch) list = list.filter(s => s.nama.toLowerCase().includes(siswaSearch.toLowerCase()) || s.nis?.includes(siswaSearch));
+    return list.sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [siswaList, filterKelas, siswaSearch]);
 
   const handleSiswaSelect = (siswaId) => {
     const siswa = siswaList.find(s => s.id === siswaId);
@@ -233,11 +241,20 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Pilih Siswa</Label>
-                  <Select value={formData.siswa_id} onValueChange={handleSiswaSelect}>
-                    <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
-                    <SelectContent>{filteredSiswa.map(s => <SelectItem key={s.id} value={s.id}>{s.nama} ({s.nis})</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Label className="text-xs">Cari & Pilih Siswa</Label>
+                  <div className="relative mb-1">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input className="w-full pl-8 pr-3 py-1.5 text-sm border rounded-md outline-none focus:ring-1 focus:ring-blue-400" placeholder="Cari nama/NIS..." value={siswaSearch} onChange={e => setSiswaSearch(e.target.value)} />
+                  </div>
+                  <div className="max-h-36 overflow-y-auto border rounded-md bg-white">
+                    {filteredSiswa.slice(0, 40).map(s => (
+                      <button key={s.id} type="button" onClick={() => handleSiswaSelect(s.id)} className={`w-full flex items-center justify-between px-3 py-1.5 text-sm border-b border-slate-50 hover:bg-blue-50 text-left ${formData.siswa_id === s.id ? 'bg-blue-100 font-semibold' : ''}`}>
+                        <span>{s.nama}</span><span className="text-xs text-slate-400">{s.nis}</span>
+                      </button>
+                    ))}
+                    {filteredSiswa.length === 0 && <p className="text-center text-xs text-slate-400 py-3">Tidak ditemukan</p>}
+                  </div>
+                  {formData.nama_siswa && <p className="text-xs text-blue-700 mt-1 font-medium">✓ {formData.nama_siswa} — {formData.nama_kelas}</p>}
                 </div>
               </div>
               <div><Label className="text-xs">Tanggal Home Visit</Label><Input type="date" value={formData.tanggal_homevisit} onChange={(e) => set('tanggal_homevisit', e.target.value)} required /></div>

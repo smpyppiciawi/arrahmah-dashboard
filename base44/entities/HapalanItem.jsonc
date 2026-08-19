@@ -1,0 +1,43 @@
+{
+  "name": "HapalanItem",
+  "type": "object",
+  "properties": {
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "Surah",
+        "Doa"
+      ],
+      "description": "Jenis hapalan: Surah atau Doa"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama surah/doa"
+    },
+    "tingkat": {
+      "type": "string",
+      "enum": [
+        "7",
+        "8",
+        "9"
+      ],
+      "description": "Tingkat kelas target"
+    },
+    "nomor_surah": {
+      "type": "number",
+      "description": "Nomor surah (untuk jenis Surah)"
+    },
+    "urutan": {
+      "type": "number",
+      "description": "Urutan tampilan dalam daftar"
+    },
+    "keterangan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "jenis",
+    "nama",
+    "tingkat"
+  ]
+}

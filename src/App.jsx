@@ -22,6 +22,8 @@ import Sarpras from './pages/Sarpras';
 import ScanAbsensi from './pages/ScanAbsensi';
 import ProsesTahunAjaran from './pages/ProsesTahunAjaran';
 import JadwalPiketPegawai from './pages/JadwalPiketPegawai';
+import Hapalan from './pages/Hapalan';
+import ProfilSekolah from './pages/ProfilSekolah';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -114,6 +116,16 @@ const AuthenticatedApp = () => {
       <Route path="/JadwalPiketPegawai" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="JadwalPiketPegawai"><JadwalPiketPegawai /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/Hapalan" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="Hapalan"><Hapalan /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/ProfilSekolah" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="ProfilSekolah"><ProfilSekolah /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

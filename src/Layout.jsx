@@ -6,7 +6,7 @@ import {
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
-  PanelLeftClose, PanelLeftOpen, ScanLine, ShieldCheck
+  PanelLeftClose, PanelLeftOpen, ScanLine, ShieldCheck, BookMarked
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,6 +32,7 @@ const FULL_ACCESS_MENU = {
     { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
     { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
     { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+    { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
     { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
     { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
   ],
@@ -60,6 +61,7 @@ const FULL_ACCESS_MENU = {
         { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
         { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+        { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
       ],
       separated: true
     }
@@ -91,6 +93,7 @@ const ROLE_MENU = {
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -146,6 +149,7 @@ const ROLE_MENU = {
           { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
           { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+          { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
         ]
       },
       {
@@ -182,6 +186,7 @@ const ROLE_MENU = {
           { name: 'Siswa Keluar', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+          { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
         ],
         separated: true
       }
@@ -197,6 +202,7 @@ const ROLE_MENU = {
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
     ],
     groups: []

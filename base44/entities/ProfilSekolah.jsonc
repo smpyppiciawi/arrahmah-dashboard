@@ -1,0 +1,125 @@
+{
+  "name": "ProfilSekolah",
+  "type": "object",
+  "properties": {
+    "nama_sekolah": {
+      "type": "string"
+    },
+    "npsn": {
+      "type": "string",
+      "description": "Nomor Pokok Sekolah Nasional"
+    },
+    "nss": {
+      "type": "string",
+      "description": "Nomor Statistik Sekolah"
+    },
+    "bentuk_pendidikan": {
+      "type": "string",
+      "default": "SMP"
+    },
+    "status_sekolah": {
+      "type": "string",
+      "enum": [
+        "Negeri",
+        "Swasta"
+      ],
+      "default": "Swasta"
+    },
+    "akreditasi": {
+      "type": "string",
+      "enum": [
+        "A",
+        "B",
+        "C",
+        "Belum Terakreditasi"
+      ]
+    },
+    "tahun_berdiri": {
+      "type": "string"
+    },
+    "alamat_jalan": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "string"
+    },
+    "rw": {
+      "type": "string"
+    },
+    "dusun": {
+      "type": "string"
+    },
+    "desa_kelurahan": {
+      "type": "string"
+    },
+    "kecamatan": {
+      "type": "string"
+    },
+    "kab_kota": {
+      "type": "string"
+    },
+    "provinsi": {
+      "type": "string"
+    },
+    "kode_pos": {
+      "type": "string"
+    },
+    "koordinat": {
+      "type": "string",
+      "description": "Koordinat sekolah (lat,lng) \u2014 dipakai sebagai acuan absensi"
+    },
+    "radius_absensi_meter": {
+      "type": "number",
+      "default": 1000,
+      "description": "Radius toleransi absensi dalam meter (default 1000m = 1Km)"
+    },
+    "telepon": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "nama_kepala_sekolah": {
+      "type": "string"
+    },
+    "nip_kepala_sekolah": {
+      "type": "string"
+    },
+    "nama_yayasan": {
+      "type": "string"
+    },
+    "nama_komite": {
+      "type": "string"
+    },
+    "rekening_bank": {
+      "type": "string"
+    },
+    "nama_bank": {
+      "type": "string"
+    },
+    "nama_pemilik_rekening": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string",
+      "description": "URL logo sekolah"
+    },
+    "foto_sekolah_url": {
+      "type": "string",
+      "description": "URL foto gedung sekolah"
+    },
+    "kurikulum": {
+      "type": "string",
+      "description": "Kurikulum yang digunakan"
+    },
+    "keterangan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "nama_sekolah"
+  ]
+}

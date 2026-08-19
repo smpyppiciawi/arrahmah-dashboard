@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Home, Search, Edit2, Trash2, MapPin, CloudOff, RefreshCw, Wifi, CheckCircle2, Maximize2 } from "lucide-react";
+import { Home, Search, Edit2, Trash2, MapPin, CloudOff, RefreshCw, Wifi, CheckCircle2, Maximize2, Clock } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import HomeVisitForm from "@/components/homevisit/HomeVisitForm";
@@ -60,12 +60,26 @@ export default function HomeVisit() {
   const siswaList = isGuru ? siswaListAll.filter(s => waliKelasIds.includes(s.kelas_id)) : siswaListAll;
   const homeVisitList = isGuru ? homeVisitListAll.filter(hv => waliKelasIds.includes(hv.kelas_id)) : homeVisitListAll;
 
+  // Auto-set kelas pertama milik wali kelas saat komponen dimuat
+  React.useEffect(() => {
+    if (isGuru && waliKelasIds.length > 0 && filterKelas === 'all') {
+      setFilterKelas(waliKelasIds[0]);
+    }
+  }, [isGuru, waliKelasIds]);
+
   // Hak akses
   const canCreate = ['admin', 'tu', 'guru'].includes(userRole);
   const canEdit = ['admin', 'tu', 'guru'].includes(userRole);
   const canDelete = userRole === 'admin';
 
   // Guru yang bukan Wali Kelas tidak memiliki akses menu Home Visit
+  const REQUIRED_HV_FIELDS = ['tinggal_dengan','keadaan_orang_tua','pekerjaan_orang_tua','status_tempat_tinggal','keadaan_rumah','siswa_mengaji','orang_tua_merokok','punya_hp_pribadi','pembiayaan_sekolah','periode_uang_jajan'];
+  const hvBySiswaId = useMemo(() => {
+    const m = {};
+    homeVisitList.forEach(hv => { m[hv.siswa_id] = hv; });
+    return m;
+  }, [homeVisitList]);
+
   if (isGuru && waliKelasIds.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
@@ -79,6 +93,12 @@ export default function HomeVisit() {
   }
 
   const siswaSudahHomeVisit = new Set(homeVisitList.map(hv => hv.siswa_id));
+  const getSiswaHvStatus = (siswaId) => {
+    const hv = hvBySiswaId[siswaId];
+    if (!hv) return 'none';
+    const incomplete = REQUIRED_HV_FIELDS.some(f => !hv[f]);
+    return incomplete ? 'partial' : 'complete';
+  };
   const belumHomeVisit = siswaList.filter(s => !siswaSudahHomeVisit.has(s.id));
 
   const filteredList = homeVisitList.filter(hv => {
@@ -115,9 +135,12 @@ export default function HomeVisit() {
     { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge className="bg-blue-100 text-blue-700">{row.nama_kelas || '-'}</Badge> },
     { key: 'keadaan_rumah', label: 'Keadaan Rumah', render: (row) => row.keadaan_rumah ? <Badge className={row.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.keadaan_rumah}</Badge> : '-' },
     { key: 'tanggal_homevisit', label: 'Tgl Home Visit', render: (row) => row.tanggal_homevisit || '-' },
-    { key: 'sync', label: 'Status', sortable: false, filterable: false, render: () => (
-      <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center"><CheckCircle2 className="w-3 h-3" /> Tersimpan</Badge>
-    )},
+    { key: 'sync', label: 'Kelengkapan', sortable: false, filterable: false, render: (row) => {
+      const status = getSiswaHvStatus(row.siswa_id);
+      if (status === 'complete') return <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center"><CheckCircle2 className="w-3 h-3" /> Lengkap</Badge>;
+      if (status === 'partial') return <Badge className="bg-amber-100 text-amber-700 gap-1 inline-flex items-center"><Clock className="w-3 h-3" /> Sebagian</Badge>;
+      return <Badge className="bg-slate-100 text-slate-500">-</Badge>;
+    }},
     {
       key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
       render: (row) => (
@@ -286,6 +309,7 @@ export default function HomeVisit() {
           currentUser={currentUser}
           activeAcademicYear={activeAcademicYear}
           addPending={addPending}
+          waliKelasIds={waliKelasIds}
         />
       )}
 

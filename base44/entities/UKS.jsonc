@@ -35,6 +35,19 @@
       "type": "string",
       "description": "Keluhan siswa"
     },
+    "kategori_triase": {
+      "type": "string",
+      "enum": [
+        "Hijau",
+        "Kuning",
+        "Merah"
+      ],
+      "description": "Kategori triase berdasarkan keluhan"
+    },
+    "indikator_triase": {
+      "type": "string",
+      "description": "Deskripsi indikator triase"
+    },
     "diagnosa": {
       "type": "string",
       "description": "Diagnosa awal"
@@ -52,7 +65,9 @@
       "enum": [
         "Di UKS",
         "Pulang",
-        "Kembali ke Kelas"
+        "Kembali ke Kelas",
+        "Tindakan Klinik",
+        "Tindakan IGD"
       ],
       "default": "Di UKS",
       "description": "Status siswa"
