@@ -72,6 +72,47 @@ export function DataTable({ columns, data, pageSize = 5 }) {
 
   return (
     <div className="space-y-4">
+      {/* Pagination Controls — dipindah ke pojok kanan atas agar tidak terganggu FAB */}
+      <div className="flex items-center justify-between flex-wrap gap-2 px-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-600">Tampilkan</span>
+          <Select value={String(rowsPerPage)} onValueChange={handleRowsPerPageChange}>
+            <SelectTrigger className="w-20 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="25">25</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-sm text-slate-600">dari {sortedData.length} data</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-sm text-slate-600">
+            Halaman {currentPage} dari {totalPages || 1}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -135,47 +176,6 @@ export function DataTable({ columns, data, pageSize = 5 }) {
             )}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between px-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-600">Tampilkan</span>
-          <Select value={String(rowsPerPage)} onValueChange={handleRowsPerPageChange}>
-            <SelectTrigger className="w-20 h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="5">5</SelectItem>
-              <SelectItem value="10">10</SelectItem>
-              <SelectItem value="25">25</SelectItem>
-              <SelectItem value="50">50</SelectItem>
-            </SelectContent>
-          </Select>
-          <span className="text-sm text-slate-600">dari {sortedData.length} data</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm text-slate-600">
-            Halaman {currentPage} dari {totalPages || 1}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages || totalPages === 0}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

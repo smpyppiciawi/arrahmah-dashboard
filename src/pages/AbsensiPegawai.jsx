@@ -10,6 +10,9 @@ import { Calendar, Clock, User, TrendingUp, Send, ClipboardCheck } from "lucide-
 import PengajuanIzin from '@/components/absensi/PengajuanIzin';
 import TugasPiketTab from '@/components/absensi/TugasPiketTab';
 import RekapFilter from '@/components/absensi/RekapFilter';
+import AbsensiMandiriDialog from '@/components/absensi/AbsensiMandiriDialog';
+import FloatingAddButton from '@/components/ui/FloatingAddButton';
+import { ScanFace } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 export default function AbsensiPegawai() {
   const { user: currentUser } = useAuth();
@@ -18,6 +21,7 @@ export default function AbsensiPegawai() {
   const [rekapMode, setRekapMode] = useState('hari');
   const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [mandiriOpen, setMandiriOpen] = useState(false);
 
   const { data: rekapList = [] } = useQuery({
     queryKey: ['absensi-pegawai-rekap', dateFrom, dateTo],
@@ -126,6 +130,10 @@ export default function AbsensiPegawai() {
           </div>
         )}
       </div>
+
+      {/* FAB Absensi Mandiri — verifikasi wajah + geofence untuk pegawai */}
+      <FloatingAddButton onClick={() => setMandiriOpen(true)} label="Absensi Mandiri" color="indigo" icon={ScanFace} />
+      <AbsensiMandiriDialog open={mandiriOpen} onClose={() => setMandiriOpen(false)} currentUser={currentUser} />
     </div>
   );
 }

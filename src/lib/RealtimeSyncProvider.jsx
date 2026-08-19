@@ -11,7 +11,7 @@ const SYNCED_ENTITIES = [
   'SiswaKeluar', 'KalenderAkademik', 'Pengumuman', 'Materi', 'Pembelajaran',
   'JadwalPelajaran', 'Mapel', 'RencanaBelanja', 'TindakLanjut', 'KodePelanggaran',
   'Golongan', 'TipeTransaksi', 'KategoriTransaksi', 'SumberDana', 'PengaturanAplikasi',
-  'TugasMateri', 'JadwalPiket'
+  'TugasMateri', 'JadwalPiket', 'HapalanSiswa', 'HapalanItem', 'ProfilSekolah'
 ];
 
 /**

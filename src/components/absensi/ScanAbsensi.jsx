@@ -13,6 +13,7 @@ import QRCameraScanner from '@/components/absensi/QRCameraScanner';
 import NfcScanner from '@/components/absensi/NfcScanner';
 import FingerprintScanner from '@/components/absensi/FingerprintScanner';
 import FaceRecognition from '@/components/absensi/FaceRecognition';
+import { validateGeofence } from '@/lib/geoUtils';
 
 export default function ScanAbsensi({ personType = 'Siswa' }) {
   const [scanMode, setScanMode] = useState('kartu');
