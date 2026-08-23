@@ -76,6 +76,13 @@ export const formatAlamatLengkap = (s) => {
   return parts.join(', ') || '-';
 };
 
+// Batas default poin pengurangan improvement per siswa per minggu (bisa custom per record)
+export const IMPROVEMENT_LIMIT_MINGGUAN_DEFAULT = 30;
+
+// Hitung kunci minggu ISO (cth: 2026-34) dari tanggal — dipakai untuk validasi limit mingguan improvement
+import { getISOWeek, getISOWeekYear } from 'date-fns';
+export const getMingguKey = (date) => `${getISOWeekYear(date)}-${String(getISOWeek(date)).padStart(2, '0')}`;
+
 // Mapping Poin Pelanggaran ke Durasi Sanksi (Hari)
 export const POIN_DURASI_MAP = [
   { poin: 5, durasi: 1, satuan: 'Hari' },

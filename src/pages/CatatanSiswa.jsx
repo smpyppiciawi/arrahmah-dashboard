@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText } from "lucide-react";
+import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, TrendingDown } from "lucide-react";
 import PrestasiTab from '../components/catatan/PrestasiTab';
 import PelanggaranTab from '../components/catatan/PelanggaranTab';
+import ImprovementTab from '../components/catatan/ImprovementTab';
 import UKSTab from '../components/catatan/UKSTab';
 import CariRecordSiswa from '../components/catatan/CariRecordSiswa';
 import MenstruasiTab from '../components/catatan/MenstruasiTab';
@@ -51,6 +52,13 @@ export default function CatatanSiswa() {
               <span className="hidden sm:inline">Pelanggaran</span>
             </TabsTrigger>
             <TabsTrigger
+              value="improvement"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/25 transition-all"
+            >
+              <TrendingDown className="w-4 h-4" />
+              <span className="hidden sm:inline">Improvement</span>
+            </TabsTrigger>
+            <TabsTrigger
               value="uks"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/25 transition-all"
             >
@@ -75,6 +83,7 @@ export default function CatatanSiswa() {
 
           <TabsContent value="prestasi"><PrestasiTab /></TabsContent>
           <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>
+          <TabsContent value="improvement"><ImprovementTab /></TabsContent>
           <TabsContent value="uks"><UKSTab /></TabsContent>
           <TabsContent value="menstruasi"><MenstruasiTab /></TabsContent>
           <TabsContent value="izin"><IzinTab /></TabsContent>
