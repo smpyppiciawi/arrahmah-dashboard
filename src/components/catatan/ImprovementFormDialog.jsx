@@ -78,8 +78,8 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   const activeSiswa = useMemo(() => (siswaList || []).filter(s => s.status === 'Aktif'), [siswaList]);
   const filteredSiswa = useMemo(() => {
     if (!searchSiswa) return activeSiswa.sort((a, b) => a.nama.localeCompare(b.nama));
-    const s = searchSiswa.toLowerCase();
-    return activeSiswa.filter(s => s.nama?.toLowerCase().includes(s) || s.nis?.toLowerCase().includes(s) || s.nama_kelas?.toLowerCase().includes(s)).sort((a, b) => a.nama.localeCompare(b.nama));
+    const q = searchSiswa.toLowerCase();
+    return activeSiswa.filter(s => s.nama?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.nama_kelas?.toLowerCase().includes(q)).sort((a, b) => a.nama.localeCompare(b.nama));
   }, [activeSiswa, searchSiswa]);
 
   const aktifKegiatan = useMemo(() => (kegiatanList || []).filter(k => k.aktif !== false), [kegiatanList]);

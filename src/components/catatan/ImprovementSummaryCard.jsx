@@ -24,8 +24,8 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
   const filteredSiswa = useMemo(() => {
     const aktif = (siswaList || []).filter(s => s.status === 'Aktif');
     if (!searchSiswa) return aktif.sort((a, b) => a.nama.localeCompare(b.nama));
-    const s = searchSiswa.toLowerCase();
-    return aktif.filter(s => s.nama?.toLowerCase().includes(s) || s.nis?.toLowerCase().includes(s) || s.nama_kelas?.toLowerCase().includes(s)).sort((a, b) => a.nama.localeCompare(b.nama));
+    const q = searchSiswa.toLowerCase();
+    return aktif.filter(s => s.nama?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.nama_kelas?.toLowerCase().includes(q)).sort((a, b) => a.nama.localeCompare(b.nama));
   }, [siswaList, searchSiswa]);
 
   const handleSelectSiswa = (siswa) => {

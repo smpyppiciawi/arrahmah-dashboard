@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/components/ui/use-toast";
 import { Search, AlertTriangle, Lock } from "lucide-react";
 
-export default function PelanggaranImprovementFormDialog({ open, onOpenChange, siswaList, kelasList, guruList, currentUser, kodePelanggaranList, editing, tahunAjaran }) {
+export default function PelanggaranImprovementFormDialog({ open, onOpenChange, siswaList, kelasList, guruList, currentUser, kodePelanggaranList, editing, tahunAjaran, prefillSiswa }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -27,6 +27,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const [searchSiswa, setSearchSiswa] = useState('');
   const [openKodeSearch, setOpenKodeSearch] = useState(false);
   const [searchKode, setSearchKode] = useState('');
+  const [filterKelas, setFilterKelas] = useState('');
 
   const isGuru = currentUser?.role === 'guru';
 
@@ -43,9 +44,10 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses'
       };
       if (currentUser) { f.pelapor_id = currentUser.id; f.pelapor_nama = currentUser.full_name; }
+      if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setFormData(f);
     }
-  }, [open, editing, currentUser, tahunAjaran]);
+  }, [open, editing, currentUser, tahunAjaran, prefillSiswa]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.PelanggaranImprovement.create(data),
@@ -68,12 +70,11 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     onOpenChange(false);
   };
 
-  const activeSiswa = useMemo(() => (siswaList || []).filter(s => s.status === 'Aktif'), [siswaList]);
   const filteredSiswa = useMemo(() => {
-    if (!searchSiswa) return activeSiswa.sort((a, b) => a.nama.localeCompare(b.nama));
-    const s = searchSiswa.toLowerCase();
-    return activeSiswa.filter(s => s.nama?.toLowerCase().includes(s) || s.nis?.toLowerCase().includes(s) || s.nama_kelas?.toLowerCase().includes(s)).sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [activeSiswa, searchSiswa]);
+    const aktif = (siswaList || []).filter(s => s.status === 'Aktif');
+    const byKelas = filterKelas ? aktif.filter(s => s.kelas_id === filterKelas) : aktif;
+    return byKelas.sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [siswaList, filterKelas]);
 
   const filteredKode = useMemo(() => {
     const aktif = (kodePelanggaranList || []).filter(k => k.aktif !== false);
@@ -136,6 +137,18 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
           <div>
             <Label>Tanggal</Label>
             <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
+          </div>
+
+          {/* Filter Kelas (opsional) */}
+          <div>
+            <Label>Pilih Kelas <span className="text-xs text-slate-400">(opsional — untuk memfilter siswa)</span></Label>
+            <Select value={filterKelas || 'all'} onValueChange={(v) => setFilterKelas(v === 'all' ? '' : v)}>
+              <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Semua Kelas</SelectItem>
+                {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Cari Nama/Kelas */}
