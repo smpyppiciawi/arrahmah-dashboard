@@ -174,7 +174,7 @@ export default function SiswaPortal() {
     const totalPengurangan = improvementList.filter(i => i.status === 'Aktif').reduce((s, i) => s + (i.poin_pengurangan || 0), 0);
     const poinBersih = totalPoin + totalPoinImprovement - totalPengurangan;
     return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin, totalPoinImprovement, totalPengurangan, poinBersih };
-  }, [absensiList, nilaiList, keuanganList, pelanggaranList]);
+  }, [absensiList, nilaiList, keuanganList, pelanggaranList, pelanggaranImprovementList, improvementList]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
@@ -474,8 +474,8 @@ export default function SiswaPortal() {
               <SmallStatCard
                 emoji="⚠️"
                 label="Poin"
-                value={stats.totalPoin}
-                bg={stats.totalPoin === 0 ? 'bg-slate-400' : stats.totalPoin > 50 ? 'bg-red-500' : 'bg-orange-400'}
+                value={stats.poinBersih}
+                bg={stats.poinBersih === 0 ? 'bg-slate-400' : stats.poinBersih > 50 ? 'bg-red-500' : 'bg-orange-400'}
               />
             </div>
           </div>

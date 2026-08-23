@@ -2,7 +2,7 @@ import React from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 
-export default function CatatanSection({ siswa, pelanggaranList = [], prestasiList = [], absensiList = [] }) {
+export default function CatatanSection({ siswa, pelanggaranList = [], pelanggaranImprovementList = [], improvementList = [], prestasiList = [], absensiList = [] }) {
   const isFemale = siswa?.jenis_kelamin === 'Perempuan';
   const isMale = siswa?.jenis_kelamin === 'Laki-laki';
 
@@ -28,6 +28,9 @@ export default function CatatanSection({ siswa, pelanggaranList = [], prestasiLi
   const jumatList = absensiList.filter(a => a.jenis_absensi === 'Jumat');
 
   const totalPoin = pelanggaranList.reduce((s, p) => s + (p.poin || 0), 0);
+  const totalPoinImprovement = pelanggaranImprovementList.reduce((s, p) => s + (p.poin || 0), 0);
+  const totalPengurangan = improvementList.filter(i => i.status === 'Aktif').reduce((s, i) => s + (i.poin_pengurangan || 0), 0);
+  const poinBersih = totalPoin + totalPoinImprovement - totalPengurangan;
 
   return (
     <div className="pb-24">
@@ -41,14 +44,50 @@ export default function CatatanSection({ siswa, pelanggaranList = [], prestasiLi
       </div>
 
       <div className="px-4 mt-4 space-y-4">
+        {/* Ringkasan Poin Bersih */}
+        <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 text-white shadow-lg">
+          <p className="text-slate-300 text-xs font-medium mb-2">Ringkasan Poin Disiplin</p>
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-3xl font-black">{poinBersih}</p>
+              <p className="text-slate-400 text-[10px] mt-0.5">Poin Bersih (Net)</p>
+            </div>
+            <div className="text-right space-y-1">
+              <p className="text-red-300 text-xs">Pelanggaran: {totalPoin + totalPoinImprovement}</p>
+              <p className="text-emerald-300 text-xs">Pengurangan: {totalPengurangan}</p>
+            </div>
+          </div>
+        </div>
+
         {/* Pelanggaran */}
-        <Section title="⚠️ Pelanggaran" badge={`${totalPoin} poin`} badgeColor={totalPoin === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
-          {pelanggaranList.length === 0 ? (
+        <Section title="⚠️ Pelanggaran" badge={`${totalPoin + totalPoinImprovement} poin`} badgeColor={(totalPoin + totalPoinImprovement) === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+          {pelanggaranList.length === 0 && pelanggaranImprovementList.length === 0 ? (
             <EmptyCard emoji="✅" title="Hebat! Tidak ada pelanggaran" subtitle="Tetap pertahankan ya!" color="emerald" />
           ) : (
             <div className="space-y-2">
+              {pelanggaranImprovementList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map((p, idx) => (
+                <div key={`imp-${idx}`} className="bg-white rounded-2xl shadow-sm p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-bold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded-full">{p.kode}</span>
+                        <span className="text-[9px] text-slate-400">{p.kategori_utama}</span>
+                      </div>
+                      <p className="font-semibold text-slate-800 text-sm">{p.uraian_pelanggaran}</p>
+                      {p.rincian && <p className="text-slate-400 text-xs mt-0.5">{p.rincian}</p>}
+                      <p className="text-slate-400 text-xs mt-1">{p.tanggal} · {p.pelapor_nama || '-'}</p>
+                      {p.tindak_lanjut && <p className="text-amber-500 text-xs mt-1">📋 {p.tindak_lanjut}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-red-600 font-black text-lg">{p.poin}</span>
+                      <span className="text-[9px] text-red-400">poin</span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${p.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.status}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
               {pelanggaranList.map((p, idx) => (
-                <div key={idx} className="bg-white rounded-2xl shadow-sm p-4">
+                <div key={`leg-${idx}`} className="bg-white rounded-2xl shadow-sm p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="font-semibold text-slate-800 text-sm">{p.uraian}</p>
@@ -59,6 +98,36 @@ export default function CatatanSection({ siswa, pelanggaranList = [], prestasiLi
                       <span className="text-red-600 font-black text-lg">{p.poin}</span>
                       <span className="text-[9px] text-red-400">poin</span>
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${p.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.status}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        {/* Improvement */}
+        <Section title="🌱 Improvement" badge={`${totalPengurangan} poin`} badgeColor={totalPengurangan === 0 ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-700'}>
+          {improvementList.length === 0 ? (
+            <EmptyCard emoji="🌱" title="Belum ada kegiatan improvement" subtitle="Ikuti pembinaan untuk kurangi poin" color="slate" />
+          ) : (
+            <div className="space-y-2">
+              {improvementList.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal)).map((i, idx) => (
+                <div key={idx} className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{i.kategori}</span>
+                      </div>
+                      <p className="font-semibold text-slate-800 text-sm">{i.kegiatan_pembinaan_nama || i.uraian}</p>
+                      {i.uraian && i.kegiatan_pembinaan_nama && <p className="text-slate-400 text-xs mt-0.5">{i.uraian}</p>}
+                      <p className="text-slate-400 text-xs mt-1">{i.tanggal} · {i.validator_nama || '-'}</p>
+                      {i.catatan && <p className="text-slate-500 text-xs mt-1">📝 {i.catatan}</p>}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-emerald-600 font-black text-lg">-{i.poin_pengurangan}</span>
+                      <span className="text-[9px] text-emerald-500">poin</span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${i.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{i.status}</span>
                     </div>
                   </div>
                 </div>
