@@ -107,6 +107,18 @@ export default function SiswaPortal() {
     enabled: !!siswa?.id,
   });
 
+  const { data: pelanggaranImprovementList = [] } = useQuery({
+    queryKey: ['siswa-pelanggaran-improvement', siswa?.id],
+    queryFn: () => base44.entities.PelanggaranImprovement.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+
+  const { data: improvementList = [] } = useQuery({
+    queryKey: ['siswa-improvement', siswa?.id],
+    queryFn: () => base44.entities.Improvement.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+
   const { data: prestasiList = [] } = useQuery({
     queryKey: ['siswa-prestasi', siswa?.id],
     queryFn: () => base44.entities.Prestasi.filter({ siswa_id: siswa.id }),
@@ -158,7 +170,10 @@ export default function SiswaPortal() {
     const rataRataNilai = nilaiList.length > 0
       ? Math.round(nilaiList.reduce((s, n) => s + (n.nilai || 0), 0) / nilaiList.length) : 0;
     const totalPoin = pelanggaranList.reduce((s, p) => s + (p.poin || 0), 0);
-    return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin };
+    const totalPoinImprovement = pelanggaranImprovementList.reduce((s, p) => s + (p.poin || 0), 0);
+    const totalPengurangan = improvementList.filter(i => i.status === 'Aktif').reduce((s, i) => s + (i.poin_pengurangan || 0), 0);
+    const poinBersih = totalPoin + totalPoinImprovement - totalPengurangan;
+    return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin, totalPoinImprovement, totalPengurangan, poinBersih };
   }, [absensiList, nilaiList, keuanganList, pelanggaranList]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -711,7 +726,7 @@ export default function SiswaPortal() {
 
       {/* ====== CATATAN ====== */}
       {activeTab === 'catatan' && (
-        <CatatanSection siswa={currentSiswa} pelanggaranList={pelanggaranList} prestasiList={prestasiList} absensiList={absensiList} />
+        <CatatanSection siswa={currentSiswa} pelanggaranList={pelanggaranList} pelanggaranImprovementList={pelanggaranImprovementList} improvementList={improvementList} prestasiList={prestasiList} absensiList={absensiList} />
       )}
 
       {/* ====== KEUANGAN ====== */}

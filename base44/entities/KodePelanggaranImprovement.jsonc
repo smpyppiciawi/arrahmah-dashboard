@@ -1,0 +1,46 @@
+{
+  "name": "KodePelanggaranImprovement",
+  "type": "object",
+  "properties": {
+    "kategori_utama": {
+      "type": "string",
+      "description": "Kategori utama pelanggaran (Hukum & Keselamatan, Kesusilaan & Pergaulan, dll)"
+    },
+    "kode": {
+      "type": "string",
+      "description": "Kode pelanggaran (A-01, B-02.a, dll)"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Uraian singkat pelanggaran"
+    },
+    "rincian": {
+      "type": "string",
+      "description": "Rincian/detail pelanggaran"
+    },
+    "tindak_lanjut": {
+      "type": "string",
+      "description": "Tindak lanjut otomatis (Investigasi & Audiensi, Pembinaan, dll)"
+    },
+    "poin_min": {
+      "type": "number",
+      "description": "Poin minimum pelanggaran"
+    },
+    "poin_max": {
+      "type": "number",
+      "description": "Poin maksimum pelanggaran"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Status aktif kode pelanggaran"
+    }
+  },
+  "required": [
+    "kategori_utama",
+    "kode",
+    "uraian",
+    "poin_min",
+    "poin_max"
+  ]
+}

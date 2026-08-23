@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, TrendingDown } from "lucide-react";
@@ -12,6 +14,12 @@ import IzinTab from '../components/catatan/IzinTab';
 
 export default function CatatanSiswa() {
   const [showCariRecord, setShowCariRecord] = useState(false);
+
+  const { data: pengaturanImprovement } = useQuery({
+    queryKey: ['pengaturan-improvement'],
+    queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; }
+  });
+  const pelanggaranModuleAktif = pengaturanImprovement?.pelanggaran_module_aktif ?? true;
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -44,6 +52,7 @@ export default function CatatanSiswa() {
               <Award className="w-4 h-4" />
               <span className="hidden sm:inline">Prestasi</span>
             </TabsTrigger>
+            {pelanggaranModuleAktif && (
             <TabsTrigger
               value="pelanggaran"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-red-500/25 transition-all"
@@ -51,6 +60,7 @@ export default function CatatanSiswa() {
               <AlertTriangle className="w-4 h-4" />
               <span className="hidden sm:inline">Pelanggaran</span>
             </TabsTrigger>
+            )}
             <TabsTrigger
               value="improvement"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/25 transition-all"
@@ -82,7 +92,7 @@ export default function CatatanSiswa() {
           </TabsList>
 
           <TabsContent value="prestasi"><PrestasiTab /></TabsContent>
-          <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>
+          {pelanggaranModuleAktif && <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>}
           <TabsContent value="improvement"><ImprovementTab /></TabsContent>
           <TabsContent value="uks"><UKSTab /></TabsContent>
           <TabsContent value="menstruasi"><MenstruasiTab /></TabsContent>

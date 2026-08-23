@@ -24,6 +24,14 @@
     "nama_kelas": {
       "type": "string"
     },
+    "kegiatan_pembinaan_id": {
+      "type": "string",
+      "description": "ID KegiatanPembinaan yang dipilih"
+    },
+    "kegiatan_pembinaan_nama": {
+      "type": "string",
+      "description": "Nama kegiatan pembinaan (auto dari Sheet 3)"
+    },
     "kategori": {
       "type": "string",
       "enum": [
@@ -42,12 +50,22 @@
     },
     "poin_pengurangan": {
       "type": "number",
-      "description": "Poin pengurangan dari akumulatif pelanggaran"
+      "description": "Poin pengurangan dari akumulatif pelanggaran (auto dari kegiatan, dapat diedit; untuk Sesuai Penetapan default 0)"
+    },
+    "sesuai_penetapan": {
+      "type": "boolean",
+      "default": false,
+      "description": "True jika kegiatan pembinaan berpoin Sesuai Penetapan"
     },
     "limit_mingguan": {
       "type": "number",
       "default": 30,
-      "description": "Batas maksimal poin pengurangan per minggu (bisa custom per record)"
+      "description": "Batas maksimal poin pengurangan per minggu (auto dari universal, atau manual jika universal off)"
+    },
+    "limit_universal_applied": {
+      "type": "boolean",
+      "default": true,
+      "description": "True jika limit diambil dari universal setting"
     },
     "minggu_key": {
       "type": "string",
@@ -82,7 +100,6 @@
     "tanggal",
     "siswa_id",
     "nama_siswa",
-    "uraian",
     "poin_pengurangan"
   ]
 }

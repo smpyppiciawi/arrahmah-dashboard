@@ -1,0 +1,30 @@
+{
+  "name": "PengaturanImprovement",
+  "type": "object",
+  "properties": {
+    "limit_mingguan_universal": {
+      "type": "number",
+      "default": 30,
+      "description": "Limit mingguan universal untuk pengurangan poin (berlaku semua siswa jika limit_universal_aktif = true)"
+    },
+    "limit_universal_aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Switch ON = universal (sekali isi untuk seluruh siswa); OFF = manual per record di form Tambah Improvement"
+    },
+    "pelanggaran_module_aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Aktif/Nonaktif modul Pelanggaran lama. Jika false, tab Pelanggaran disembunyikan dan sistem beralih ke Improvement."
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "keterangan": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "limit_mingguan_universal"
+  ]
+}

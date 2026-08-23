@@ -1,0 +1,93 @@
+{
+  "name": "PelanggaranImprovement",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal pelanggaran dicatat"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "kode_pelanggaran_id": {
+      "type": "string",
+      "description": "ID KodePelanggaranImprovement"
+    },
+    "kategori_utama": {
+      "type": "string",
+      "description": "Auto dari kode pelanggaran (tidak dapat diubah)"
+    },
+    "kode": {
+      "type": "string",
+      "description": "Kode pelanggaran (auto)"
+    },
+    "uraian_pelanggaran": {
+      "type": "string",
+      "description": "Uraian pelanggaran (auto, dapat diedit/ditambah manual)"
+    },
+    "rincian": {
+      "type": "string",
+      "description": "Rincian pelanggaran (auto, dapat diedit manual)"
+    },
+    "tindak_lanjut": {
+      "type": "string",
+      "description": "Tindak lanjut (auto, tidak dapat diubah)"
+    },
+    "poin_min": {
+      "type": "number",
+      "description": "Poin minimum (auto dari kode, untuk referensi)"
+    },
+    "poin_max": {
+      "type": "number",
+      "description": "Poin maksimum (auto dari kode, untuk referensi)"
+    },
+    "poin": {
+      "type": "number",
+      "description": "Poin pelanggaran (default minimum, dapat diubah dalam rentang min-max)"
+    },
+    "pelapor_id": {
+      "type": "string",
+      "description": "ID guru/pegawai pelapor"
+    },
+    "pelapor_nama": {
+      "type": "string",
+      "description": "Nama pelapor"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Proses",
+        "Selesai"
+      ],
+      "default": "Proses",
+      "description": "Status penanganan pelanggaran"
+    }
+  },
+  "required": [
+    "tanggal",
+    "siswa_id",
+    "nama_siswa",
+    "kode_pelanggaran_id",
+    "kategori_utama",
+    "kode",
+    "uraian_pelanggaran",
+    "poin"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "KegiatanPembinaan",
+  "type": "object",
+  "properties": {
+    "no": {
+      "type": "number",
+      "description": "Nomor urut kegiatan pembinaan"
+    },
+    "kegiatan": {
+      "type": "string",
+      "description": "Nama kegiatan pembinaan/improvement"
+    },
+    "ip": {
+      "type": "string",
+      "description": "Improvement Point (angka atau 'Sesuai Penetapan')"
+    },
+    "sesuai_penetapan": {
+      "type": "boolean",
+      "default": false,
+      "description": "True jika IP ditetapkan 'Sesuai Penetapan' (default 0, dapat disesuaikan petugas)"
+    },
+    "poin_default": {
+      "type": "number",
+      "default": 0,
+      "description": "Poin default (0 untuk Sesuai Penetapan, atau angka tetap)"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Status aktif kegiatan pembinaan"
+    }
+  },
+  "required": [
+    "kegiatan",
+    "ip"
+  ]
+}

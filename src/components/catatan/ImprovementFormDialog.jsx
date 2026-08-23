@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -6,38 +6,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { IMPROVEMENT_LIMIT_MINGGUAN_DEFAULT, getMingguKey } from '@/lib/dapodikConstants';
+import { Search, TrendingDown, Lock } from "lucide-react";
+import { getMingguKey } from '@/lib/dapodikConstants';
 
-const KATEGORI_OPTIONS = ["Akademik", "Perilaku", "Kepedulian", "Kebersihan", "Lainnya"];
-
-const defaultForm = () => ({
-  tanggal: new Date().toISOString().split('T')[0],
-  siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
-  kategori: 'Perilaku', uraian: '', poin_pengurangan: 5,
-  limit_mingguan: IMPROVEMENT_LIMIT_MINGGUAN_DEFAULT,
-  validator_id: '', validator_nama: '', catatan: '', status: 'Aktif'
-});
-
-export default function ImprovementFormDialog({ open, onOpenChange, editing, kelasList, siswaList, guruList, currentUser, improvementList }) {
+export default function ImprovementFormDialog({ open, onOpenChange, siswaList, guruList, currentUser, improvementList, kegiatanList, pengaturan, editing, tahunAjaran, prefillSiswa }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [selectedKelas, setSelectedKelas] = useState('');
-  const [formData, setFormData] = useState(defaultForm());
+  const [formData, setFormData] = useState({
+    tanggal: new Date().toISOString().split('T')[0],
+    siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
+    kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
+    uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
+    limit_mingguan: 30, limit_universal_applied: true, minggu_key: '',
+    validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif'
+  });
+  const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
+  const [searchSiswa, setSearchSiswa] = useState('');
+  const [openKegiatanSearch, setOpenKegiatanSearch] = useState(false);
+  const [searchKegiatan, setSearchKegiatan] = useState('');
+
+  const isGuru = currentUser?.role === 'guru';
+  const limitUniversalAktif = pengaturan?.limit_universal_aktif ?? true;
+  const limitUniversal = pengaturan?.limit_mingguan_universal ?? 30;
 
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setFormData({ ...defaultForm(), ...editing });
-      setSelectedKelas(editing.kelas_id || '');
+      setFormData({ ...formData, ...editing });
     } else {
-      const f = defaultForm();
+      const f = {
+        tanggal: new Date().toISOString().split('T')[0],
+        siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
+        kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
+        uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
+        limit_mingguan: limitUniversalAktif ? limitUniversal : 30, limit_universal_applied: limitUniversalAktif,
+        minggu_key: '', validator_id: '', validator_nama: '', tahun_ajaran: tahunAjaran || '', catatan: '', status: 'Aktif'
+      };
       if (currentUser) { f.validator_id = currentUser.id; f.validator_nama = currentUser.full_name; }
+      if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setFormData(f);
-      setSelectedKelas('');
     }
-  }, [open, editing, currentUser]);
+  }, [open, editing, currentUser, tahunAjaran, prefillSiswa, limitUniversalAktif, limitUniversal]);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Improvement.create(data),
@@ -48,26 +62,61 @@ export default function ImprovementFormDialog({ open, onOpenChange, editing, kel
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['improvement'] }); handleClose(); }
   });
 
-  const handleClose = () => { setFormData(defaultForm()); setSelectedKelas(''); onOpenChange(false); };
+  const handleClose = () => {
+    setFormData({
+      tanggal: new Date().toISOString().split('T')[0],
+      siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
+      kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
+      uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
+      limit_mingguan: 30, limit_universal_applied: true, minggu_key: '',
+      validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif'
+    });
+    setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKegiatanSearch(false); setSearchKegiatan('');
+    onOpenChange(false);
+  };
 
-  const handleKelasChange = (kelasId) => {
-    setSelectedKelas(kelasId);
-    setFormData({ ...formData, siswa_id: '', nis: '', nama_siswa: '', kelas_id: kelasId, nama_kelas: kelasList.find(k => k.id === kelasId)?.nama_kelas || '' });
+  const activeSiswa = useMemo(() => (siswaList || []).filter(s => s.status === 'Aktif'), [siswaList]);
+  const filteredSiswa = useMemo(() => {
+    if (!searchSiswa) return activeSiswa.sort((a, b) => a.nama.localeCompare(b.nama));
+    const s = searchSiswa.toLowerCase();
+    return activeSiswa.filter(s => s.nama?.toLowerCase().includes(s) || s.nis?.toLowerCase().includes(s) || s.nama_kelas?.toLowerCase().includes(s)).sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [activeSiswa, searchSiswa]);
+
+  const aktifKegiatan = useMemo(() => (kegiatanList || []).filter(k => k.aktif !== false), [kegiatanList]);
+  const filteredKegiatan = useMemo(() => {
+    if (!searchKegiatan) return aktifKegiatan;
+    const s = searchKegiatan.toLowerCase();
+    return aktifKegiatan.filter(k => k.kegiatan?.toLowerCase().includes(s));
+  }, [aktifKegiatan, searchKegiatan]);
+
+  const handleSelectSiswa = (siswa) => {
+    setFormData(f => ({ ...f, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas }));
+    setOpenSiswaSearch(false); setSearchSiswa('');
   };
-  const handleSiswaChange = (siswaId) => {
-    const s = siswaList.find(x => x.id === siswaId);
-    if (s) setFormData(f => ({ ...f, siswa_id: s.id, nis: s.nis, nama_siswa: s.nama, kelas_id: s.kelas_id, nama_kelas: s.nama_kelas }));
+
+  const handleSelectKegiatan = (keg) => {
+    const poin = keg.sesuai_penetapan ? 0 : (keg.poin_default || 0);
+    setFormData(f => ({
+      ...f,
+      kegiatan_pembinaan_id: keg.id,
+      kegiatan_pembinaan_nama: keg.kegiatan,
+      sesuai_penetapan: keg.sesuai_penetapan || false,
+      poin_pengurangan: poin,
+      uraian: f.uraian || keg.kegiatan
+    }));
+    setOpenKegiatanSearch(false); setSearchKegiatan('');
   };
+
   const handleValidatorChange = (guruId) => {
     const g = guruList.find(x => x.id === guruId);
     if (g) setFormData(f => ({ ...f, validator_id: g.id, validator_nama: g.nama }));
   };
 
-  const filteredSiswa = (siswaList || []).filter(s => s.status === 'Aktif' && s.kelas_id === selectedKelas).sort((a, b) => a.nama.localeCompare(b.nama));
-
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
+    if (!formData.kegiatan_pembinaan_id) { toast({ title: "Pilih kegiatan pembinaan", variant: "destructive" }); return; }
+    if (!formData.validator_id) { toast({ title: "Pilih validator", variant: "destructive" }); return; }
     const minggu_key = getMingguKey(new Date(formData.tanggal));
     const used = (improvementList || [])
       .filter(i => i.siswa_id === formData.siswa_id && i.minggu_key === minggu_key && i.status === 'Aktif' && i.id !== editing?.id)
@@ -78,7 +127,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, editing, kel
       toast({ title: "Limit mingguan terlampaui", description: `Terpakai ${used} + ${poin} = ${used + poin} poin melebihi limit ${limit}/minggu`, variant: "destructive" });
       return;
     }
-    const payload = { ...formData, poin_pengurangan: poin, limit_mingguan: limit, minggu_key };
+    const payload = { ...formData, poin_pengurangan: poin, limit_mingguan: limit, minggu_key, limit_universal_applied: limitUniversalAktif };
     if (editing) updateMutation.mutate({ id: editing.id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -87,74 +136,138 @@ export default function ImprovementFormDialog({ open, onOpenChange, editing, kel
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-emerald-700">{editing ? 'Edit Improvement' : 'Tambah Improvement'}</DialogTitle>
+          <DialogTitle className="text-emerald-700 flex items-center gap-2">
+            <TrendingDown className="w-5 h-5" /> {editing ? 'Edit Improvement' : 'Tambah Improvement'}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Tanggal</Label>
-              <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Pilih Kelas</Label>
-              <Select value={selectedKelas} onValueChange={handleKelasChange}>
-                <SelectTrigger><SelectValue placeholder="Pilih Kelas" /></SelectTrigger>
-                <SelectContent>
-                  {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
           <div>
-            <Label>Pilih Siswa</Label>
-            <Select value={formData.siswa_id} onValueChange={handleSiswaChange} disabled={!selectedKelas}>
-              <SelectTrigger><SelectValue placeholder={selectedKelas ? "Pilih Siswa" : "Pilih kelas terlebih dahulu"} /></SelectTrigger>
-              <SelectContent>
-                {filteredSiswa.map(s => <SelectItem key={s.id} value={s.id}>{s.nama}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <Label>Tanggal</Label>
+            <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Kategori</Label>
-              <Select value={formData.kategori} onValueChange={(v) => setFormData({ ...formData, kategori: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {KATEGORI_OPTIONS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Poin Pengurangan</Label>
-              <Input type="number" min="1" value={formData.poin_pengurangan} onChange={(e) => setFormData({ ...formData, poin_pengurangan: e.target.value })} required />
-            </div>
-          </div>
+
+          {/* Cari Nama/Kelas */}
           <div>
-            <Label>Uraian Aktivitas Improvement</Label>
-            <Textarea value={formData.uraian} onChange={(e) => setFormData({ ...formData, uraian: e.target.value })} required placeholder="Contoh: Aktif membantu teman, rajin sholat berjamaah, dsb." />
+            <Label>Cari Nama Siswa / Kelas</Label>
+            <Popover open={openSiswaSearch} onOpenChange={setOpenSiswaSearch}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Search className="w-4 h-4 mr-2 text-slate-400" />
+                  {formData.nama_siswa ? `${formData.nama_siswa} — ${formData.nama_kelas}` : "Ketik nama siswa atau kelas..."}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[500px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Cari nama / NIS / kelas..." value={searchSiswa} onValueChange={setSearchSiswa} />
+                  <CommandList className="max-h-72">
+                    <CommandEmpty>Tidak ditemukan</CommandEmpty>
+                    <CommandGroup heading={`Siswa Aktif (${filteredSiswa.length})`}>
+                      {filteredSiswa.map(s => (
+                        <CommandItem key={s.id} value={`${s.nama} ${s.nis} ${s.nama_kelas}`} onSelect={() => handleSelectSiswa(s)} className="cursor-pointer">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-medium">{s.nama}</span>
+                            <Badge variant="outline" className="text-xs">{s.nama_kelas}</Badge>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Limit Mingguan <span className="text-xs text-slate-400">(default 30, bisa custom)</span></Label>
-              <Input type="number" min="1" value={formData.limit_mingguan} onChange={(e) => setFormData({ ...formData, limit_mingguan: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Validator</Label>
+
+          {/* Cari Kegiatan Pembinaan */}
+          <div>
+            <Label>Kegiatan Pembinaan (dari database Sheet 3)</Label>
+            <Popover open={openKegiatanSearch} onOpenChange={setOpenKegiatanSearch}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                  <Search className="w-4 h-4 mr-2 text-slate-400" />
+                  {formData.kegiatan_pembinaan_nama ? formData.kegiatan_pembinaan_nama : "Ketik untuk mencari kegiatan pembinaan..."}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[500px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Cari kegiatan pembinaan..." value={searchKegiatan} onValueChange={setSearchKegiatan} />
+                  <CommandList className="max-h-72">
+                    <CommandEmpty>Tidak ditemukan</CommandEmpty>
+                    <CommandGroup heading={`Kegiatan Pembinaan (${filteredKegiatan.length})`}>
+                      {filteredKegiatan.map(k => (
+                        <CommandItem key={k.id} value={k.kegiatan} onSelect={() => handleSelectKegiatan(k)} className="cursor-pointer">
+                          <div className="flex items-center justify-between w-full">
+                            <span className="text-sm">{k.kegiatan}</span>
+                            <Badge className={k.sesuai_penetapan ? 'bg-amber-100 text-amber-700 text-xs' : 'bg-emerald-100 text-emerald-700 text-xs'}>
+                              {k.sesuai_penetapan ? 'Sesuai Penetapan' : `${k.ip} IP`}
+                            </Badge>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Poin Pengurangan */}
+          <div>
+            <Label>
+              Poin Pengurangan
+              {formData.sesuai_penetapan && <span className="text-xs text-amber-600 ml-2">(Sesuai Penetapan — default 0, dapat disesuaikan)</span>}
+            </Label>
+            <Input type="number" min="0" value={formData.poin_pengurangan} onChange={(e) => setFormData({ ...formData, poin_pengurangan: e.target.value })} required />
+          </div>
+
+          {/* Limit Mingguan — auto if universal ON, manual if OFF */}
+          <div>
+            <Label>
+              Limit Mingguan
+              {limitUniversalAktif ? (
+                <span className="text-xs text-slate-400 ml-2 flex items-center"><Lock className="w-3 h-3 inline mr-1" />Universal (otomatis)</span>
+              ) : (
+                <span className="text-xs text-slate-400 ml-2">(manual — atur per record)</span>
+              )}
+            </Label>
+            <Input
+              type="number" min="1"
+              value={formData.limit_mingguan}
+              onChange={(e) => setFormData({ ...formData, limit_mingguan: e.target.value })}
+              disabled={limitUniversalAktif}
+              className={limitUniversalAktif ? 'bg-slate-100' : ''}
+              required
+            />
+          </div>
+
+          {/* Uraian */}
+          <div>
+            <Label>Uraian <span className="text-xs text-slate-400">(opsional)</span></Label>
+            <Textarea value={formData.uraian} onChange={(e) => setFormData({ ...formData, uraian: e.target.value })} rows={2} placeholder="Auto dari kegiatan, dapat ditambah" />
+          </div>
+
+          {/* Validator */}
+          <div>
+            <Label>Validator</Label>
+            {isGuru && currentUser ? (
+              <Input value={currentUser.full_name} readOnly className="bg-slate-100" />
+            ) : (
               <Select value={formData.validator_id} onValueChange={handleValidatorChange}>
                 <SelectTrigger><SelectValue placeholder="Pilih Validator" /></SelectTrigger>
                 <SelectContent>
-                  {guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama} - {g.jabatan || 'Guru'}</SelectItem>)}
+                  {guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama} — {g.jabatan || 'Guru'}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
+            )}
           </div>
+
           <div>
             <Label>Catatan (opsional)</Label>
             <Textarea value={formData.catatan} onChange={(e) => setFormData({ ...formData, catatan: e.target.value })} rows={2} />
           </div>
+
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={handleClose} className="flex-1">Batal</Button>
-            <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700">{editing ? 'Simpan' : 'Tambah'}</Button>
+            <Button type="submit" className="flex-1 bg-emerald-600 hover:bg-emerald-700">{editing ? 'Simpan' : 'Tambah Improvement'}</Button>
           </div>
         </form>
       </DialogContent>
