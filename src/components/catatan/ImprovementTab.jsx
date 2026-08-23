@@ -23,10 +23,11 @@ import KelolaKegiatanPembinaanDialog from "./KelolaKegiatanPembinaanDialog";
 const KATEGORI_COLOR = {
   "Hukum & Keselamatan": "bg-red-100 text-red-700",
   "Kesusilaan & Pergaulan": "bg-pink-100 text-pink-700",
-  "Kerapian & Tata Tertib": "bg-blue-100 text-blue-700",
-  "Akademik": "bg-amber-100 text-amber-700",
-  "Kehadiran": "bg-cyan-100 text-cyan-700",
-  "Sikap & Perilaku": "bg-purple-100 text-purple-700",
+  "Penampilan & Seragam": "bg-blue-100 text-blue-700",
+  "Kebersihan & Lingkungan": "bg-teal-100 text-teal-700",
+  "Ibadah & Adab Islami": "bg-emerald-100 text-emerald-700",
+  "Izin & Kehadiran": "bg-cyan-100 text-cyan-700",
+  "Sikap & Etika": "bg-purple-100 text-purple-700",
   "Lainnya": "bg-slate-100 text-slate-700"
 };
 
@@ -59,6 +60,7 @@ export default function ImprovementTab() {
   useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
 
   const isAdmin = currentUser?.role === 'admin';
+  const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
 
   // Queries
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
@@ -175,7 +177,8 @@ export default function ImprovementTab() {
         isAdmin={isAdmin}
       />
 
-      {/* Kelola Data buttons */}
+      {/* Kelola Data buttons — hanya ADMIN/TU/KEPSEK */}
+      {canKelolaData && (
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" onClick={() => setKelolaKodeOpen(true)} className="border-slate-300 text-slate-700 hover:bg-slate-50">
           <Database className="w-4 h-4 mr-2" /> Kelola Kode Pelanggaran
@@ -184,6 +187,7 @@ export default function ImprovementTab() {
           <BookOpen className="w-4 h-4 mr-2" /> Kelola Kegiatan Pembinaan
         </Button>
       </div>
+      )}
 
       <Tabs defaultValue="pelanggaran" className="w-full">
         <TabsList className="flex w-fit gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">

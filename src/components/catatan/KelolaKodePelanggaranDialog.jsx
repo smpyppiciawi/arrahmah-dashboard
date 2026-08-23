@@ -14,10 +14,11 @@ import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 const KATEGORI_UTAMA_OPTIONS = [
   "Hukum & Keselamatan",
   "Kesusilaan & Pergaulan",
-  "Kerapian & Tata Tertib",
-  "Akademik",
-  "Kehadiran",
-  "Sikap & Perilaku",
+  "Penampilan & Seragam",
+  "Kebersihan & Lingkungan",
+  "Ibadah & Adab Islami",
+  "Izin & Kehadiran",
+  "Sikap & Etika",
   "Lainnya"
 ];
 
