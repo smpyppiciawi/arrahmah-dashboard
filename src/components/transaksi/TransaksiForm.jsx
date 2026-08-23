@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
 import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import SiswaSearch from './SiswaSearch';
+import DonaturSearch from './DonaturSearch';
 import SiswaRiwayat from './SiswaRiwayat';
 import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
@@ -32,7 +33,7 @@ const FALLBACK_TIPE = {
   siswa: ['SPP/Bulanan', 'Ujian Sekolah', 'Daftar Ulang', 'Kelulusan'],
   pegawai: ['Gaji/Honorarium', 'Kasbon Pegawai', 'Lainnya'],
   donatur: ['Lainnya'],
-  umum: ['Belanja Harian', 'Belanja Bulanan', 'Belanja Tahunan', 'Kegiatan', 'BOSP', 'Transaksi Khusus', 'Lainnya'],
+  umum: ['Belanja Harian', 'Belanja Bulanan', 'Belanja Tahunan', 'Kegiatan', 'BOSP', 'Transaksi Khusus', 'Donatur', 'Lainnya'],
 };
 
 const JENIS_OPTIONS = [
@@ -67,7 +68,7 @@ export default function TransaksiForm({
   currentUser, activeAcademicYear,
   siswaList, guruList,
   kategoriList, tipeTransaksiList, sumberDanaList, tarifIuranList,
-  keuanganList,
+  keuanganList, donaturList,
 }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState(DEFAULT_FORM);
@@ -261,7 +262,9 @@ export default function TransaksiForm({
 
   const handleTipeChange = (tipe) => {
     set('tipe_transaksi', tipe);
-    if (TIPE_TO_KATEGORI[tipe]) {
+    if (tipe === 'Donatur') {
+      set('kategori', 'Donasi');
+    } else if (TIPE_TO_KATEGORI[tipe]) {
       set('kategori', TIPE_TO_KATEGORI[tipe]);
     }
     if (tipe === 'Gaji/Honorarium' && formData.guru_id) {
@@ -336,6 +339,14 @@ export default function TransaksiForm({
         toast({ title: "Transaksi berhasil disimpan" });
       }
       queryClient.invalidateQueries({ queryKey: ['keuangan'] });
+      // Auto-create Donatur entity jika nama donatur baru
+      if (formData.nama_donatur && formData.nama_donatur.trim()) {
+        const exists = (donaturList || []).some(d => d.nama?.toLowerCase() === formData.nama_donatur.trim().toLowerCase());
+        if (!exists) {
+          try { await base44.entities.Donatur.create({ nama: formData.nama_donatur.trim() }); } catch (e) { /* ignore duplicate */ }
+          queryClient.invalidateQueries({ queryKey: ['donatur'] });
+        }
+      }
       onClose();
     } catch (err) {
       toast({ title: "Gagal menyimpan transaksi", description: err.message, variant: "destructive" });
@@ -415,7 +426,7 @@ export default function TransaksiForm({
                   <ArrowUpRight className="w-4 h-4" />
                   Masuk
                 </button>
-                {jenisTransaksi !== 'siswa' && (
+                {jenisTransaksi !== 'siswa' && jenisTransaksi !== 'donatur' && (
                   <button
                     type="button"
                     onClick={() => set('jenis', 'Pengeluaran')}
@@ -432,6 +443,9 @@ export default function TransaksiForm({
               </div>
               {jenisTransaksi === 'siswa' && (
                 <p className="text-xs text-blue-500 mt-1">Transaksi siswa hanya menerima pemasukan</p>
+              )}
+              {jenisTransaksi === 'donatur' && (
+                <p className="text-xs text-pink-500 mt-1">Transaksi donatur hanya menerima pemasukan</p>
               )}
             </div>
           </div>
@@ -492,10 +506,12 @@ export default function TransaksiForm({
               <Label className="text-xs text-pink-700 uppercase tracking-wide font-semibold">Data Donatur</Label>
               <div>
                 <Label>Nama Donatur</Label>
-                <Input
+                <DonaturSearch
+                  donaturList={donaturList || []}
+                  keuanganList={keuanganList || []}
                   value={formData.nama_donatur}
-                  onChange={(e) => set('nama_donatur', e.target.value)}
-                  placeholder="Nama donatur atau hamba Allah"
+                  onChange={(v) => set('nama_donatur', v)}
+                  placeholder="Cari nama donatur / ketik nama baru"
                 />
               </div>
             </div>
@@ -564,6 +580,19 @@ export default function TransaksiForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {jenisTransaksi === 'umum' && formData.tipe_transaksi === 'Donatur' && (
+            <div>
+              <Label>Nama Donatur</Label>
+              <DonaturSearch
+                donaturList={donaturList || []}
+                keuanganList={keuanganList || []}
+                value={formData.nama_donatur}
+                onChange={(v) => set('nama_donatur', v)}
+                placeholder="Cari nama donatur / ketik nama baru"
+              />
             </div>
           )}
 

@@ -1,0 +1,37 @@
+{
+  "name": "TransferDana",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal transfer dana"
+    },
+    "dari_sumber_dana": {
+      "type": "string",
+      "description": "Sumber dana asal transfer"
+    },
+    "ke_sumber_dana": {
+      "type": "string",
+      "description": "Sumber dana tujuan transfer"
+    },
+    "nominal": {
+      "type": "number",
+      "description": "Nominal transfer dana"
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan transfer"
+    },
+    "pencatat": {
+      "type": "string",
+      "description": "Nama pencatat transfer"
+    }
+  },
+  "required": [
+    "tanggal",
+    "dari_sumber_dana",
+    "ke_sumber_dana",
+    "nominal"
+  ]
+}

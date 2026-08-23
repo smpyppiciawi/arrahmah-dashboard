@@ -13,16 +13,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   FileText, Printer, Users, TrendingUp, TrendingDown, 
-  Wallet, Calendar, Filter, Download, AlertCircle, Megaphone
+  Wallet, Calendar, Filter, Download, AlertCircle, Megaphone,
+  ArrowLeftRight
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
+import TransferDanaDialog from '@/components/transaksi/TransferDanaDialog';
+import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
 
 export default function LaporanKeuangan() {
   const { activeAcademicYear } = useActiveAcademicYear();
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('rekening-koran');
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [filterKategori, setFilterKategori] = useState('');
+  const [filterDonatur, setFilterDonatur] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [filterDateTo, setFilterDateTo] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedSiswa, setSelectedSiswa] = useState('');
@@ -54,6 +61,21 @@ export default function LaporanKeuangan() {
     queryFn: () => base44.entities.SumberDana.list('nama'),
   });
 
+  const { data: transferDanaList = [] } = useQuery({
+    queryKey: ['transfer-dana'],
+    queryFn: () => base44.entities.TransferDana.list('-tanggal'),
+  });
+
+  const { data: donaturList = [] } = useQuery({
+    queryKey: ['donatur'],
+    queryFn: () => base44.entities.Donatur.list('nama'),
+  });
+
+  const { data: kategoriList = [] } = useQuery({
+    queryKey: ['kategori-transaksi'],
+    queryFn: () => base44.entities.KategoriTransaksi.list('nama'),
+  });
+
   const { data: biayaKhususList = [] } = useQuery({
     queryKey: ['biaya-khusus'],
     queryFn: () => base44.entities.BiayaKhusus.list(),
@@ -69,8 +91,14 @@ export default function LaporanKeuangan() {
       if (!map[k.sumber_rekening]) map[k.sumber_rekening] = 0;
       map[k.sumber_rekening] += k.jenis === 'Pemasukan' ? (k.jumlah || 0) : -(k.jumlah || 0);
     });
+    transferDanaList.forEach(t => {
+      if (!map[t.dari_sumber_dana]) map[t.dari_sumber_dana] = 0;
+      if (!map[t.ke_sumber_dana]) map[t.ke_sumber_dana] = 0;
+      map[t.dari_sumber_dana] -= (t.nominal || 0);
+      map[t.ke_sumber_dana] += (t.nominal || 0);
+    });
     return map;
-  }, [keuanganList, sumberDanaList]);
+  }, [keuanganList, sumberDanaList, transferDanaList]);
 
   const formatRupiah = (value) => {
     return new Intl.NumberFormat('id-ID', {
@@ -89,20 +117,57 @@ export default function LaporanKeuangan() {
     });
   }, [keuanganList, filterDateFrom, filterDateTo]);
 
+  // Filter data for Laporan Pemasukan & Pengeluaran tab (kategori + donatur)
+  const laporanFilteredData = useMemo(() => {
+    let data = [...filteredData];
+    if (filterKategori) data = data.filter(k => k.kategori === filterKategori);
+    if (filterDonatur) data = data.filter(k => k.nama_donatur === filterDonatur);
+    return data;
+  }, [filteredData, filterKategori, filterDonatur]);
+
+  // Unique donatur names for filter
+  const donaturNames = useMemo(() => {
+    const fromEntity = donaturList.map(d => d.nama).filter(Boolean);
+    const fromKeuangan = keuanganList.filter(k => k.nama_donatur).map(k => k.nama_donatur).filter(Boolean);
+    return [...new Set([...fromEntity, ...fromKeuangan])].sort((a, b) => a.localeCompare(b));
+  }, [donaturList, keuanganList]);
+
+  // Unique kategori names for filter
+  const kategoriNames = useMemo(() => {
+    return kategoriList.map(k => k.nama).sort();
+  }, [kategoriList]);
+
   // Rekening Koran - semua transaksi dengan running balance
   const rekeningKoran = useMemo(() => {
-    const sorted = [...filteredData].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
+    // Merge transfer records into the ledger
+    const transferEntries = transferDanaList
+      .filter(t => (!filterDateFrom || t.tanggal >= filterDateFrom) && (!filterDateTo || t.tanggal <= filterDateTo))
+      .map(t => ({
+        ...t,
+        id: `transfer-${t.id}`,
+        tanggal: t.tanggal,
+        jenis: 'Transfer',
+        kategori: 'Transfer',
+        uraian: `Transfer: ${t.dari_sumber_dana} → ${t.ke_sumber_dana}`,
+        sumber_rekening: t.dari_sumber_dana,
+        jumlah: t.nominal,
+        is_transfer: true,
+      }));
+    const allEntries = [...filteredData, ...transferEntries];
+    const sorted = [...allEntries].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
     let balance = 0;
     return sorted.map(t => {
-      balance += t.jenis === 'Pemasukan' ? (t.jumlah || 0) : -(t.jumlah || 0);
+      if (!t.is_transfer) {
+        balance += t.jenis === 'Pemasukan' ? (t.jumlah || 0) : -(t.jumlah || 0);
+      }
       return { ...t, saldo: balance };
     });
-  }, [filteredData]);
+  }, [filteredData, transferDanaList, filterDateFrom, filterDateTo]);
 
   // Laporan Pemasukan & Pengeluaran
   const laporanPemasukanPengeluaran = useMemo(() => {
-    const pemasukan = filteredData.filter(k => k.jenis === 'Pemasukan');
-    const pengeluaran = filteredData.filter(k => k.jenis === 'Pengeluaran');
+    const pemasukan = laporanFilteredData.filter(k => k.jenis === 'Pemasukan');
+    const pengeluaran = laporanFilteredData.filter(k => k.jenis === 'Pengeluaran');
     
     const totalPemasukan = pemasukan.reduce((sum, k) => sum + (k.jumlah || 0), 0);
     const totalPengeluaran = pengeluaran.reduce((sum, k) => sum + (k.jumlah || 0), 0);
@@ -121,7 +186,7 @@ export default function LaporanKeuangan() {
     }, {});
     
     return { totalPemasukan, totalPengeluaran, pemasukanByKategori, pengeluaranByKategori };
-  }, [filteredData]);
+  }, [laporanFilteredData]);
 
   // Unique iuran names for filter
   const iuranNames = useMemo(() => {
@@ -268,6 +333,7 @@ export default function LaporanKeuangan() {
                 <th>Sumber Dana</th>
                 <th>Debit</th>
                 <th>Kredit</th>
+                <th>Transfer</th>
                 <th>Saldo</th>
               </tr>
             </thead>
@@ -277,10 +343,11 @@ export default function LaporanKeuangan() {
                   <td>${i + 1}</td>
                   <td>${format(new Date(t.tanggal), 'd/M/yyyy')}</td>
                   <td>${t.uraian || t.kategori || '-'}</td>
-                  <td>${t.kategori || '-'}</td>
+                  <td>${t.is_transfer ? 'Transfer' : (t.kategori || '-')}</td>
                   <td>${t.sumber_rekening || '-'}</td>
                   <td class="right green">${t.jenis === 'Pemasukan' ? formatRupiah(t.jumlah) : '-'}</td>
                   <td class="right red">${t.jenis === 'Pengeluaran' ? formatRupiah(t.jumlah) : '-'}</td>
+                  <td class="right" style="color:teal">${t.is_transfer ? formatRupiah(t.jumlah) : '-'}</td>
                   <td class="right">${formatRupiah(t.saldo)}</td>
                 </tr>
               `).join('')}
@@ -408,12 +475,13 @@ export default function LaporanKeuangan() {
   // Columns for tables
   const rekeningKoranColumns = [
     { key: 'tanggal', label: 'Tanggal', render: (row) => format(new Date(row.tanggal), 'd MMM yyyy', { locale: idLocale }) },
-    { key: 'uraian', label: 'Uraian', render: (row) => row.uraian || row.kategori || '-' },
-    { key: 'kategori', label: 'Kategori', render: (row) => <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge> },
+    { key: 'uraian', label: 'Uraian', render: (row) => row.is_transfer ? <span className="text-teal-600 font-medium">{row.uraian}</span> : (row.uraian || row.kategori || '-') },
+    { key: 'kategori', label: 'Kategori', render: (row) => row.is_transfer ? <Badge className="text-xs bg-teal-100 text-teal-700">Transfer</Badge> : <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge> },
     { key: 'sumber_rekening', label: 'Sumber Dana', render: (row) => <span className="text-xs text-slate-500">{row.sumber_rekening || '-'}</span> },
-    { key: 'nama', label: 'Nama', render: (row) => row.nama_siswa || row.nama_pegawai || '-' },
+    { key: 'nama', label: 'Nama', render: (row) => row.nama_siswa || row.nama_pegawai || row.nama_donatur || '-' },
     { key: 'debit', label: 'Debit (Masuk)', render: (row) => row.jenis === 'Pemasukan' ? <span className="text-emerald-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },
     { key: 'kredit', label: 'Kredit (Keluar)', render: (row) => row.jenis === 'Pengeluaran' ? <span className="text-red-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },
+    { key: 'transfer', label: 'Transfer', sortable: false, filterable: false, render: (row) => row.is_transfer ? <span className="text-teal-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },
     { key: 'saldo', label: 'Saldo', render: (row) => <span className="font-medium">{formatRupiah(row.saldo)}</span> }
   ];
 
@@ -450,6 +518,12 @@ export default function LaporanKeuangan() {
         </div>
 
         {/* Saldo per Sumber Dana */}
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-slate-600 uppercase tracking-wide">Saldo Sumber Dana</h2>
+          <Button onClick={() => setTransferOpen(true)} className="bg-teal-600 hover:bg-teal-700" size="sm">
+            <ArrowLeftRight className="w-4 h-4 mr-1" /> Transfer
+          </Button>
+        </div>
         {sumberDanaList.length > 0 && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             {sumberDanaList.map(s => {
@@ -563,14 +637,33 @@ export default function LaporanKeuangan() {
             </div>
 
             <Card className="border-0 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-3">
                 <CardTitle className="flex items-center gap-2">
                   <Wallet className="w-5 h-5" />
                   Saldo Akhir: {formatRupiah(laporanPemasukanPengeluaran.totalPemasukan - laporanPemasukanPengeluaran.totalPengeluaran)}
                 </CardTitle>
-                <Button onClick={printLaporanPemasukanPengeluaran} variant="outline">
-                  <Printer className="w-4 h-4 mr-2" /> Cetak Laporan
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select value={filterKategori || 'all'} onValueChange={(v) => setFilterKategori(v === 'all' ? '' : v)}>
+                    <SelectTrigger className="w-40"><SelectValue placeholder="Semua Kategori" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kategori</SelectItem>
+                      {kategoriNames.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterDonatur || 'all'} onValueChange={(v) => setFilterDonatur(v === 'all' ? '' : v)}>
+                    <SelectTrigger className="w-48"><SelectValue placeholder="Semua Donatur" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Donatur</SelectItem>
+                      {donaturNames.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {(filterKategori || filterDonatur) && (
+                    <Button variant="ghost" size="sm" onClick={() => { setFilterKategori(''); setFilterDonatur(''); }}>Reset</Button>
+                  )}
+                  <Button onClick={printLaporanPemasukanPengeluaran} variant="outline">
+                    <Printer className="w-4 h-4 mr-2" /> Cetak Laporan
+                  </Button>
+                </div>
               </CardHeader>
             </Card>
           </TabsContent>
@@ -659,6 +752,15 @@ export default function LaporanKeuangan() {
             <PengumumanBendahara />
           </TabsContent>
         </Tabs>
+
+        <TransferDanaDialog
+          open={transferOpen}
+          onOpenChange={setTransferOpen}
+          sumberDanaList={sumberDanaList}
+          keuanganList={keuanganList}
+          transferDanaList={transferDanaList}
+          currentUser={currentUser}
+        />
       </div>
     </div>
   );

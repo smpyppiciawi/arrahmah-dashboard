@@ -30,6 +30,7 @@
         "Kegiatan",
         "BOSP",
         "Transaksi Khusus",
+        "Donatur",
         "Lainnya"
       ],
       "description": "Tipe detail transaksi"
