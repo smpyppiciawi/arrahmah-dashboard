@@ -46,6 +46,13 @@
       "default": "Yatim",
       "description": "Kategori keringanan"
     },
+    "gratis_bulan_spp": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Bulan SPP yang digratiskan (untuk kategori Prestasi)"
+    },
     "keterangan": {
       "type": "string"
     },

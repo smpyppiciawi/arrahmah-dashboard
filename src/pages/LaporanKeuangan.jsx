@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
 import TransferDanaDialog from '@/components/transaksi/TransferDanaDialog';
+import { getGratisBulanSPP, getSppTarif, tarifMatchesTingkat } from '@/lib/sppUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
@@ -209,7 +210,7 @@ export default function LaporanKeuangan() {
   const calculateExpected = (siswaId, tingkat, iuranName = null) => {
     return tarifIuranList
       .filter(t => {
-        if (t.tingkat && t.tingkat !== 'Semua' && t.tingkat !== tingkat) return false;
+        if (!tarifMatchesTingkat(t, tingkat)) return false;
         if (iuranName && t.nama !== iuranName) return false;
         return true;
       })
@@ -238,7 +239,7 @@ export default function LaporanKeuangan() {
 
   // Helper: get periode label for iuran
   const getIuranPeriode = (iuranName, tingkat) => {
-    const tarif = tarifIuranList.find(t => t.nama === iuranName && (!t.tingkat || t.tingkat === 'Semua' || t.tingkat === tingkat));
+    const tarif = tarifIuranList.find(t => t.nama === iuranName && tarifMatchesTingkat(t, tingkat));
     if (!tarif) return '-';
     switch (tarif.periode) {
       case 'Bulanan': return `${tarif.periode} (12 bln)`;
@@ -270,6 +271,25 @@ export default function LaporanKeuangan() {
         if (iuranName && tarif.nama !== iuranName) return;
         total += (b.sudah_bayar || 0);
       });
+
+    // Tambahkan nilai bulan SPP gratis (PPDB Gel 1/2 spp_gratis_bulan_pertama, Prestasi gratis_bulan_spp)
+    if (!iuranName || iuranName.toLowerCase().includes('spp')) {
+      const siswa = siswaList.find(s => s.id === siswaId);
+      const tingkat = siswa ? (kelasTingkatMap[siswa.kelas_id] || (siswa.nama_kelas?.[0] || '')) : '';
+      const gratisMonths = getGratisBulanSPP(siswaId, biayaKhususList, tarifIuranList);
+      if (gratisMonths.length > 0) {
+        const paidMonthsFromTrans = new Set(
+          keuanganList
+            .filter(k => k.siswa_id === siswaId && k.jenis === 'Pemasukan' && k.bulan_dibayar)
+            .flatMap(k => k.bulan_dibayar || [])
+        );
+        const unpaidGratis = gratisMonths.filter(m => !paidMonthsFromTrans.has(m));
+        const sppTarif = getSppTarif(tarifIuranList, tingkat);
+        if (sppTarif && unpaidGratis.length > 0) {
+          total += (sppTarif.nominal || 0) * unpaidGratis.length;
+        }
+      }
+    }
 
     return total;
   };

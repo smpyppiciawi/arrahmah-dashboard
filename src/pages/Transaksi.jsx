@@ -87,6 +87,16 @@ export default function Transaksi() {
     queryFn: () => base44.entities.Donatur.list('nama'),
   });
 
+  const { data: biayaKhususList = [] } = useQuery({
+    queryKey: ['biaya-khusus'],
+    queryFn: () => base44.entities.BiayaKhusus.list(),
+  });
+
+  const { data: kelasList = [] } = useQuery({
+    queryKey: ['kelas'],
+    queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
   const { data: tarifIuranList = [] } = useQuery({
     queryKey: ['tarif-iuran'],
     queryFn: () => base44.entities.TarifIuran.filter({ status: 'Aktif' }),
@@ -342,6 +352,8 @@ export default function Transaksi() {
           tarifIuranList={tarifIuranList}
           keuanganList={keuanganList}
           donaturList={donaturList}
+          biayaKhususList={biayaKhususList}
+          kelasList={kelasList}
         />
         {canEdit && <FloatingAddButton onClick={handleAdd} label="Tambah Transaksi" color="teal" icon={Plus} />}
 

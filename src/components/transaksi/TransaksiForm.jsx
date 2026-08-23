@@ -12,6 +12,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import SiswaSearch from './SiswaSearch';
 import DonaturSearch from './DonaturSearch';
+import { getGratisBulanSPP, getTingkat as getTingkatSiswa, tarifMatchesTingkat, getSppTarif } from '@/lib/sppUtils';
 import SiswaRiwayat from './SiswaRiwayat';
 import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
@@ -68,7 +69,7 @@ export default function TransaksiForm({
   currentUser, activeAcademicYear,
   siswaList, guruList,
   kategoriList, tipeTransaksiList, sumberDanaList, tarifIuranList,
-  keuanganList, donaturList,
+  keuanganList, donaturList, kelasList, biayaKhususList,
 }) {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState(DEFAULT_FORM);
@@ -134,21 +135,38 @@ export default function TransaksiForm({
       .flatMap(t => t.bulan_dibayar || []);
   }, [keuanganList, formData.siswa_id, activeAcademicYear, editingData]);
 
+  // Gratis SPP months from BiayaKhusus (PPDB Gel 1/2, Prestasi)
+  const gratisMonths = useMemo(() => {
+    if (!formData.siswa_id) return [];
+    return getGratisBulanSPP(formData.siswa_id, biayaKhususList || [], tarifIuranList);
+  }, [formData.siswa_id, biayaKhususList, tarifIuranList]);
+
   const sppTarifNominal = useMemo(() => {
     if (selectedTarifId) {
       const t = tarifIuranList.find(t => t.id === selectedTarifId);
-      return t?.nominal || 0;
+      if (t) {
+        const bk = (biayaKhususList || []).find(b =>
+          b.siswa_id === formData.siswa_id &&
+          b.tarif_iuran_id === t.id &&
+          (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+        );
+        return bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || t.nominal)) : t.nominal;
+      }
     }
-    const sppTarif = tarifIuranList.find(t => t.nama?.toLowerCase().includes('spp'));
+    const tingkat = selectedSiswa ? getTingkatSiswa(selectedSiswa, kelasList) : '';
+    const sppTarif = tingkat
+      ? getSppTarif(tarifIuranList, tingkat)
+      : tarifIuranList.find(t => t.nama?.toLowerCase().includes('spp'));
     return sppTarif?.nominal || 0;
-  }, [selectedTarifId, tarifIuranList]);
+  }, [selectedTarifId, tarifIuranList, formData.siswa_id, biayaKhususList, activeAcademicYear, selectedSiswa, kelasList]);
 
   const showSppChecklist = useMemo(() => {
     return jenisTransaksi === 'siswa' &&
       formData.siswa_id &&
       (formData.tipe_transaksi?.toLowerCase().includes('spp') ||
-        (selectedTarifId && tarifIuranList.find(t => t.id === selectedTarifId)?.nama?.toLowerCase().includes('spp')));
-  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList]);
+        (selectedTarifId && tarifIuranList.find(t => t.id === selectedTarifId)?.nama?.toLowerCase().includes('spp')) ||
+        gratisMonths.length > 0);
+  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList, gratisMonths]);
 
   const siswaRiwayat = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -250,11 +268,17 @@ export default function TransaksiForm({
     setSelectedTarifId(tarifId);
     const tarif = tarifIuranList.find(t => t.id === tarifId);
     if (tarif) {
+      const bk = (biayaKhususList || []).find(b =>
+        b.siswa_id === formData.siswa_id &&
+        b.tarif_iuran_id === tarifId &&
+        (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+      );
+      const nominal = bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || tarif.nominal)) : tarif.nominal;
       setFormData(prev => ({
         ...prev,
         tipe_transaksi: tarif.nama,
         kategori: TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
-        jumlah: tarif.nominal,
+        jumlah: nominal,
         uraian: tarif.nama,
       }));
     }
@@ -357,6 +381,13 @@ export default function TransaksiForm({
 
   const selectedSiswa = formData.siswa_id ? siswaList.find(s => s.id === formData.siswa_id) : null;
   const selectedGuru = formData.guru_id ? guruList.find(g => g.id === formData.guru_id) : null;
+
+  // Filter tarif iuran by student's tingkat
+  const filteredTarifList = useMemo(() => {
+    if (!selectedSiswa) return tarifIuranList;
+    const tingkat = getTingkatSiswa(selectedSiswa, kelasList);
+    return tarifIuranList.filter(t => tarifMatchesTingkat(t, tingkat));
+  }, [tarifIuranList, selectedSiswa, kelasList]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -462,15 +493,25 @@ export default function TransaksiForm({
               {formData.siswa_id && (
                 <>
                   <div>
-                    <Label className="text-xs">Pilih Tarif Iuran</Label>
+                    <Label className="text-xs">Pilih Tarif Iuran {selectedSiswa ? `(Tingkat ${getTingkatSiswa(selectedSiswa, kelasList) || '-'})` : ''}</Label>
                     <Select value={selectedTarifId} onValueChange={handleTarifSelect}>
                       <SelectTrigger><SelectValue placeholder="Pilih tarif untuk auto-fill" /></SelectTrigger>
                       <SelectContent>
-                        {tarifIuranList.map(tarif => (
-                          <SelectItem key={tarif.id} value={tarif.id}>
-                            {tarif.nama} — {new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(tarif.nominal)} ({tarif.periode})
-                          </SelectItem>
-                        ))}
+                        {filteredTarifList.map(tarif => {
+                          const bk = (biayaKhususList || []).find(b =>
+                            b.siswa_id === formData.siswa_id &&
+                            b.tarif_iuran_id === tarif.id &&
+                            (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+                          );
+                          const nominalDisplay = bk
+                            ? (bk.is_gratis ? 'GRATIS' : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(bk.nominal_khusus))
+                            : new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(tarif.nominal);
+                          return (
+                            <SelectItem key={tarif.id} value={tarif.id}>
+                              {tarif.nama} — {nominalDisplay} ({tarif.periode})
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -478,6 +519,7 @@ export default function TransaksiForm({
                     <SppChecklist
                       tarifNominal={sppTarifNominal}
                       paidMonths={paidMonths}
+                      gratisMonths={gratisMonths}
                       selectedMonths={selectedMonths}
                       onToggleMonth={handleToggleMonth}
                       tahunAjaran={activeAcademicYear}

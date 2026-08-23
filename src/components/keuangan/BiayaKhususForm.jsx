@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import RupiahInput from '@/components/ui/RupiahInput';
+import { BULAN_SPP, tarifMatchesTingkat } from '@/lib/sppUtils';
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, X, Users, Search, Gift, Coins } from "lucide-react";
+import { Loader2, X, Users, Search, Gift, Coins, Check } from "lucide-react";
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -35,6 +36,7 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
   const [keterangan, setKeterangan] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [gratisBulanSPP, setGratisBulanSPP] = useState([]);
 
   const sortedSiswaList = useMemo(() => {
     return [...siswaList].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
@@ -56,6 +58,33 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
   const selectedSiswaList = useMemo(() => {
     return sortedSiswaList.filter(s => selectedSiswaIds.includes(s.id));
   }, [sortedSiswaList, selectedSiswaIds]);
+
+  // Filter iuran by selected class tingkat
+  const filteredTarifList = useMemo(() => {
+    if (!selectedKelas) return tarifIuranList;
+    const kelas = kelasList.find(k => k.id === selectedKelas);
+    const tingkat = kelas?.tingkat || '';
+    if (!tingkat) return tarifIuranList;
+    return tarifIuranList.filter(t => tarifMatchesTingkat(t, tingkat));
+  }, [tarifIuranList, selectedKelas, kelasList]);
+
+  // Check if any selected tarif is SPP Bulanan (for Prestasi gratis months)
+  const hasSppBulananTarif = useMemo(() => {
+    return selectedTarifIds.some(id => {
+      const tarif = tarifIuranList.find(t => t.id === id);
+      return tarif?.nama?.toLowerCase().includes('spp') && tarif?.periode === 'Bulanan';
+    });
+  }, [selectedTarifIds, tarifIuranList]);
+
+  const showGratisBulanSPP = selectedKategori === 'Prestasi' && hasSppBulananTarif && nominalMode === 'gratis';
+
+  const toggleGratisBulan = (bulan) => {
+    setGratisBulanSPP(prev =>
+      prev.includes(bulan)
+        ? prev.filter(b => b !== bulan)
+        : [...prev, bulan]
+    );
+  };
 
   const toggleSiswa = (siswaId) => {
     setSelectedSiswaIds(prev =>
@@ -90,6 +119,7 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
     setNominalKhusus('');
     setKeterangan('');
     setSearchQuery('');
+    setGratisBulanSPP([]);
   };
 
   const handleClose = () => {
@@ -124,6 +154,7 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
         for (const tarifId of selectedTarifIds) {
           const tarif = tarifIuranList.find(t => t.id === tarifId);
           if (!tarif) continue;
+          const isSppBulanan = tarif.nama?.toLowerCase().includes('spp') && tarif.periode === 'Bulanan';
           records.push({
             siswa_id: siswa.id,
             nama_siswa: siswa.nama,
@@ -135,6 +166,7 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
             kategori: selectedKategori,
             keterangan,
             tahun_ajaran: activeAcademicYear || '',
+            gratis_bulan_spp: (isSppBulanan && isGratis && selectedKategori === 'Prestasi') ? gratisBulanSPP : [],
           });
         }
       }
@@ -231,10 +263,10 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
           <div>
             <Label>Pilih Iuran ({selectedTarifIds.length} dipilih)</Label>
             <div className="border rounded-lg max-h-40 overflow-y-auto">
-              {tarifIuranList.length === 0 ? (
-                <p className="text-sm text-slate-400 p-4 text-center">Belum ada tarif iuran</p>
+              {filteredTarifList.length === 0 ? (
+                <p className="text-sm text-slate-400 p-4 text-center">Belum ada tarif iuran{selectedKelas ? ' untuk tingkat kelas ini' : ''}</p>
               ) : (
-                tarifIuranList.map(tarif => (
+                filteredTarifList.map(tarif => (
                   <label
                     key={tarif.id}
                     className="flex items-center gap-3 p-2.5 hover:bg-slate-50 cursor-pointer border-b last:border-0"
@@ -290,6 +322,40 @@ export default function BiayaKhususForm({ isOpen, onClose, siswaList, kelasList,
               </div>
             )}
           </div>
+
+          {/* Prestasi: SPP Gratis Months */}
+          {showGratisBulanSPP && (
+            <div className="p-4 bg-teal-50 rounded-lg border border-teal-200 space-y-3">
+              <div>
+                <p className="text-sm font-semibold text-teal-700">Pilih Bulan SPP yang Digratiskan</p>
+                <p className="text-xs text-teal-600">Bulan yang diceklis akan tercatat LUNAS di akun siswa tanpa riwayat pembayaran</p>
+              </div>
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                {BULAN_SPP.map(bulan => {
+                  const isSelected = gratisBulanSPP.includes(bulan);
+                  return (
+                    <div
+                      key={bulan}
+                      onClick={() => toggleGratisBulan(bulan)}
+                      className={`flex items-center gap-1.5 p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
+                        isSelected
+                          ? 'bg-teal-500 border-teal-600 text-white'
+                          : 'bg-white border-slate-200 hover:border-teal-400'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                        isSelected ? 'bg-teal-600 border-teal-600' : 'border-slate-300'
+                      }`}>
+                        {isSelected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className={isSelected ? 'text-white font-medium' : 'text-slate-700'}>{bulan}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-teal-600">{gratisBulanSPP.length} bulan SPP digratiskan</p>
+            </div>
+          )}
 
           {/* 6. Keterangan */}
           <div>
