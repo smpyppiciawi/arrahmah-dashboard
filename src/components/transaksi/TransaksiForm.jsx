@@ -153,12 +153,13 @@ export default function TransaksiForm({
         return bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || t.nominal)) : t.nominal;
       }
     }
-    const tingkat = selectedSiswa ? getTingkatSiswa(selectedSiswa, kelasList) : '';
+    const siswa = formData.siswa_id ? siswaList.find(s => s.id === formData.siswa_id) : null;
+    const tingkat = siswa ? getTingkatSiswa(siswa, kelasList) : '';
     const sppTarif = tingkat
       ? getSppTarif(tarifIuranList, tingkat)
       : tarifIuranList.find(t => t.nama?.toLowerCase().includes('spp'));
     return sppTarif?.nominal || 0;
-  }, [selectedTarifId, tarifIuranList, formData.siswa_id, biayaKhususList, activeAcademicYear, selectedSiswa, kelasList]);
+  }, [selectedTarifId, tarifIuranList, formData.siswa_id, biayaKhususList, activeAcademicYear, siswaList, kelasList]);
 
   const showSppChecklist = useMemo(() => {
     return jenisTransaksi === 'siswa' &&
