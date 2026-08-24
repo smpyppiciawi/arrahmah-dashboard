@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle, XCircle } from 'lucide-react';
-
-const SPP_MONTHS = ['Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'];
+import { CheckCircle, XCircle, Gift } from 'lucide-react';
+import { tarifMatchesTingkat, getGratisBulanSPP, getSppTarif, BULAN_SPP } from '@/lib/sppUtils';
 
 const JENIS_TABS = [
   { key: 'SPP', label: 'SPP' },
@@ -47,10 +46,10 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
   }, [biayaKhususList, tarifJenisMap, activeIuran]);
 
   const relevantTarif = useMemo(() => {
-    return tarifList.filter(t => t.tingkat === 'Semua' || t.tingkat === tingkat);
+    return tarifList.filter(t => tarifMatchesTingkat(t, tingkat));
   }, [tarifList, tingkat]);
 
-  // SPP monthly status
+  // SPP monthly status (includes gratis months from BiayaKhusus)
   const sppStatus = useMemo(() => {
     const sppRecords = keuanganList.filter(k => k.tipe_transaksi === 'SPP/Bulanan');
     const paidMonths = new Set();
@@ -59,10 +58,19 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
         r.bulan_dibayar.forEach(m => paidMonths.add(m));
       }
     });
-    return SPP_MONTHS.map(month => ({ month, lunas: paidMonths.has(month) }));
-  }, [keuanganList]);
+    const gratisSet = new Set(gratisMonths);
+    return BULAN_SPP.map(month => ({
+      month,
+      lunas: paidMonths.has(month),
+      gratis: gratisSet.has(month),
+    }));
+  }, [keuanganList, gratisMonths]);
 
-  const sppTarif = relevantTarif.find(t => t.jenis_iuran === 'SPP');
+  const gratisMonths = useMemo(() => {
+    return getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList);
+  }, [siswa?.id, biayaKhususList, tarifList]);
+
+  const sppTarif = useMemo(() => getSppTarif(tarifList, tingkat), [tarifList, tingkat]);
 
   // Other iuran status (Ujian, Awal Tahun)
   const otherIuranList = useMemo(() => {
@@ -122,14 +130,23 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
             </div>
             <div className="grid grid-cols-3 gap-2">
               {sppStatus.map((s, i) => (
-                <div key={i} className={`rounded-2xl p-3 text-center ${s.lunas ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'}`}>
-                  {s.lunas ? (
+                <div key={i} className={`rounded-2xl p-3 text-center ${
+                  s.gratis ? 'bg-teal-50 border border-teal-200' :
+                  s.lunas ? 'bg-emerald-50 border border-emerald-200' : 'bg-slate-50 border border-slate-200'
+                }`}>
+                  {s.gratis ? (
+                    <Gift className="w-5 h-5 text-teal-500 mx-auto mb-1" />
+                  ) : s.lunas ? (
                     <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto mb-1" />
                   ) : (
                     <XCircle className="w-5 h-5 text-slate-300 mx-auto mb-1" />
                   )}
-                  <p className={`text-xs font-medium ${s.lunas ? 'text-emerald-700' : 'text-slate-400'}`}>{s.month}</p>
-                  <p className={`text-[10px] ${s.lunas ? 'text-emerald-500' : 'text-slate-400'}`}>{s.lunas ? 'Lunas' : 'Belum'}</p>
+                  <p className={`text-xs font-medium ${
+                    s.gratis ? 'text-teal-700' : s.lunas ? 'text-emerald-700' : 'text-slate-400'
+                  }`}>{s.month}</p>
+                  <p className={`text-[10px] ${
+                    s.gratis ? 'text-teal-500' : s.lunas ? 'text-emerald-500' : 'text-slate-400'
+                  }`}>{s.gratis ? 'GRATIS' : s.lunas ? 'Lunas' : 'Belum'}</p>
                 </div>
               ))}
             </div>

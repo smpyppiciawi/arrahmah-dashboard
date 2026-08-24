@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-export function DataTable({ columns, data, pageSize = 5 }) {
+export function DataTable({ columns, data, pageSize = 5, onRowClick }) {
   const [sorting, setSorting] = useState({ column: null, direction: 'asc' });
   const [filters, setFilters] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
@@ -160,7 +160,7 @@ export function DataTable({ columns, data, pageSize = 5 }) {
           <TableBody>
             {paginatedData.length > 0 ? (
               paginatedData.map((row, index) => (
-                <TableRow key={row.id || index}>
+                <TableRow key={row.id || index} className={onRowClick ? 'cursor-pointer hover:bg-slate-50' : ''} onClick={onRowClick ? () => onRowClick(row) : undefined}>
                   {columns.map((column) => (
                     <TableCell key={`${row.id}-${column.key}`}>
                       {column.render ? column.render(row) : row[column.key]}

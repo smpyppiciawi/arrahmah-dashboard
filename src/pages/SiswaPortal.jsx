@@ -144,6 +144,17 @@ export default function SiswaPortal() {
     enabled: !!siswa?.kelas_id,
   });
 
+  const { data: jadwalPelajaranList = [] } = useQuery({
+    queryKey: ['jadwal-pelajaran', siswa?.kelas_id],
+    queryFn: () => base44.entities.JadwalPelajaran.filter({ kelas_id: siswa.kelas_id }),
+    enabled: !!siswa?.kelas_id,
+  });
+
+  const [selectedHari, setSelectedHari] = useState(() => {
+    const today = new Date().getDay();
+    return HARI_NAMA[today === 0 ? 1 : today]; // Senin-Sabtu
+  });
+
   const { data: siswaData } = useQuery({
     queryKey: ['siswa-profil', siswa?.id],
     queryFn: () => base44.entities.Siswa.filter({ id: siswa.id }),
@@ -573,6 +584,70 @@ export default function SiswaPortal() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Jadwal Pelajaran */}
+          <div className="px-4 mt-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-slate-700 font-bold text-sm flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-indigo-500" /> Jadwal Pelajaran
+              </p>
+            </div>
+            {/* Day Picker */}
+            <div className="flex gap-1.5 mb-3 overflow-x-auto pb-1">
+              {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map(hari => (
+                <button
+                  key={hari}
+                  onClick={() => setSelectedHari(hari)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
+                    selectedHari === hari
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-500 border border-slate-200 hover:border-indigo-300'
+                  }`}
+                >
+                  {hari}
+                </button>
+              ))}
+            </div>
+            {/* Schedule for selected day + next day */}
+            {(() => {
+              const hariIdx = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].indexOf(selectedHari);
+              const nextHari = hariIdx >= 0 && hariIdx < 5 ? ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'][hariIdx + 1] : null;
+              const daySchedule = jadwalPelajaranList.filter(j => j.hari === selectedHari).sort((a, b) => (a.jam_ke || 0) - (b.jam_ke || 0));
+              const nextSchedule = nextHari ? jadwalPelajaranList.filter(j => j.hari === nextHari).sort((a, b) => (a.jam_ke || 0) - (b.jam_ke || 0)) : [];
+              const renderSchedule = (label, schedule, isPrimary) => (
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs font-semibold mb-2 ${isPrimary ? 'text-indigo-600' : 'text-slate-400'}`}>{label}</p>
+                  {schedule.length > 0 ? (
+                    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                      {schedule.map((j, idx) => (
+                        <div key={idx} className={`flex items-center gap-3 px-3 py-2.5 ${idx > 0 ? 'border-t border-slate-50' : ''}`}>
+                          <div className="w-9 h-9 rounded-xl bg-indigo-50 flex flex-col items-center justify-center shrink-0">
+                            <span className="text-[9px] text-indigo-400 font-bold leading-none">JAM</span>
+                            <span className="text-sm font-black text-indigo-700 leading-none">{j.jam_ke || '-'}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-slate-800 truncate">{j.mapel}</p>
+                            <p className="text-[10px] text-slate-400">{j.jam_mulai} - {j.jam_selesai}{j.nama_guru ? ` · ${j.nama_guru}` : ''}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl shadow-sm py-6 text-center">
+                      <span className="text-2xl block mb-1">📭</span>
+                      <p className="text-xs text-slate-400">Tidak ada jadwal</p>
+                    </div>
+                  )}
+                </div>
+              );
+              return (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {renderSchedule(`Hari Ini · ${selectedHari}`, daySchedule, true)}
+                  {nextHari && renderSchedule(`Besok · ${nextHari}`, nextSchedule, false)}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

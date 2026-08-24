@@ -12,6 +12,7 @@ import { Home, Search, Edit2, Trash2, MapPin, CloudOff, RefreshCw, Wifi, CheckCi
 import { DataTable } from "@/components/ui/data-table";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import HomeVisitForm from "@/components/homevisit/HomeVisitForm";
+import HomeVisitDetailDialog from "@/components/homevisit/HomeVisitDetailDialog";
 import MapResizer from "@/components/ui/MapResizer";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
@@ -45,7 +46,9 @@ export default function HomeVisit() {
   const [editingData, setEditingData] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
+  const [filterYatim, setFilterYatim] = useState('all');
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [detailData, setDetailData] = useState(null);
   const { user: currentUser } = useAuth();
   const { activeAcademicYear } = useActiveAcademicYear();
   const { pendingCount, pendingItems, syncing, syncNow, addPending, removePending, isOnline } = useOfflineSync();
@@ -70,7 +73,7 @@ export default function HomeVisit() {
   // Hak akses
   const canCreate = ['admin', 'tu', 'guru'].includes(userRole);
   const canEdit = ['admin', 'tu', 'guru'].includes(userRole);
-  const canDelete = userRole === 'admin';
+  const canDelete = ['admin', 'tu'].includes(userRole);
 
   // Guru yang bukan Wali Kelas tidak memiliki akses menu Home Visit
   const REQUIRED_HV_FIELDS = ['tinggal_dengan','keadaan_orang_tua','pekerjaan_orang_tua','status_tempat_tinggal','keadaan_rumah','siswa_mengaji','orang_tua_merokok','punya_hp_pribadi','pembiayaan_sekolah','periode_uang_jajan'];
@@ -104,7 +107,9 @@ export default function HomeVisit() {
   const filteredList = homeVisitList.filter(hv => {
     const matchSearch = !searchQuery || hv.nama_siswa?.toLowerCase().includes(searchQuery.toLowerCase()) || hv.nis?.includes(searchQuery);
     const matchKelas = filterKelas === 'all' || hv.kelas_id === filterKelas;
-    return matchSearch && matchKelas;
+    const matchYatim = filterYatim === 'all' ||
+      (filterYatim === 'yatim' && hv.keadaan_orang_tua?.includes('Yatim'));
+    return matchSearch && matchKelas && matchYatim;
   });
 
   const markersWithCoord = homeVisitList.filter(hv => hv.koordinat_rumah).map(hv => ({ ...hv, pos: parseCoord(hv.koordinat_rumah) })).filter(hv => hv.pos);
@@ -133,28 +138,14 @@ export default function HomeVisit() {
     { key: 'nama_siswa', label: 'Nama Siswa' },
     { key: 'nis', label: 'NIS' },
     { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge className="bg-blue-100 text-blue-700">{row.nama_kelas || '-'}</Badge> },
-    { key: 'keadaan_rumah', label: 'Keadaan Rumah', render: (row) => row.keadaan_rumah ? <Badge className={row.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.keadaan_rumah}</Badge> : '-' },
-    { key: 'tanggal_homevisit', label: 'Tgl Home Visit', render: (row) => row.tanggal_homevisit || '-' },
+    { key: 'keadaan_rumah', label: 'Rumah', render: (row) => row.keadaan_rumah ? <Badge className={row.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.keadaan_rumah === 'Layak Huni' ? 'Layak' : 'Tidak'}</Badge> : '-' },
+    { key: 'keadaan_orang_tua', label: 'Yatim/Piatu', render: (row) => row.keadaan_orang_tua?.includes('Yatim') ? <Badge className="bg-purple-100 text-purple-700">{row.keadaan_orang_tua}</Badge> : '-' },
     { key: 'sync', label: 'Kelengkapan', sortable: false, filterable: false, render: (row) => {
       const status = getSiswaHvStatus(row.siswa_id);
       if (status === 'complete') return <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center"><CheckCircle2 className="w-3 h-3" /> Lengkap</Badge>;
       if (status === 'partial') return <Badge className="bg-amber-100 text-amber-700 gap-1 inline-flex items-center"><Clock className="w-3 h-3" /> Sebagian</Badge>;
       return <Badge className="bg-slate-100 text-slate-500">-</Badge>;
     }},
-    {
-      key: 'aksi', label: 'Aksi', sortable: false, filterable: false,
-      render: (row) => (
-        <div className="flex gap-1">
-          {canEdit && <Button size="sm" variant="ghost" onClick={() => { setEditingData(row); setIsOpen(true); }} title="Edit"><Edit2 className="w-4 h-4" /></Button>}
-          {canDelete && <Button size="sm" variant="ghost" onClick={() => handleDelete(row)} title="Hapus" className="text-red-500 hover:text-red-600"><Trash2 className="w-4 h-4" /></Button>}
-          {row.koordinat_rumah && (
-            <a href={`https://www.google.com/maps?q=${row.koordinat_rumah}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center h-8 w-8 rounded-md hover:bg-accent" title="Lihat Lokasi">
-              <MapPin className="w-4 h-4 text-blue-500" />
-            </a>
-          )}
-        </div>
-      )
-    },
   ];
 
   const renderMap = () => (
@@ -229,20 +220,18 @@ export default function HomeVisit() {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="flex flex-wrap gap-2 mb-4">
           {[
-            { label: 'Sudah Home Visit', value: stats.sudah, color: 'text-slate-700' },
-            { label: 'Belum Home Visit', value: stats.belum, color: 'text-amber-600' },
-            { label: 'Layak Huni', value: stats.layak, color: 'text-emerald-600' },
-            { label: 'Tidak Layak Huni', value: stats.tidakLayak, color: 'text-red-600' },
-            { label: 'Yatim/Piatu', value: stats.yatim, color: 'text-purple-600' },
+            { label: 'Sudah', value: stats.sudah, color: 'bg-slate-100 text-slate-700' },
+            { label: 'Belum', value: stats.belum, color: 'bg-amber-50 text-amber-600' },
+            { label: 'Layak', value: stats.layak, color: 'bg-emerald-50 text-emerald-600' },
+            { label: 'Tidak Layak', value: stats.tidakLayak, color: 'bg-red-50 text-red-600' },
+            { label: 'Yatim', value: stats.yatim, color: 'bg-purple-50 text-purple-600' },
           ].map((stat, i) => (
-            <Card key={i} className="border-0 shadow-sm">
-              <CardContent className="p-4 text-center">
-                <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
-                <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
-              </CardContent>
-            </Card>
+            <div key={i} className={`${stat.color} rounded-xl px-3 py-2 text-center flex-1 min-w-[80px]`}>
+              <p className="text-lg font-bold leading-none">{stat.value}</p>
+              <p className="text-[10px] mt-0.5 opacity-80">{stat.label}</p>
+            </div>
           ))}
         </div>
 
@@ -276,6 +265,13 @@ export default function HomeVisit() {
                   {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                 </SelectContent>
               </Select>
+              <Select value={filterYatim} onValueChange={setFilterYatim}>
+                <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Status</SelectItem>
+                  <SelectItem value="yatim">Yatim/Piatu</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>
@@ -291,7 +287,7 @@ export default function HomeVisit() {
                 <p className="text-slate-400">Belum ada data home visit</p>
               </div>
             ) : (
-              <DataTable columns={columns} data={filteredList} pageSize={10} />
+              <DataTable columns={columns} data={filteredList} pageSize={10} onRowClick={(row) => setDetailData(row)} />
             )}
           </CardContent>
         </Card>
@@ -318,6 +314,17 @@ export default function HomeVisit() {
           <div className="w-full h-full relative isolate">{renderMap()}</div>
         </DialogContent>
       </Dialog>
+
+      {detailData && (
+        <HomeVisitDetailDialog
+          data={detailData}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          onClose={() => setDetailData(null)}
+          onEdit={(row) => { setDetailData(null); setEditingData(row); setIsOpen(true); }}
+          onDelete={(row) => { setDetailData(null); handleDelete(row); }}
+        />
+      )}
     </div>
   );
 }

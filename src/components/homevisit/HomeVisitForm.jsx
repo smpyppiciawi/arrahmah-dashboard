@@ -156,7 +156,27 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
 
   const handleSiswaSelect = (siswaId) => {
     const siswa = siswaList.find(s => s.id === siswaId);
-    if (siswa) setFormData(prev => ({ ...prev, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas }));
+    if (siswa) setFormData(prev => ({
+      ...prev, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas,
+      koordinat_rumah: prev.koordinat_rumah || siswa.koordinat || '',
+    }));
+  };
+
+  const handleChangeSiswa = () => {
+    setFormData(prev => ({ ...prev, siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '' }));
+    setSiswaSearch('');
+  };
+
+  // Sync koordinat_rumah → Siswa.koordinat (bidirectional integration)
+  const syncKoordinatToSiswa = () => {
+    if (formData.siswa_id && formData.koordinat_rumah) {
+      const siswa = siswaList.find(s => s.id === formData.siswa_id);
+      if (siswa && siswa.koordinat !== formData.koordinat_rumah) {
+        base44.entities.Siswa.update(formData.siswa_id, { koordinat: formData.koordinat_rumah })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['siswa'] }))
+          .catch(() => {});
+      }
+    }
   };
 
   const handleFotoUpload = async (file, field) => {
@@ -177,7 +197,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.HomeVisit.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['homeVisit'] }); toast({ title: "Data home visit tersimpan" }); onClose(); },
+    onSuccess: () => { syncKoordinatToSiswa(); queryClient.invalidateQueries({ queryKey: ['homeVisit'] }); toast({ title: "Data home visit tersimpan" }); onClose(); },
     onError: (error, variables) => {
       if (addPending && (!navigator.onLine || error?.message?.includes('network') || error?.message?.includes('fetch'))) {
         addPending(variables);
@@ -190,12 +210,14 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.HomeVisit.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['homeVisit'] }); toast({ title: "Data diperbarui" }); onClose(); },
+    onSuccess: () => { syncKoordinatToSiswa(); queryClient.invalidateQueries({ queryKey: ['homeVisit'] }); toast({ title: "Data diperbarui" }); onClose(); },
   });
 
   const handleSubmit = (e) => {
     if (e) e.preventDefault();
-    if (!formData.siswa_id) { toast({ title: "Pilih siswa", variant: "destructive" }); return; }
+    if (!filterKelas) { toast({ title: "Pilih kelas terlebih dahulu", variant: "destructive" }); return; }
+    if (!formData.siswa_id || !formData.nama_siswa) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
+    if (!formData.tanggal_homevisit) { toast({ title: "Tanggal home visit wajib diisi", variant: "destructive" }); return; }
     const payload = {
       ...formData,
       guru_id: currentUser?.id || '', nama_guru: currentUser?.full_name || '', tahun_ajaran: activeAcademicYear || '',
@@ -234,30 +256,41 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
               <Label className="text-xs text-blue-700 uppercase tracking-wide font-semibold">Data Siswa</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Pilih Kelas</Label>
+                  <Label className="text-xs">Pilih Kelas <span className="text-red-500">*</span></Label>
                   <Select value={filterKelas} onValueChange={setFilterKelas}>
                     <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
                     <SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label className="text-xs">Cari & Pilih Siswa</Label>
-                  <div className="relative mb-1">
-                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input className="w-full pl-8 pr-3 py-1.5 text-sm border rounded-md outline-none focus:ring-1 focus:ring-blue-400" placeholder="Cari nama/NIS..." value={siswaSearch} onChange={e => setSiswaSearch(e.target.value)} />
-                  </div>
-                  <div className="max-h-36 overflow-y-auto border rounded-md bg-white">
-                    {filteredSiswa.slice(0, 40).map(s => (
-                      <button key={s.id} type="button" onClick={() => handleSiswaSelect(s.id)} className={`w-full flex items-center justify-between px-3 py-1.5 text-sm border-b border-slate-50 hover:bg-blue-50 text-left ${formData.siswa_id === s.id ? 'bg-blue-100 font-semibold' : ''}`}>
-                        <span>{s.nama}</span><span className="text-xs text-slate-400">{s.nis}</span>
-                      </button>
-                    ))}
-                    {filteredSiswa.length === 0 && <p className="text-center text-xs text-slate-400 py-3">Tidak ditemukan</p>}
-                  </div>
-                  {formData.nama_siswa && <p className="text-xs text-blue-700 mt-1 font-medium">✓ {formData.nama_siswa} — {formData.nama_kelas}</p>}
+                  <Label className="text-xs">Cari & Pilih Siswa <span className="text-red-500">*</span></Label>
+                  {formData.siswa_id ? (
+                    <div className="flex items-center justify-between p-2.5 bg-blue-50 border border-blue-200 rounded-md">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-blue-800 truncate">✓ {formData.nama_siswa}</p>
+                        <p className="text-xs text-blue-600">{formData.nis} · {formData.nama_kelas}</p>
+                      </div>
+                      <button type="button" onClick={handleChangeSiswa} className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 rounded hover:bg-blue-100 shrink-0">Ganti</button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative mb-1">
+                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input className="w-full pl-8 pr-3 py-1.5 text-sm border rounded-md outline-none focus:ring-1 focus:ring-blue-400" placeholder="Cari nama/NIS..." value={siswaSearch} onChange={e => setSiswaSearch(e.target.value)} />
+                      </div>
+                      <div className="max-h-36 overflow-y-auto border rounded-md bg-white">
+                        {filteredSiswa.slice(0, 40).map(s => (
+                          <button key={s.id} type="button" onClick={() => handleSiswaSelect(s.id)} className={`w-full flex items-center justify-between px-3 py-1.5 text-sm border-b border-slate-50 hover:bg-blue-50 text-left ${formData.siswa_id === s.id ? 'bg-blue-100 font-semibold' : ''}`}>
+                            <span>{s.nama}</span><span className="text-xs text-slate-400">{s.nis}</span>
+                          </button>
+                        ))}
+                        {filteredSiswa.length === 0 && <p className="text-center text-xs text-slate-400 py-3">Tidak ditemukan</p>}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-              <div><Label className="text-xs">Tanggal Home Visit</Label><Input type="date" value={formData.tanggal_homevisit} onChange={(e) => set('tanggal_homevisit', e.target.value)} required /></div>
+              <div><Label className="text-xs">Tanggal Home Visit <span className="text-red-500">*</span></Label><Input type="date" value={formData.tanggal_homevisit} onChange={(e) => set('tanggal_homevisit', e.target.value)} required /></div>
             </div>
 
             <div className="space-y-3 p-3 bg-slate-50 rounded-lg border">
@@ -296,7 +329,7 @@ export default function HomeVisitForm({ isOpen, onClose, editingData, siswaList,
             </div>
 
             <div className="space-y-2 p-3 bg-violet-50/50 rounded-lg border border-violet-100 isolate">
-              <Label className="text-xs text-violet-700 uppercase tracking-wide font-semibold">Titik Koordinat Rumah Siswa</Label>
+              <Label className="text-xs text-violet-700 uppercase tracking-wide font-semibold">Titik Koordinat Rumah Siswa <span className="text-violet-400 normal-case font-normal">(otomatis tersimpan ke Profil Siswa)</span></Label>
               {mapMounted ? (
                 <MapPicker value={formData.koordinat_rumah} onChange={(v) => set('koordinat_rumah', v)} />
               ) : (

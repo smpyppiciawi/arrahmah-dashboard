@@ -489,10 +489,32 @@ function HapalanSiswaDialog({ siswa, hapalanItems, hapalanSiswaAll, currentUser,
   );
 }
 
+// PAI-related mapel keywords for Data Hapalan access
+const PAI_MAPEL_KEYWORDS = ['pai', 'akidah', 'akhlak', 'btaq', 'al-qur', 'quran', 'tajwid', 'fiqih', 'fiqh'];
+
+function isPaiGuru(currentUser, pembelajaranList) {
+  if (!currentUser) return false;
+  const role = currentUser.role;
+  if (role === 'admin' || role === 'tu') return true;
+  if (role !== 'guru') return false;
+  // Check if guru teaches any PAI-related mapel
+  const myMapels = pembelajaranList
+    .filter(p => p.guru_id === currentUser.id)
+    .map(p => (p.mapel || '').toLowerCase());
+  return myMapels.some(m => PAI_MAPEL_KEYWORDS.some(kw => m.includes(kw)));
+}
+
 // =================== MAIN PAGE ===================
 export default function Hapalan() {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('setor');
+
+  const { data: pembelajaranList = [] } = useQuery({
+    queryKey: ['pembelajaran'],
+    queryFn: () => base44.entities.Pembelajaran.list(),
+  });
+
+  const canAccessDataHapalan = isPaiGuru(currentUser, pembelajaranList);
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -508,14 +530,18 @@ export default function Hapalan() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="setor">Setor Hapalan</TabsTrigger>
-            <TabsTrigger value="data">Data Hapalan</TabsTrigger>
+            {canAccessDataHapalan && (
+              <TabsTrigger value="data">Data Hapalan</TabsTrigger>
+            )}
           </TabsList>
           <TabsContent value="setor">
             <SetorHapalanTab currentUser={currentUser} />
           </TabsContent>
-          <TabsContent value="data">
-            <DataHapalanTab />
-          </TabsContent>
+          {canAccessDataHapalan && (
+            <TabsContent value="data">
+              <DataHapalanTab />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>
