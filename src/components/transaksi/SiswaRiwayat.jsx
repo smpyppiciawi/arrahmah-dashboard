@@ -1,8 +1,7 @@
 import React from 'react';
-import { format } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
 import { Badge } from "@/components/ui/badge";
 import { History } from "lucide-react";
+import { formatDateID } from '@/lib/sppUtils';
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -33,7 +32,7 @@ export default function SiswaRiwayat({ riwayat }) {
               {t.tipe_transaksi || t.uraian || '-'}
             </span>
             <span className="text-xs text-slate-400">
-              {format(new Date(t.tanggal), 'd MMM yyyy', { locale: idLocale })}
+              {formatDateID(t.tanggal)}
               {t.bulan_dibayar?.length > 0 && ` · ${t.bulan_dibayar.join(', ')}`}
             </span>
           </div>
