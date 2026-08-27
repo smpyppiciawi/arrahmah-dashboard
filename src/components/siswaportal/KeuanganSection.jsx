@@ -1,8 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle, XCircle, Gift } from 'lucide-react';
-import { tarifMatchesTingkat, getGratisBulanSPP, getSppTarif, BULAN_SPP } from '@/lib/sppUtils';
+import { CheckCircle, XCircle, Gift, AlertTriangle, Wallet } from 'lucide-react';
+import { tarifMatchesTingkat, getGratisBulanSPP, getSppTarif, BULAN_SPP, formatDateID, computeTunggakan } from '@/lib/sppUtils';
 
 const JENIS_TABS = [
   { key: 'SPP', label: 'SPP' },
@@ -49,6 +49,12 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     return tarifList.filter(t => tarifMatchesTingkat(t, tingkat));
   }, [tarifList, tingkat]);
 
+  const gratisMonths = useMemo(() => {
+    return getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList);
+  }, [siswa?.id, biayaKhususList, tarifList]);
+
+  const sppTarif = useMemo(() => getSppTarif(tarifList, tingkat), [tarifList, tingkat]);
+
   // SPP monthly status (includes gratis months from BiayaKhusus)
   const sppStatus = useMemo(() => {
     const sppRecords = keuanganList.filter(k => k.tipe_transaksi === 'SPP/Bulanan');
@@ -66,11 +72,10 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     }));
   }, [keuanganList, gratisMonths]);
 
-  const gratisMonths = useMemo(() => {
-    return getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList);
-  }, [siswa?.id, biayaKhususList, tarifList]);
-
-  const sppTarif = useMemo(() => getSppTarif(tarifList, tingkat), [tarifList, tingkat]);
+  // Tunggakan (arrears) — accurate per student
+  const tunggakan = useMemo(() => {
+    return computeTunggakan(siswa, keuanganList, tarifList, biayaKhususList);
+  }, [siswa, keuanganList, tarifList, biayaKhususList]);
 
   // Other iuran status (Ujian, Awal Tahun)
   const otherIuranList = useMemo(() => {
@@ -99,6 +104,30 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
+        {/* Tunggakan Summary */}
+        {tunggakan.total > 0 ? (
+          <div className="bg-gradient-to-br from-red-500 to-rose-500 rounded-3xl shadow-sm p-4 text-white">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle className="w-5 h-5" />
+              <p className="font-bold text-sm">Total Tunggakan</p>
+            </div>
+            <p className="text-2xl font-black">{formatRupiah(tunggakan.total)}</p>
+            <div className="mt-2 space-y-0.5 text-xs text-white/90">
+              {tunggakan.sppTunggakan > 0 && <p>• SPP: {formatRupiah(tunggakan.sppTunggakan)}</p>}
+              {tunggakan.biayaKhususTunggakan > 0 && <p>• Mutasi/PPDB: {formatRupiah(tunggakan.biayaKhususTunggakan)}</p>}
+              {tunggakan.otherTunggakan > 0 && <p>• Iuran Lain: {formatRupiah(tunggakan.otherTunggakan)}</p>}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl shadow-sm p-4 text-white">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-5 h-5" />
+              <p className="font-bold text-sm">Lunas · Tidak Ada Tunggakan</p>
+            </div>
+            <p className="text-xs text-white/80 mt-1">Semua kewajiban pembayaran sudah terpenuhi</p>
+          </div>
+        )}
+
         {/* Iuran Type Selector */}
         <div className="bg-white rounded-3xl shadow-sm p-4">
           <p className="text-xs text-slate-400 font-medium mb-2">Pilih Jenis Iuran</p>
@@ -241,7 +270,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-slate-800 text-sm truncate">{k.uraian || k.kategori}</p>
-                  <p className="text-slate-400 text-xs">{k.tanggal}</p>
+                  <p className="text-slate-400 text-xs">{formatDateID(k.tanggal)}</p>
                 </div>
                 <div className="text-right">
                   <p className={`font-black text-sm ${k.jenis === 'Pemasukan' ? 'text-emerald-600' : 'text-red-500'}`}>

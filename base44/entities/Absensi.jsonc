@@ -30,9 +30,11 @@
         "Sakit",
         "Izin",
         "Alfa",
-        "Terlambat"
+        "Terlambat",
+        "Libur"
       ],
-      "default": "Hadir"
+      "default": "Hadir",
+      "description": "Status kehadiran. Libur = hari libur sekolah, dihitung sebagai Hadir."
     },
     "jenis_absensi": {
       "type": "string",

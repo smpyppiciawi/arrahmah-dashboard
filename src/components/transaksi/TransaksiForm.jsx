@@ -162,12 +162,12 @@ export default function TransaksiForm({
   }, [selectedTarifId, tarifIuranList, formData.siswa_id, biayaKhususList, activeAcademicYear, siswaList, kelasList]);
 
   const showSppChecklist = useMemo(() => {
-    return jenisTransaksi === 'siswa' &&
-      formData.siswa_id &&
-      (formData.tipe_transaksi?.toLowerCase().includes('spp') ||
-        (selectedTarifId && tarifIuranList.find(t => t.id === selectedTarifId)?.nama?.toLowerCase().includes('spp')) ||
-        gratisMonths.length > 0);
-  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList, gratisMonths]);
+    if (jenisTransaksi !== 'siswa' || !formData.siswa_id) return false;
+    // Only show SPP checklist when the selected tarif is actually SPP
+    const selectedTarif = selectedTarifId ? tarifIuranList.find(t => t.id === selectedTarifId) : null;
+    return (selectedTarif?.jenis_iuran === 'SPP') ||
+      (formData.tipe_transaksi?.toLowerCase().includes('spp') && !selectedTarifId);
+  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList]);
 
   const siswaRiwayat = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -275,13 +275,16 @@ export default function TransaksiForm({
         (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
       );
       const nominal = bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || tarif.nominal)) : tarif.nominal;
+      const isSpp = tarif.jenis_iuran === 'SPP' || tarif.nama?.toLowerCase().includes('spp');
       setFormData(prev => ({
         ...prev,
         tipe_transaksi: tarif.nama,
         kategori: TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
         jumlah: nominal,
         uraian: tarif.nama,
+        bulan_dibayar: isSpp ? prev.bulan_dibayar : [],
       }));
+      if (!isSpp) setSelectedMonths([]);
     }
   };
 
@@ -444,32 +447,32 @@ export default function TransaksiForm({
               </div>
             </div>
             <div>
-              <Label>Jenis</Label>
-              <div className={jenisTransaksi === 'siswa' ? '' : 'grid grid-cols-2 gap-2'}>
+              <Label>Jenis Transaksi</Label>
+              <div className={`flex rounded-xl border-2 border-slate-200 overflow-hidden ${jenisTransaksi === 'siswa' || jenisTransaksi === 'donatur' ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 <button
                   type="button"
                   onClick={() => set('jenis', 'Pemasukan')}
-                  className={`flex items-center justify-center gap-1.5 py-2 rounded-lg border-2 text-sm font-medium transition ${
+                  className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition ${
                     formData.jenis === 'Pemasukan'
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'text-emerald-600 border-slate-200 hover:border-emerald-300'
+                      ? 'bg-emerald-600 text-white'
+                      : 'text-slate-500 hover:bg-emerald-50'
                   }`}
                 >
                   <ArrowUpRight className="w-4 h-4" />
-                  Masuk
+                  Pemasukan
                 </button>
                 {jenisTransaksi !== 'siswa' && jenisTransaksi !== 'donatur' && (
                   <button
                     type="button"
                     onClick={() => set('jenis', 'Pengeluaran')}
-                    className={`flex items-center justify-center gap-1.5 py-2 rounded-lg border-2 text-sm font-medium transition ${
+                    className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition border-l-2 border-slate-200 ${
                       formData.jenis === 'Pengeluaran'
-                        ? 'bg-red-500 text-white border-red-500'
-                        : 'text-red-600 border-slate-200 hover:border-red-300'
+                        ? 'bg-red-600 text-white'
+                        : 'text-slate-500 hover:bg-red-50'
                     }`}
                   >
                     <ArrowDownRight className="w-4 h-4" />
-                    Keluar
+                    Pengeluaran
                   </button>
                 )}
               </div>

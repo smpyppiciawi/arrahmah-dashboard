@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History } from 'lucide-react';
+import { getGratisBulanSPP } from '@/lib/sppUtils';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -100,10 +101,12 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     if (isSpp) {
       const paidMonths = new Set();
       trans.forEach(t => (t.bulan_dibayar || []).forEach(m => paidMonths.add(m)));
-      const count = paidMonths.size;
-      if (count >= 12) return { status: 'Lunas', detail: '12/12 bulan' };
-      if (count > 0) return { status: 'Cicil', detail: `${count}/12 bulan` };
-      return { status: 'Belum', detail: '0/12 bulan' };
+      const gratisMonths = getGratisBulanSPP(siswa.id, biayaKhususList, tarifList);
+      const totalCovered = paidMonths.size + gratisMonths.length;
+      const gratisLabel = gratisMonths.length > 0 ? ` +${gratisMonths.length} gratis` : '';
+      if (totalCovered >= 12) return { status: 'Lunas', detail: `${paidMonths.size}/12 bulan${gratisLabel}` };
+      if (paidMonths.size > 0) return { status: 'Cicil', detail: `${paidMonths.size}/12 bulan${gratisLabel}` };
+      return { status: 'Belum', detail: `0/12 bulan${gratisLabel}` };
     }
     if (trans.length === 0) return { status: 'Belum', detail: '-' };
     const hasLunas = trans.some(t => (t.status_bayar || 'Lunas') === 'Lunas');

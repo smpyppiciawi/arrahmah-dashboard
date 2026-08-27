@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, WifiOff, CloudOff, RefreshCw, Loader2 } from "lucide-react";
+import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, WifiOff, CloudOff, RefreshCw, Loader2, Sun } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useOfflineAbsensi } from '@/hooks/useOfflineAbsensi';
 
@@ -63,18 +63,42 @@ export default function AbsensiKehadiran() {
     queryFn: () => selectedKelas ? base44.entities.JadwalPelajaran.filter({ kelas_id: selectedKelas }) : [],
     enabled: !!selectedKelas,
   });
+  const { data: kalenderList = [] } = useQuery({
+    queryKey: ['kalender-akademik'],
+    queryFn: () => base44.entities.KalenderAkademik.list(),
+    staleTime: 300000,
+  });
 
   const HARI_INDONESIA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   const todayJadwal = jadwalList.filter(j => j.hari === HARI_INDONESIA[new Date(selectedDate).getDay()]).sort((a, b) => (a.jam_ke || 0) - (b.jam_ke || 0));
+
+  // Detect holiday from Kalender Akademik (only on school days Mon-Fri)
+  const liburInfo = useMemo(() => {
+    const dateObj = new Date(selectedDate);
+    const dow = dateObj.getDay();
+    if (dow === 0 || dow === 6) return null; // weekend, not "school day libur"
+    return kalenderList.find(k => {
+      if (k.kategori !== 'Hari Libur Nasional' && k.kategori !== 'Libur Sekolah') return false;
+      const mulai = new Date(k.tanggal_mulai);
+      const selesai = k.tanggal_selesai ? new Date(k.tanggal_selesai) : mulai;
+      return dateObj >= mulai && dateObj <= selesai;
+    }) || null;
+  }, [kalenderList, selectedDate]);
+  const isLibur = !!liburInfo;
 
   useEffect(() => {
     const newData = {};
     siswaList.forEach(siswa => {
       const existing = existingAbsensi.find(a => a.siswa_id === siswa.id && a.jenis_absensi !== 'Jumat');
-      newData[siswa.id] = { status: existing?.status || 'Hadir', jam_masuk: existing?.jam_masuk || '', keterangan: existing?.keterangan || '', existing_id: existing?.id };
+      newData[siswa.id] = {
+        status: isLibur ? 'Libur' : (existing?.status || 'Hadir'),
+        jam_masuk: existing?.jam_masuk || '',
+        keterangan: isLibur ? (liburInfo?.judul || 'Hari Libur') : (existing?.keterangan || ''),
+        existing_id: existing?.id,
+      };
     });
     setAbsensiData(newData);
-  }, [siswaList, existingAbsensi]);
+  }, [siswaList, existingAbsensi, isLibur, liburInfo]);
 
   useEffect(() => { if (isGuruRole && availableKelas.length > 0 && !selectedKelas) setSelectedKelas(availableKelas[0].id); }, [isGuruRole, availableKelas, selectedKelas]);
 
@@ -147,9 +171,10 @@ export default function AbsensiKehadiran() {
     setIsSaving(false);
   };
 
-  const stats = { hadir: Object.values(absensiData).filter(d => d.status === 'Hadir').length, sakit: Object.values(absensiData).filter(d => d.status === 'Sakit').length, izin: Object.values(absensiData).filter(d => d.status === 'Izin').length, alfa: Object.values(absensiData).filter(d => d.status === 'Alfa').length, terlambat: Object.values(absensiData).filter(d => d.status === 'Terlambat').length };
+  const stats = { hadir: Object.values(absensiData).filter(d => d.status === 'Hadir').length, libur: Object.values(absensiData).filter(d => d.status === 'Libur').length, sakit: Object.values(absensiData).filter(d => d.status === 'Sakit').length, izin: Object.values(absensiData).filter(d => d.status === 'Izin').length, alfa: Object.values(absensiData).filter(d => d.status === 'Alfa').length, terlambat: Object.values(absensiData).filter(d => d.status === 'Terlambat').length };
   const total = sortedSiswaList.length;
-  const hadirPct = total > 0 ? Math.round((stats.hadir / total) * 100) : 0;
+  // Libur dihitung sebagai Hadir
+  const hadirPct = total > 0 ? Math.round(((stats.hadir + stats.libur) / total) * 100) : 0;
 
   return (
     <div className="space-y-4">
@@ -176,6 +201,18 @@ export default function AbsensiKehadiran() {
           )}
         </div>
       )}
+      {isLibur && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200">
+          <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+            <Sun className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-indigo-700">Hari Libur: {liburInfo?.judul}</p>
+            <p className="text-xs text-indigo-500">Absensi otomatis tercatat Libur &amp; dihitung sebagai Hadir</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <p className="text-slate-500 text-sm">{format(new Date(selectedDate), 'EEEE, d MMMM yyyy', { locale: idLocale })}</p>
         {canEdit && selectedKelas && siswaList.length > 0 && (
@@ -197,7 +234,7 @@ export default function AbsensiKehadiran() {
 
       {selectedKelas && siswaList.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-          {[{label:'Hadir',val:stats.hadir,color:'bg-emerald-50 border-emerald-200 text-emerald-700'},{label:'Sakit',val:stats.sakit,color:'bg-amber-50 border-amber-200 text-amber-700'},{label:'Izin',val:stats.izin,color:'bg-blue-50 border-blue-200 text-blue-700'},{label:'Alfa',val:stats.alfa,color:'bg-red-50 border-red-200 text-red-700'},{label:'Terlambat',val:stats.terlambat,color:'bg-orange-50 border-orange-200 text-orange-700'},{label:'Kehadiran',val:`${hadirPct}%`,color:'bg-indigo-50 border-indigo-200 text-indigo-700'}].map(s => (
+          {[{label:'Hadir',val:stats.hadir + (stats.libur || 0),color:'bg-emerald-50 border-emerald-200 text-emerald-700'},{label:'Sakit',val:stats.sakit,color:'bg-amber-50 border-amber-200 text-amber-700'},{label:'Izin',val:stats.izin,color:'bg-blue-50 border-blue-200 text-blue-700'},{label:'Alfa',val:stats.alfa,color:'bg-red-50 border-red-200 text-red-700'},{label:'Terlambat',val:stats.terlambat,color:'bg-orange-50 border-orange-200 text-orange-700'},{label:'Kehadiran',val:`${hadirPct}%`,color:'bg-indigo-50 border-indigo-200 text-indigo-700'}].map(s => (
             <div key={s.label} className={`rounded-xl border p-3 text-center ${s.color}`}><p className="text-xl font-bold">{s.val}</p><p className="text-[11px] font-medium mt-0.5">{s.label}</p></div>
           ))}
         </div>
@@ -221,7 +258,11 @@ export default function AbsensiKehadiran() {
                       <TableCell className="text-center text-xs text-slate-400 font-medium">{index + 1}</TableCell>
                       <TableCell className="hidden sm:table-cell text-xs text-slate-500 font-mono">{siswa.nis}</TableCell>
                       <TableCell><div><p className="font-medium text-sm text-slate-800">{siswa.nama}</p>{absensiData[siswa.id]?.existing_id && <p className="text-[10px] text-emerald-500">✓ tersimpan</p>}</div></TableCell>
-                      <TableCell><div className="flex flex-wrap gap-1">{Object.entries(STATUS_CONFIG).map(([status, cfg]) => { const isActive = absensiData[siswa.id]?.status === status; const Icon = cfg.icon; return <button key={status} type="button" onClick={() => canEdit && handleStatusChange(siswa.id, status)} disabled={!canEdit} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? cfg.active : cfg.inactive}`}><Icon className="w-3 h-3" /><span className="hidden sm:inline">{status}</span></button>; })}</div></TableCell>
+                      <TableCell>{isLibur ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-500 text-white"><Sun className="w-3 h-3" /><span>Libur</span></span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">{Object.entries(STATUS_CONFIG).map(([status, cfg]) => { const isActive = absensiData[siswa.id]?.status === status; const Icon = cfg.icon; return <button key={status} type="button" onClick={() => canEdit && handleStatusChange(siswa.id, status)} disabled={!canEdit} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium transition-all ${isActive ? cfg.active : cfg.inactive}`}><Icon className="w-3 h-3" /><span className="hidden sm:inline">{status}</span></button>; })}</div>
+                      )}</TableCell>
                       <TableCell className="hidden sm:table-cell"><Input type="time" value={absensiData[siswa.id]?.jam_masuk || ''} onChange={(e) => setAbsensiData(prev => ({ ...prev, [siswa.id]: { ...prev[siswa.id], jam_masuk: e.target.value } }))} className="w-28 h-8 text-xs" disabled={!canEdit} /></TableCell>
                       <TableCell className="hidden md:table-cell"><Input placeholder="Keterangan..." value={absensiData[siswa.id]?.keterangan || ''} onChange={(e) => setAbsensiData(prev => ({ ...prev, [siswa.id]: { ...prev[siswa.id], keterangan: e.target.value } }))} className="w-40 h-8 text-xs" disabled={!canEdit} /></TableCell>
                     </TableRow>

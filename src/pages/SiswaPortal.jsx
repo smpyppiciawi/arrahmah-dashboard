@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import CatatanSection from '@/components/siswaportal/CatatanSection';
 import KeuanganSection from '@/components/siswaportal/KeuanganSection';
+import HapalanProgressCard from '@/components/siswaportal/HapalanProgressCard';
 
 // ===== Date Helpers (Indonesian) =====
 const HARI_NAMA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -149,6 +150,45 @@ export default function SiswaPortal() {
     queryFn: () => base44.entities.JadwalPelajaran.filter({ kelas_id: siswa.kelas_id }),
     enabled: !!siswa?.kelas_id,
   });
+  const { data: hapalanItemList = [] } = useQuery({
+    queryKey: ['hapalan-item-portal'],
+    queryFn: () => base44.entities.HapalanItem.list(),
+    enabled: !!siswa?.id,
+  });
+  const { data: hapalanSiswaList = [] } = useQuery({
+    queryKey: ['hapalan-siswa-portal', siswa?.id],
+    queryFn: () => base44.entities.HapalanSiswa.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+  const { data: kalenderList = [] } = useQuery({
+    queryKey: ['kalender-akademik-portal'],
+    queryFn: () => base44.entities.KalenderAkademik.list(),
+    enabled: !!siswa?.id,
+  });
+
+  const hapalanProgress = useMemo(() => {
+    const tingkat = siswa?.nama_kelas?.charAt(0);
+    if (!tingkat) return { total: 0, selesai: 0, persen: 0, items: [] };
+    const items = hapalanItemList.filter(h => h.tingkat === tingkat).sort((a, b) => (a.urutan || 0) - (b.urutan || 0));
+    const itemsWithStatus = items.map(item => {
+      const hs = hapalanSiswaList.find(h => h.hapalan_item_id === item.id);
+      return { ...item, sudah_hapal: hs?.sudah_hapal || false, tanggal_setor: hs?.tanggal_setor };
+    });
+    const selesai = itemsWithStatus.filter(i => i.sudah_hapal).length;
+    return { total: items.length, selesai, persen: items.length > 0 ? Math.round((selesai / items.length) * 100) : 0, items: itemsWithStatus };
+  }, [hapalanItemList, hapalanSiswaList, siswa?.nama_kelas]);
+
+  // Cek apakah tanggal tertentu adalah hari libur sekolah (Senin-Jumat)
+  const isDateLibur = (dateObj) => {
+    const dow = dateObj.getDay();
+    if (dow === 0 || dow === 6) return null;
+    return kalenderList.find(k => {
+      if (k.kategori !== 'Hari Libur Nasional' && k.kategori !== 'Libur Sekolah') return false;
+      const mulai = new Date(k.tanggal_mulai);
+      const selesai = k.tanggal_selesai ? new Date(k.tanggal_selesai) : mulai;
+      return dateObj >= mulai && dateObj <= selesai;
+    }) || null;
+  };
 
   const [selectedHari, setSelectedHari] = useState(() => {
     const today = new Date().getDay();
@@ -173,18 +213,19 @@ export default function SiswaPortal() {
 
   const stats = useMemo(() => {
     const hadir = absensiList.filter(a => a.status === 'Hadir').length;
+    const libur = absensiList.filter(a => a.status === 'Libur').length;
     const sakit = absensiList.filter(a => a.status === 'Sakit').length;
     const izin = absensiList.filter(a => a.status === 'Izin').length;
     const alfa = absensiList.filter(a => a.status === 'Alfa').length;
     const total = absensiList.length;
-    const kehadiran = total > 0 ? Math.round((hadir / total) * 100) : 0;
+    const kehadiran = total > 0 ? Math.round(((hadir + libur) / total) * 100) : 0;
     const rataRataNilai = nilaiList.length > 0
       ? Math.round(nilaiList.reduce((s, n) => s + (n.nilai || 0), 0) / nilaiList.length) : 0;
     const totalPoin = pelanggaranList.reduce((s, p) => s + (p.poin || 0), 0);
     const totalPoinImprovement = pelanggaranImprovementList.reduce((s, p) => s + (p.poin || 0), 0);
     const totalPengurangan = improvementList.filter(i => i.status === 'Aktif').reduce((s, i) => s + (i.poin_pengurangan || 0), 0);
     const poinBersih = totalPoin + totalPoinImprovement - totalPengurangan;
-    return { hadir, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin, totalPoinImprovement, totalPengurangan, poinBersih };
+    return { hadir, libur, sakit, izin, alfa, total, kehadiran, rataRataNilai, totalPoin, totalPoinImprovement, totalPengurangan, poinBersih };
   }, [absensiList, nilaiList, keuanganList, pelanggaranList, pelanggaranImprovementList, improvementList]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -508,6 +549,9 @@ export default function SiswaPortal() {
             </div>
           </div>
 
+          {/* Progres Hapalan */}
+          <HapalanProgressCard hapalanProgress={hapalanProgress} />
+
           {/* Pengumuman Section */}
           {pengumumanList.length > 0 && (
             <div className="px-4 mb-5">
@@ -555,18 +599,23 @@ export default function SiswaPortal() {
                 return weekDays.map((d, idx) => {
                   const dStr = formatDateDMY(d);
                   const record = absensiList.find(a => formatDateDMY(a.tanggal) === dStr);
+                  const libur = isDateLibur(d);
                   const isToday = dStr === todayStr;
                   const isFuture = d > new Date() && !isToday;
                   return (
-                    <div key={idx} className={`flex items-center justify-between px-4 py-3 ${idx > 0 ? 'border-t border-slate-50' : ''} ${isToday ? 'bg-indigo-50/50' : ''}`}>
-                      <div className="flex flex-col">
+                    <div key={idx} className={`flex items-center justify-between px-4 py-3 ${idx > 0 ? 'border-t border-slate-50' : ''} ${isToday ? 'bg-indigo-50/50' : ''} ${libur ? 'bg-indigo-50/30' : ''}`}>
+                      <div className="flex flex-col min-w-0">
                         <span className="text-sm text-slate-700 font-semibold flex items-center gap-1.5">
                           {HARI_NAMA[d.getDay()]}
                           {isToday && <span className="text-[9px] bg-indigo-500 text-white px-1.5 py-0.5 rounded-full font-bold">HARI INI</span>}
+                          {libur && <span className="text-[9px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded-full font-bold">LIBUR</span>}
                         </span>
                         <span className="text-xs text-slate-400">{dStr}</span>
+                        {libur && <span className="text-[10px] text-indigo-500 truncate max-w-[140px]">{libur.judul}</span>}
                       </div>
-                      {record ? (
+                      {libur ? (
+                        <AbsensiBadge status="Libur" />
+                      ) : record ? (
                         <AbsensiBadge status={record.status} />
                       ) : isFuture ? (
                         <span className="text-xs text-slate-300 font-medium">—</span>
@@ -865,6 +914,7 @@ function PageHeader({ title, emoji, gradient }) {
 function AbsensiBadge({ status }) {
   const map = {
     'Hadir': 'bg-emerald-100 text-emerald-700',
+    'Libur': 'bg-indigo-100 text-indigo-700',
     'Sakit': 'bg-blue-100 text-blue-700',
     'Izin': 'bg-amber-100 text-amber-700',
     'Alfa': 'bg-red-100 text-red-700',
