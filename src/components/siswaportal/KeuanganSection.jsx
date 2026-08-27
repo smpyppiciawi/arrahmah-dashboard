@@ -104,30 +104,6 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
       </div>
 
       <div className="px-4 mt-4 space-y-4">
-        {/* Tunggakan Summary */}
-        {tunggakan.total > 0 ? (
-          <div className="bg-gradient-to-br from-red-500 to-rose-500 rounded-3xl shadow-sm p-4 text-white">
-            <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="w-5 h-5" />
-              <p className="font-bold text-sm">Total Tunggakan</p>
-            </div>
-            <p className="text-2xl font-black">{formatRupiah(tunggakan.total)}</p>
-            <div className="mt-2 space-y-0.5 text-xs text-white/90">
-              {tunggakan.sppTunggakan > 0 && <p>• SPP: {formatRupiah(tunggakan.sppTunggakan)}</p>}
-              {tunggakan.biayaKhususTunggakan > 0 && <p>• Mutasi/PPDB: {formatRupiah(tunggakan.biayaKhususTunggakan)}</p>}
-              {tunggakan.otherTunggakan > 0 && <p>• Iuran Lain: {formatRupiah(tunggakan.otherTunggakan)}</p>}
-            </div>
-          </div>
-        ) : (
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-3xl shadow-sm p-4 text-white">
-            <div className="flex items-center gap-2">
-              <Wallet className="w-5 h-5" />
-              <p className="font-bold text-sm">Lunas · Tidak Ada Tunggakan</p>
-            </div>
-            <p className="text-xs text-white/80 mt-1">Semua kewajiban pembayaran sudah terpenuhi</p>
-          </div>
-        )}
-
         {/* Iuran Type Selector */}
         <div className="bg-white rounded-3xl shadow-sm p-4">
           <p className="text-xs text-slate-400 font-medium mb-2">Pilih Jenis Iuran</p>
