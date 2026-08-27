@@ -448,30 +448,38 @@ export default function TransaksiForm({
             </div>
             <div>
               <Label>Jenis Transaksi</Label>
-              <div className={`flex rounded-xl border-2 border-slate-200 overflow-hidden ${jenisTransaksi === 'siswa' || jenisTransaksi === 'donatur' ? 'grid-cols-1' : 'grid-cols-2'}`}>
+              <div className={`flex gap-1.5 p-1.5 rounded-xl bg-slate-100/80 border border-slate-200/70 ${jenisTransaksi === 'siswa' || jenisTransaksi === 'donatur' ? 'grid-cols-1' : 'grid-cols-2'} grid`}>
                 <button
                   type="button"
                   onClick={() => set('jenis', 'Pemasukan')}
-                  className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition ${
+                  className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                     formData.jenis === 'Pemasukan'
-                      ? 'bg-emerald-600 text-white'
-                      : 'text-slate-500 hover:bg-emerald-50'
+                      ? 'bg-white text-emerald-700 shadow-sm ring-1 ring-emerald-200/80'
+                      : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50/60'
                   }`}
                 >
-                  <ArrowUpRight className="w-4 h-4" />
+                  <span className={`flex items-center justify-center w-5 h-5 rounded-full transition-colors ${
+                    formData.jenis === 'Pemasukan' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-200/70 text-slate-400'
+                  }`}>
+                    <ArrowUpRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                  </span>
                   Pemasukan
                 </button>
                 {jenisTransaksi !== 'siswa' && jenisTransaksi !== 'donatur' && (
                   <button
                     type="button"
                     onClick={() => set('jenis', 'Pengeluaran')}
-                    className={`flex items-center justify-center gap-2 py-2.5 text-sm font-semibold transition border-l-2 border-slate-200 ${
+                    className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200 ${
                       formData.jenis === 'Pengeluaran'
-                        ? 'bg-red-600 text-white'
-                        : 'text-slate-500 hover:bg-red-50'
+                        ? 'bg-white text-rose-700 shadow-sm ring-1 ring-rose-200/80'
+                        : 'text-slate-500 hover:text-rose-600 hover:bg-rose-50/60'
                     }`}
                   >
-                    <ArrowDownRight className="w-4 h-4" />
+                    <span className={`flex items-center justify-center w-5 h-5 rounded-full transition-colors ${
+                      formData.jenis === 'Pengeluaran' ? 'bg-rose-100 text-rose-600' : 'bg-slate-200/70 text-slate-400'
+                    }`}>
+                      <ArrowDownRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    </span>
                     Pengeluaran
                   </button>
                 )}
