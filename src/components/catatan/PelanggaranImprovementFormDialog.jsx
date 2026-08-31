@@ -28,6 +28,8 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const [openKodeSearch, setOpenKodeSearch] = useState(false);
   const [searchKode, setSearchKode] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
+  // Rincian acuan otomatis dari DB (ditampilkan sebagai placeholder, bukan nilai)
+  const [rincianHint, setRincianHint] = useState('');
 
   const isGuru = currentUser?.role === 'guru';
 
@@ -35,6 +37,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     if (!open) return;
     if (editing) {
       setFormData({ ...formData, ...editing });
+      setRincianHint(editing.rincian || '');
     } else {
       const f = {
         tanggal: new Date().toISOString().split('T')[0],
@@ -45,6 +48,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       };
       if (currentUser) { f.pelapor_id = currentUser.id; f.pelapor_nama = currentUser.full_name; }
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
+      setRincianHint('');
       setFormData(f);
     }
   }, [open, editing, currentUser, tahunAjaran, prefillSiswa]);
@@ -67,6 +71,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       pelapor_id: '', pelapor_nama: '', tahun_ajaran: '', status: 'Proses'
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKodeSearch(false); setSearchKode('');
+    setRincianHint('');
     onOpenChange(false);
   };
 
@@ -95,12 +100,13 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       kategori_utama: kode.kategori_utama,
       kode: kode.kode,
       uraian_pelanggaran: kode.uraian,
-      rincian: kode.rincian || '',
+      rincian: '',
       tindak_lanjut: kode.tindak_lanjut || '',
       poin_min: kode.poin_min || 0,
       poin_max: kode.poin_max || 0,
       poin: kode.poin_min || 0
     }));
+    setRincianHint(kode.rincian || '');
     setOpenKodeSearch(false); setSearchKode('');
   };
 
@@ -121,8 +127,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
     if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
     if (!formData.pelapor_id) { toast({ title: "Pilih pelapor", variant: "destructive" }); return; }
-    if (editing) updateMutation.mutate({ id: editing.id, data: formData });
-    else createMutation.mutate(formData);
+    const payload = { ...formData, rincian: formData.rincian?.trim() ? formData.rincian : rincianHint };
+    if (editing) updateMutation.mutate({ id: editing.id, data: payload });
+    else createMutation.mutate(payload);
   };
 
   return (
@@ -237,10 +244,15 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
             <Textarea value={formData.uraian_pelanggaran} onChange={(e) => setFormData({ ...formData, uraian_pelanggaran: e.target.value })} required />
           </div>
 
-          {/* Rincian (auto, editable) */}
+          {/* Rincian (acuan otomatis sebagai placeholder, dapat diisi manual) */}
           <div>
-            <Label>Rincian <span className="text-xs text-slate-400">(dapat diedit)</span></Label>
-            <Textarea value={formData.rincian} onChange={(e) => setFormData({ ...formData, rincian: e.target.value })} rows={2} />
+            <Label>Rincian <span className="text-xs text-slate-400">(acuan otomatis, dapat diedit sesuai keadaan)</span></Label>
+            <Textarea
+              value={formData.rincian}
+              onChange={(e) => setFormData({ ...formData, rincian: e.target.value })}
+              rows={2}
+              placeholder={rincianHint || "Ketik rincian pelanggaran sesuai keadaan..."}
+            />
           </div>
 
           {/* Poin (default min, within range) */}
