@@ -61,6 +61,7 @@ export default function ImprovementTab() {
 
   const isAdmin = currentUser?.role === 'admin';
   const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
+  const canDelete = ['admin', 'tu'].includes(currentUser?.role);
 
   // Queries
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
@@ -123,7 +124,7 @@ export default function ImprovementTab() {
     { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => handleEditImprovement(r)}><Edit2 className="w-4 h-4" /></Button>
-        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('improvement'); }}><Trash2 className="w-4 h-4" /></Button>
+        {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('improvement'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
     ) }
   ];
@@ -142,7 +143,7 @@ export default function ImprovementTab() {
     { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>
-        <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('pelanggaran'); }}><Trash2 className="w-4 h-4" /></Button>
+        {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('pelanggaran'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
     ) }
   ];
