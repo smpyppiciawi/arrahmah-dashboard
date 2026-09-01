@@ -25,20 +25,23 @@ function diffDays(a, b) {
   return Math.floor((new Date(a).getTime() - new Date(b).getTime()) / 86400000);
 }
 
-// Tentukan status rapor (untuk tampilan) dari data siswa + poin bersih.
+// Tentukan status rapor (untuk tampilan) dari data siswa.
+// Status ditentukan oleh timestamp penetapan & masa berlaku, BUKAN poin bersih saat ini.
+// Artinya: meski poin bersih sudah berkurang di bawah ambang, status tetap aktif
+// sampai masa berlaku habis ATAU dianulir manual (ADMIN/KEPSEK).
 export function getRaporStatus(siswa, poinBersih) {
-  // HITAM: aktif permanen (flag) atau baru mencapai 1000 dan belum pernah dianulir.
-  if (siswa?.rapor_hitam_aktif || (poinBersih >= RAPOR.HITAM.threshold && !siswa?.rapor_hitam_anulir_at)) {
+  // HITAM: aktif permanen (flag) sampai dianulir.
+  if (siswa?.rapor_hitam_aktif) {
     return { level: 'hitam', label: RAPOR.HITAM.label, persistent: true };
   }
-  if (poinBersih >= RAPOR.MERAH.threshold) {
-    const start = siswa?.rapor_merah_tanggal ? new Date(siswa.rapor_merah_tanggal) : null;
-    const sisa = start ? RAPOR.MERAH.days - diffDays(new Date(), start) : RAPOR.MERAH.days;
+  // MERAH: timestamp dalam masa berlaku (120 hari).
+  if (siswa?.rapor_merah_tanggal) {
+    const sisa = RAPOR.MERAH.days - diffDays(new Date(), siswa.rapor_merah_tanggal);
     if (sisa > 0) return { level: 'merah', label: RAPOR.MERAH.label, sisaHari: sisa, totalHari: RAPOR.MERAH.days };
   }
-  if (poinBersih >= RAPOR.KUNING.threshold) {
-    const start = siswa?.rapor_kuning_tanggal ? new Date(siswa.rapor_kuning_tanggal) : null;
-    const sisa = start ? RAPOR.KUNING.days - diffDays(new Date(), start) : RAPOR.KUNING.days;
+  // KUNING: timestamp dalam masa berlaku (40 hari).
+  if (siswa?.rapor_kuning_tanggal) {
+    const sisa = RAPOR.KUNING.days - diffDays(new Date(), siswa.rapor_kuning_tanggal);
     if (sisa > 0) return { level: 'kuning', label: RAPOR.KUNING.label, sisaHari: sisa, totalHari: RAPOR.KUNING.days };
   }
   return { level: 'normal', label: 'NORMAL' };
@@ -60,23 +63,34 @@ export const RAPOR_BADGE_CLASS = {
 };
 
 // Hitung & persist status rapor ke record Siswa. Hanya tulis bila ada perubahan.
-// Mengembalikan { siswa, status, written }.
+// - Set timestamp saat poin mencapai ambang (jika belum ada timestamp aktif).
+// - TIDAK menghapus timestamp saat poin turun di bawah ambang (status tetap).
+// - Auto-bersihkan timestamp yang sudah lewat masa berlaku agar window baru
+//   dapat dimulai saat poin kembali mencapai ambang.
+// - HITAM: aktif permanen saat mencapai 1000, kecuali sudah pernah dianulir.
 export async function recomputeRaporStatus(siswa, poinBersih) {
   if (!siswa) return null;
   const nowIso = new Date().toISOString();
   const updates = {};
-  const inKuning = poinBersih >= RAPOR.KUNING.threshold && poinBersih < RAPOR.MERAH.threshold;
-  const inMerah = poinBersih >= RAPOR.MERAH.threshold && poinBersih < RAPOR.HITAM.threshold;
-  const inHitam = poinBersih >= RAPOR.HITAM.threshold;
 
-  if (inKuning && !siswa.rapor_kuning_tanggal) updates.rapor_kuning_tanggal = nowIso;
-  if (!inKuning && siswa.rapor_kuning_tanggal) updates.rapor_kuning_tanggal = null;
+  // KUNING
+  const kuningSisa = siswa.rapor_kuning_tanggal ? RAPOR.KUNING.days - diffDays(new Date(), siswa.rapor_kuning_tanggal) : null;
+  if (poinBersih >= RAPOR.KUNING.threshold && (!siswa.rapor_kuning_tanggal || kuningSisa <= 0)) {
+    updates.rapor_kuning_tanggal = nowIso;
+  } else if (siswa.rapor_kuning_tanggal && kuningSisa <= 0 && poinBersih < RAPOR.KUNING.threshold) {
+    updates.rapor_kuning_tanggal = null;
+  }
 
-  if (inMerah && !siswa.rapor_merah_tanggal) updates.rapor_merah_tanggal = nowIso;
-  if (!inMerah && siswa.rapor_merah_tanggal) updates.rapor_merah_tanggal = null;
+  // MERAH
+  const merahSisa = siswa.rapor_merah_tanggal ? RAPOR.MERAH.days - diffDays(new Date(), siswa.rapor_merah_tanggal) : null;
+  if (poinBersih >= RAPOR.MERAH.threshold && (!siswa.rapor_merah_tanggal || merahSisa <= 0)) {
+    updates.rapor_merah_tanggal = nowIso;
+  } else if (siswa.rapor_merah_tanggal && merahSisa <= 0 && poinBersih < RAPOR.MERAH.threshold) {
+    updates.rapor_merah_tanggal = null;
+  }
 
-  // Hitam: aktif otomatis saat mencapai 1000, kecuali sudah pernah dianulir.
-  if (inHitam && !siswa.rapor_hitam_aktif && !siswa.rapor_hitam_anulir_at) {
+  // HITAM: aktif otomatis saat mencapai 1000, kecuali sudah pernah dianulir.
+  if (poinBersih >= RAPOR.HITAM.threshold && !siswa.rapor_hitam_aktif && !siswa.rapor_hitam_anulir_at) {
     updates.rapor_hitam_aktif = true;
     updates.rapor_hitam_tanggal = nowIso;
   }
@@ -107,11 +121,20 @@ export async function recomputeRaporForSiswa(siswaId) {
   return recomputeRaporStatus(siswa, poinPelanggaran - poinPengurangan);
 }
 
-// Anulir Status Hitam — hanya atas perintah Kepala Sekolah melalui ADMIN.
-export async function anulirRaporHitam(siswaId) {
+// Anulir Status Rapor — hapus SEMUA status aktif (Kuning/Merah/Hitam).
+// Hanya dieksekusi oleh ADMIN/KEPSEK atas perintah Kepala Sekolah.
+// Untuk Hitam, set rapor_hitam_anulir_at agar tidak aktif otomatis lagi.
+export async function anulirRaporStatus(siswaId) {
   return base44.entities.Siswa.update(siswaId, {
+    rapor_kuning_tanggal: null,
+    rapor_merah_tanggal: null,
     rapor_hitam_aktif: false,
     rapor_hitam_tanggal: null,
     rapor_hitam_anulir_at: new Date().toISOString(),
   });
+}
+
+// Backward-compatible alias (hanya Hitam).
+export async function anulirRaporHitam(siswaId) {
+  return anulirRaporStatus(siswaId);
 }

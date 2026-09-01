@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Search, User, Trophy, AlertCircle, Stethoscope, Calendar, Award, Plus, MessageSquare, CheckCircle, TrendingDown, Ban } from "lucide-react";
-import { recomputeRaporStatus, anulirRaporHitam, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
+import { recomputeRaporStatus, anulirRaporStatus, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
@@ -124,10 +124,10 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
     return () => { active = false; };
   }, [selectedSiswa, currentSiswa, poinBersih]);
 
-  const handleAnulirHitam = async () => {
+  const handleAnulir = async () => {
     if (!currentSiswa) return;
-    if (!confirm('Anulir Status Rapor Hitam atas perintah Kepala Sekolah? Status akan kembali normal.')) return;
-    try { await anulirRaporHitam(currentSiswa.id); queryClient.invalidateQueries({ queryKey: ['siswa'] }); } catch (e) { console.error(e); }
+    if (!confirm(`Anulir Status Rapor (${raporStatus?.label || 'aktif'}) atas perintah Kepala Sekolah? Status akan kembali normal dan tidak aktif otomatis lagi.`)) return;
+    try { await anulirRaporStatus(currentSiswa.id); queryClient.invalidateQueries({ queryKey: ['siswa'] }); } catch (e) { console.error(e); }
   };
 
   const getTindakLanjutByPelanggaran = (pelanggaranId) => tindakLanjutList.filter(t => t.pelanggaran_id === pelanggaranId);
@@ -236,9 +236,9 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
                     <Stethoscope className="w-3 h-3 mr-1" />
                     {siswaRecords.uks.length} UKS
                   </Badge>
-                  {raporStatus?.level === 'hitam' && isAdminUser && (
-                    <Button size="sm" variant="outline" onClick={handleAnulirHitam} className="border-white/40 text-white bg-white/10 hover:bg-white/20">
-                      <Ban className="w-4 h-4 mr-1" /> Anulir Status Hitam
+                  {raporStatus && raporStatus.level !== 'normal' && isAdminUser && (
+                    <Button size="sm" variant="outline" onClick={handleAnulir} className={raporStatus.level === 'hitam' ? "border-white/40 text-white bg-white/10 hover:bg-white/20" : "border-red-300 text-red-700 bg-white hover:bg-red-50"}>
+                      <Ban className="w-4 h-4 mr-1" /> Anulir Status Rapor
                     </Button>
                   )}
                 </div>

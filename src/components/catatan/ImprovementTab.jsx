@@ -183,7 +183,7 @@ export default function ImprovementTab() {
         siswaList={siswaList}
         onTambahImprovement={handleTambahImprovement}
         onAturLimit={() => setPengaturanOpen(true)}
-        isAdmin={isAdmin}
+        canAnulir={['admin', 'kepsek'].includes(currentUser?.role)}
       />
 
       {/* Kelola Data & Approval Poin — ADMIN/TU/KEPSEK (serta Guru WAKA untuk Approval) */}

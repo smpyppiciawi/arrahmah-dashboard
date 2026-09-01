@@ -8,9 +8,9 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search, Ban } from "lucide-react";
 import { getMingguKey } from '@/lib/dapodikConstants';
-import { recomputeRaporStatus, anulirRaporHitam, getRaporStatus, RAPOR_CARD_CLASS, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
+import { recomputeRaporStatus, anulirRaporStatus, getRaporStatus, RAPOR_CARD_CLASS, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 
-export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onAturLimit, isAdmin }) {
+export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onAturLimit, canAnulir }) {
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
   const [selectedSiswaId, setSelectedSiswaId] = useState(null);
@@ -44,11 +44,11 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
     setOpenSiswaSearch(false); setSearchSiswa('');
   };
 
-  const handleAnulirHitam = async () => {
+  const handleAnulir = async () => {
     if (!selectedSiswa) return;
-    if (!confirm('Anulir Status Rapor Hitam atas perintah Kepala Sekolah? Status akan kembali normal.')) return;
+    if (!confirm(`Anulir Status Rapor (${raporStatus?.label || 'aktif'}) atas perintah Kepala Sekolah? Status akan kembali normal dan tidak aktif otomatis lagi.`)) return;
     try {
-      await anulirRaporHitam(selectedSiswa.id);
+      await anulirRaporStatus(selectedSiswa.id);
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
     } catch (e) { console.error(e); }
   };
@@ -94,9 +94,9 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
             )}
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
-            {raporStatus?.level === 'hitam' && isAdmin && (
-              <Button size="sm" variant="outline" onClick={handleAnulirHitam} className="border-white/40 text-white bg-white/10 hover:bg-white/20">
-                <Ban className="w-4 h-4 mr-1" /> Anulir Status Hitam
+            {raporStatus && raporStatus.level !== 'normal' && canAnulir && (
+              <Button size="sm" variant="outline" onClick={handleAnulir} className={raporStatus.level === 'hitam' ? "border-white/40 text-white bg-white/10 hover:bg-white/20" : "border-red-300 text-red-700 bg-white hover:bg-red-50"}>
+                <Ban className="w-4 h-4 mr-1" /> Anulir Status Rapor
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={onAturLimit} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
