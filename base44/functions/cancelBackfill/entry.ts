@@ -5,10 +5,20 @@ import { BACKFILL_KETERANGAN, SISTEM_BACKFILL_ID, SISTEM_PELAPOR_NAMA } from "..
 //  - Absensi dengan keterangan "Backfill otomatis"
 //  - PelanggaranImprovement berpelapor sistem SEMUanya: pelapor_nama "Admin/Sistem" (backfill lama, termasuk F-05 Jumat) dan pelapor_id "Sistem-Backfill" (backfill baru)
 //    TANPA filter pencocokan siswa+tanggal agar tidak ada pelanggaran backfill yang tertinggal.
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
+// Pakai deleteMany by-query (bukan fetch-by-id) supaya tidak tercap limit 5000 hasil fetch dan semua record terhapus.
+
+// Loop deleteMany by-query hingga tidak ada lagi match (mengakomodasi limit internal jika ada).
+async function deleteAllByQuery(entity: any, query: Record<string, any>): Promise<number> {
+  let total = 0;
+  let guard = 0;
+  while (guard < 1000) {
+    const res: any = await entity.deleteMany(query);
+    const n = res?.deleted ?? 0;
+    total += n;
+    guard++;
+    if (n === 0) break;
+  }
+  return total;
 }
 
 export default async function (req: Request): Promise<Response> {
@@ -20,36 +30,28 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // 1. Tarik semua Absensi hasil backfill
-    const backfillAbs = await base44.asServiceRole.entities.Absensi.filter({ keterangan: BACKFILL_KETERANGAN }, undefined, 20000);
+    // 1. Hapus SEMUA Absensi hasil backfill (keterangan "Backfill otomatis")
+    const absensiDeleted = await deleteAllByQuery(
+      base44.asServiceRole.entities.Absensi,
+      { keterangan: BACKFILL_KETERANGAN }
+    );
 
-    let absensiDeleted = 0;
-    const absIds = (backfillAbs || []).map((a) => a.id);
-    for (const c of chunk(absIds, 500)) {
-      await base44.asServiceRole.entities.Absensi.deleteMany({ id: { $in: c } });
-      absensiDeleted += c.length;
-    }
-
-    // 2. Hapus SEMUA PelanggaranImprovement berpelapor sistem (tanpa filter pencocokan siswa+tanggal)
+    // 2. Hapus SEMUA PelanggaranImprovement berpelapor sistem
     //    - pelapor_nama "Admin/Sistem" (backfill lama, termasuk F-05 Jumat)
     //    - pelapor_id "Sistem-Backfill" (backfill baru)
-    const adminPel = await base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_nama: SISTEM_PELAPOR_NAMA }, undefined, 20000);
-    const sistemPel = await base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_id: SISTEM_BACKFILL_ID }, undefined, 20000);
-
-    const pelIdSet = new Set<string>();
-    for (const p of adminPel || []) pelIdSet.add(p.id);
-    for (const p of sistemPel || []) pelIdSet.add(p.id);
-
-    let pelanggaranDeleted = 0;
-    for (const c of chunk([...pelIdSet], 500)) {
-      await base44.asServiceRole.entities.PelanggaranImprovement.deleteMany({ id: { $in: c } });
-      pelanggaranDeleted += c.length;
-    }
+    const adminDeleted = await deleteAllByQuery(
+      base44.asServiceRole.entities.PelanggaranImprovement,
+      { pelapor_nama: SISTEM_PELAPOR_NAMA }
+    );
+    const backfillDeleted = await deleteAllByQuery(
+      base44.asServiceRole.entities.PelanggaranImprovement,
+      { pelapor_id: SISTEM_BACKFILL_ID }
+    );
 
     return Response.json({
       status: "success",
       absensiDeleted,
-      pelanggaranDeleted,
+      pelanggaranDeleted: adminDeleted + backfillDeleted,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
