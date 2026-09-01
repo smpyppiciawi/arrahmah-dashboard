@@ -135,13 +135,33 @@ export default function AbsensiKehadiran() {
     const newIds = {};
     for (const record of records) {
       try {
+        let savedIsAlfa = false;
         if (record.existing_id) {
           await base44.entities.Absensi.update(record.existing_id, record.payload);
           updated++;
+          savedIsAlfa = record.payload.status === 'Alfa';
         } else {
           const result = await base44.entities.Absensi.create(record.payload);
           newIds[record.siswa_id] = result.id;
           created++;
+          savedIsAlfa = record.payload.status === 'Alfa';
+        }
+        // Auto-pelanggaran F-02 untuk Alfa manual (non-blocking — jangan gagalkan simpan absensi)
+        if (savedIsAlfa) {
+          try {
+            await base44.functions.invoke('autoPelanggaranAlfa', {
+              action: 'create',
+              absensi: {
+                siswa_id: record.payload.siswa_id,
+                nis: record.payload.nis,
+                nama_siswa: record.payload.nama_siswa,
+                kelas_id: record.payload.kelas_id,
+                nama_kelas: record.payload.nama_kelas,
+                tanggal: record.payload.tanggal,
+                jenis_absensi: record.payload.jenis_absensi,
+              },
+            });
+          } catch (e) { /* pelanggaran otomatis gagal — absensi tetap tersimpan */ }
         }
       } catch (err) {
         failed.push(record);
