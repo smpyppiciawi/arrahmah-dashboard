@@ -77,7 +77,7 @@ export default function ImprovementTab() {
 
   // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
   const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
-  const isWaka = !!myGuru && /waka\s*(kesiswaan|kurikulum)/i.test(myGuru.tugas_tambahan || '');
+  const isWaka = !!myGuru && /waka\s*(kesiswa*n|kurikulum)/i.test(myGuru.tugas_tambahan || '');
   const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
   const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
 
