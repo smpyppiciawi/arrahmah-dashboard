@@ -47,8 +47,6 @@ export default function BackfillAlfaCard({ pengaturan }) {
     }
   }, [tahunAjaran]);
 
-  if (!isAdmin) return null;
-
   const toggleMutation = useMutation({
     mutationFn: async (newValue) => {
       if (pengaturan?.id) {
@@ -97,6 +95,8 @@ export default function BackfillAlfaCard({ pengaturan }) {
       toast({ title: 'Gagal membatalkan', description: e?.message, variant: 'destructive' });
     },
   });
+
+  if (!isAdmin) return null;
 
   return (
     <>
