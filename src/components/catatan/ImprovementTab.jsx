@@ -65,12 +65,6 @@ export default function ImprovementTab() {
   const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
   const canDelete = ['admin', 'tu'].includes(currentUser?.role);
 
-  // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
-  const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
-  const isWaka = !!myGuru && /waka\s*(kesiswaan|kurikulum)/i.test(myGuru.tugas_tambahan || '');
-  const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
-  const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
-
   // Queries
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
   const { data: pelanggaranImprovementList = [] } = useQuery({ queryKey: ['pelanggaran-improvement'], queryFn: () => base44.entities.PelanggaranImprovement.list('-tanggal') });
@@ -80,6 +74,12 @@ export default function ImprovementTab() {
   const { data: kodePelanggaranList = [] } = useQuery({ queryKey: ['kode-pelanggaran-improvement'], queryFn: () => base44.entities.KodePelanggaranImprovement.list('kode') });
   const { data: kegiatanList = [] } = useQuery({ queryKey: ['kegiatan-pembinaan'], queryFn: () => base44.entities.KegiatanPembinaan.list('no') });
   const { data: pengaturan } = useQuery({ queryKey: ['pengaturan-improvement'], queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; } });
+
+  // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
+  const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
+  const isWaka = !!myGuru && /waka\s*(kesiswaan|kurikulum)/i.test(myGuru.tugas_tambahan || '');
+  const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
+  const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
 
   const siswaMap = useMemo(() => Object.fromEntries(siswaList.map(s => [s.id, s])), [siswaList]);
 
