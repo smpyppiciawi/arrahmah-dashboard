@@ -74,10 +74,11 @@
       "type": "string",
       "enum": [
         "Proses",
-        "Selesai"
+        "Selesai",
+        "Dibatalkan"
       ],
       "default": "Proses",
-      "description": "Status penanganan pelanggaran"
+      "description": "Status penanganan pelanggaran. Dibatalkan = pelanggaran otomatis dibatalkan sistem (saat absensi dikoreksi dari Alfa); poin TIDAK dihitung dalam akumulasi."
     }
   },
   "required": [

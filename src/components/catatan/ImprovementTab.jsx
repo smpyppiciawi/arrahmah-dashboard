@@ -139,7 +139,7 @@ export default function ImprovementTab() {
     { key: 'tindak_lanjut', label: 'Tindak Lanjut', render: (r) => <Badge variant="outline" className="text-xs">{r.tindak_lanjut}</Badge> },
     { key: 'poin', label: 'Poin', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
     { key: 'pelapor_nama', label: 'Pelapor' },
-    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>{r.status}</Badge> },
+    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-amber-100 text-amber-700'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>

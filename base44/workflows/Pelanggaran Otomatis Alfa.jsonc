@@ -1,0 +1,89 @@
+{
+  "name": "Pelanggaran Otomatis Alfa",
+  "description": "Saat Absensi berstatus Alfa, otomatis buat PelanggaranImprovement (F-02 Kehadiran / F-05 Jumat) dengan pelapor Admin/Sistem. Saat status dikoreksi dari Alfa, batalkan pelanggaran otomatis tersebut.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "Absensi",
+      "events": [
+        "create",
+        "update"
+      ]
+    },
+    "condition": "${ (.trigger.event_type == \"create\" and .trigger.data.status == \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.data.status == \"Alfa\" and (.trigger.old_data.status // \"\") != \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.data.status != \"Alfa\" and (.trigger.old_data.status // \"\") == \"Alfa\") }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pelanggaran_otomatis_alfa",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "route": {
+          "switch": [
+            {
+              "when": "${ .trigger.data.status == \"Alfa\" }",
+              "then": "buat_pelanggaran"
+            },
+            {
+              "when": "${ true }",
+              "then": "batalkan_pelanggaran"
+            }
+          ],
+          "x-base44": {
+            "title": "Tentukan aksi",
+            "description": "Jadi Alfa -> buat; meninggalkan Alfa -> batalkan"
+          }
+        }
+      },
+      {
+        "buat_pelanggaran": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "autoPelanggaranAlfa",
+            "args": {
+              "action": "create",
+              "absensi": {
+                "siswa_id": "${ .trigger.data.siswa_id }",
+                "nis": "${ .trigger.data.nis }",
+                "nama_siswa": "${ .trigger.data.nama_siswa }",
+                "kelas_id": "${ .trigger.data.kelas_id }",
+                "nama_kelas": "${ .trigger.data.nama_kelas }",
+                "tanggal": "${ .trigger.data.tanggal }",
+                "jenis_absensi": "${ .trigger.data.jenis_absensi }"
+              }
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Buat pelanggaran otomatis",
+            "description": "F-02 Kehadiran / F-05 Jumat"
+          }
+        }
+      },
+      {
+        "batalkan_pelanggaran": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "autoPelanggaranAlfa",
+            "args": {
+              "action": "cancel",
+              "absensi": {
+                "siswa_id": "${ .trigger.data.siswa_id }",
+                "tanggal": "${ .trigger.data.tanggal }",
+                "jenis_absensi": "${ .trigger.data.jenis_absensi }"
+              }
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Batalkan pelanggaran otomatis",
+            "description": "Koreksi absensi dari Alfa"
+          }
+        }
+      }
+    ]
+  }
+}

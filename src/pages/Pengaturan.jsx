@@ -21,6 +21,7 @@ import {
 import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, AlertTriangle, ShieldCheck, ArrowRight } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
+import BackfillAlfaCard from '@/components/pengaturan/BackfillAlfaCard';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
@@ -264,6 +265,8 @@ export default function Pengaturan() {
               )}
             </CardContent>
           </Card>
+
+          <BackfillAlfaCard tahunAjaran={pengaturan?.tahun_ajaran_aktif} />
 
           {/* Daftar Tahun Ajaran */}
           {tahunAjaranList.length > 0 && (

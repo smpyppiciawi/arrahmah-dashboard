@@ -35,7 +35,7 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
 
   const stats = useMemo(() => {
     if (!selectedSiswa) return null;
-    const poinPelanggaran = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id).reduce((s, p) => s + (Number(p.poin) || 0), 0);
+    const poinPelanggaran = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id && p.status !== 'Dibatalkan').reduce((s, p) => s + (Number(p.poin) || 0), 0);
     const poinImprovement = improvementList.filter(i => i.siswa_id === selectedSiswa.id && i.status === 'Aktif').reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
     const usedMingguan = improvementList.filter(i => i.siswa_id === selectedSiswa.id && i.status === 'Aktif' && i.minggu_key === mingguKeyNow).reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
     const limitMingguan = pengaturan?.limit_universal_aktif

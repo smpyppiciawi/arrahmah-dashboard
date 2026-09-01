@@ -28,7 +28,7 @@ export default function CatatanSection({ siswa, pelanggaranList = [], pelanggara
   const jumatList = absensiList.filter(a => a.jenis_absensi === 'Jumat');
 
   const totalPoin = pelanggaranList.reduce((s, p) => s + (p.poin || 0), 0);
-  const totalPoinImprovement = pelanggaranImprovementList.reduce((s, p) => s + (p.poin || 0), 0);
+  const totalPoinImprovement = pelanggaranImprovementList.filter(p => p.status !== 'Dibatalkan').reduce((s, p) => s + (p.poin || 0), 0);
   const totalPengurangan = improvementList.filter(i => i.status === 'Aktif').reduce((s, i) => s + (i.poin_pengurangan || 0), 0);
   const poinBersih = totalPoin + totalPoinImprovement - totalPengurangan;
 
@@ -81,7 +81,7 @@ export default function CatatanSection({ siswa, pelanggaranList = [], pelanggara
                     <div className="flex flex-col items-end gap-1">
                       <span className="text-red-600 font-black text-lg">{p.poin}</span>
                       <span className="text-[9px] text-red-400">poin</span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${p.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>{p.status}</span>
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${p.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : p.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-amber-100 text-amber-700'}`}>{p.status}</span>
                     </div>
                   </div>
                 </div>

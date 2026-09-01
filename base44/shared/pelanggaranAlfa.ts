@@ -1,0 +1,95 @@
+// Shared logic: buat / batalkan PelanggaranImprovement otomatis dari Absensi berstatus Alfa.
+// Dipakai oleh backend function "autoPelanggaranAlfa" (workflow trigger) dan "backfillAlfa" (backfill massal).
+
+export const SISTEM_PELAPOR_ID = "Admin/Sistem";
+export const SISTEM_PELAPOR_NAMA = "Admin/Sistem";
+
+export const KODE_KEHADIRAN = "F-02"; // Tidak hadir sekolah tanpa keterangan (Alpha)
+export const KODE_JUMAT = "F-05";    // Meninggalkan kegiatan nonakademis wajib tanpa izin
+export const RINCIAN_JUMAT = "Tidak Mengikuti Salat Jumat di sekolah";
+
+export function kodeByJenis(jenisAbsensi) {
+  return jenisAbsensi === "Jumat" ? KODE_JUMAT : KODE_KEHADIRAN;
+}
+
+export async function getTahunAjaranAktif(base44) {
+  const settings = await base44.asServiceRole.entities.PengaturanAplikasi.list("-updated_date", 1);
+  return settings?.[0]?.tahun_ajaran_aktif || "";
+}
+
+export async function getKodeData(base44, kode) {
+  const list = await base44.asServiceRole.entities.KodePelanggaranImprovement.filter({ kode });
+  if (!list || list.length === 0) return null;
+  return list.find((k) => k.aktif !== false) || list[0];
+}
+
+// Susun object record PelanggaranImprovement (tanpa IO) dari data absensi + data kode.
+export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran) {
+  const { siswa_id, nis, nama_siswa, kelas_id, nama_kelas, tanggal, jenis_absensi } = absensi;
+  const rincian = jenis_absensi === "Jumat" ? RINCIAN_JUMAT : (kodeData.rincian || "");
+  return {
+    tanggal,
+    siswa_id,
+    nis: nis || "",
+    nama_siswa,
+    kelas_id: kelas_id || "",
+    nama_kelas: nama_kelas || "",
+    kode_pelanggaran_id: kodeData.id,
+    kategori_utama: kodeData.kategori_utama || "",
+    kode: kodeData.kode,
+    uraian_pelanggaran: kodeData.uraian || "",
+    rincian,
+    tindak_lanjut: kodeData.tindak_lanjut || "",
+    poin_min: kodeData.poin_min || 0,
+    poin_max: kodeData.poin_max || 0,
+    poin: kodeData.poin_min || 0,
+    pelapor_id: SISTEM_PELAPOR_ID,
+    pelapor_nama: SISTEM_PELAPOR_NAMA,
+    tahun_ajaran: tahunAjaran,
+    status: "Proses",
+  };
+}
+
+// Buat PelanggaranImprovement dari sebuah Absensi Alfa.
+// Dedup: jika sudah ada record sistem berstatus Proses untuk siswa+tanggal+kode, lewati.
+export async function createPelanggaranFromAlfa(base44, absensi) {
+  const { siswa_id, tanggal, jenis_absensi } = absensi;
+  if (!siswa_id || !tanggal) return { skipped: true, reason: "missing_fields" };
+  const kode = kodeByJenis(jenis_absensi);
+  const tahunAjaran = await getTahunAjaranAktif(base44);
+  const kodeData = await getKodeData(base44, kode);
+  if (!kodeData) return { skipped: true, reason: "kode_not_found" };
+
+  const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
+    siswa_id,
+    tanggal,
+    kode,
+    pelapor_nama: SISTEM_PELAPOR_NAMA,
+  });
+  const activeExisting = (existing || []).find((p) => p.status !== "Dibatalkan");
+  if (activeExisting) return { skipped: true, reason: "duplicate" };
+
+  const record = buildPelanggaranRecord(kodeData, absensi, tahunAjaran);
+  await base44.asServiceRole.entities.PelanggaranImprovement.create(record);
+  return { created: true };
+}
+
+// Batalkan (set status "Dibatalkan") record pelanggaran sistem yang cocok untuk siswa+tanggal+jenis.
+export async function cancelPelanggaranFromAlfa(base44, absensi) {
+  const { siswa_id, tanggal, jenis_absensi } = absensi;
+  if (!siswa_id || !tanggal) return { cancelled: 0 };
+  const kode = kodeByJenis(jenis_absensi);
+  const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
+    siswa_id,
+    tanggal,
+    kode,
+    pelapor_nama: SISTEM_PELAPOR_NAMA,
+  });
+  const activeIds = (existing || []).filter((p) => p.status !== "Dibatalkan").map((p) => p.id);
+  if (activeIds.length === 0) return { cancelled: 0 };
+  await base44.asServiceRole.entities.PelanggaranImprovement.updateMany(
+    { id: { $in: activeIds } },
+    { $set: { status: "Dibatalkan" } }
+  );
+  return { cancelled: activeIds.length };
+}
