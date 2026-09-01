@@ -1,18 +1,21 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search } from "lucide-react";
+import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search, Ban } from "lucide-react";
 import { getMingguKey } from '@/lib/dapodikConstants';
+import { recomputeRaporStatus, anulirRaporHitam, getRaporStatus, RAPOR_CARD_CLASS, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 
 export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onAturLimit, isAdmin }) {
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
-  const [selectedSiswa, setSelectedSiswa] = useState(null);
+  const [selectedSiswaId, setSelectedSiswaId] = useState(null);
+  const selectedSiswa = useMemo(() => (siswaList || []).find(s => s.id === selectedSiswaId) || null, [siswaList, selectedSiswaId]);
+  const queryClient = useQueryClient();
 
   const { data: pengaturan } = useQuery({
     queryKey: ['pengaturan-improvement'],
@@ -37,13 +40,22 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
   }, [siswaList, searchSiswa]);
 
   const handleSelectSiswa = (siswa) => {
-    setSelectedSiswa(siswa);
+    setSelectedSiswaId(siswa.id);
     setOpenSiswaSearch(false); setSearchSiswa('');
+  };
+
+  const handleAnulirHitam = async () => {
+    if (!selectedSiswa) return;
+    if (!confirm('Anulir Status Rapor Hitam atas perintah Kepala Sekolah? Status akan kembali normal.')) return;
+    try {
+      await anulirRaporHitam(selectedSiswa.id);
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+    } catch (e) { console.error(e); }
   };
 
   const stats = useMemo(() => {
     if (!selectedSiswa) return null;
-    const poinPelanggaranBaru = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id && p.status !== 'Dibatalkan').reduce((s, p) => s + (Number(p.poin) || 0), 0);
+    const poinPelanggaranBaru = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id && p.status !== 'Dibatalkan' && p.status !== 'Pending').reduce((s, p) => s + (Number(p.poin) || 0), 0);
     const poinPelanggaranLama = akumulasiLama
       ? pelanggaranLamaList.filter(p => p.siswa_id === selectedSiswa.id).reduce((s, p) => s + (Number(p.poin) || 0), 0)
       : 0;
@@ -56,15 +68,37 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
     return { poinPelanggaran, poinPelanggaranBaru, poinPelanggaranLama, poinImprovement, poinBersih: poinPelanggaran - poinImprovement, usedMingguan, limitMingguan };
   }, [selectedSiswa, pelanggaranImprovementList, improvementList, mingguKeyNow, pengaturan, akumulasiLama, pelanggaranLamaList]);
 
+  const raporStatus = useMemo(() => selectedSiswa ? getRaporStatus(selectedSiswa, stats?.poinBersih ?? 0) : null, [selectedSiswa, stats]);
+
+  // Recompute & persist status rapor (Kuning/Merah/Hitam) ke record Siswa saat poin bersih berubah
+  useEffect(() => {
+    if (!selectedSiswa || stats == null) return;
+    let active = true;
+    recomputeRaporStatus(selectedSiswa, stats.poinBersih)
+      .then((res) => { if (active && res?.written) queryClient.invalidateQueries({ queryKey: ['siswa'] }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [selectedSiswa, stats]);
+
   return (
-    <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-white">
+    <Card className={`border shadow-sm bg-gradient-to-br ${RAPOR_CARD_CLASS[raporStatus?.level || 'normal']}`}>
       <CardContent className="pt-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Scale className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-semibold text-emerald-800">Ringkasan Akumulatif Poin Siswa</h3>
+        <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Scale className={`w-5 h-5 ${raporStatus?.level === 'hitam' ? 'text-white' : 'text-emerald-600'}`} />
+            <h3 className={`font-semibold ${raporStatus?.level === 'hitam' ? 'text-white' : 'text-emerald-800'}`}>Ringkasan Akumulatif Poin Siswa</h3>
+            {raporStatus && raporStatus.level !== 'normal' && (
+              <Badge className={RAPOR_BADGE_CLASS[raporStatus.level]}>
+                {raporStatus.label}{raporStatus.sisaHari != null ? ` · sisa ${raporStatus.sisaHari} hari` : ''}
+              </Badge>
+            )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            {raporStatus?.level === 'hitam' && isAdmin && (
+              <Button size="sm" variant="outline" onClick={handleAnulirHitam} className="border-white/40 text-white bg-white/10 hover:bg-white/20">
+                <Ban className="w-4 h-4 mr-1" /> Anulir Status Hitam
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={onAturLimit} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
               <Settings className="w-4 h-4 mr-1" /> Atur Limit
             </Button>

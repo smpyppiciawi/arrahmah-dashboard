@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, AlertTriangle, Lock } from "lucide-react";
+import { Search, AlertTriangle, Lock, Info } from "lucide-react";
+import { recomputeRaporForSiswa, isPendingPoin } from '@/lib/raporStatus';
 
 export default function PelanggaranImprovementFormDialog({ open, onOpenChange, siswaList, kelasList, guruList, currentUser, kodePelanggaranList, editing, tahunAjaran, prefillSiswa }) {
   const queryClient = useQueryClient();
@@ -55,11 +56,22 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.PelanggaranImprovement.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] }); handleClose(); }
+    onSuccess: async (_d, vars) => {
+      if (vars?.siswa_id) { try { await recomputeRaporForSiswa(vars.siswa_id); } catch {} }
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      handleClose();
+    }
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.PelanggaranImprovement.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] }); handleClose(); }
+    onSuccess: async (_d, vars) => {
+      const sid = vars?.data?.siswa_id || vars?.id;
+      if (sid) { try { await recomputeRaporForSiswa(sid); } catch {} }
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      handleClose();
+    }
   });
 
   const handleClose = () => {
@@ -127,7 +139,12 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
     if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
     if (!formData.pelapor_id) { toast({ title: "Pilih pelapor", variant: "destructive" }); return; }
-    const payload = { ...formData, rincian: formData.rincian?.trim() ? formData.rincian : rincianHint };
+    // Poin >= 100 otomatis berstatus Pending (belum terakumulasi sebelum approval)
+    const finalStatus = isPendingPoin(formData.poin) ? 'Pending' : (formData.status || 'Proses');
+    const payload = { ...formData, status: finalStatus, rincian: formData.rincian?.trim() ? formData.rincian : rincianHint };
+    if (isPendingPoin(formData.poin)) {
+      toast({ title: "Pelanggaran berstatus Pending", description: "Poin ≥ 100 menunggu Approval sebelum terakumulasi." });
+    }
     if (editing) updateMutation.mutate({ id: editing.id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -263,16 +280,27 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
               <p className="text-xs text-slate-500 mt-1">Min: {formData.poin_min} · Max: {formData.poin_max}</p>
             </div>
             <div>
-              <Label>Status</Label>
-              <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Proses">Proses</SelectItem>
-                  <SelectItem value="Selesai">Selesai</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label>Status {isPendingPoin(formData.poin) && <span className="text-xs text-amber-600">(otomatis Pending)</span>}</Label>
+              {isPendingPoin(formData.poin) ? (
+                <Input value="Pending" readOnly className="bg-amber-50 text-amber-700 font-medium" />
+              ) : (
+                <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Proses">Proses</SelectItem>
+                    <SelectItem value="Selesai">Selesai</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
+
+          {isPendingPoin(formData.poin) && (
+            <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <Info className="w-4 h-4 mt-0.5 shrink-0" />
+              <span>Poin ≥ 100 otomatis berstatus <b>Pending</b> dan belum terakumulasi ke Poin Bersih. Poin akan terakumulasi setelah disetujui melalui fitur <b>Approval Poin</b>.</span>
+            </div>
+          )}
 
           {/* Pelapor */}
           <div>

@@ -200,6 +200,27 @@
     "notif_absen3hari_minggu": {
       "type": "string",
       "description": "Key minggu (ISO week, cth: 2026-32) saat WA peringatan absen 3 hari terakhir dikirim. Digunakan untuk dedup \u2014 hanya kirim sekali per minggu."
+    },
+    "rapor_kuning_tanggal": {
+      "type": "string",
+      "description": "Timestamp (ISO) saat Status Rapor Kuning ditetapkan (poin bersih mencapai 300). Berlaku 40 hari kalender; setelah itu status hilang. Null jika tidak aktif."
+    },
+    "rapor_merah_tanggal": {
+      "type": "string",
+      "description": "Timestamp (ISO) saat Status Rapor Merah ditetapkan (poin bersih mencapai 600). Berlaku 120 hari kalender; setelah itu status hilang. Null jika tidak aktif."
+    },
+    "rapor_hitam_tanggal": {
+      "type": "string",
+      "description": "Timestamp (ISO) saat Status Rapor Hitam ditetapkan (poin bersih mencapai 1000). Permanen sampai dianulir."
+    },
+    "rapor_hitam_aktif": {
+      "type": "boolean",
+      "default": false,
+      "description": "True jika Status Rapor Hitam sedang aktif. Tidak berubah otomatis kecuali dianulir ADMIN atas perintah Kepala Sekolah."
+    },
+    "rapor_hitam_anulir_at": {
+      "type": "string",
+      "description": "Timestamp (ISO) saat Status Hitam dianulir. Jika sudah pernah dianulir, status tidak aktif otomatis lagi meski poin tinggi."
     }
   },
   "required": [

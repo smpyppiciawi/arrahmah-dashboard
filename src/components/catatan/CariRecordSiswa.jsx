@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Search, User, Trophy, AlertCircle, Stethoscope, Calendar, Award, Plus, MessageSquare, CheckCircle, TrendingDown } from "lucide-react";
+import { Search, User, Trophy, AlertCircle, Stethoscope, Calendar, Award, Plus, MessageSquare, CheckCircle, TrendingDown, Ban } from "lucide-react";
+import { recomputeRaporStatus, anulirRaporHitam, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
@@ -101,10 +102,33 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
 
   const poinBersih = useMemo(() => {
     const poinPelanggaranLama = akumulasiLama ? siswaRecords.pelanggaran.reduce((s, p) => s + (Number(p.poin) || 0), 0) : 0;
-    const poinPelanggaran = improvementRecords.pelanggaranImprovement.reduce((s, p) => s + (Number(p.poin) || 0), 0) + poinPelanggaranLama;
+    const poinPelanggaran = improvementRecords.pelanggaranImprovement
+      .filter(p => p.status !== 'Pending' && p.status !== 'Dibatalkan')
+      .reduce((s, p) => s + (Number(p.poin) || 0), 0) + poinPelanggaranLama;
     const poinPengurangan = improvementRecords.improvement.filter(i => i.status === 'Aktif').reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
     return { poinPelanggaran, poinPelanggaranLama, poinPengurangan, poinBersih: poinPelanggaran - poinPengurangan };
   }, [improvementRecords, siswaRecords, akumulasiLama]);
+
+  // Siswa fresh dari siswaList (agar perubahan rapor tampil setelah recompute)
+  const currentSiswa = useMemo(() => siswaList.find(s => s.id === selectedSiswa?.id) || selectedSiswa, [siswaList, selectedSiswa]);
+  const raporStatus = useMemo(() => currentSiswa ? getRaporStatus(currentSiswa, poinBersih.poinBersih) : null, [currentSiswa, poinBersih]);
+  const isAdminUser = ['admin', 'kepsek'].includes(currentUser?.role);
+
+  // Recompute & persist status rapor saat poin bersih siswa berubah
+  useEffect(() => {
+    if (!selectedSiswa) return;
+    let active = true;
+    recomputeRaporStatus(currentSiswa, poinBersih.poinBersih)
+      .then((res) => { if (active && res?.written) queryClient.invalidateQueries({ queryKey: ['siswa'] }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [selectedSiswa, currentSiswa, poinBersih]);
+
+  const handleAnulirHitam = async () => {
+    if (!currentSiswa) return;
+    if (!confirm('Anulir Status Rapor Hitam atas perintah Kepala Sekolah? Status akan kembali normal.')) return;
+    try { await anulirRaporHitam(currentSiswa.id); queryClient.invalidateQueries({ queryKey: ['siswa'] }); } catch (e) { console.error(e); }
+  };
 
   const getTindakLanjutByPelanggaran = (pelanggaranId) => tindakLanjutList.filter(t => t.pelanggaran_id === pelanggaranId);
   const handleAddTindakLanjut = (pelanggaran) => { setSelectedPelanggaran(pelanggaran); setShowTindakLanjutForm(true); };
@@ -171,21 +195,35 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
           </div>
         </div>
 
-        {/* Student Info Card */}
+        {/* Student Info Card — warna mengikuti Status Rapor (Kuning/Merah/Hitam) */}
         {selectedSiswa && (
-          <Card className="mb-4 border-indigo-200 bg-indigo-50">
+          <Card className={`mb-4 border-2 ${
+            raporStatus?.level === 'hitam' ? 'border-black bg-slate-900 text-white'
+            : raporStatus?.level === 'merah' ? 'border-red-400 bg-red-100'
+            : raporStatus?.level === 'kuning' ? 'border-yellow-400 bg-yellow-100'
+            : 'border-indigo-200 bg-indigo-50'
+          }`}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                    raporStatus?.level === 'hitam' ? 'bg-white/20' : 'bg-indigo-600'
+                  }`}>
                     <User className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-lg text-indigo-900">{selectedSiswa.nama}</h3>
-                    <p className="text-sm text-indigo-600">NIS: {selectedSiswa.nis} | Kelas: {selectedSiswa.nama_kelas}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className={`font-bold text-lg ${raporStatus?.level === 'hitam' ? 'text-white' : 'text-indigo-900'}`}>{selectedSiswa.nama}</h3>
+                      {raporStatus && raporStatus.level !== 'normal' && (
+                        <Badge className={RAPOR_BADGE_CLASS[raporStatus.level]}>
+                          {raporStatus.label}{raporStatus.sisaHari != null ? ` · sisa ${raporStatus.sisaHari} hari` : ''}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className={`text-sm ${raporStatus?.level === 'hitam' ? 'text-white/80' : 'text-indigo-600'}`}>NIS: {selectedSiswa.nis} | Kelas: {selectedSiswa.nama_kelas}</p>
                   </div>
                 </div>
-                <div className="flex gap-2 flex-wrap justify-end">
+                <div className="flex gap-2 flex-wrap justify-end items-center">
                   <Badge className="bg-emerald-100 text-emerald-700">
                     <Trophy className="w-3 h-3 mr-1" />
                     {siswaRecords.prestasi.length} Prestasi
@@ -198,6 +236,11 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
                     <Stethoscope className="w-3 h-3 mr-1" />
                     {siswaRecords.uks.length} UKS
                   </Badge>
+                  {raporStatus?.level === 'hitam' && isAdminUser && (
+                    <Button size="sm" variant="outline" onClick={handleAnulirHitam} className="border-white/40 text-white bg-white/10 hover:bg-white/20">
+                      <Ban className="w-4 h-4 mr-1" /> Anulir Status Hitam
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>

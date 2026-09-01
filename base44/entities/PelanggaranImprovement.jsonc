@@ -73,12 +73,25 @@
     "status": {
       "type": "string",
       "enum": [
+        "Pending",
         "Proses",
         "Selesai",
         "Dibatalkan"
       ],
       "default": "Proses",
-      "description": "Status penanganan pelanggaran. Dibatalkan = pelanggaran otomatis dibatalkan sistem (saat absensi dikoreksi dari Alfa); poin TIDAK dihitung dalam akumulasi."
+      "description": "Status penanganan pelanggaran. Pending = poin >= 100 menunggu Approval (poin belum terakumulasi); Dibatalkan = pelanggaran otomatis dibatalkan sistem (saat absensi dikoreksi dari Alfa) atau ditolak approval; poin TIDAK dihitung dalam akumulasi."
+    },
+    "approved_by_id": {
+      "type": "string",
+      "description": "ID approver (yang menyetujui poin Pending)"
+    },
+    "approved_by_nama": {
+      "type": "string",
+      "description": "Nama approver"
+    },
+    "approved_at": {
+      "type": "string",
+      "description": "Timestamp persetujuan poin (ISO)"
     }
   },
   "required": [

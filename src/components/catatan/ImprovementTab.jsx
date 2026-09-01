@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus } from "lucide-react";
+import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { useToast } from "@/components/ui/use-toast";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
@@ -19,6 +19,7 @@ import PelanggaranImprovementFormDialog from "./PelanggaranImprovementFormDialog
 import PengaturanImprovementDialog from "./PengaturanImprovementDialog";
 import KelolaKodePelanggaranDialog from "./KelolaKodePelanggaranDialog";
 import KelolaKegiatanPembinaanDialog from "./KelolaKegiatanPembinaanDialog";
+import ApprovalPoinDialog from "./ApprovalPoinDialog";
 
 const KATEGORI_COLOR = {
   "Hukum & Keselamatan": "bg-red-100 text-red-700",
@@ -48,6 +49,7 @@ export default function ImprovementTab() {
   const [pengaturanOpen, setPengaturanOpen] = useState(false);
   const [kelolaKodeOpen, setKelolaKodeOpen] = useState(false);
   const [kelolaKegiatanOpen, setKelolaKegiatanOpen] = useState(false);
+  const [approvalOpen, setApprovalOpen] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteType, setDeleteType] = useState(null);
@@ -62,6 +64,12 @@ export default function ImprovementTab() {
   const isAdmin = currentUser?.role === 'admin';
   const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
   const canDelete = ['admin', 'tu'].includes(currentUser?.role);
+
+  // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
+  const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
+  const isWaka = !!myGuru && /waka\s*(kesiswaan|kurikulum)/i.test(myGuru.tugas_tambahan || '');
+  const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
+  const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
 
   // Queries
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
@@ -139,7 +147,7 @@ export default function ImprovementTab() {
     { key: 'tindak_lanjut', label: 'Tindak Lanjut', render: (r) => <Badge variant="outline" className="text-xs">{r.tindak_lanjut}</Badge> },
     { key: 'poin', label: 'Poin', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
     { key: 'pelapor_nama', label: 'Pelapor' },
-    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-amber-100 text-amber-700'}>{r.status}</Badge> },
+    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>
@@ -178,15 +186,29 @@ export default function ImprovementTab() {
         isAdmin={isAdmin}
       />
 
-      {/* Kelola Data buttons — hanya ADMIN/TU/KEPSEK */}
-      {canKelolaData && (
+      {/* Kelola Data & Approval Poin — ADMIN/TU/KEPSEK (serta Guru WAKA untuk Approval) */}
+      {(canKelolaData || canApprove) && (
       <div className="flex flex-wrap gap-2">
+        {canApprove && (
+        <Button variant="outline" onClick={() => setApprovalOpen(true)} className="border-amber-400 text-amber-700 hover:bg-amber-50 relative">
+          <Clock className="w-4 h-4 mr-2" /> Approval Poin
+          {pendingApprovalCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
+              {pendingApprovalCount}
+            </span>
+          )}
+        </Button>
+        )}
+        {canKelolaData && (
         <Button variant="outline" onClick={() => setKelolaKodeOpen(true)} className="border-slate-300 text-slate-700 hover:bg-slate-50">
           <Database className="w-4 h-4 mr-2" /> Kelola Kode Pelanggaran
         </Button>
+        )}
+        {canKelolaData && (
         <Button variant="outline" onClick={() => setKelolaKegiatanOpen(true)} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
           <BookOpen className="w-4 h-4 mr-2" /> Kelola Kegiatan Pembinaan
         </Button>
+        )}
       </div>
       )}
 
@@ -275,6 +297,14 @@ export default function ImprovementTab() {
 
       <KelolaKodePelanggaranDialog open={kelolaKodeOpen} onOpenChange={setKelolaKodeOpen} />
       <KelolaKegiatanPembinaanDialog open={kelolaKegiatanOpen} onOpenChange={setKelolaKegiatanOpen} />
+
+      <ApprovalPoinDialog
+        open={approvalOpen}
+        onOpenChange={setApprovalOpen}
+        pelanggaranList={pelanggaranImprovementList}
+        siswaList={siswaList}
+        currentUser={currentUser}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

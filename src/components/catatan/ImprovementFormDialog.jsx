@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/components/ui/use-toast";
 import { Search, TrendingDown, Lock } from "lucide-react";
 import { getMingguKey } from '@/lib/dapodikConstants';
+import { recomputeRaporForSiswa } from '@/lib/raporStatus';
 
 export default function ImprovementFormDialog({ open, onOpenChange, siswaList, guruList, currentUser, improvementList, kegiatanList, pengaturan, editing, tahunAjaran, prefillSiswa }) {
   const queryClient = useQueryClient();
@@ -55,11 +56,22 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Improvement.create(data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['improvement'] }); handleClose(); }
+    onSuccess: async (_d, vars) => {
+      if (vars?.siswa_id) { try { await recomputeRaporForSiswa(vars.siswa_id); } catch {} }
+      queryClient.invalidateQueries({ queryKey: ['improvement'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      handleClose();
+    }
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Improvement.update(id, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['improvement'] }); handleClose(); }
+    onSuccess: async (_d, vars) => {
+      const sid = vars?.data?.siswa_id;
+      if (sid) { try { await recomputeRaporForSiswa(sid); } catch {} }
+      queryClient.invalidateQueries({ queryKey: ['improvement'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      handleClose();
+    }
   });
 
   const handleClose = () => {
