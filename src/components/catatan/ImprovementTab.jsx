@@ -271,7 +271,7 @@ export default function ImprovementTab() {
         tahunAjaran={tahunAjaran}
       />
 
-      <PengaturanImprovementDialog open={pengaturanOpen} onOpenChange={setPengaturanOpen} isAdmin={isAdmin} />
+      <PengaturanImprovementDialog open={pengaturanOpen} onOpenChange={setPengaturanOpen} isAdmin={isAdmin} canKelola={canKelolaData} />
 
       <KelolaKodePelanggaranDialog open={kelolaKodeOpen} onOpenChange={setKelolaKodeOpen} />
       <KelolaKegiatanPembinaanDialog open={kelolaKegiatanOpen} onOpenChange={setKelolaKegiatanOpen} />

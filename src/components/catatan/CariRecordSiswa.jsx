@@ -59,6 +59,7 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
   const { data: kegiatanList = [] } = useQuery({ queryKey: ['kegiatan-pembinaan'], queryFn: () => base44.entities.KegiatanPembinaan.list('no') });
   const { data: pengaturanImprovement } = useQuery({ queryKey: ['pengaturan-improvement'], queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; } });
   const pelanggaranModuleAktif = pengaturanImprovement?.pelanggaran_module_aktif ?? true;
+  const akumulasiLama = pengaturanImprovement?.akumulasi_poin_lama_aktif ?? false;
 
   const createTindakLanjutMutation = useMutation({
     mutationFn: (data) => base44.entities.TindakLanjut.create(data),
@@ -99,10 +100,11 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
   }, [selectedSiswa, pelanggaranImprovementList, improvementList]);
 
   const poinBersih = useMemo(() => {
-    const poinPelanggaran = improvementRecords.pelanggaranImprovement.reduce((s, p) => s + (Number(p.poin) || 0), 0);
+    const poinPelanggaranLama = akumulasiLama ? siswaRecords.pelanggaran.reduce((s, p) => s + (Number(p.poin) || 0), 0) : 0;
+    const poinPelanggaran = improvementRecords.pelanggaranImprovement.reduce((s, p) => s + (Number(p.poin) || 0), 0) + poinPelanggaranLama;
     const poinPengurangan = improvementRecords.improvement.filter(i => i.status === 'Aktif').reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
-    return { poinPelanggaran, poinPengurangan, poinBersih: poinPelanggaran - poinPengurangan };
-  }, [improvementRecords]);
+    return { poinPelanggaran, poinPelanggaranLama, poinPengurangan, poinBersih: poinPelanggaran - poinPengurangan };
+  }, [improvementRecords, siswaRecords, akumulasiLama]);
 
   const getTindakLanjutByPelanggaran = (pelanggaranId) => tindakLanjutList.filter(t => t.pelanggaran_id === pelanggaranId);
   const handleAddTindakLanjut = (pelanggaran) => { setSelectedPelanggaran(pelanggaran); setShowTindakLanjutForm(true); };
@@ -367,7 +369,7 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
               {/* Pelanggaran Improvement records */}
               <div className="mb-4">
                 <h4 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" /> Pelanggaran ({improvementRecords.pelanggaranImprovement.length})
+                  <AlertCircle className="w-4 h-4" /> Pelanggaran ({improvementRecords.pelanggaranImprovement.length + (akumulasiLama ? siswaRecords.pelanggaran.length : 0)})
                 </h4>
                 {improvementRecords.pelanggaranImprovement.length === 0 ? (
                   <p className="text-center py-4 text-slate-400 text-sm">Belum ada pelanggaran</p>
@@ -398,6 +400,38 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
                   </div>
                 )}
               </div>
+
+              {/* Pelanggaran Lama (modul lama) — disatukan saat akumulasi poin lama aktif */}
+              {akumulasiLama && siswaRecords.pelanggaran.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" /> Pelanggaran Lama ({siswaRecords.pelanggaran.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {siswaRecords.pelanggaran.map(item => (
+                      <Card key={item.id} className="border-amber-200 bg-amber-50">
+                        <CardContent className="p-3">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <Badge className="bg-amber-200 text-amber-800 text-xs">Lama</Badge>
+                                {item.jenis_pelanggaran && <Badge variant="outline" className="text-xs">{item.jenis_pelanggaran}</Badge>}
+                                {item.kategori && <Badge variant="outline" className="text-xs">{item.kategori}</Badge>}
+                              </div>
+                              <p className="text-sm font-medium text-slate-800">{item.uraian}</p>
+                              {item.sanksi && <p className="text-xs text-slate-500 mt-0.5">Sanksi: {item.sanksi}</p>}
+                              <p className="text-xs text-slate-400 mt-1">{format(new Date(item.tanggal), 'dd MMM yyyy', { locale: idLocale })}{item.status ? ` · ${item.status}` : ''}</p>
+                            </div>
+                            <div className="text-right ml-2 shrink-0">
+                              <Badge className="bg-red-100 text-red-700">{item.poin} poin</Badge>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Improvement (Kegiatan Pembinaan) records */}
               <div>

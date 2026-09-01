@@ -19,6 +19,14 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
     queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; }
   });
 
+  // Pelanggaran Lama (modul lama) — diakumulasi saat akumulasi_poin_lama_aktif = true
+  const akumulasiLama = pengaturan?.akumulasi_poin_lama_aktif;
+  const { data: pelanggaranLamaList = [] } = useQuery({
+    queryKey: ['pelanggaran'],
+    queryFn: () => base44.entities.Pelanggaran.list('-tanggal'),
+    enabled: !!akumulasiLama,
+  });
+
   const mingguKeyNow = getMingguKey(new Date());
 
   const filteredSiswa = useMemo(() => {
@@ -35,14 +43,18 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
 
   const stats = useMemo(() => {
     if (!selectedSiswa) return null;
-    const poinPelanggaran = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id && p.status !== 'Dibatalkan').reduce((s, p) => s + (Number(p.poin) || 0), 0);
+    const poinPelanggaranBaru = pelanggaranImprovementList.filter(p => p.siswa_id === selectedSiswa.id && p.status !== 'Dibatalkan').reduce((s, p) => s + (Number(p.poin) || 0), 0);
+    const poinPelanggaranLama = akumulasiLama
+      ? pelanggaranLamaList.filter(p => p.siswa_id === selectedSiswa.id).reduce((s, p) => s + (Number(p.poin) || 0), 0)
+      : 0;
+    const poinPelanggaran = poinPelanggaranBaru + poinPelanggaranLama;
     const poinImprovement = improvementList.filter(i => i.siswa_id === selectedSiswa.id && i.status === 'Aktif').reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
     const usedMingguan = improvementList.filter(i => i.siswa_id === selectedSiswa.id && i.status === 'Aktif' && i.minggu_key === mingguKeyNow).reduce((s, i) => s + (Number(i.poin_pengurangan) || 0), 0);
     const limitMingguan = pengaturan?.limit_universal_aktif
       ? (pengaturan.limit_mingguan_universal || 30)
       : (improvementList.find(i => i.siswa_id === selectedSiswa.id && i.minggu_key === mingguKeyNow)?.limit_mingguan || 30);
-    return { poinPelanggaran, poinImprovement, poinBersih: poinPelanggaran - poinImprovement, usedMingguan, limitMingguan };
-  }, [selectedSiswa, pelanggaranImprovementList, improvementList, mingguKeyNow, pengaturan]);
+    return { poinPelanggaran, poinPelanggaranBaru, poinPelanggaranLama, poinImprovement, poinBersih: poinPelanggaran - poinImprovement, usedMingguan, limitMingguan };
+  }, [selectedSiswa, pelanggaranImprovementList, improvementList, mingguKeyNow, pengaturan, akumulasiLama, pelanggaranLamaList]);
 
   return (
     <Card className="border-0 shadow-sm bg-gradient-to-br from-emerald-50 to-white">
@@ -109,6 +121,11 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
                 {pengaturan.limit_universal_aktif
                   ? `Limit mingguan universal: ${pengaturan.limit_mingguan_universal} poin/minggu`
                   : 'Limit mingguan manual per record'}
+              </p>
+            )}
+            {akumulasiLama && stats?.poinPelanggaranLama > 0 && (
+              <p className="text-xs text-amber-600 mt-1">
+                Termasuk akumulasi Poin Pelanggaran Lama: +{stats.poinPelanggaranLama} poin
               </p>
             )}
           </>

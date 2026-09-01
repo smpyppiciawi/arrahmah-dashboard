@@ -9,13 +9,14 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Settings, Power } from "lucide-react";
 
-export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmin }) {
+export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmin, canKelola }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [pengaturanId, setPengaturanId] = useState(null);
   const [limitUniversal, setLimitUniversal] = useState(30);
   const [limitAktif, setLimitAktif] = useState(true);
   const [pelanggaranAktif, setPelanggaranAktif] = useState(true);
+  const [akumulasiLama, setAkumulasiLama] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +31,7 @@ export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmi
           setLimitUniversal(p.limit_mingguan_universal ?? 30);
           setLimitAktif(p.limit_universal_aktif ?? true);
           setPelanggaranAktif(p.pelanggaran_module_aktif ?? true);
+          setAkumulasiLama(p.akumulasi_poin_lama_aktif ?? false);
         } else {
           setPengaturanId(null);
         }
@@ -58,7 +60,8 @@ export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmi
     saveMutation.mutate({
       limit_mingguan_universal: Number(limitUniversal) || 30,
       limit_universal_aktif: limitAktif,
-      pelanggaran_module_aktif: pelanggaranAktif
+      pelanggaran_module_aktif: pelanggaranAktif,
+      akumulasi_poin_lama_aktif: akumulasiLama
     });
   };
 
@@ -99,6 +102,25 @@ export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmi
                 </div>
               )}
             </div>
+
+            {/* Toggle Akumulasi Poin Pelanggaran Lama — Admin/TU/Kepsek */}
+            {canKelola && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-amber-800 flex items-center gap-2">
+                      <Power className="w-4 h-4" /> Akumulasi Poin Pelanggaran Lama
+                    </p>
+                    <p className="text-xs text-amber-600 mt-0.5">
+                      {akumulasiLama
+                        ? "Aktif — Poin Pelanggaran Lama diakumulasi dengan Poin Pelanggaran Baru dan masuk ke Poin Bersih. Catatan lama tetap tampil di tab Improvement (Cari Record Siswa)."
+                        : "Nonaktif — hanya Poin Pelanggaran Baru (Improvement) yang dihitung ke Poin Bersih"}
+                    </p>
+                  </div>
+                  <Switch checked={akumulasiLama} onCheckedChange={setAkumulasiLama} />
+                </div>
+              </div>
+            )}
 
             {/* Toggle Modul Pelanggaran Lama — Admin only */}
             {isAdmin && (

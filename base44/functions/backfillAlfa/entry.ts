@@ -1,7 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import {
   getTahunAjaranAktif, getKodeData, getBackfillAktif, buildPelanggaranRecord,
-  KODE_KEHADIRAN, SISTEM_BACKFILL_ID, SISTEM_BACKFILL_NAMA, BACKFILL_KETERANGAN,
+  KODE_KEHADIRAN, SISTEM_PELAPOR_NAMA, BACKFILL_KETERANGAN,
 } from "../../shared/pelanggaranAlfa.ts";
 
 const LIBUR_KATEGORI = ["Hari Libur Nasional", "Libur Sekolah"];
@@ -58,7 +58,7 @@ export default async function (req: Request): Promise<Response> {
     const startStr: string = body?.start_date || defaultStart;
     const todayStr = jakartaTodayStr();
     let endStr: string = body?.end_date || todayStr;
-    if (endStr > todayStr) endStr = todayStr; // cap ke hari ini
+    if (endStr > todayStr) endStr = todayStr;
 
     const start = toDate(startStr);
     const end = toDate(endStr);
@@ -81,7 +81,7 @@ export default async function (req: Request): Promise<Response> {
       return Response.json({ status: "no_working_days", message: "Tidak ada hari sekolah (Senin-Jumat) dalam rentang." });
     }
 
-    // Kode pelanggaran F-02 (Kehadiran). Backfill hanya membuat Alfa Kehadiran + F-02.
+    // Kode pelanggaran F-02 (Kehadiran).
     const kodeData = await getKodeData(base44, KODE_KEHADIRAN);
 
     // Kelas & siswa aktif
@@ -94,25 +94,26 @@ export default async function (req: Request): Promise<Response> {
       siswaByKelas[s.kelas_id].push(s);
     }
 
-    // Absensi Kehadiran (jenis != Jumat) -> map tanggal -> kelas_id -> Set(siswa_id)
+    // Absensi Kehadiran (jenis != Jumat) -> map tanggal -> kelas_id -> Map(siswa_id -> status)
     const allAbsensi = await base44.asServiceRole.entities.Absensi.list("-tanggal", 20000);
     const kehadiranByDateKelas = {};
     for (const a of allAbsensi || []) {
       if (!a.tanggal || a.jenis_absensi === "Jumat") continue;
       if (!kehadiranByDateKelas[a.tanggal]) kehadiranByDateKelas[a.tanggal] = {};
-      if (!kehadiranByDateKelas[a.tanggal][a.kelas_id]) kehadiranByDateKelas[a.tanggal][a.kelas_id] = new Set();
-      kehadiranByDateKelas[a.tanggal][a.kelas_id].add(a.siswa_id);
+      if (!kehadiranByDateKelas[a.tanggal][a.kelas_id]) kehadiranByDateKelas[a.tanggal][a.kelas_id] = new Map();
+      kehadiranByDateKelas[a.tanggal][a.kelas_id].set(a.siswa_id, a.status);
     }
 
-    // Dedup pelanggaran backfill existing (pelapor Sistem-Backfill)
-    const existingBackfillPel = await base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_id: SISTEM_BACKFILL_ID }, undefined, 20000);
+    // Dedup pelanggaran sistem existing (pelapor Admin/Sistem) — unified dengan autoPelanggaranAlfa
+    const existingPel = await base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_nama: SISTEM_PELAPOR_NAMA }, undefined, 20000);
     const dedupKey = (p) => `${p.siswa_id}|${p.tanggal}|${p.kode}`;
-    const existingBackfillKeys = new Set((existingBackfillPel || []).map(dedupKey));
+    const existingKeys = new Set((existingPel || []).map(dedupKey));
 
     const absensiToCreate: any[] = [];
     const pelanggaranToCreate: any[] = [];
     let classesSkipped = 0;
     let classesProcessed = 0;
+    let alfaPetugasCovered = 0;
 
     for (const ds of workingDates) {
       const dateMap = kehadiranByDateKelas[ds] || {};
@@ -124,7 +125,21 @@ export default async function (req: Request): Promise<Response> {
         if (!recorded || recorded.size === 0) { classesSkipped++; continue; }
         classesProcessed++;
         for (const s of students) {
-          if (recorded.has(s.id)) continue; // sudah ada record (Hadir/Sakit/Izin/Alfa)
+          const pk = `${s.id}|${ds}|${KODE_KEHADIRAN}`;
+          if (recorded.has(s.id)) {
+            // Siswa sudah diisi petugas. Jika statusnya Alfa → pastikan F-02 (Admin/Sistem) tercatat.
+            if (recorded.get(s.id) === "Alfa" && kodeData && !existingKeys.has(pk)) {
+              pelanggaranToCreate.push(buildPelanggaranRecord(kodeData, {
+                siswa_id: s.id, nis: s.nis || "", nama_siswa: s.nama,
+                kelas_id: kelas.id, nama_kelas: kelas.nama_kelas || "",
+                tanggal: ds, jenis_absensi: "Kehadiran",
+              }, tahunAjaran));
+              existingKeys.add(pk);
+              alfaPetugasCovered++;
+            }
+            continue;
+          }
+          // Tidak terisi → backfill Alfa
           const absensi = {
             tanggal: ds, siswa_id: s.id, nis: s.nis || "", nama_siswa: s.nama,
             kelas_id: kelas.id, nama_kelas: kelas.nama_kelas || "",
@@ -132,10 +147,9 @@ export default async function (req: Request): Promise<Response> {
             keterangan: BACKFILL_KETERANGAN,
           };
           absensiToCreate.push(absensi);
-          const pk = `${s.id}|${ds}|${KODE_KEHADIRAN}`;
-          if (kodeData && !existingBackfillKeys.has(pk)) {
-            pelanggaranToCreate.push(buildPelanggaranRecord(kodeData, absensi, tahunAjaran, SISTEM_BACKFILL_ID, SISTEM_BACKFILL_NAMA));
-            existingBackfillKeys.add(pk);
+          if (kodeData && !existingKeys.has(pk)) {
+            pelanggaranToCreate.push(buildPelanggaranRecord(kodeData, absensi, tahunAjaran));
+            existingKeys.add(pk);
           }
         }
       }
@@ -165,6 +179,7 @@ export default async function (req: Request): Promise<Response> {
       classes_skipped: classesSkipped,
       absensi_created: absensiCreated,
       pelanggaran_created: pelanggaranCreated,
+      alfa_petugas_covered: alfaPetugasCovered,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
