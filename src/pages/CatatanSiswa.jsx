@@ -11,15 +11,20 @@ import UKSTab from '../components/catatan/UKSTab';
 import CariRecordSiswa from '../components/catatan/CariRecordSiswa';
 import MenstruasiTab from '../components/catatan/MenstruasiTab';
 import IzinTab from '../components/catatan/IzinTab';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function CatatanSiswa() {
   const [showCariRecord, setShowCariRecord] = useState(false);
+  const { user } = useAuth();
+  const userRole = user?.role || 'guru';
 
   const { data: pengaturanImprovement } = useQuery({
     queryKey: ['pengaturan-improvement'],
     queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; }
   });
   const pelanggaranModuleAktif = pengaturanImprovement?.pelanggaran_module_aktif ?? true;
+  // Tab Pelanggaran (modul lama) hanya tampil untuk ADMIN/TU, meski modul aktif di pengaturan
+  const showPelanggaranTab = pelanggaranModuleAktif && (userRole === 'admin' || userRole === 'tu');
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -52,7 +57,7 @@ export default function CatatanSiswa() {
               <Award className="w-4 h-4" />
               <span className="hidden sm:inline">Prestasi</span>
             </TabsTrigger>
-            {pelanggaranModuleAktif && (
+            {showPelanggaranTab && (
             <TabsTrigger
               value="pelanggaran"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-red-500/25 transition-all"
@@ -92,7 +97,7 @@ export default function CatatanSiswa() {
           </TabsList>
 
           <TabsContent value="prestasi"><PrestasiTab /></TabsContent>
-          {pelanggaranModuleAktif && <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>}
+          {showPelanggaranTab && <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>}
           <TabsContent value="improvement"><ImprovementTab /></TabsContent>
           <TabsContent value="uks"><UKSTab /></TabsContent>
           <TabsContent value="menstruasi"><MenstruasiTab /></TabsContent>
