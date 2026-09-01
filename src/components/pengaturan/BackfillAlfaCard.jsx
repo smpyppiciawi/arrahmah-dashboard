@@ -1,10 +1,12 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import {
   AlertDialog,
@@ -16,39 +18,85 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Loader2, CalendarX, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Loader2, CalendarX, AlertTriangle, CheckCircle, Power, Trash2, CalendarRange } from 'lucide-react';
 
-export default function BackfillAlfaCard({ tahunAjaran }) {
+function todayLocalStr() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+}
+
+export default function BackfillAlfaCard({ pengaturan }) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [result, setResult] = useState(null);
+  const queryClient = useQueryClient();
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState(todayLocalStr());
+  const [showRunConfirm, setShowRunConfirm] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [runResult, setRunResult] = useState(null);
+  const [cancelResult, setCancelResult] = useState(null);
 
   const isAdmin = ['admin', 'operator', 'tu', 'kepsek'].includes(user?.role);
+  const backfillAktif = pengaturan?.backfill_aktif !== false;
+
+  const tahunAjaran = pengaturan?.tahun_ajaran_aktif || '';
+  useEffect(() => {
+    if (!startDate) {
+      const y1 = (tahunAjaran || '').split('/')[0];
+      setStartDate(y1 ? `${y1}-07-01` : `${new Date().getFullYear()}-07-01`);
+    }
+  }, [tahunAjaran]);
+
   if (!isAdmin) return null;
 
-  const mutation = useMutation({
+  const toggleMutation = useMutation({
+    mutationFn: async (newValue) => {
+      if (pengaturan?.id) {
+        return base44.entities.PengaturanAplikasi.update(pengaturan.id, { backfill_aktif: newValue });
+      }
+      return base44.entities.PengaturanAplikasi.create({ tahun_ajaran_aktif: tahunAjaran, backfill_aktif: newValue });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pengaturan-aplikasi'] });
+      toast({ title: backfillAktif ? 'Fitur dinonaktifkan' : 'Fitur diaktifkan', description: backfillAktif ? 'Backfill & auto-pelanggaran Alfa dijeda.' : 'Backfill & auto-pelanggaran Alfa aktif kembali.' });
+    },
+    onError: (e) => toast({ title: 'Gagal', description: e?.message, variant: 'destructive' }),
+  });
+
+  const runMutation = useMutation({
     mutationFn: (payload) => base44.functions.invoke('backfillAlfa', payload),
     onSuccess: (res) => {
       const d = res?.data || res;
-      setResult(d);
-      setShowConfirm(false);
-      if (d?.status === 'nothing_to_create' || d?.status === 'no_working_days') {
-        toast({ title: 'Tidak ada yang perlu di-backfill', description: 'Semua siswa sudah memiliki catatan absensi pada hari kerja.' });
+      setRunResult(d);
+      setShowRunConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['absensi'] });
+      if (d?.status === 'no_working_days') {
+        toast({ title: 'Tidak ada hari sekolah', description: 'Tidak ada hari Senin-Jumat dalam rentang.' });
       } else {
-        toast({
-          title: 'Backfill selesai',
-          description: `${d?.absensi_created || 0} absensi Alfa & ${d?.pelanggaran_created || 0} pelanggaran otomatis dibuat.`,
-        });
+        toast({ title: 'Backfill selesai', description: `${d?.absensi_created || 0} Absensi Alfa & ${d?.pelanggaran_created || 0} pelanggaran F-02 dibuat.` });
       }
     },
     onError: (e) => {
+      setShowRunConfirm(false);
       toast({ title: 'Gagal backfill', description: e?.message || 'Terjadi kesalahan', variant: 'destructive' });
     },
   });
 
-  const y1 = (tahunAjaran || '').split('/')[0];
-  const startDate = y1 ? `${y1}-07-01` : '1 Juli tahun ajaran aktif';
+  const cancelMutation = useMutation({
+    mutationFn: () => base44.functions.invoke('cancelBackfill', {}),
+    onSuccess: (res) => {
+      const d = res?.data || res;
+      setCancelResult(d);
+      setShowCancelConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['absensi'] });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran'] });
+      toast({ title: 'Data backfill dibatalkan', description: `${d?.absensiDeleted || 0} Absensi & ${d?.pelanggaranDeleted || 0} pelanggaran dihapus.` });
+    },
+    onError: (e) => {
+      setShowCancelConfirm(false);
+      toast({ title: 'Gagal membatalkan', description: e?.message, variant: 'destructive' });
+    },
+  });
 
   return (
     <>
@@ -56,80 +104,145 @@ export default function BackfillAlfaCard({ tahunAjaran }) {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base text-red-700">
             <CalendarX className="w-5 h-5" />
-            Backfill Absensi Alfa (1 Juli – Hari Ini)
+            Backfill Absensi Alfa
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <p className="text-sm text-red-800/90">
-            Mencatat otomatis ketidakhadiran (<strong>Alfa</strong>) bagi siswa aktif yang belum memiliki catatan absensi pada
-            hari kerja (Senin–Jumat, kecuali hari libur sekolah) sejak <strong>{startDate}</strong> sampai hari ini.
-            Setiap Alfa akan otomatis memicu pelanggaran: <strong>F-02</strong> (Kehadiran) / <strong>F-05</strong> (Jumat – Salat Jumat).
-          </p>
-          <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-800">
-              Jalankan <strong>sekali</strong>. Siswa yang sudah ada catatan absensi pada hari tersebut akan dilewati. Aksi ini
-              membuat record pelanggaran otomatis untuk seluruh hari kerja yang belum terisi.
-            </p>
+        <CardContent className="space-y-4">
+          {/* Banner status + master switch */}
+          <div className="flex items-center justify-between gap-3 p-3 bg-white border border-slate-200 rounded-xl">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-2.5 h-2.5 rounded-full ${backfillAktif ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-800 flex items-center gap-1.5">
+                  <Power className="w-3.5 h-3.5" /> Fitur Backfill {backfillAktif ? 'Aktif' : 'Dinonaktifkan'}
+                </p>
+                <p className="text-xs text-slate-500 truncate">
+                  {backfillAktif ? 'Backfill & auto-pelanggaran Alfa aktif.' : 'Dijeda — tidak ada pelanggaran otomatis dari Alfa.'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-medium text-slate-500">{backfillAktif ? 'ON' : 'OFF'}</span>
+              <Switch checked={backfillAktif} onCheckedChange={(v) => toggleMutation.mutate(v)} disabled={toggleMutation.isPending} />
+            </div>
           </div>
-          <Button
-            className="bg-red-600 hover:bg-red-700 gap-2 w-full sm:w-auto"
-            onClick={() => { setResult(null); setShowConfirm(true); }}
-            disabled={mutation.isPending}
-          >
-            {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarX className="w-4 h-4" />}
-            Jalankan Backfill Alfa
-          </Button>
 
-          {result && result.status === 'success' && (
-            <div className="mt-2 p-4 bg-white border border-emerald-200 rounded-xl space-y-2">
+          <p className="text-sm text-red-800/90">
+            Mencatat otomatis ketidakhadiran (<strong>Alfa</strong>) bagi siswa yang belum memiliki catatan absensi pada
+            hari sekolah (Senin–Jumat, kecuali hari libur Kalender Pendidikan). <strong>Hanya kelas yang absensinya sudah diisi petugas</strong> yang diproses —
+            kelas yang belum diabsen sama sekali dilewati agar tidak terjadi Alfa massal. Setiap Alfa otomatis membuat pelanggaran <strong>F-02</strong> (20 poin).
+          </p>
+
+          {/* Rentang tanggal */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><CalendarRange className="w-3 h-3" /> Tanggal Mulai</Label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-9" disabled={!backfillAktif} />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-500 mb-1 flex items-center gap-1"><CalendarRange className="w-3 h-3" /> Tanggal Selesai</Label>
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} max={todayLocalStr()} className="h-9" disabled={!backfillAktif} />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button
+              className="bg-red-600 hover:bg-red-700 gap-2 flex-1"
+              onClick={() => { setRunResult(null); setShowRunConfirm(true); }}
+              disabled={runMutation.isPending || !backfillAktif || !startDate || !endDate || startDate > endDate}
+            >
+              {runMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarX className="w-4 h-4" />}
+              Jalankan Backfill
+            </Button>
+            <Button
+              variant="outline"
+              className="border-red-300 text-red-700 hover:bg-red-50 gap-2 flex-1"
+              onClick={() => { setCancelResult(null); setShowCancelConfirm(true); }}
+              disabled={cancelMutation.isPending}
+            >
+              {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Cancel Data Backfill
+            </Button>
+          </div>
+
+          {runResult && runResult.status === 'success' && (
+            <div className="p-4 bg-white border border-emerald-200 rounded-xl space-y-2">
               <div className="flex items-center gap-2 text-emerald-700 font-medium text-sm">
-                <CheckCircle className="w-4 h-4" /> Backfill berhasil dijalankan
+                <CheckCircle className="w-4 h-4" /> Backfill berhasil
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                <Info label="Hari kerja diproses" value={result.working_days} />
-                <Info label="Siswa aktif" value={result.siswa_aktif} />
-                <Info label="Absensi Alfa dibuat" value={result.absensi_created} highlight />
-                <Info label="Pelanggaran dibuat" value={result.pelanggaran_created} highlight />
-                <Info label="Dilewati (sudah ada record)" value={result.siswa_skipped_existing} />
-                <Info label="Pelanggaran dedup" value={result.pelanggaran_dedup_skipped || 0} />
+                <Info label="Hari sekolah" value={runResult.working_days} />
+                <Info label="Kelas diproses" value={runResult.classes_processed} />
+                <Info label="Kelas dilewati" value={runResult.classes_skipped} />
+                <Info label="Absensi Alfa dibuat" value={runResult.absensi_created} highlight />
+                <Info label="Pelanggaran F-02" value={runResult.pelanggaran_created} highlight />
+                <Info label="Siswa aktif" value={runResult.siswa_aktif} />
               </div>
-              <p className="text-[11px] text-slate-400">
-                Periode: {result.start_date} s/d {result.today} · Tahun ajaran {result.tahun_ajaran || '-'}
-              </p>
+              <p className="text-[11px] text-slate-400">Periode: {runResult.start_date} s/d {runResult.end_date} · {runResult.tahun_ajaran || '-'}</p>
             </div>
           )}
-          {result && (result.status === 'nothing_to_create' || result.status === 'no_working_days') && (
-            <div className="mt-2 p-4 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 text-emerald-500" />
-              Tidak ada absensi Alfa yang perlu dibuat — semua siswa sudah memiliki catatan pada hari kerja dalam periode tersebut.
+          {runResult && runResult.status === 'no_working_days' && (
+            <div className="p-4 bg-white border border-slate-200 rounded-xl text-sm text-slate-600 flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 text-emerald-500" /> Tidak ada hari sekolah dalam rentang tersebut.
+            </div>
+          )}
+
+          {cancelResult && (
+            <div className="p-4 bg-white border border-amber-200 rounded-xl space-y-1.5">
+              <div className="flex items-center gap-2 text-amber-700 font-medium text-sm">
+                <CheckCircle className="w-4 h-4" /> Data backfill dibatalkan
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Info label="Absensi dihapus" value={cancelResult.absensiDeleted} highlight />
+                <Info label="Pelanggaran dihapus" value={cancelResult.pelanggaranDeleted} highlight />
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+      {/* Confirm Run */}
+      <AlertDialog open={showRunConfirm} onOpenChange={setShowRunConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5 text-red-500" /> Konfirmasi Backfill Alfa
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Sistem akan membuat record absensi <strong>Alfa</strong> untuk setiap siswa aktif yang belum memiliki catatan
-              absensi pada hari kerja (Senin–Jumat, kecuali libur) dari <strong>{startDate}</strong> hingga hari ini.
+              Sistem akan mencatat <strong>Alfa</strong> untuk siswa yang belum memiliki catatan absensi pada hari sekolah
+              (Senin–Jumat, kecuali libur Kalender Pendidikan) dalam rentang <strong>{startDate}</strong> s/d <strong>{endDate}</strong>.
               <br /><br />
-              Setiap Alfa otomatis membuat pelanggaran <strong>F-02</strong> (Kehadiran, 20 poin) atau <strong>F-05</strong>
-              (Jumat, 10 poin) dengan pelapor <strong>Admin/Sistem</strong>. Aksi ini sebaiknya dijalankan satu kali.
+              Hanya kelas yang absensinya <strong>sudah diisi petugas</strong> yang diproses. Setiap Alfa otomatis membuat pelanggaran <strong>F-02</strong> (20 poin, pelapor Sistem-Backfill).
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
-              onClick={() => mutation.mutate({})}
-            >
-              {mutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => runMutation.mutate({ start_date: startDate, end_date: endDate })}>
+              {runMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Ya, Jalankan Backfill
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm Cancel */}
+      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-red-500" /> Cancel Semua Data Backfill
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini akan <strong>menghapus seluruh data hasil backfill</strong> tanpa memandang tanggal:
+              semua Absensi ber-keterangan "Backfill otomatis" dan semua PelanggaranImprovement buatan backfill (pelapor Sistem-Backfill/Admin-Sistem) akan dihapus permanen.
+              Data absensi & pelanggaran yang diinput petugas manual tidak ikut terhapus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700" onClick={() => cancelMutation.mutate()}>
+              {cancelMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Ya, Hapus Semua Data Backfill
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

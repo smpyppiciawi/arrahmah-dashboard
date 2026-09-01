@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, AlertTriangle, CheckCircle, UserX, Moon } from "lucide-react";
+import { Users, AlertTriangle, CheckCircle, UserX, Moon, RefreshCw } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 function getNextFriday() {
   const d = new Date();
@@ -25,6 +26,7 @@ export default function AbsensiJumat() {
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupKelas, setPopupKelas] = useState('');
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
   const { data: siswaList = [] } = useQuery({
@@ -52,6 +54,7 @@ export default function AbsensiJumat() {
   const anomalyIds = jumatAlfaIds.filter(id => hadirSekolahIds.includes(id));
   const anomalyStudents = allJumatAbsensi.filter(a => anomalyIds.includes(a.siswa_id));
   const jumatTidakHadir = allJumatAbsensi.filter(a => a.status === 'Alfa');
+  const kehadiranAlfaIds = kehadiranAbsensi.filter(a => a.status === 'Alfa').map(a => a.siswa_id);
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Absensi.create(data),
@@ -63,6 +66,21 @@ export default function AbsensiJumat() {
   });
 
   const getJumatRecord = (siswaId) => existingJumat.find(a => a.siswa_id === siswaId);
+
+  // Integrasi: siswa Alfa di kehadiran sekolah (Jumat) -> tidak hadir Jumat/Keputrian.
+  const syncFromKehadiran = async () => {
+    const kelas = kelasList.find(k => k.id === popupKelas);
+    const alfaSiswa = siswaList.filter(s => kehadiranAlfaIds.includes(s.id) && !getJumatRecord(s.id));
+    if (alfaSiswa.length === 0) { toast({ title: 'Tidak ada siswa Alfa untuk disinkronkan' }); return; }
+    for (const s of alfaSiswa) {
+      await createMutation.mutateAsync({
+        tanggal: selectedDate, siswa_id: s.id, nis: s.nis, nama_siswa: s.nama,
+        kelas_id: popupKelas, nama_kelas: kelas?.nama_kelas || '', status: 'Alfa', jenis_absensi: 'Jumat',
+        keterangan: 'Alfa di kehadiran sekolah',
+      });
+    }
+    toast({ title: 'Sinkron selesai', description: `${alfaSiswa.length} siswa Alfa ditandai tidak hadir Jumat.` });
+  };
 
   const handleToggle = async (siswa) => {
     const existing = getJumatRecord(siswa.id);
@@ -135,6 +153,11 @@ export default function AbsensiJumat() {
           <div className="mb-4">
             <Label className="text-xs">Pilih Kelas</Label>
             <Select value={popupKelas} onValueChange={setPopupKelas}><SelectTrigger><SelectValue placeholder="Pilih kelas..." /></SelectTrigger><SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent></Select>
+            {popupKelas && kehadiranAlfaIds.length > 0 && (
+              <Button size="sm" variant="outline" className="mt-2 gap-2 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={syncFromKehadiran} disabled={createMutation.isPending}>
+                <RefreshCw className="w-3.5 h-3.5" /> Sinkron dari Absensi Siswa ({kehadiranAlfaIds.length} Alfa)
+              </Button>
+            )}
           </div>
 
           {popupKelas && siswaList.length > 0 ? (
@@ -143,12 +166,13 @@ export default function AbsensiJumat() {
                 <div className="flex items-center gap-2 mb-2 p-2 bg-blue-50 rounded-lg"><span className="text-sm font-semibold text-blue-700">Absen Jumatan</span><Badge className="bg-blue-100 text-blue-700 text-xs">{maleStudents.length} siswa</Badge></div>
                 <div className="space-y-1 max-h-96 overflow-y-auto">
                   {maleStudents.map(siswa => {
-                    const isTidakHadir = !!getJumatRecord(siswa.id);
+                    const isAlfaKehadiran = kehadiranAlfaIds.includes(siswa.id);
+                    const isTidakHadir = !!getJumatRecord(siswa.id) || isAlfaKehadiran;
                     return (
                       <label key={siswa.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} className="w-4 h-4 rounded" />
+                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran} className="w-4 h-4 rounded" />
                         <span className={`text-sm ${isTidakHadir ? 'text-red-500 line-through' : 'text-slate-700'}`}>{siswa.nama}</span>
-                        {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">Tidak Hadir</Badge>}
+                        {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">{isAlfaKehadiran ? 'Alfa (Kehadiran)' : 'Tidak Hadir'}</Badge>}
                       </label>
                     );
                   })}
@@ -158,12 +182,13 @@ export default function AbsensiJumat() {
                 <div className="flex items-center gap-2 mb-2 p-2 bg-pink-50 rounded-lg"><span className="text-sm font-semibold text-pink-700">Absen Keputrian</span><Badge className="bg-pink-100 text-pink-700 text-xs">{femaleStudents.length} siswa</Badge></div>
                 <div className="space-y-1 max-h-96 overflow-y-auto">
                   {femaleStudents.map(siswa => {
-                    const isTidakHadir = !!getJumatRecord(siswa.id);
+                    const isAlfaKehadiran = kehadiranAlfaIds.includes(siswa.id);
+                    const isTidakHadir = !!getJumatRecord(siswa.id) || isAlfaKehadiran;
                     return (
                       <label key={siswa.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} className="w-4 h-4 rounded" />
+                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran} className="w-4 h-4 rounded" />
                         <span className={`text-sm ${isTidakHadir ? 'text-red-500 line-through' : 'text-slate-700'}`}>{siswa.nama}</span>
-                        {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">Tidak Hadir</Badge>}
+                        {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">{isAlfaKehadiran ? 'Alfa (Kehadiran)' : 'Tidak Hadir'}</Badge>}
                       </label>
                     );
                   })}

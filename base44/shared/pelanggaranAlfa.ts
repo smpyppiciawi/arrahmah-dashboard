@@ -1,11 +1,14 @@
 // Shared logic: buat / batalkan PelanggaranImprovement otomatis dari Absensi berstatus Alfa.
-// Dipakai oleh backend function "autoPelanggaranAlfa" (workflow trigger) dan "backfillAlfa" (backfill massal).
+// Dipakai oleh backend function "autoPelanggaranAlfa" (workflow trigger), "backfillAlfa" (backfill massal), dan "cancelBackfill".
 
 export const SISTEM_PELAPOR_ID = "Admin/Sistem";
 export const SISTEM_PELAPOR_NAMA = "Admin/Sistem";
+export const SISTEM_BACKFILL_ID = "Sistem-Backfill";
+export const SISTEM_BACKFILL_NAMA = "Sistem-Backfill";
+export const BACKFILL_KETERANGAN = "Backfill otomatis";
 
 export const KODE_KEHADIRAN = "F-02"; // Tidak hadir sekolah tanpa keterangan (Alpha)
-export const KODE_JUMAT = "F-05";    // Meninggalkan kegiatan nonakademis wajib tanpa izin
+export const KODE_JUMAT = "F-05";     // Meninggalkan kegiatan nonakademis wajib tanpa izin
 export const RINCIAN_JUMAT = "Tidak Mengikuti Salat Jumat di sekolah";
 
 export function kodeByJenis(jenisAbsensi) {
@@ -17,6 +20,12 @@ export async function getTahunAjaranAktif(base44) {
   return settings?.[0]?.tahun_ajaran_aktif || "";
 }
 
+// Master switch: true jika fitur backfill & auto-pelanggaran Alfa aktif (default true jika belum diatur).
+export async function getBackfillAktif(base44) {
+  const settings = await base44.asServiceRole.entities.PengaturanAplikasi.list("-updated_date", 1);
+  return settings?.[0]?.backfill_aktif !== false;
+}
+
 export async function getKodeData(base44, kode) {
   const list = await base44.asServiceRole.entities.KodePelanggaranImprovement.filter({ kode });
   if (!list || list.length === 0) return null;
@@ -24,7 +33,7 @@ export async function getKodeData(base44, kode) {
 }
 
 // Susun object record PelanggaranImprovement (tanpa IO) dari data absensi + data kode.
-export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran) {
+export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran, pelaporId = SISTEM_PELAPOR_ID, pelaporNama = SISTEM_PELAPOR_NAMA) {
   const { siswa_id, nis, nama_siswa, kelas_id, nama_kelas, tanggal, jenis_absensi } = absensi;
   const rincian = jenis_absensi === "Jumat" ? RINCIAN_JUMAT : (kodeData.rincian || "");
   return {
@@ -43,14 +52,14 @@ export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran) {
     poin_min: kodeData.poin_min || 0,
     poin_max: kodeData.poin_max || 0,
     poin: kodeData.poin_min || 0,
-    pelapor_id: SISTEM_PELAPOR_ID,
-    pelapor_nama: SISTEM_PELAPOR_NAMA,
+    pelapor_id: pelaporId,
+    pelapor_nama: pelaporNama,
     tahun_ajaran: tahunAjaran,
     status: "Proses",
   };
 }
 
-// Buat PelanggaranImprovement dari sebuah Absensi Alfa.
+// Buat PelanggaranImprovement dari sebuah Absensi Alfa (dipanggil workflow).
 // Dedup: jika sudah ada record sistem berstatus Proses untuk siswa+tanggal+kode, lewati.
 export async function createPelanggaranFromAlfa(base44, absensi) {
   const { siswa_id, tanggal, jenis_absensi } = absensi;
@@ -61,10 +70,7 @@ export async function createPelanggaranFromAlfa(base44, absensi) {
   if (!kodeData) return { skipped: true, reason: "kode_not_found" };
 
   const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
-    siswa_id,
-    tanggal,
-    kode,
-    pelapor_nama: SISTEM_PELAPOR_NAMA,
+    siswa_id, tanggal, kode, pelapor_nama: SISTEM_PELAPOR_NAMA,
   });
   const activeExisting = (existing || []).find((p) => p.status !== "Dibatalkan");
   if (activeExisting) return { skipped: true, reason: "duplicate" };
@@ -80,10 +86,7 @@ export async function cancelPelanggaranFromAlfa(base44, absensi) {
   if (!siswa_id || !tanggal) return { cancelled: 0 };
   const kode = kodeByJenis(jenis_absensi);
   const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
-    siswa_id,
-    tanggal,
-    kode,
-    pelapor_nama: SISTEM_PELAPOR_NAMA,
+    siswa_id, tanggal, kode, pelapor_nama: SISTEM_PELAPOR_NAMA,
   });
   const activeIds = (existing || []).filter((p) => p.status !== "Dibatalkan").map((p) => p.id);
   if (activeIds.length === 0) return { cancelled: 0 };

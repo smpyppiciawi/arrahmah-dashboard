@@ -18,6 +18,11 @@
       "type": "boolean",
       "default": true,
       "description": "Tampilkan status kehadiran petugas piket di Dashboard (diatur Admin/TU)"
+    },
+    "backfill_aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "Master switch fitur Backfill Alfa & auto-pelanggaran Alfa. False = tombol Backfill dinonaktifkan DAN workflow 'Pelanggaran Otomatis Alfa' dijeda (tidak ada pelanggaran otomatis dari status Alfa sama sekali)."
     }
   },
   "required": [

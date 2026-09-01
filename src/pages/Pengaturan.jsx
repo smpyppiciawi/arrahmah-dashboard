@@ -266,7 +266,7 @@ export default function Pengaturan() {
             </CardContent>
           </Card>
 
-          <BackfillAlfaCard tahunAjaran={pengaturan?.tahun_ajaran_aktif} />
+          <BackfillAlfaCard pengaturan={pengaturan} />
 
           {/* Daftar Tahun Ajaran */}
           {tahunAjaranList.length > 0 && (
