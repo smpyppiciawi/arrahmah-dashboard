@@ -13,8 +13,12 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useToast } from "@/components/ui/use-toast";
 import { Search, AlertTriangle, Lock, Info } from "lucide-react";
 import { recomputeRaporForSiswa, isPendingPoin } from '@/lib/raporStatus';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
-export default function PelanggaranImprovementFormDialog({ open, onOpenChange, siswaList, kelasList, guruList, currentUser, kodePelanggaranList, editing, tahunAjaran, prefillSiswa }) {
+const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const getHariFromTanggal = (tgl) => { try { return HARI_ID[new Date(tgl + 'T00:00:00').getDay()]; } catch { return ''; } };
+
+export default function PelanggaranImprovementFormDialog({ open, onOpenChange, siswaList, kelasList, guruList, currentUser, kodePelanggaranList, editing, tahunAjaran, prefillSiswa, jadwalPiketList, pelanggaranImprovementExisting }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -31,8 +35,24 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const [filterKelas, setFilterKelas] = useState('');
   // Rincian acuan otomatis dari DB (ditampilkan sebagai placeholder, bukan nilai)
   const [rincianHint, setRincianHint] = useState('');
+  const [showDupConfirm, setShowDupConfirm] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   const isGuru = currentUser?.role === 'guru';
+
+  // Pencatat = Petugas Piket hari ini (dari Jadwal Piket)
+  const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
+  const hariForm = getHariFromTanggal(formData.tanggal);
+  const piketHari = useMemo(() => (jadwalPiketList || []).find(j => j.hari === hariForm && j.aktif !== false), [jadwalPiketList, hariForm]);
+  const piketOptions = useMemo(() => piketHari?.petugas || [], [piketHari]);
+
+  // Default pencatat otomatis ke user login bila dia termasuk petugas piket hari itu
+  useEffect(() => {
+    if (!open || editing || !piketOptions.length) return;
+    if (formData.pelapor_id && piketOptions.some(p => p.guru_id === formData.pelapor_id)) return;
+    const match = piketOptions.find(p => p.guru_id === myGuru?.id) || piketOptions.find(p => p.nama_pegawai === currentUser?.full_name);
+    if (match) setFormData(f => ({ ...f, pelapor_id: match.guru_id, pelapor_nama: match.nama_pegawai }));
+  }, [open, editing, piketOptions, myGuru, currentUser]);
 
   useEffect(() => {
     if (!open) return;
@@ -47,7 +67,6 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
         pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses'
       };
-      if (currentUser) { f.pelapor_id = currentUser.id; f.pelapor_nama = currentUser.full_name; }
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setRincianHint('');
       setFormData(f);
@@ -56,8 +75,8 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.PelanggaranImprovement.create(data),
-    onSuccess: async (_d, vars) => {
-      if (vars?.siswa_id) { try { await recomputeRaporForSiswa(vars.siswa_id); } catch {} }
+    onSuccess: (_d, vars) => {
+      if (vars?.siswa_id) { recomputeRaporForSiswa(vars.siswa_id).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       handleClose();
@@ -65,9 +84,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.PelanggaranImprovement.update(id, data),
-    onSuccess: async (_d, vars) => {
+    onSuccess: (_d, vars) => {
       const sid = vars?.data?.siswa_id || vars?.id;
-      if (sid) { try { await recomputeRaporForSiswa(sid); } catch {} }
+      if (sid) { recomputeRaporForSiswa(sid).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       handleClose();
@@ -129,24 +148,52 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     setFormData({ ...formData, poin: p });
   };
 
-  const handlePelaporChange = (guruId) => {
-    const g = guruList.find(x => x.id === guruId);
+  const handlePencatatChange = (gid) => {
+    const p = piketOptions.find(x => x.guru_id === gid);
+    if (p) { setFormData({ ...formData, pelapor_id: p.guru_id, pelapor_nama: p.nama_pegawai }); return; }
+    const g = guruList.find(x => x.id === gid);
     if (g) setFormData({ ...formData, pelapor_id: g.id, pelapor_nama: g.nama });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
-    if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
-    if (!formData.pelapor_id) { toast({ title: "Pilih pelapor", variant: "destructive" }); return; }
-    // Poin >= 100 otomatis berstatus Pending (belum terakumulasi sebelum approval)
+  const buildPayload = () => {
     const finalStatus = isPendingPoin(formData.poin) ? 'Pending' : (formData.status || 'Proses');
-    const payload = { ...formData, status: finalStatus, rincian: formData.rincian?.trim() ? formData.rincian : rincianHint };
+    return { ...formData, status: finalStatus, rincian: formData.rincian?.trim() ? formData.rincian : rincianHint };
+  };
+
+  const isDuplicate = () => {
+    if (editing) return false;
+    const uraian = (formData.uraian_pelanggaran || '').trim();
+    return (pelanggaranImprovementExisting || []).some(r =>
+      r.tanggal === formData.tanggal &&
+      r.siswa_id === formData.siswa_id &&
+      r.kelas_id === formData.kelas_id &&
+      r.kode === formData.kode &&
+      (r.uraian_pelanggaran || '').trim() === uraian
+    );
+  };
+
+  const doCreate = (payload) => {
     if (isPendingPoin(formData.poin)) {
       toast({ title: "Pelanggaran berstatus Pending", description: "Poin ≥ 100 menunggu Approval sebelum terakumulasi." });
     }
-    if (editing) updateMutation.mutate({ id: editing.id, data: payload });
-    else createMutation.mutate(payload);
+    createMutation.mutate(payload);
+  };
+
+  const handleSubmit = (e) => {
+    e?.preventDefault();
+    if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
+    if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
+    if (!formData.pelapor_id) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
+    const payload = buildPayload();
+    if (editing) { updateMutation.mutate({ id: editing.id, data: payload }); return; }
+    if (isDuplicate()) { setPendingPayload(payload); setShowDupConfirm(true); return; }
+    doCreate(payload);
+  };
+
+  const handleDupConfirm = () => {
+    setShowDupConfirm(false);
+    if (pendingPayload) doCreate(pendingPayload);
+    setPendingPayload(null);
   };
 
   return (
@@ -160,7 +207,24 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <Label>Tanggal</Label>
-            <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
+            <Input
+              type="date"
+              value={formData.tanggal}
+              onChange={(e) => {
+                const newTanggal = e.target.value;
+                const newHari = getHariFromTanggal(newTanggal);
+                const newPiket = (jadwalPiketList || []).find(j => j.hari === newHari && j.aktif !== false)?.petugas || [];
+                setFormData(f => {
+                  if (newPiket.length && !newPiket.some(p => p.guru_id === f.pelapor_id)) {
+                    const match = newPiket.find(p => p.guru_id === myGuru?.id) || newPiket.find(p => p.nama_pegawai === currentUser?.full_name);
+                    return { ...f, tanggal: newTanggal, pelapor_id: match?.guru_id || '', pelapor_nama: match?.nama_pegawai || '' };
+                  }
+                  return { ...f, tanggal: newTanggal };
+                });
+              }}
+              required
+            />
+            {hariForm && <p className="text-xs text-slate-500 mt-1">Hari: {hariForm}</p>}
           </div>
 
           {/* Filter Kelas (opsional) */}
@@ -302,19 +366,22 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
             </div>
           )}
 
-          {/* Pelapor */}
+          {/* Pencatat (Petugas Piket hari itu) */}
           <div>
-            <Label>Pelapor (Guru/Pegawai)</Label>
-            {isGuru && currentUser ? (
+            <Label>Pencatat {piketOptions.length > 0 ? <span className="text-xs text-slate-400">(Petugas Piket {hariForm})</span> : <span className="text-xs text-amber-600">(Belum ada Jadwal Piket)</span>}</Label>
+            {isGuru && currentUser && piketOptions.length > 0 && piketOptions.some(p => p.guru_id === myGuru?.id) ? (
               <Input value={currentUser.full_name} readOnly className="bg-slate-100" />
             ) : (
-              <Select value={formData.pelapor_id} onValueChange={handlePelaporChange}>
-                <SelectTrigger><SelectValue placeholder="Pilih Guru/Pegawai Pelapor" /></SelectTrigger>
+              <Select value={formData.pelapor_id} onValueChange={handlePencatatChange}>
+                <SelectTrigger><SelectValue placeholder={piketOptions.length ? "Pilih Pencatat (Petugas Piket)" : "Pilih Guru/Pegawai"} /></SelectTrigger>
                 <SelectContent>
-                  {guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama} — {g.jabatan || 'Guru'}</SelectItem>)}
+                  {piketOptions.length > 0
+                    ? piketOptions.map(p => <SelectItem key={p.guru_id} value={p.guru_id}>{p.nama_pegawai}{p.nip ? ` — ${p.nip}` : ''}</SelectItem>)
+                    : guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama} — {g.jabatan || 'Guru'}</SelectItem>)}
                 </SelectContent>
               </Select>
             )}
+            {piketOptions.length === 0 && <p className="text-xs text-amber-600 mt-1">Belum ada Jadwal Piket untuk hari {hariForm || 'ini'}. Menggunakan daftar Guru/Pegawai.</p>}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -322,6 +389,21 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
             <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">{editing ? 'Simpan' : 'Tambah Pelanggaran'}</Button>
           </div>
         </form>
+
+        <AlertDialog open={showDupConfirm} onOpenChange={setShowDupConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Data Serupa Sudah Ada</AlertDialogTitle>
+              <AlertDialogDescription>
+                Terdeteksi data pelanggaran dengan Tanggal, Siswa, Kelas, Kode, dan Uraian yang sama sudah tercatat sebelumnya. Apakah benar data ini tetap akan diinputkan?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => { setShowDupConfirm(false); setPendingPayload(null); }}>Tidak</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDupConfirm} className="bg-red-600 hover:bg-red-700">Ya, tetap input</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

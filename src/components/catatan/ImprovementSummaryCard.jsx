@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search, Ban } from "lucide-react";
+import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search, Ban, AlertTriangle } from "lucide-react";
 import { getMingguKey } from '@/lib/dapodikConstants';
 import { recomputeRaporStatus, anulirRaporStatus, getRaporStatus, RAPOR_CARD_CLASS, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 
-export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onAturLimit, canAnulir }) {
+export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onTambahPelanggaran, onAturLimit, canAnulir }) {
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
   const [selectedSiswaId, setSelectedSiswaId] = useState(null);
@@ -137,11 +137,18 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
 
         {stats ? (
           <>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
               <StatTile icon={Minus} label="Poin Pelanggaran" value={stats.poinPelanggaran} color="text-red-600 bg-red-50" />
               <StatTile icon={TrendingDown} label="Total Pengurangan" value={stats.poinImprovement} color="text-emerald-600 bg-emerald-50" />
               <StatTile icon={Scale} label="Poin Bersih" value={stats.poinBersih} color={stats.poinBersih > 0 ? "text-amber-600 bg-amber-50" : "text-slate-600 bg-slate-100"} />
               <StatTile icon={CalendarClock} label="Sisa Limit Minggu Ini" value={`${stats.limitMingguan - stats.usedMingguan}/${stats.limitMingguan}`} color="text-blue-600 bg-blue-50" />
+              <button
+                onClick={() => onTambahPelanggaran(selectedSiswa)}
+                className="rounded-xl p-3 bg-red-600 text-white hover:bg-red-700 transition-all flex flex-col items-center justify-center gap-1 group"
+              >
+                <AlertTriangle className="w-5 h-5" />
+                <span className="text-xs font-medium">Tambah Pelanggaran</span>
+              </button>
               <button
                 onClick={() => onTambahImprovement(selectedSiswa)}
                 className="rounded-xl p-3 bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex flex-col items-center justify-center gap-1 group"

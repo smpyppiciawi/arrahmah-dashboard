@@ -8,9 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock } from "lucide-react";
-import { DataTable } from "@/components/ui/data-table";
 import { useToast } from "@/components/ui/use-toast";
-import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import CatatanCompactTable from "./CatatanCompactTable";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import ImprovementFormDialog from "./ImprovementFormDialog";
@@ -74,6 +73,7 @@ export default function ImprovementTab() {
   const { data: kodePelanggaranList = [] } = useQuery({ queryKey: ['kode-pelanggaran-improvement'], queryFn: () => base44.entities.KodePelanggaranImprovement.list('kode') });
   const { data: kegiatanList = [] } = useQuery({ queryKey: ['kegiatan-pembinaan'], queryFn: () => base44.entities.KegiatanPembinaan.list('no') });
   const { data: pengaturan } = useQuery({ queryKey: ['pengaturan-improvement'], queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; } });
+  const { data: jadwalPiketList = [] } = useQuery({ queryKey: ['jadwal-piket'], queryFn: () => base44.entities.JadwalPiket.list('hari') });
 
   // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
   const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
@@ -97,11 +97,25 @@ export default function ImprovementTab() {
 
   const deleteImprovementMutation = useMutation({
     mutationFn: (id) => base44.entities.Improvement.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['improvement'] }); toast({ title: "Record improvement dihapus" }); setDeleteTarget(null); setDeleteType(null); }
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['improvement'] });
+      const prev = queryClient.getQueryData(['improvement']);
+      queryClient.setQueryData(['improvement'], (old) => (old || []).filter(x => x.id !== id));
+      return { prev };
+    },
+    onSuccess: () => { toast({ title: "Record improvement dihapus" }); setDeleteTarget(null); setDeleteType(null); queryClient.invalidateQueries({ queryKey: ['improvement'] }); },
+    onError: (_e, _id, ctx) => { if (ctx?.prev) queryClient.setQueryData(['improvement'], ctx.prev); toast({ title: "Gagal menghapus", variant: "destructive" }); }
   });
   const deletePelanggaranMutation = useMutation({
     mutationFn: (id) => base44.entities.PelanggaranImprovement.delete(id),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] }); toast({ title: "Record pelanggaran dihapus" }); setDeleteTarget(null); setDeleteType(null); }
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['pelanggaran-improvement'] });
+      const prev = queryClient.getQueryData(['pelanggaran-improvement']);
+      queryClient.setQueryData(['pelanggaran-improvement'], (old) => (old || []).filter(x => x.id !== id));
+      return { prev };
+    },
+    onSuccess: () => { toast({ title: "Record pelanggaran dihapus" }); setDeleteTarget(null); setDeleteType(null); queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] }); },
+    onError: (_e, _id, ctx) => { if (ctx?.prev) queryClient.setQueryData(['pelanggaran-improvement'], ctx.prev); toast({ title: "Gagal menghapus", variant: "destructive" }); }
   });
 
   const handleDelete = () => {
@@ -117,39 +131,57 @@ export default function ImprovementTab() {
   };
 
   const handleEditImprovement = (row) => { setEditingImprovement(row); setPrefillSiswa(null); setImprovementOpen(true); };
-  const handleTambahPelanggaran = () => { setEditingPelanggaran(null); setPelanggaranOpen(true); };
+  const handleTambahPelanggaran = (siswa = null) => { setEditingPelanggaran(null); setPrefillSiswa(siswa); setPelanggaranOpen(true); };
   const handleEditPelanggaran = (row) => { setEditingPelanggaran(row); setPelanggaranOpen(true); };
 
+  const improvementSearchKeys = ['tanggal','nama_siswa','nis','nama_kelas','kegiatan_pembinaan_nama','uraian','poin_pengurangan','validator_nama','status'];
   const improvementColumns = [
-    { key: 'tanggal', label: 'Tanggal' },
-    { key: 'nama_siswa', label: 'Siswa', filterAccessor: (r) => `${r.nama_siswa} ${r.nis || ''}` },
-    { key: 'nama_kelas', label: 'Kelas', render: (r) => <Badge variant="secondary" className="bg-blue-100 text-blue-700">{r.nama_kelas}</Badge> },
-    { key: 'kegiatan_pembinaan_nama', label: 'Kegiatan Pembinaan', render: (r) => <span className="max-w-xs truncate block">{r.kegiatan_pembinaan_nama || r.uraian}</span> },
-    { key: 'poin_pengurangan', label: 'Poin', render: (r) => <Badge className="bg-emerald-100 text-emerald-700">−{r.poin_pengurangan} poin</Badge> },
-    { key: 'minggu_key', label: 'Minggu' },
-    { key: 'validator_nama', label: 'Validator' },
-    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}>{r.status}</Badge> },
-    { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
-      <div className="flex gap-2">
+    { key: 'tanggal', label: 'Tanggal', className: 'whitespace-nowrap text-slate-600', headClassName: 'w-28' },
+    { key: 'nama_siswa', label: 'Siswa', headClassName: 'w-44', render: (r) => (
+      <div className="min-w-0">
+        <div className="font-medium text-slate-800 truncate">{r.nama_siswa}</div>
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 mt-0.5">{r.nama_kelas}</Badge>
+      </div>
+    ) },
+    { key: 'kegiatan_pembinaan_nama', label: 'Kegiatan / Uraian', headClassName: 'w-56', render: (r) => (
+      <div className="min-w-0">
+        <div className="font-medium text-slate-700 truncate">{r.kegiatan_pembinaan_nama || r.uraian}</div>
+        {r.uraian && r.kegiatan_pembinaan_nama && <p className="text-xs text-slate-500 truncate">{r.uraian}</p>}
+      </div>
+    ) },
+    { key: 'poin_pengurangan', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-emerald-100 text-emerald-700">−{r.poin_pengurangan} poin</Badge> },
+    { key: 'validator_nama', label: 'Validator', headClassName: 'w-36', className: 'text-slate-600 truncate' },
+    { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}>{r.status}</Badge> },
+    { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
+      <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => handleEditImprovement(r)}><Edit2 className="w-4 h-4" /></Button>
         {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('improvement'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
     ) }
   ];
 
+  const pelanggaranSearchKeys = ['tanggal','nama_siswa','nis','nama_kelas','kode','kategori_utama','uraian_pelanggaran','tindak_lanjut','pelapor_nama','status'];
   const pelanggaranColumns = [
-    { key: 'tanggal', label: 'Tanggal' },
-    { key: 'nama_siswa', label: 'Siswa', filterAccessor: (r) => `${r.nama_siswa} ${r.nis || ''}` },
-    { key: 'nama_kelas', label: 'Kelas', render: (r) => <Badge variant="secondary" className="bg-blue-100 text-blue-700">{r.nama_kelas}</Badge> },
-    { key: 'kode', label: 'Kode', render: (r) => <Badge className="bg-slate-700 text-white font-mono text-xs">{r.kode}</Badge> },
-    { key: 'kategori_utama', label: 'Kategori', render: (r) => <Badge className={KATEGORI_COLOR[r.kategori_utama] || KATEGORI_COLOR.Lainnya}>{r.kategori_utama}</Badge> },
-    { key: 'uraian_pelanggaran', label: 'Uraian', render: (r) => <span className="max-w-xs truncate block">{r.uraian_pelanggaran}</span> },
-    { key: 'tindak_lanjut', label: 'Tindak Lanjut', render: (r) => <Badge variant="outline" className="text-xs">{r.tindak_lanjut}</Badge> },
-    { key: 'poin', label: 'Poin', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
-    { key: 'pelapor_nama', label: 'Pelapor' },
-    { key: 'status', label: 'Status', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
-    { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (r) => (
-      <div className="flex gap-2">
+    { key: 'tanggal', label: 'Tanggal', className: 'whitespace-nowrap text-slate-600', headClassName: 'w-28' },
+    { key: 'nama_siswa', label: 'Siswa', headClassName: 'w-44', render: (r) => (
+      <div className="min-w-0">
+        <div className="font-medium text-slate-800 truncate">{r.nama_siswa}</div>
+        <Badge variant="secondary" className="bg-blue-100 text-blue-700 mt-0.5">{r.nama_kelas}</Badge>
+      </div>
+    ) },
+    { key: 'kode', label: 'Pelanggaran', headClassName: 'w-64', render: (r) => (
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <Badge className="bg-slate-700 text-white font-mono text-xs">{r.kode}</Badge>
+          <Badge className={`${KATEGORI_COLOR[r.kategori_utama] || KATEGORI_COLOR.Lainnya} text-xs`}>{r.kategori_utama}</Badge>
+        </div>
+        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{r.uraian_pelanggaran}</p>
+      </div>
+    ) },
+    { key: 'poin', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
+    { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
+    { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
+      <div className="flex gap-1">
         <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>
         {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('pelanggaran'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
@@ -182,6 +214,7 @@ export default function ImprovementTab() {
         improvementList={improvementList}
         siswaList={siswaList}
         onTambahImprovement={handleTambahImprovement}
+        onTambahPelanggaran={handleTambahPelanggaran}
         onAturLimit={() => setPengaturanOpen(true)}
         canAnulir={['admin', 'kepsek'].includes(currentUser?.role)}
       />
@@ -240,7 +273,7 @@ export default function ImprovementTab() {
               <div className="mt-3"><FilterBar /></div>
             </CardHeader>
             <CardContent>
-              <DataTable columns={pelanggaranColumns} data={filteredPelanggaran} pageSize={10} />
+              <CatatanCompactTable columns={pelanggaranColumns} data={filteredPelanggaran} searchKeys={pelanggaranSearchKeys} pageSize={10} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -259,13 +292,11 @@ export default function ImprovementTab() {
               <div className="mt-3"><FilterBar /></div>
             </CardHeader>
             <CardContent>
-              <DataTable columns={improvementColumns} data={filteredImprovement} pageSize={10} />
+              <CatatanCompactTable columns={improvementColumns} data={filteredImprovement} searchKeys={improvementSearchKeys} pageSize={10} />
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <FloatingAddButton onClick={() => handleTambahImprovement(null)} label="Tambah Improvement" color="green" icon={TrendingDown} />
 
       <ImprovementFormDialog
         open={improvementOpen}
@@ -279,6 +310,7 @@ export default function ImprovementTab() {
         pengaturan={pengaturan}
         tahunAjaran={tahunAjaran}
         prefillSiswa={prefillSiswa}
+        jadwalPiketList={jadwalPiketList}
       />
 
       <PelanggaranImprovementFormDialog
@@ -291,6 +323,9 @@ export default function ImprovementTab() {
         currentUser={currentUser}
         kodePelanggaranList={kodePelanggaranList}
         tahunAjaran={tahunAjaran}
+        prefillSiswa={prefillSiswa}
+        jadwalPiketList={jadwalPiketList}
+        pelanggaranImprovementExisting={pelanggaranImprovementList}
       />
 
       <PengaturanImprovementDialog open={pengaturanOpen} onOpenChange={setPengaturanOpen} isAdmin={isAdmin} canKelola={canKelolaData} />

@@ -15,7 +15,10 @@ import { Search, TrendingDown, Lock } from "lucide-react";
 import { getMingguKey } from '@/lib/dapodikConstants';
 import { recomputeRaporForSiswa } from '@/lib/raporStatus';
 
-export default function ImprovementFormDialog({ open, onOpenChange, siswaList, guruList, currentUser, improvementList, kegiatanList, pengaturan, editing, tahunAjaran, prefillSiswa }) {
+const HARI_ID = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const getHariFromTanggal = (tgl) => { try { return HARI_ID[new Date(tgl + 'T00:00:00').getDay()]; } catch { return ''; } };
+
+export default function ImprovementFormDialog({ open, onOpenChange, siswaList, guruList, currentUser, improvementList, kegiatanList, pengaturan, editing, tahunAjaran, prefillSiswa, jadwalPiketList }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
@@ -35,6 +38,19 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   const limitUniversalAktif = pengaturan?.limit_universal_aktif ?? true;
   const limitUniversal = pengaturan?.limit_mingguan_universal ?? 30;
 
+  // Validator = Petugas Piket hari ini (dari Jadwal Piket)
+  const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
+  const hariForm = getHariFromTanggal(formData.tanggal);
+  const piketHari = useMemo(() => (jadwalPiketList || []).find(j => j.hari === hariForm && j.aktif !== false), [jadwalPiketList, hariForm]);
+  const piketOptions = useMemo(() => piketHari?.petugas || [], [piketHari]);
+
+  useEffect(() => {
+    if (!open || editing || !piketOptions.length) return;
+    if (formData.validator_id && piketOptions.some(p => p.guru_id === formData.validator_id)) return;
+    const match = piketOptions.find(p => p.guru_id === myGuru?.id) || piketOptions.find(p => p.nama_pegawai === currentUser?.full_name);
+    if (match) setFormData(f => ({ ...f, validator_id: match.guru_id, validator_nama: match.nama_pegawai }));
+  }, [open, editing, piketOptions, myGuru, currentUser]);
+
   useEffect(() => {
     if (!open) return;
     if (editing) {
@@ -48,7 +64,6 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
         limit_mingguan: limitUniversalAktif ? limitUniversal : 30, limit_universal_applied: limitUniversalAktif,
         minggu_key: '', validator_id: '', validator_nama: '', tahun_ajaran: tahunAjaran || '', catatan: '', status: 'Aktif'
       };
-      if (currentUser) { f.validator_id = currentUser.id; f.validator_nama = currentUser.full_name; }
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setFormData(f);
     }
@@ -56,8 +71,8 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Improvement.create(data),
-    onSuccess: async (_d, vars) => {
-      if (vars?.siswa_id) { try { await recomputeRaporForSiswa(vars.siswa_id); } catch {} }
+    onSuccess: (_d, vars) => {
+      if (vars?.siswa_id) { recomputeRaporForSiswa(vars.siswa_id).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       handleClose();
@@ -65,9 +80,9 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Improvement.update(id, data),
-    onSuccess: async (_d, vars) => {
+    onSuccess: (_d, vars) => {
       const sid = vars?.data?.siswa_id;
-      if (sid) { try { await recomputeRaporForSiswa(sid); } catch {} }
+      if (sid) { recomputeRaporForSiswa(sid).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       handleClose();
