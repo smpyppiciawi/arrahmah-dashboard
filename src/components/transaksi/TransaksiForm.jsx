@@ -230,7 +230,7 @@ export default function TransaksiForm({
       penerima: '',
       penerima_jabatan: '',
       tipe_transaksi: '',
-      kategori: type === 'donatur' ? 'Donasi' : '',
+      kategori: type === 'donatur' ? 'Donatur' : '',
       uraian: '',
       jumlah: '',
       jenis: (type === 'siswa' || type === 'donatur') ? 'Pemasukan' : prev.jenis,
@@ -291,7 +291,7 @@ export default function TransaksiForm({
   const handleTipeChange = (tipe) => {
     set('tipe_transaksi', tipe);
     if (tipe === 'Donatur') {
-      set('kategori', 'Donasi');
+      set('kategori', 'Donatur');
     } else if (TIPE_TO_KATEGORI[tipe]) {
       set('kategori', TIPE_TO_KATEGORI[tipe]);
     }
@@ -355,7 +355,7 @@ export default function TransaksiForm({
       // Transaksi Siswa: Pencatat & Penerima sama — penerima mengikuti pic
       penerima: jenisTransaksi === 'siswa' ? (formData.pic || currentUser?.full_name || '') : formData.penerima,
       tahun_ajaran: activeAcademicYear || '',
-      ...(jenisTransaksi === 'donatur' ? { kategori: 'Donasi', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
+      ...(jenisTransaksi === 'donatur' ? { kategori: 'Donatur', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
     };
 
     try {
