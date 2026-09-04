@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LogOut, Search, Building2, Calendar, LogIn, Edit2 } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import KembaliMasukDialog from "@/components/siswa/KembaliMasukDialog";
 import SiswaKeluarEditDialog from "@/components/siswa/SiswaKeluarEditDialog";
+import SiswaMasukTab from "@/components/siswa/SiswaMasukTab";
 
 const KATEGORI_STYLE = {
   'Pindah': 'bg-blue-100 text-blue-700',
@@ -122,11 +124,17 @@ export default function SiswaKeluar() {
             <LogOut className="w-7 h-7 text-orange-600" />
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Siswa Keluar</h1>
-            <p className="text-slate-500 mt-0.5 text-sm">Arsip data siswa yang keluar, pindah, atau mengundurkan diri</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Siswa Mutasi</h1>
+            <p className="text-slate-500 mt-0.5 text-sm">Kelola data siswa mutasi keluar dan mutasi masuk</p>
           </div>
         </div>
 
+        <Tabs defaultValue="keluar">
+          <TabsList className="mb-4">
+            <TabsTrigger value="keluar" className="gap-1.5"><LogOut className="w-4 h-4" /> Siswa Keluar</TabsTrigger>
+            <TabsTrigger value="masuk" className="gap-1.5"><LogIn className="w-4 h-4" /> Siswa Masuk</TabsTrigger>
+          </TabsList>
+          <TabsContent value="keluar" className="mt-0">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4 text-center">
@@ -197,6 +205,11 @@ export default function SiswaKeluar() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+          <TabsContent value="masuk" className="mt-0">
+            <SiswaMasukTab />
+          </TabsContent>
+        </Tabs>
       </div>
       {kembaliMasukSiswa && (
         <KembaliMasukDialog

@@ -1,0 +1,54 @@
+{
+  "name": "SiswaMasuk",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa yang dibuat dari mutasi masuk"
+    },
+    "nisn": {
+      "type": "string",
+      "description": "NISN siswa"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap siswa"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "enum": [
+        "Laki-laki",
+        "Perempuan"
+      ]
+    },
+    "kelas_tujuan": {
+      "type": "string",
+      "description": "Nama kelas tujuan siswa masuk"
+    },
+    "tanggal_masuk": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal siswa masuk"
+    },
+    "nama_sekolah_asal": {
+      "type": "string",
+      "description": "Nama sekolah asal"
+    },
+    "npsn_sekolah_asal": {
+      "type": "string",
+      "description": "NPSN sekolah asal"
+    },
+    "alasan_pindah": {
+      "type": "string",
+      "description": "Alasan pindah"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran saat masuk"
+    }
+  },
+  "required": [
+    "nama",
+    "tanggal_masuk"
+  ]
+}

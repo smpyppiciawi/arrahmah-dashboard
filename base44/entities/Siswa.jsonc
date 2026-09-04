@@ -10,6 +10,15 @@
       "type": "string",
       "description": "Nomor Induk Siswa Nasional"
     },
+    "registrasi": {
+      "type": "string",
+      "enum": [
+        "Siswa Baru",
+        "Naik Kelas",
+        "Mengulang"
+      ],
+      "description": "Status registrasi siswa. Auto dari tingkat kelas: Tingkat 7 = Siswa Baru, Tingkat 8 & 9 = Naik Kelas."
+    },
     "nama": {
       "type": "string",
       "description": "Nama lengkap siswa"

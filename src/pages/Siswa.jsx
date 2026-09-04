@@ -209,7 +209,7 @@ export default function Siswa() {
               </Link>
               <Link to="/SiswaKeluar">
                 <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50">
-                  <LogOut className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Siswa Keluar</span>
+                  <LogOut className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Siswa Mutasi</span>
                 </Button>
               </Link>
             </div>
