@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { getRaporStatus } from '@/lib/raporStatus';
 import { ShieldAlert, AlertTriangle } from 'lucide-react';
 
-export default function RaporStatusWidget({ siswaList }) {
+export default function RaporStatusWidget({ siswaList, isDark }) {
   const [open, setOpen] = useState(null);
 
   const grouped = useMemo(() => {
@@ -16,9 +16,9 @@ export default function RaporStatusWidget({ siswaList }) {
   }, [siswaList]);
 
   const items = [
-    { key: 'kuning', label: 'Rapor Kuning', count: grouped.kuning.length, color: 'from-yellow-400 to-amber-500', desc: 'Poin bersih ≥ 300 (berlaku 40 hari)' },
-    { key: 'merah', label: 'Rapor Merah', count: grouped.merah.length, color: 'from-red-500 to-rose-600', desc: 'Poin bersih ≥ 600 (berlaku 120 hari)' },
-    { key: 'hitam', label: 'Rapor Hitam', count: grouped.hitam.length, color: 'from-slate-800 to-black', desc: 'Poin bersih ≥ 1000 (permanen)' },
+    { key: 'kuning', label: 'Kuning', count: grouped.kuning.length, dot: 'bg-yellow-400', text: isDark ? 'text-yellow-300' : 'text-yellow-700', desc: 'Poin bersih ≥ 300 (berlaku 40 hari)' },
+    { key: 'merah', label: 'Merah', count: grouped.merah.length, dot: 'bg-red-500', text: isDark ? 'text-red-300' : 'text-red-700', desc: 'Poin bersih ≥ 600 (berlaku 120 hari)' },
+    { key: 'hitam', label: 'Hitam', count: grouped.hitam.length, dot: 'bg-slate-900', text: isDark ? 'text-slate-200' : 'text-slate-800', desc: 'Poin bersih ≥ 1000 (permanen)' },
   ];
 
   const activeList = open ? grouped[open] : [];
@@ -26,12 +26,12 @@ export default function RaporStatusWidget({ siswaList }) {
 
   return (
     <>
-      <div className="grid grid-cols-3 gap-2 md:gap-3">
+      <div className="flex flex-wrap items-center gap-2">
         {items.map(it => (
-          <button key={it.key} onClick={() => setOpen(it.key)} className={`rounded-2xl p-3 md:p-4 text-left bg-gradient-to-br ${it.color} text-white shadow-lg transition-all hover:scale-[1.02]`}>
-            <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 opacity-80 mb-1.5" />
-            <p className="text-xl md:text-2xl font-bold">{it.count}</p>
-            <p className="text-[10px] md:text-xs opacity-90">{it.label}</p>
+          <button key={it.key} onClick={() => setOpen(it.key)} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${isDark ? 'bg-slate-700/40 border-slate-600 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+            <span className={`w-2 h-2 rounded-full ${it.dot}`} />
+            <span className={it.text}>{it.count}</span>
+            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>{it.label}</span>
           </button>
         ))}
       </div>
