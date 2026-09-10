@@ -31,6 +31,9 @@ import GuruContactFab from '@/components/kepsek/GuruContactFab';
 import KepsekMenuDrawer from '@/components/kepsek/KepsekMenuDrawer';
 import AktivitasHariIni from '@/components/kepsek/AktivitasHariIni';
 import WaAssistantLink from '@/components/WaAssistantLink';
+import ApprovalPoinWidget from '@/components/kepsek/ApprovalPoinWidget';
+import RaporStatusWidget from '@/components/kepsek/RaporStatusWidget';
+import ApprovalPoinDialog from '@/components/catatan/ApprovalPoinDialog';
 
 const DATE_PRESETS = [
   { key: 'today', label: 'Hari Ini' },
@@ -52,6 +55,7 @@ export default function Kepsek() {
   const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [drillDown, setDrillDown] = useState(null);
   const [pelanggaranDrill, setPelanggaranDrill] = useState(false);
+  const [approveOpen, setApproveOpen] = useState(false);
 
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { localStorage.setItem('kepsek-theme', isDark ? 'dark' : 'light'); }, [isDark]);
@@ -436,6 +440,14 @@ export default function Kepsek() {
 
         <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onDirectWA={handleDirectWA} onEmail={handleEmail} onApproveIzin={handleApproveIzin} isDark={isDark} />
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+          <ApprovalPoinWidget count={pelanggaranImpList.filter(p => p.status === 'Pending').length} isDark={isDark} onClick={() => setApproveOpen(true)} />
+          <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
+            <h3 className={`${t.text} font-bold text-sm mb-3`}>Status Rapor Siswa</h3>
+            <RaporStatusWidget siswaList={siswaList} />
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3 auto-rows-fr">
           {statCards.map((card, i) => <StatCard key={i} {...card} />)}
         </div>
@@ -509,6 +521,7 @@ export default function Kepsek() {
       <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={isDark} />
       <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={isDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
       <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={isDark} />
+      <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className={`max-w-md ${t.dialog}`}>
