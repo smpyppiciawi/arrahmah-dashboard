@@ -24,6 +24,7 @@ import ProsesTahunAjaran from './pages/ProsesTahunAjaran';
 import JadwalPiketPegawai from './pages/JadwalPiketPegawai';
 import Hapalan from './pages/Hapalan';
 import ProfilSekolah from './pages/ProfilSekolah';
+import BukuTamu from './pages/BukuTamu';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -126,6 +127,11 @@ const AuthenticatedApp = () => {
       <Route path="/ProfilSekolah" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="ProfilSekolah"><ProfilSekolah /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/BukuTamu" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="BukuTamu"><BukuTamu /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

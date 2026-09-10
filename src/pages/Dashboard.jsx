@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck, ClipboardCheck } from "lucide-react";
+import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck, ClipboardCheck, BookUser } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +17,7 @@ import TugasPiketTab from '@/components/absensi/TugasPiketTab';
 import PiketHariIniBadge from '@/components/dashboard/PiketHariIniBadge';
 import LiveClock from '@/components/ui/LiveClock';
 import { usePengingatMengajar } from '@/components/guru/PengingatMengajar';
+import BukuTamuGuruTab from '@/components/bukutamu/BukuTamuGuruTab';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -145,6 +146,9 @@ export default function Dashboard() {
                 ] : []),
                 ...(canSeeTugas ? [
                   { value: 'tugas', label: 'Tugas', icon: ClipboardCheck },
+                ] : []),
+                ...(userRole === 'guru' ? [
+                  { value: 'buku-tamu', label: 'Buku Tamu', icon: BookUser },
                 ] : []),
               ].map(tab => {
                 const Icon = tab.icon;
@@ -497,6 +501,12 @@ export default function Dashboard() {
           {canSeeTugas && (
             <TabsContent value="tugas">
               <TugasPiketTab />
+            </TabsContent>
+          )}
+
+          {userRole === 'guru' && (
+            <TabsContent value="buku-tamu">
+              <BukuTamuGuruTab />
             </TabsContent>
           )}
         </Tabs>
