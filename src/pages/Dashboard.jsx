@@ -3,7 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Calendar, AlertTriangle, Award, Heart, ChevronDown, ChevronUp, TrendingUp, Activity, FileText, Droplets, Search, CalendarDays, BellRing, BellOff, ShieldCheck, ClipboardCheck, BookUser } from "lucide-react";
+import { Users, Calendar, ChevronDown, ChevronUp, Activity, BellRing, BellOff, ShieldCheck, ClipboardCheck, BookUser, ClipboardList, CalendarDays } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,19 +18,20 @@ import PiketHariIniBadge from '@/components/dashboard/PiketHariIniBadge';
 import LiveClock from '@/components/ui/LiveClock';
 import { usePengingatMengajar } from '@/components/guru/PengingatMengajar';
 import BukuTamuGuruTab from '@/components/bukutamu/BukuTamuGuruTab';
+import CatatanSiswaDashboardTab from '@/components/dashboard/CatatanSiswaDashboardTab';
+import BukuTamuDashboardTab from '@/components/dashboard/BukuTamuDashboardTab';
+import KalenderDashboardTab from '@/components/dashboard/KalenderDashboardTab';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const canSeeCariSiswa = ['admin', 'operator'].includes(userRole);
   const canSeeTugas = userRole === 'operator';
+  const canSeeBukuTamu = ['admin', 'operator', 'tu', 'kepsek', 'guru'].includes(userRole);
   const { enabled: pengingatEnabled, toggle: togglePengingat } = usePengingatMengajar();
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
   const [expandedGrade, setExpandedGrade] = useState(null);
   const [attendanceLimit, setAttendanceLimit] = useState('10');
-  const [pelanggaranLimit, setPelanggaranLimit] = useState('10');
-  const [prestasiLimit, setPrestasiLimit] = useState('10');
-  const [uksLimit, setUksLimit] = useState('10');
 
   const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.list() });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list() });
@@ -134,22 +135,19 @@ export default function Dashboard() {
               {[
                 { value: 'jumlah', label: 'Jumlah Siswa', icon: Users },
                 { value: 'kehadiran', label: 'Kehadiran', icon: Calendar },
-                { value: 'pelanggaran', label: 'Pelanggaran', icon: AlertTriangle },
-                { value: 'prestasi', label: 'Prestasi', icon: Award },
-                { value: 'uks', label: 'UKS', icon: Heart },
-                { value: 'menstruasi', label: 'Menstruasi', icon: Droplets },
-                { value: 'izin', label: 'Izin', icon: FileText },
+                { value: 'catatan', label: 'Catatan Siswa', icon: ClipboardList },
                 { value: 'jadwal-piket', label: 'Jadwal Piket', icon: ShieldCheck },
                 ...(canSeeCariSiswa ? [
-                  { value: 'cari-siswa', label: 'Cari Siswa', icon: Search },
+                  { value: 'cari-siswa', label: 'Cari Siswa', icon: Users },
                   { value: 'jadwal', label: 'Jadwal', icon: CalendarDays },
                 ] : []),
                 ...(canSeeTugas ? [
                   { value: 'tugas', label: 'Tugas', icon: ClipboardCheck },
                 ] : []),
-                ...(userRole === 'guru' ? [
+                ...(canSeeBukuTamu ? [
                   { value: 'buku-tamu', label: 'Buku Tamu', icon: BookUser },
                 ] : []),
+                { value: 'kalender', label: 'Kalender', icon: CalendarDays },
               ].map(tab => {
                 const Icon = tab.icon;
                 return (
@@ -281,205 +279,17 @@ export default function Dashboard() {
             </Card>
           </TabsContent>
 
-          {/* Pelanggaran */}
-          <TabsContent value="pelanggaran">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Pelanggaran</CardTitle>
-                  <div className="flex gap-2">
-                    <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
-                    <Select value={pelanggaranLimit} onValueChange={setPelanggaranLimit}>
-                      <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 data</SelectItem><SelectItem value="10">10 data</SelectItem>
-                        <SelectItem value="25">25 data</SelectItem><SelectItem value="all">Semua</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <Table>
-                    <TableHeader><TableRow className="bg-slate-50">
-                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
-                      <TableHead className="text-xs">Kategori</TableHead><TableHead className="text-xs">Poin</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {pelanggaranList.slice(0, pelanggaranLimit === 'all' ? undefined : parseInt(pelanggaranLimit)).map(item => (
-                        <TableRow key={item.id} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
-                          <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
-                          <TableCell><Badge className="bg-red-50 text-red-700 text-xs border-0">{item.kategori}</Badge></TableCell>
-                          <TableCell><span className="font-bold text-orange-600 text-sm">{item.poin}</span></TableCell>
-                          <TableCell><Badge className={`text-xs border-0 ${item.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{item.status}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                      {pelanggaranList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada pelanggaran pada tanggal ini</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Prestasi */}
-          <TabsContent value="prestasi">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Prestasi</CardTitle>
-                  <div className="flex gap-2">
-                    <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
-                    <Select value={prestasiLimit} onValueChange={setPrestasiLimit}>
-                      <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 data</SelectItem><SelectItem value="10">10 data</SelectItem>
-                        <SelectItem value="25">25 data</SelectItem><SelectItem value="all">Semua</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <Table>
-                    <TableHeader><TableRow className="bg-slate-50">
-                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
-                      <TableHead className="text-xs">Prestasi</TableHead><TableHead className="text-xs">Kategori</TableHead>
-                      <TableHead className="text-xs">Tingkat</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {prestasiList.slice(0, prestasiLimit === 'all' ? undefined : parseInt(prestasiLimit)).map(item => (
-                        <TableRow key={item.id} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
-                          <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
-                          <TableCell className="text-sm">{item.nama_prestasi}</TableCell>
-                          <TableCell><Badge className="bg-yellow-50 text-yellow-700 text-xs border-0">{item.kategori}</Badge></TableCell>
-                          <TableCell><Badge className="bg-emerald-50 text-emerald-700 text-xs border-0">{item.tingkat}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                      {prestasiList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada prestasi pada tanggal ini</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* UKS */}
-          <TabsContent value="uks">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base font-semibold text-slate-800">Rekap UKS</CardTitle>
-                  <div className="flex gap-2">
-                    <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
-                    <Select value={uksLimit} onValueChange={setUksLimit}>
-                      <SelectTrigger className="w-28 h-8 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="5">5 data</SelectItem><SelectItem value="10">10 data</SelectItem>
-                        <SelectItem value="25">25 data</SelectItem><SelectItem value="all">Semua</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <Table>
-                    <TableHeader><TableRow className="bg-slate-50">
-                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
-                      <TableHead className="text-xs">Keluhan</TableHead><TableHead className="text-xs">Jam</TableHead>
-                      <TableHead className="text-xs">Status</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {uksList.slice(0, uksLimit === 'all' ? undefined : parseInt(uksLimit)).map(item => (
-                        <TableRow key={item.id} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
-                          <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
-                          <TableCell className="max-w-xs truncate text-sm text-slate-600">{item.keluhan}</TableCell>
-                          <TableCell className="text-sm text-slate-600">{item.jam_masuk}</TableCell>
-                          <TableCell>
-                            <Badge className={`text-xs border-0 ${item.status === 'Di UKS' ? 'bg-amber-50 text-amber-700' : item.status === 'Pulang' ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {item.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {uksList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada data UKS pada tanggal ini</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Menstruasi */}
-          <TabsContent value="menstruasi">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Menstruasi</CardTitle>
-                  <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <Table>
-                    <TableHeader><TableRow className="bg-slate-50">
-                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {menstruasiList.map(item => (
-                        <TableRow key={item.id} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
-                          <TableCell><Badge className="bg-pink-50 text-pink-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
-                        </TableRow>
-                      ))}
-                      {menstruasiList.length === 0 && <TableRow><TableCell colSpan={2} className="text-center py-10 text-slate-400 text-sm">Tidak ada data menstruasi pada tanggal ini</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Izin */}
-          <TabsContent value="izin">
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <CardTitle className="text-base font-semibold text-slate-800">Rekap Izin Siswa</CardTitle>
-                  <Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-44 text-sm h-8" />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto rounded-xl border border-slate-100">
-                  <Table>
-                    <TableHeader><TableRow className="bg-slate-50">
-                      <TableHead className="text-xs">Siswa</TableHead><TableHead className="text-xs">Kelas</TableHead>
-                      <TableHead className="text-xs">Jam</TableHead><TableHead className="text-xs">Alasan</TableHead>
-                      <TableHead className="text-xs">Petugas</TableHead>
-                    </TableRow></TableHeader>
-                    <TableBody>
-                      {izinList.map(item => (
-                        <TableRow key={item.id} className="hover:bg-slate-50">
-                          <TableCell className="font-medium text-sm">{item.nama_siswa}</TableCell>
-                          <TableCell><Badge className="bg-slate-100 text-slate-700 text-xs border-0">{item.nama_kelas}</Badge></TableCell>
-                          <TableCell className="text-sm text-slate-600">{item.jam_izin}</TableCell>
-                          <TableCell><Badge className="bg-amber-50 text-amber-700 text-xs border-0">{item.alasan === 'Lainnya' && item.alasan_manual ? item.alasan_manual : item.alasan}</Badge></TableCell>
-                          <TableCell className="text-sm text-slate-600">{item.petugas_piket}</TableCell>
-                        </TableRow>
-                      ))}
-                      {izinList.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-10 text-slate-400 text-sm">Tidak ada izin pada tanggal ini</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Catatan Siswa (gabungan) */}
+          <TabsContent value="catatan">
+            <CatatanSiswaDashboardTab
+              dateFilter={dateFilter}
+              setDateFilter={setDateFilter}
+              pelanggaranList={pelanggaranList}
+              prestasiList={prestasiList}
+              uksList={uksList}
+              menstruasiList={menstruasiList}
+              izinList={izinList}
+            />
           </TabsContent>
 
           <TabsContent value="jadwal-piket">
@@ -504,11 +314,15 @@ export default function Dashboard() {
             </TabsContent>
           )}
 
-          {userRole === 'guru' && (
+          {canSeeBukuTamu && (
             <TabsContent value="buku-tamu">
-              <BukuTamuGuruTab />
+              {userRole === 'guru' ? <BukuTamuGuruTab /> : <BukuTamuDashboardTab siswaList={siswaList} />}
             </TabsContent>
           )}
+
+          <TabsContent value="kalender">
+            <KalenderDashboardTab />
+          </TabsContent>
         </Tabs>
       </div>
     </div>

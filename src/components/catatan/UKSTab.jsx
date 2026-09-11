@@ -266,7 +266,7 @@ export default function UKSTab() {
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Kunjungan' : 'Tambah Kunjungan UKS'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Tanggal</Label>
@@ -290,7 +290,7 @@ export default function UKSTab() {
                   onChange={e => setSiswaSearch(e.target.value)}
                 />
               </div>
-              <div className="max-h-40 overflow-y-auto border rounded-md bg-white">
+              <div className="max-h-28 overflow-y-auto border rounded-md bg-white">
                 {filteredSiswaForForm.slice(0, 50).map(s => (
                   <button
                     key={s.id}
@@ -312,7 +312,7 @@ export default function UKSTab() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label>Jam Keluar</Label>
                 <Input type="time" value={formData.jam_keluar} onChange={(e) => setFormData(p => ({ ...p, jam_keluar: e.target.value }))} />
@@ -320,6 +320,19 @@ export default function UKSTab() {
               <div>
                 <Label>Suhu Badan (°C)</Label>
                 <Input value={formData.suhu_badan} onChange={(e) => setFormData(p => ({ ...p, suhu_badan: e.target.value }))} placeholder="36.5" />
+              </div>
+              <div>
+                <Label>Status</Label>
+                <Select value={formData.status} onValueChange={(v) => setFormData(p => ({ ...p, status: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Di UKS">Di UKS</SelectItem>
+                    <SelectItem value="Kembali ke Kelas">Kembali ke Kelas</SelectItem>
+                    <SelectItem value="Pulang">Pulang</SelectItem>
+                    <SelectItem value="Tindakan Klinik">Tindakan Klinik</SelectItem>
+                    <SelectItem value="Tindakan IGD">Tindakan IGD</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -338,26 +351,15 @@ export default function UKSTab() {
               </div>
             )}
 
-            <div>
-              <Label>Diagnosa Awal</Label>
-              <Textarea value={formData.diagnosa} onChange={(e) => setFormData(p => ({ ...p, diagnosa: e.target.value }))} rows={2} />
-            </div>
-            <div>
-              <Label>Penanganan</Label>
-              <Textarea value={formData.penanganan} onChange={(e) => setFormData(p => ({ ...p, penanganan: e.target.value }))} rows={2} />
-            </div>
-            <div>
-              <Label>Status</Label>
-              <Select value={formData.status} onValueChange={(v) => setFormData(p => ({ ...p, status: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Di UKS">Di UKS</SelectItem>
-                  <SelectItem value="Kembali ke Kelas">Kembali ke Kelas</SelectItem>
-                  <SelectItem value="Pulang">Pulang</SelectItem>
-                  <SelectItem value="Tindakan Klinik">Tindakan Klinik</SelectItem>
-                  <SelectItem value="Tindakan IGD">Tindakan IGD</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label>Diagnosa Awal</Label>
+                <Textarea value={formData.diagnosa} onChange={(e) => setFormData(p => ({ ...p, diagnosa: e.target.value }))} rows={2} />
+              </div>
+              <div>
+                <Label>Penanganan</Label>
+                <Textarea value={formData.penanganan} onChange={(e) => setFormData(p => ({ ...p, penanganan: e.target.value }))} rows={2} />
+              </div>
             </div>
             <div>
               <Label>Keterangan</Label>

@@ -51,14 +51,17 @@ export default function BukuTamu() {
   const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.list() });
   const { data: guruList = [] } = useQuery({ queryKey: ['guru'], queryFn: () => base44.entities.Guru.list() });
 
-  const inRange = useMemo(() => tamuList.filter(t => t.tanggal >= dateFrom && t.tanggal <= dateTo), [tamuList, dateFrom, dateTo]);
+  const showTanggal = dateFrom !== dateTo;
+
   const allFiltered = useMemo(() => {
     const q = search.toLowerCase();
-    return tamuList.filter(t => !q ||
-      (t.nama_lengkap || t.nama_ortu_wali || '').toLowerCase().includes(q) ||
-      (t.keperluan || '').toLowerCase().includes(q) ||
-      (t.nama_siswa || '').toLowerCase().includes(q));
-  }, [tamuList, search]);
+    return tamuList
+      .filter(t => t.tanggal >= dateFrom && t.tanggal <= dateTo)
+      .filter(t => !q ||
+        (t.nama_lengkap || t.nama_ortu_wali || '').toLowerCase().includes(q) ||
+        (t.keperluan || '').toLowerCase().includes(q) ||
+        (t.nama_siswa || '').toLowerCase().includes(q));
+  }, [tamuList, search, dateFrom, dateTo]);
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.BukuTamu.delete(id),
@@ -71,9 +74,9 @@ export default function BukuTamu() {
 
   const namaTamu = (t) => t.jenis_tamu === 'Tamu Orang Tua/Wali' ? (t.nama_ortu_wali || '-') : (t.nama_lengkap || '-');
 
-  const renderRow = (t, withJenis) => (
+  const renderRow = (t, withJenis, withTanggal) => (
     <TableRow key={t.id} className="hover:bg-slate-50">
-      <TableCell className="text-xs text-slate-600 whitespace-nowrap">{format(parseISO(t.tanggal), 'd MMM yyyy', { locale: idLocale })}</TableCell>
+      {withTanggal && <TableCell className="text-xs text-slate-600 whitespace-nowrap">{format(parseISO(t.tanggal), 'd MMM yyyy', { locale: idLocale })}</TableCell>}
       {withJenis && <TableCell><Badge className={JENIS_BADGE[t.jenis_tamu]}>{t.jenis_tamu}</Badge></TableCell>}
       <TableCell className="font-medium text-sm">
         {namaTamu(t)}
@@ -95,9 +98,9 @@ export default function BukuTamu() {
     </TableRow>
   );
 
-  const COLUMNS = (withJenis) => (
+  const COLUMNS = (withJenis, withTanggal) => (
     <TableHeader><TableRow className="bg-slate-50">
-      <TableHead className="text-xs">Tanggal</TableHead>
+      {withTanggal && <TableHead className="text-xs">Tanggal</TableHead>}
       {withJenis && <TableHead className="text-xs">Jenis</TableHead>}
       <TableHead className="text-xs">Nama</TableHead>
       <TableHead className="text-xs">Keperluan</TableHead>
@@ -108,7 +111,11 @@ export default function BukuTamu() {
     </TableRow></TableHeader>
   );
 
-  const colSpanAll = withJenis => (canCreate ? (withJenis ? 8 : 7) : (withJenis ? 7 : 6));
+  const colSpan = (withJenis, withTanggal) => (withTanggal ? 1 : 0) + (withJenis ? 1 : 0) + 5 + (canCreate ? 1 : 0);
+
+  const rangeLabel = showTanggal
+    ? `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`
+    : format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale });
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
@@ -136,30 +143,14 @@ export default function BukuTamu() {
               <span className="text-slate-400">-</span>
               <input type="date" value={dateTo} onChange={(e) => { setPreset('custom'); setDateTo(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Tamu Berkunjung ({format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - {format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}) · {inRange.length}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
-              <Table>
-                {COLUMNS(true)}
-                <TableBody>
-                  {inRange.length ? inRange.map(t => renderRow(t, true))
-                    : <TableRow><TableCell colSpan={colSpanAll(true)} className="text-center py-10 text-slate-400 text-sm">Belum ada tamu pada rentang ini</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </div>
+            <span className="text-xs text-slate-500 ml-auto">Menampilkan: <b className="text-slate-700">{rangeLabel}</b></span>
           </CardContent>
         </Card>
 
         <Card className="border-0 shadow-sm">
           <CardHeader className="pb-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base">Semua Daftar Tamu</CardTitle>
+              <CardTitle className="text-base">Daftar Tamu ({rangeLabel})</CardTitle>
               <div className="relative w-full sm:w-64">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input className="pl-9 h-8 text-sm" placeholder="Cari nama / keperluan..." value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -178,10 +169,10 @@ export default function BukuTamu() {
               <TabsContent value="Semua">
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
                   <Table>
-                    {COLUMNS(true)}
+                    {COLUMNS(true, showTanggal)}
                     <TableBody>
-                      {allFiltered.map(t => renderRow(t, true))}
-                      {allFiltered.length === 0 && <TableRow><TableCell colSpan={colSpanAll(true)} className="text-center py-10 text-slate-400 text-sm">Belum ada data</TableCell></TableRow>}
+                      {allFiltered.map(t => renderRow(t, true, showTanggal))}
+                      {allFiltered.length === 0 && <TableRow><TableCell colSpan={colSpan(true, showTanggal)} className="text-center py-10 text-slate-400 text-sm">Belum ada data pada rentang ini</TableCell></TableRow>}
                     </TableBody>
                   </Table>
                 </div>
@@ -192,10 +183,10 @@ export default function BukuTamu() {
                   <TabsContent key={j} value={j}>
                     <div className="overflow-x-auto rounded-xl border border-slate-100">
                       <Table>
-                        {COLUMNS(false)}
+                        {COLUMNS(false, showTanggal)}
                         <TableBody>
-                          {list.map(t => renderRow(t, false))}
-                          {list.length === 0 && <TableRow><TableCell colSpan={colSpanAll(false)} className="text-center py-10 text-slate-400 text-sm">Belum ada data</TableCell></TableRow>}
+                          {list.map(t => renderRow(t, false, showTanggal))}
+                          {list.length === 0 && <TableRow><TableCell colSpan={colSpan(false, showTanggal)} className="text-center py-10 text-slate-400 text-sm">Belum ada data</TableCell></TableRow>}
                         </TableBody>
                       </Table>
                     </div>

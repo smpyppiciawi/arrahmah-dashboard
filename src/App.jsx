@@ -25,6 +25,7 @@ import JadwalPiketPegawai from './pages/JadwalPiketPegawai';
 import Hapalan from './pages/Hapalan';
 import ProfilSekolah from './pages/ProfilSekolah';
 import BukuTamu from './pages/BukuTamu';
+import TugasGuru from './pages/TugasGuru';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -132,6 +133,11 @@ const AuthenticatedApp = () => {
       <Route path="/BukuTamu" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="BukuTamu"><BukuTamu /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/TugasGuru" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="TugasGuru"><TugasGuru /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

@@ -6,7 +6,7 @@ import {
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
-  PanelLeftClose, PanelLeftOpen, ScanLine, ShieldCheck, BookMarked, BookUser
+  PanelLeftClose, PanelLeftOpen, ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -77,11 +77,11 @@ const ROLE_MENU = {
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Tugas Guru', icon: ClipboardCheck, page: 'TugasGuru', color: '#10b981' },
       { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: []
   },
@@ -125,7 +125,6 @@ const ROLE_MENU = {
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
-      { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
     ],
     groups: []
   },
