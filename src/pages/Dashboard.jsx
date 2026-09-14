@@ -36,7 +36,7 @@ export default function Dashboard() {
   const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.list() });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list() });
   const { data: absensiList = [] } = useQuery({ queryKey: ['absensi', dateFilter], queryFn: () => base44.entities.Absensi.filter({ tanggal: dateFilter }) });
-  const { data: pelanggaranList = [] } = useQuery({ queryKey: ['pelanggaran', dateFilter], queryFn: () => base44.entities.Pelanggaran.filter({ tanggal: dateFilter }) });
+  const { data: pelanggaranList = [] } = useQuery({ queryKey: ['pelanggaran-improvement', dateFilter], queryFn: () => base44.entities.PelanggaranImprovement.filter({ tanggal: dateFilter }) });
   const { data: prestasiList = [] } = useQuery({ queryKey: ['prestasi', dateFilter], queryFn: () => base44.entities.Prestasi.filter({ tanggal: dateFilter }) });
   const { data: uksList = [] } = useQuery({ queryKey: ['uks', dateFilter], queryFn: () => base44.entities.UKS.filter({ tanggal: dateFilter }) });
   const { data: menstruasiList = [] } = useQuery({ queryKey: ['menstruasi', dateFilter], queryFn: () => base44.entities.Menstruasi.filter({ tanggal: dateFilter }) });

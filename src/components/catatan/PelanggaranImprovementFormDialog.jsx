@@ -162,13 +162,11 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
   const isDuplicate = () => {
     if (editing) return false;
-    const uraian = (formData.uraian_pelanggaran || '').trim();
+    // Kriteria ganda: siswa + tanggal + kode sama (apapun kodenya, meski uraian/rincian diedit).
     return (pelanggaranImprovementExisting || []).some(r =>
       r.tanggal === formData.tanggal &&
       r.siswa_id === formData.siswa_id &&
-      r.kelas_id === formData.kelas_id &&
-      r.kode === formData.kode &&
-      (r.uraian_pelanggaran || '').trim() === uraian
+      r.kode === formData.kode
     );
   };
 
@@ -393,9 +391,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         <AlertDialog open={showDupConfirm} onOpenChange={setShowDupConfirm}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Data Serupa Sudah Ada</AlertDialogTitle>
+              <AlertDialogTitle>Isian Ganda Terdeteksi</AlertDialogTitle>
               <AlertDialogDescription>
-                Terdeteksi data pelanggaran dengan Tanggal, Siswa, Kelas, Kode, dan Uraian yang sama sudah tercatat sebelumnya. Apakah benar data ini tetap akan diinputkan?
+                Terdeteksi record pelanggaran dengan Tanggal, Siswa, dan Kode yang sama sudah tercatat sebelumnya. Apakah benar data ini tetap akan disimpan?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

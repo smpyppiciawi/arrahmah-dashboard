@@ -8,8 +8,8 @@ import { AlertTriangle, Award, Heart, Droplets, FileText, ClipboardList, Chevron
 export default function CatatanSiswaDashboardTab({ dateFilter, setDateFilter, pelanggaranList, prestasiList, uksList, menstruasiList, izinList }) {
   const sections = [
     {
-      key: 'pelanggaran', title: 'Pelanggaran', icon: AlertTriangle, color: 'text-red-500', items: pelanggaranList || [],
-      render: i => ({ main: i.nama_siswa, sub: i.nama_kelas, extra: `${i.poin ?? 0} poin`, tag: i.status, tagCls: i.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700' }),
+      key: 'pelanggaran', title: 'Pelanggaran', icon: AlertTriangle, color: 'text-red-500', items: (pelanggaranList || []).filter(i => i.status !== 'Dibatalkan'),
+      render: i => ({ main: i.nama_siswa, sub: i.nama_kelas, extra: `${i.kode || ''} · ${i.poin ?? 0} poin`, tag: i.status, tagCls: i.status === 'Selesai' ? 'bg-emerald-50 text-emerald-700' : i.status === 'Pending' ? 'bg-amber-50 text-amber-700' : 'bg-blue-50 text-blue-700' }),
     },
     {
       key: 'prestasi', title: 'Prestasi', icon: Award, color: 'text-yellow-500', items: prestasiList || [],

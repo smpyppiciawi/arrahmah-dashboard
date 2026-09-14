@@ -1,0 +1,47 @@
+{
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pembersihan_duplikat_alfa_harian",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "cleanup_duplikat": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "cleanupDuplicatePelanggaranAlfa",
+            "args": {
+              "dry_run": false
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Bersihkan duplikat Alfa",
+            "description": "Purge record kembar pelapor sistem (keep oldest)"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Pembersihan Duplikat Alfa Harian",
+  "description": "Setiap hari pukul 02:00 (Asia/Jakarta) menjalankan pembersihan otomatis data ganda PelanggaranImprovement dari backfill Alfa (pelapor sistem). Scan + purge langsung, pertahankan record terlama per pasangan kembar. Tidak perlu aktifasi manual.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "0 2 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Jakarta",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  }
+}

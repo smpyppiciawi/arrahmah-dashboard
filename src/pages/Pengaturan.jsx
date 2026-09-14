@@ -22,6 +22,7 @@ import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, Aler
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import BackfillAlfaCard from '@/components/pengaturan/BackfillAlfaCard';
+import AntiDedupMonitorCard from '@/components/pengaturan/AntiDedupMonitorCard';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
@@ -267,6 +268,9 @@ export default function Pengaturan() {
           </Card>
 
           <BackfillAlfaCard pengaturan={pengaturan} />
+
+          {/* Anti-Dedup Alfa — monitor read-only, khusus Admin & Kepala Sekolah */}
+          {['admin', 'kepsek'].includes(currentUser?.role) && <AntiDedupMonitorCard />}
 
           {/* Daftar Tahun Ajaran */}
           {tahunAjaranList.length > 0 && (

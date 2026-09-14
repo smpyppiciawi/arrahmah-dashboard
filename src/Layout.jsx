@@ -35,7 +35,6 @@ const FULL_ACCESS_MENU = {
     { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
     { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
     { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
-    { name: 'Anti-Dedup Alfa', icon: ShieldCheck, page: 'AntiDedupAlfa', color: '#059669' },
     { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
   ],
   groups: [

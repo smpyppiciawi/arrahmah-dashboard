@@ -6,9 +6,11 @@ import { SISTEM_PELAPOR_NAMA, SISTEM_BACKFILL_NAMA } from "../../shared/pelangga
 export default async function (req: Request): Promise<Response> {
   try {
     const base44 = createClientFromRequest(req);
-    const user = await base44.auth.me();
-    if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-    if (!["admin", "kepsek"].includes(user.role)) {
+    // Mendukung dua jalur: (1) invokasi manual oleh Admin/Kepsek (ada user),
+    // (2) invokasi terjadwal oleh workflow harian (tanpa user -> service role).
+    let user = null;
+    try { user = await base44.auth.me(); } catch { user = null; }
+    if (user && !["admin", "kepsek"].includes(user.role)) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
