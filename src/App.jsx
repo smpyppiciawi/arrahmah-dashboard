@@ -26,6 +26,7 @@ import Hapalan from './pages/Hapalan';
 import ProfilSekolah from './pages/ProfilSekolah';
 import BukuTamu from './pages/BukuTamu';
 import TugasGuru from './pages/TugasGuru';
+import AntiDedupAlfa from './pages/AntiDedupAlfa';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -138,6 +139,11 @@ const AuthenticatedApp = () => {
       <Route path="/TugasGuru" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="TugasGuru"><TugasGuru /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/AntiDedupAlfa" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="AntiDedupAlfa"><AntiDedupAlfa /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

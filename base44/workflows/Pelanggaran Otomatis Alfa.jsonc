@@ -1,6 +1,6 @@
 {
   "name": "Pelanggaran Otomatis Alfa",
-  "description": "Saat Absensi berstatus Alfa, otomatis buat PelanggaranImprovement (F-02 Kehadiran / F-05 Jumat) dengan pelapor Admin/Sistem. Saat status dikoreksi dari Alfa, batalkan pelanggaran otomatis tersebut.",
+  "description": "Saat Absensi berstatus Alfa, otomatis buat PelanggaranImprovement (F-02 Kehadiran / F-05 Jumat) dengan pelapor Admin/Sistem. Saat status dikoreksi dari Alfa, batalkan pelanggaran otomatis tersebut. Trigger update hanya memicu pembuatan jika snapshot status lama tersedia (non-null) dan berbeda dari Alfa, mencegah trigger ganda dari update tanpa data lama.",
   "trigger": {
     "config": {
       "trigger_type": "entity",
@@ -10,13 +10,13 @@
         "update"
       ]
     },
-    "condition": "${ (.trigger.event_type == \"create\" and .trigger.data.status == \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.data.status == \"Alfa\" and (.trigger.old_data.status // \"\") != \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.data.status != \"Alfa\" and (.trigger.old_data.status // \"\") == \"Alfa\") }"
+    "condition": "${ (.trigger.event_type == \"create\" and .trigger.data.status == \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.old_data.status != null and .trigger.old_data.status != \"Alfa\" and .trigger.data.status == \"Alfa\") or (.trigger.event_type == \"update\" and .trigger.old_data.status == \"Alfa\" and .trigger.data.status != \"Alfa\") }"
   },
   "definition": {
     "document": {
       "dsl": "1.0.0",
       "name": "pelanggaran_otomatis_alfa",
-      "version": "1.0",
+      "version": "1.1",
       "namespace": "base44"
     },
     "do": [

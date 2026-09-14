@@ -61,7 +61,9 @@ export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran, pelaporId
 }
 
 // Buat PelanggaranImprovement dari sebuah Absensi Alfa (dipanggil workflow).
-// Dedup: jika sudah ada record sistem berstatus Proses untuk siswa+tanggal+kode, lewati.
+// Dedup dua lapis: (1) pre-check lewati jika record sistem aktif sudah ada,
+// (2) re-check race-condition guard — hapus record kembar (keep oldest) bila
+// eksekusi paralel sama-sama lolos pre-check.
 export async function createPelanggaranFromAlfa(base44, absensi) {
   const { siswa_id, tanggal, jenis_absensi } = absensi;
   if (!siswa_id || !tanggal) return { skipped: true, reason: "missing_fields" };
@@ -70,15 +72,32 @@ export async function createPelanggaranFromAlfa(base44, absensi) {
   const kodeData = await getKodeData(base44, kode);
   if (!kodeData) return { skipped: true, reason: "kode_not_found" };
 
+  const SISTEM_PELAPOR = [SISTEM_PELAPOR_NAMA, SISTEM_BACKFILL_NAMA];
   const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
-    siswa_id, tanggal, kode, pelapor_nama: SISTEM_PELAPOR_NAMA,
+    siswa_id, tanggal, kode,
   });
-  const activeExisting = (existing || []).find((p) => p.status !== "Dibatalkan");
-  if (activeExisting) return { skipped: true, reason: "duplicate" };
+  const activeSistem = (existing || []).filter(
+    (p) => SISTEM_PELAPOR.includes(p.pelapor_nama) && p.status !== "Dibatalkan"
+  );
+  if (activeSistem.length > 0) return { skipped: true, reason: "duplicate" };
 
   const record = buildPelanggaranRecord(kodeData, absensi, tahunAjaran);
   await base44.asServiceRole.entities.PelanggaranImprovement.create(record);
-  return { created: true };
+
+  // Race-condition guard: re-query setelah create, hapus kelebihan (keep oldest).
+  let removedDuplicates = 0;
+  const recheck = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
+    siswa_id, tanggal, kode,
+  });
+  const activeRecheck = (recheck || [])
+    .filter((p) => SISTEM_PELAPOR.includes(p.pelapor_nama) && p.status !== "Dibatalkan")
+    .sort((a, b) => new Date(a.created_date).getTime() - new Date(b.created_date).getTime());
+  if (activeRecheck.length > 1) {
+    const overflow = activeRecheck.slice(1).map((p) => p.id);
+    await base44.asServiceRole.entities.PelanggaranImprovement.deleteMany({ id: { $in: overflow } });
+    removedDuplicates = overflow.length;
+  }
+  return { created: true, removedDuplicates };
 }
 
 // Batalkan (set status "Dibatalkan") record pelanggaran sistem yang cocok untuk siswa+tanggal+jenis.

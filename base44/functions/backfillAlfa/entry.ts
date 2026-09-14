@@ -1,7 +1,7 @@
 import { createClientFromRequest } from "npm:@base44/sdk@0.8.44";
 import {
   getTahunAjaranAktif, getKodeData, getBackfillAktif, buildPelanggaranRecord,
-  KODE_KEHADIRAN, SISTEM_PELAPOR_NAMA, BACKFILL_KETERANGAN,
+  KODE_KEHADIRAN, SISTEM_PELAPOR_NAMA, SISTEM_BACKFILL_NAMA, BACKFILL_KETERANGAN,
 } from "../../shared/pelanggaranAlfa.ts";
 
 const LIBUR_KATEGORI = ["Hari Libur Nasional", "Libur Sekolah"];
@@ -105,9 +105,12 @@ export default async function (req: Request): Promise<Response> {
     }
 
     // Dedup pelanggaran sistem existing (pelapor Admin/Sistem) — unified dengan autoPelanggaranAlfa
-    const existingPel = await base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_nama: SISTEM_PELAPOR_NAMA }, undefined, 20000);
+    const [existingPelA, existingPelB] = await Promise.all([
+      base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_nama: SISTEM_PELAPOR_NAMA }, undefined, 20000),
+      base44.asServiceRole.entities.PelanggaranImprovement.filter({ pelapor_nama: SISTEM_BACKFILL_NAMA }, undefined, 20000),
+    ]);
     const dedupKey = (p) => `${p.siswa_id}|${p.tanggal}|${p.kode}`;
-    const existingKeys = new Set((existingPel || []).map(dedupKey));
+    const existingKeys = new Set([...(existingPelA || []), ...(existingPelB || [])].map(dedupKey));
 
     const absensiToCreate: any[] = [];
     const pelanggaranToCreate: any[] = [];
