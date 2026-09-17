@@ -26,6 +26,7 @@ export default function AbsensiKehadiran() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [selectedKelas, setSelectedKelas] = useState('');
   const [absensiData, setAbsensiData] = useState({});
+  const [savedSnapshot, setSavedSnapshot] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
   const [bulkJamMasuk, setBulkJamMasuk] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -98,6 +99,13 @@ export default function AbsensiKehadiran() {
       };
     });
     setAbsensiData(newData);
+    // Snapshot kondisi asli per siswa — dasar dirty check saat Simpan
+    const snap = {};
+    siswaList.forEach(siswa => {
+      const d = newData[siswa.id];
+      if (d) snap[siswa.id] = { status: d.status, jam_masuk: d.jam_masuk || '', keterangan: d.keterangan || '' };
+    });
+    setSavedSnapshot(snap);
   }, [siswaList, existingAbsensi, isLibur, liburInfo]);
 
   useEffect(() => { if (isGuruRole && availableKelas.length > 0 && !selectedKelas) setSelectedKelas(availableKelas[0].id); }, [isGuruRole, availableKelas, selectedKelas]);
@@ -115,16 +123,35 @@ export default function AbsensiKehadiran() {
   const handleSaveAll = async () => {
     setIsSaving(true);
     const kelas = kelasList.find(k => k.id === selectedKelas);
-    const records = siswaList.map(siswa => {
+    const allRecords = siswaList.map(siswa => {
       const data = absensiData[siswa.id]; if (!data) return null;
       const payload = { tanggal: selectedDate, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: selectedKelas, nama_kelas: kelas?.nama_kelas || '', status: data.status, jam_masuk: data.jam_masuk, keterangan: data.keterangan, jenis_absensi: 'Kehadiran' };
       return { payload, existing_id: data.existing_id, siswa_id: siswa.id };
     }).filter(Boolean);
 
-    // Offline — queue all to IndexedDB
+    // Dirty check: hanya kirim siswa yang isinya berubah (atau belum punya record) —
+    // siswa yang tidak berubah diabaikan, tidak dikirim ulang.
+    const isDirty = (siswaId) => {
+      const data = absensiData[siswaId];
+      const snap = savedSnapshot[siswaId];
+      if (!data?.existing_id || !snap) return true;
+      return snap.status !== data.status ||
+        (snap.jam_masuk || '') !== (data.jam_masuk || '') ||
+        (snap.keterangan || '') !== (data.keterangan || '');
+    };
+    const records = allRecords.filter(r => isDirty(r.siswa_id));
+    const skipped = allRecords.length - records.length;
+
+    if (records.length === 0) {
+      toast({ title: '✅ Tidak Ada Perubahan', description: 'Semua data absensi sudah tersimpan. Tidak ada data yang dikirim ulang.', duration: 4000 });
+      setIsSaving(false);
+      return;
+    }
+
+    // Offline — hanya antrikan data yang berubah ke IndexedDB
     if (!isOnline) {
       await queueAbsensi(records);
-      toast({ title: '📴 Mode Offline', description: `${records.length} absensi disimpan offline. Akan disinkron otomatis saat online.`, duration: 5000 });
+      toast({ title: '📴 Mode Offline', description: `${records.length} perubahan absensi disimpan offline. Akan disinkron otomatis saat online.`, duration: 5000 });
       setIsSaving(false);
       return;
     }
@@ -133,6 +160,7 @@ export default function AbsensiKehadiran() {
     let created = 0, updated = 0;
     const failed = [];
     const newIds = {};
+    const savedSids = [];
     for (const record of records) {
       try {
         const savedIsAlfa = record.payload.status === 'Alfa';
@@ -155,6 +183,7 @@ export default function AbsensiKehadiran() {
             created++;
           }
         }
+        savedSids.push(record.siswa_id);
         // Auto-pelanggaran F-02 untuk Alfa manual (non-blocking — jangan gagalkan simpan absensi)
         if (savedIsAlfa) {
           try {
@@ -177,6 +206,18 @@ export default function AbsensiKehadiran() {
       }
     }
 
+    // Perbarui snapshot ke kondisi tersimpan agar simpan berikutnya tetap akurat
+    if (savedSids.length > 0) {
+      setSavedSnapshot(prev => {
+        const next = { ...prev };
+        savedSids.forEach(sid => {
+          const d = absensiData[sid];
+          if (d) next[sid] = { status: d.status, jam_masuk: d.jam_masuk || '', keterangan: d.keterangan || '' };
+        });
+        return next;
+      });
+    }
+
     // Update local state with newly created IDs to prevent duplicate creates
     if (Object.keys(newIds).length > 0) {
       setAbsensiData(prev => {
@@ -191,9 +232,9 @@ export default function AbsensiKehadiran() {
     // Queue failures for background sync
     if (failed.length > 0) {
       await queueAbsensi(failed);
-      toast({ title: '⚠️ Sebagian Gagal', description: `${created} baru, ${updated} update, ${failed.length} antrian offline.`, variant: 'destructive', duration: 5000 });
+      toast({ title: '⚠️ Sebagian Gagal', description: `${created} baru, ${updated} update, ${failed.length} antrian offline, ${skipped} tanpa perubahan.`, variant: 'destructive', duration: 5000 });
     } else {
-      toast({ title: '✅ Absensi Tersimpan', description: `${created} baru, ${updated} diupdate.`, duration: 4000 });
+      toast({ title: '✅ Absensi Tersimpan', description: `${created} baru, ${updated} diupdate, ${skipped} tanpa perubahan (tidak dikirim ulang).`, duration: 4000 });
     }
 
     await queryClient.invalidateQueries({ queryKey: ['absensi'] });
