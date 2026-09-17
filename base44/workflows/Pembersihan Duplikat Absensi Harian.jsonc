@@ -1,0 +1,47 @@
+{
+  "name": "Pembersihan Duplikat Absensi Harian",
+  "description": "Setiap hari pukul 02:30 (Asia/Jakarta) menjalankan pembersihan otomatis record absensi ganda (siswa + tanggal + jenis absensi) \u2014 pertahankan record terakhir (koreksi final petugas) \u2014 beserta rekonsiliasi pelanggaran Alfa otomatis terhadap status akhir. Senyap, tanpa menu khusus.",
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "30 2 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Jakarta",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pembersihan_duplikat_absensi_harian",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "cleanup_absensi": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "cleanupDuplicateAbsensi",
+            "args": {
+              "dry_run": false
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Bersihkan duplikat absensi",
+            "description": "Purge kembar + rekonsiliasi pelanggaran Alfa"
+          }
+        }
+      }
+    ]
+  }
+}

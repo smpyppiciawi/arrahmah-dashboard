@@ -57,7 +57,18 @@ export function useOfflineAbsensi() {
           if (record.existing_id) {
             await base44.entities.Absensi.update(record.existing_id, record.payload);
           } else {
-            await base44.entities.Absensi.create(record.payload);
+            // Cegah dobel saat sinkron: cek record yang sudah ada (siswa + tanggal + jenis) —
+            // create sebelumnya bisa saja sudah masuk walau responsnya gagal (jaringan putus).
+            const existingCheck = await base44.entities.Absensi.filter({
+              siswa_id: record.siswa_id,
+              tanggal: record.payload.tanggal,
+              jenis_absensi: record.payload.jenis_absensi || 'Kehadiran',
+            });
+            if (existingCheck.length > 0) {
+              await base44.entities.Absensi.update(existingCheck[0].id, record.payload);
+            } else {
+              await base44.entities.Absensi.create(record.payload);
+            }
           }
           totalSynced++;
         }

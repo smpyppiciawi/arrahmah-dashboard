@@ -105,10 +105,18 @@ export async function cancelPelanggaranFromAlfa(base44, absensi) {
   const { siswa_id, tanggal, jenis_absensi } = absensi;
   if (!siswa_id || !tanggal) return { cancelled: 0 };
   const kode = kodeByJenis(jenis_absensi);
-  const existing = await base44.asServiceRole.entities.PelanggaranImprovement.filter({
-    siswa_id, tanggal, kode, pelapor_nama: SISTEM_PELAPOR_NAMA,
-  });
-  const activeIds = (existing || []).filter((p) => p.status !== "Dibatalkan").map((p) => p.id);
+  // Cakup kedua pelapor sistem: Admin/Sistem (input petugas/workflow) & Sistem-Backfill (backfill massal),
+  // agar koreksi absensi hasil backfill dari Alfa juga membatalkan pelanggarannya.
+  const [a, b] = await Promise.all([
+    base44.asServiceRole.entities.PelanggaranImprovement.filter({
+      siswa_id, tanggal, kode, pelapor_nama: SISTEM_PELAPOR_NAMA,
+    }),
+    base44.asServiceRole.entities.PelanggaranImprovement.filter({
+      siswa_id, tanggal, kode, pelapor_nama: SISTEM_BACKFILL_NAMA,
+    }),
+  ]);
+  const existing = [...(a || []), ...(b || [])];
+  const activeIds = existing.filter((p) => p.status !== "Dibatalkan").map((p) => p.id);
   if (activeIds.length === 0) return { cancelled: 0 };
   await base44.asServiceRole.entities.PelanggaranImprovement.updateMany(
     { id: { $in: activeIds } },

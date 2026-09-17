@@ -23,6 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import BackfillAlfaCard from '@/components/pengaturan/BackfillAlfaCard';
 import AntiDedupMonitorCard from '@/components/pengaturan/AntiDedupMonitorCard';
+import AbsensiDedupMonitorCard from '@/components/pengaturan/AbsensiDedupMonitorCard';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
@@ -271,6 +272,9 @@ export default function Pengaturan() {
 
           {/* Anti-Dedup Alfa — monitor read-only, khusus Admin & Kepala Sekolah */}
           {['admin', 'kepsek'].includes(currentUser?.role) && <AntiDedupMonitorCard />}
+
+          {/* Integritas Absensi — monitor read-only, khusus Admin & Kepala Sekolah */}
+          {['admin', 'kepsek'].includes(currentUser?.role) && <AbsensiDedupMonitorCard />}
 
           {/* Daftar Tahun Ajaran */}
           {tahunAjaranList.length > 0 && (

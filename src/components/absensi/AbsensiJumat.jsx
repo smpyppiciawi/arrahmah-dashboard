@@ -88,6 +88,9 @@ export default function AbsensiJumat() {
     if (existing) {
       await deleteMutation.mutateAsync(existing.id);
     } else {
+      // Cegah dobel: cek record Jumat yang sudah ada (cache daftar bisa basi) sebelum membuat baru
+      const existingCheck = await base44.entities.Absensi.filter({ siswa_id: siswa.id, tanggal: selectedDate, jenis_absensi: 'Jumat' });
+      if (existingCheck.length > 0) return;
       await createMutation.mutateAsync({
         tanggal: selectedDate, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama,
         kelas_id: popupKelas, nama_kelas: kelas?.nama_kelas || '', status: 'Alfa', jenis_absensi: 'Jumat',
