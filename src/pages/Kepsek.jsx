@@ -39,6 +39,7 @@ import SaldoBreakdownDialog from '@/components/kepsek/SaldoBreakdownDialog';
 import KehadiranKepsekSection from '@/components/kepsek/KehadiranKepsekSection';
 import KehadiranPegawaiSection from '@/components/kepsek/KehadiranPegawaiSection';
 import { useAbsen3Hari } from '@/hooks/useAbsen3Hari';
+import { getRaporStatus } from '@/lib/raporStatus';
 import SppTunggakanWidget from '@/components/kepsek/SppTunggakanWidget';
 
 const DATE_PRESETS = [
@@ -97,7 +98,7 @@ export default function Kepsek() {
   const { data: sumberDanaList = [] } = useQuery({ queryKey: ['sumberDana-kepsek'], queryFn: () => base44.entities.SumberDana.list() });
   const { data: bukuTamuList = [] } = useQuery({ queryKey: ['bukuTamu-kepsek'], queryFn: () => base44.entities.BukuTamu.list('-tanggal') });
   // Alert 3 hari: query khusus + persistensi "tampil hingga ada perubahan"
-  const { data: absen3Hari = [], isLoading: loadingAbsen3Hari } = useAbsen3Hari(siswaList);
+  const { data: absen3Hari = [], isLoading: loadingAbsen3Hari } = useAbsen3Hari(siswaList, kalenderList);
   // Rekap kehadiran teragregasi server-side (akurat untuk 7 hari / bulan / tahun / kustom)
   const { data: rekapSiswa, isLoading: rekapSiswaLoading } = useQuery({
     queryKey: ['rekapKehadiran-siswa', dateFrom, dateTo],
@@ -280,12 +281,26 @@ export default function Kepsek() {
     };
   }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, pelanggaranImpList, improvementList, prestasiList, kalenderList, izinList, uksList, homeVisitList, absensiPegawaiList, jadwalPelajaranList, materiList, izinPegawaiList, sumberDanaList, dateFrom, dateTo, activeDayStr, activeDayName]);
 
-  const siswaAlfa3Hari = useMemo(() => absen3Hari.filter(s => s._alfaCount > 0), [absen3Hari]);
-  const siswaSakit3Hari = useMemo(() => absen3Hari.filter(s => s._sakitCount > 0 && s._alfaCount === 0), [absen3Hari]);
   const alerts = useMemo(() => {
     const list = [];
-    siswaAlfa3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `alfa3-${s.id}`, severity: 'critical', category: 'Absensi', title: `Alfa ${s._alfaCount} Hari${s._consecutive ? ' Berturut-turut' : s._carryover ? ' — Belum Hadir' : ' (Minggu Ini)'}`, person: s.nama, kelas: s.nama_kelas, keterangan: `${s._absenList.map(d => `${format(parseISO(d.tanggal), 'd/MM')}: ${d.status}`).join(', ')}${s._carryover ? ` — belum hadir sejak ${format(parseISO(s._lastAbsenDate), 'd MMM', { locale: idLocale })}` : ''} | Minggu ${format(parseISO(s._weekStart), 'd/MM')}-${format(parseISO(s._weekEnd), 'd/MM')}`, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
-    siswaSakit3Hari.forEach(s => { const info = getWaliKelasInfo(s.id); list.push({ id: `sakit3-${s.id}`, severity: 'warning', category: 'Absensi', title: `Sakit ${s._sakitCount} Hari${s._consecutive ? ' Berturut-turut' : s._carryover ? ' — Belum Hadir' : ' (Minggu Ini)'}`, person: s.nama, kelas: s.nama_kelas, keterangan: `${s._absenList.map(d => `${format(parseISO(d.tanggal), 'd/MM')}: ${d.status}`).join(', ')}${s._carryover ? ` — belum hadir sejak ${format(parseISO(s._lastAbsenDate), 'd MMM', { locale: idLocale })}` : ''} | Minggu ${format(parseISO(s._weekStart), 'd/MM')}-${format(parseISO(s._weekEnd), 'd/MM')}`, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone }); });
+    // Peringatan absen siswa — kriteria: Beruntun 3 Hari / Akumulasi 3 Hari per minggu / Hari Sama 3x sebulan.
+    // Tampil selama kriteria terpenuhi; hilang otomatis saat siswa Hadir kembali / pola tak lagi sesuai.
+    absen3Hari.forEach(s => {
+      const info = getWaliKelasInfo(s.id);
+      const parts = [];
+      if (s._alfaCount) parts.push(`Alfa ${s._alfaCount}x`);
+      if (s._sakitCount) parts.push(`Sakit ${s._sakitCount}x`);
+      if (s._izinCount) parts.push(`Izin ${s._izinCount}x`);
+      list.push({
+        id: `absen3-${s.id}`,
+        severity: s._alfaCount > 0 ? 'critical' : 'warning',
+        category: 'Absensi',
+        title: `${parts.join(', ')} — ${s._kriteriaLabel}`,
+        person: s.nama, kelas: s.nama_kelas,
+        keterangan: `${s._absenList.map(d => `${format(parseISO(d.tanggal), 'd/MM')}: ${d.status}`).join(', ')}${s._sameDayInfo ? ` | Pola: ${s._sameDayInfo}` : ''} | Terakhir: ${format(parseISO(s._lastAbsenDate), 'd MMM', { locale: idLocale })}`,
+        waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: info.ortuPhone,
+      });
+    });
     stats.pelanggaranSangatBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'critical', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.pelanggaranBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'warning', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.h2Events.forEach(ev => { list.push({ id: `h2-${ev.id}`, severity: 'warning', category: 'Kalender', title: 'Kegiatan H-2', event: ev.judul, date: format(parseISO(ev.tanggal_mulai), 'd MMM yyyy', { locale: idLocale }) }); });
@@ -295,27 +310,28 @@ export default function Kepsek() {
       const forMe = (myGuruId && t.ingin_bertemu_pegawai_id === myGuruId) || (t.ingin_bertemu && currentUser?.full_name && t.ingin_bertemu.toLowerCase() === currentUser.full_name.toLowerCase());
       if (forMe) list.push({ id: `tamu-${t.id}`, severity: 'warning', category: 'Buku Tamu', title: 'Tamu Ingin Bertemu Anda', person: t.jenis_tamu === 'Tamu Orang Tua/Wali' ? t.nama_ortu_wali : t.nama_lengkap, kelas: t.jenis_tamu, keterangan: `Keperluan: ${t.keperluan || '-'}${t.no_hp_wa ? ` · ${t.no_hp_wa}` : ''}` });
     });
-    return list;
-  }, [stats, siswaAlfa3Hari, siswaSakit3Hari, siswaList, guruList, kelasList, bukuTamuList, myGuruId, currentUser]);
-
-  const attendanceData = useMemo(() => {
-    if (rekapSiswa?.totals) {
-      const tt = rekapSiswa.totals;
-      return [
-        { name: 'Hadir', value: (tt.Hadir || 0) + (tt.Terlambat || 0), color: '#10b981' },
-        { name: 'Sakit', value: tt.Sakit || 0, color: '#3b82f6' },
-        { name: 'Izin', value: tt.Izin || 0, color: '#f59e0b' },
-        { name: 'Alfa', value: tt.Alfa || 0, color: '#ef4444' },
-      ].filter(d => d.value > 0);
+    // Approval Poin menunggu persetujuan (poin belum terakumulasi)
+    const pendingApproval = pelanggaranImpList.filter(p => p.status === 'Pending');
+    if (pendingApproval.length > 0) {
+      const jumlahSiswa = new Set(pendingApproval.map(p => p.siswa_id).filter(Boolean)).size;
+      const totalPoinPending = pendingApproval.reduce((s, p) => s + (p.poin || 0), 0);
+      list.push({ id: 'approval-poin', severity: 'warning', category: 'Approval Poin', title: `${pendingApproval.length} Pelanggaran Menunggu Approval`, person: `${jumlahSiswa} siswa`, kelas: `${totalPoinPending} poin`, keterangan: `Poin belum terakumulasi hingga disetujui. Siswa: ${[...new Set(pendingApproval.map(p => `${p.nama_siswa} (${p.nama_kelas})`))].slice(0, 5).join(', ')}${jumlahSiswa > 5 ? ' …' : ''}` });
     }
-    const filtered = absensiList.filter(a => a.tanggal >= dateFrom && a.tanggal <= dateTo);
-    return [
-      { name: 'Hadir', value: filtered.filter(a => a.status === 'Hadir').length, color: '#10b981' },
-      { name: 'Sakit', value: filtered.filter(a => a.status === 'Sakit').length, color: '#3b82f6' },
-      { name: 'Izin', value: filtered.filter(a => a.status === 'Izin').length, color: '#f59e0b' },
-      { name: 'Alfa', value: filtered.filter(a => a.status === 'Alfa').length, color: '#ef4444' },
-    ].filter(d => d.value > 0);
-  }, [rekapSiswa, absensiList, dateFrom, dateTo]);
+    // Status Rapor aktif (Kuning / Merah / Hitam)
+    const raporLevels = [
+      { level: 'hitam', severity: 'critical', label: 'Status Rapor Hitam' },
+      { level: 'merah', severity: 'critical', label: 'Status Rapor Merah' },
+      { level: 'kuning', severity: 'warning', label: 'Status Rapor Kuning' },
+    ];
+    raporLevels.forEach(({ level, severity, label }) => {
+      const siswaRapor = siswaList.filter(s => s.status === 'Aktif' && getRaporStatus(s, 0).level === level);
+      if (siswaRapor.length === 0) return;
+      list.push({ id: `rapor-${level}`, severity, category: 'Status Rapor', title: `${label} — ${siswaRapor.length} Siswa`, person: siswaRapor.slice(0, 3).map(s => s.nama).join(', ') + (siswaRapor.length > 3 ? ' …' : ''), kelas: '-', keterangan: `Siswa: ${siswaRapor.map(s => `${s.nama} (${s.nama_kelas})`).join(', ')}` });
+    });
+    return list;
+  }, [stats, absen3Hari, pelanggaranImpList, siswaList, guruList, kelasList, bukuTamuList, myGuruId, currentUser]);
+
+
 
   const gradeData = useMemo(() => {
     const byMapel = {};
@@ -344,10 +360,10 @@ export default function Kepsek() {
         { key: 'nama_siswa', label: 'Nama' }, { key: 'nama_kelas', label: 'Kelas' },
         { key: 'status', label: 'Status', render: r => <Badge className={bdg[r.status] || 'bg-slate-500/20 text-slate-300'}>{r.status}</Badge> }, { key: 'keterangan', label: 'Keterangan' },
       ], fullLink: '/Absensi', sortFn: sortKelasNama },
-      alfa3: { title: `Siswa Absen 3+ Hari (${format(parseISO(curWeekStart), 'd/MM')} - ${format(parseISO(curWeekEnd), 'd/MM')} · tampil hingga ada perubahan)`, data: absen3Hari, columns: [
+      alfa3: { title: 'Peringatan Absen Siswa (Beruntun · Akumulasi · Hari Sama)', data: absen3Hari, columns: [
         { key: 'nama', label: 'Nama' }, { key: 'nama_kelas', label: 'Kelas' },
-        { key: 'keterangan', label: 'Keterangan', render: r => (<div className="text-xs"><span className="font-medium text-red-500">Alfa: {r._alfaCount}x</span><span className="text-blue-500 ml-2">Sakit: {r._sakitCount}x</span><p className="text-slate-400 mt-0.5">Terakhir: {format(parseISO(r._lastAbsenDate), 'd MMM yyyy', { locale: idLocale })} | Minggu {format(parseISO(r._weekStart), 'd/MM')}-{format(parseISO(r._weekEnd), 'd/MM')}</p></div>) },
-        { key: 'aksi', label: 'Hubungi', render: r => { const info = getWaliKelasInfo(r.id); const msg = `Yth. ${info.waliName || 'Wali Kelas'}, mohon tindak lanjut siswa ${r.nama} yang telah absen (Alfa ${r._alfaCount}x, Sakit ${r._sakitCount}x) selama 3+ hari dan belum hadir kembali. Mohon segera hubungi orang tua.`; return (<div className="flex gap-1">{info.waliPhone && <button onClick={() => handleWhatsApp(info.waliPhone, msg)} className="text-emerald-500" title="Buka WA Wali Kelas"><MessageCircle className="w-4 h-4" /></button>}{info.ortuPhone && <button onClick={() => handleWhatsApp(info.ortuPhone, `Yth. Orang Tua ${r.nama}, mohon konfirmasi kehadiran siswa yang telah absen 3+ hari.`)} className="text-blue-500" title="Buka WA Orang Tua"><MessageCircle className="w-4 h-4" /></button>}</div>); } },
+        { key: 'keterangan', label: 'Keterangan', render: r => (<div className="text-xs"><span className="font-medium text-red-500">Alfa: {r._alfaCount}x</span><span className="text-blue-500 ml-2">Sakit: {r._sakitCount}x</span><span className="text-amber-500 ml-2">Izin: {r._izinCount}x</span><p className="text-slate-400 mt-0.5">Kriteria: {r._kriteriaLabel}{r._sameDayInfo ? ` (${r._sameDayInfo})` : ''}</p><p className="text-slate-400">Terakhir: {format(parseISO(r._lastAbsenDate), 'd MMM yyyy', { locale: idLocale })}</p></div>) },
+        { key: 'aksi', label: 'Hubungi', render: r => { const info = getWaliKelasInfo(r.id); const msg = `Yth. ${info.waliName || 'Wali Kelas'}, mohon tindak lanjut siswa ${r.nama} (${r.nama_kelas}) yang memenuhi kriteria peringatan absen (${r._kriteriaLabel}: Alfa ${r._alfaCount}x, Sakit ${r._sakitCount}x, Izin ${r._izinCount}x). Mohon segera hubungi orang tua.`; return (<div className="flex gap-1">{info.waliPhone && <button onClick={() => handleWhatsApp(info.waliPhone, msg)} className="text-emerald-500" title="Buka WA Wali Kelas"><MessageCircle className="w-4 h-4" /></button>}{info.ortuPhone && <button onClick={() => handleWhatsApp(info.ortuPhone, `Yth. Orang Tua ${r.nama}, mohon konfirmasi kehadiran siswa yang sering tercatat absen (Alfa/Sakit/Izin).`)} className="text-blue-500" title="Buka WA Orang Tua"><MessageCircle className="w-4 h-4" /></button>}</div>); } },
       ], fullLink: '/Absensi' },
       pelanggaran: { title: 'Pelanggaran Berat (Aktif)', data: stats.pelanggaranBerat, columns: [
         { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' },
@@ -516,14 +532,6 @@ export default function Kepsek() {
           <div className="lg:col-span-3 space-y-3 md:space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
               <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
-                <h3 className={`${t.text} font-bold text-sm mb-3`}>Statistik Kehadiran</h3>
-                {attendanceData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={200}>
-                    <PieChart><Pie data={attendanceData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={45} outerRadius={75} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>{attendanceData.map((entry, index) => <Cell key={index} fill={entry.color} />)}</Pie><Tooltip contentStyle={{ background: t.chartBg, border: `1px solid ${t.chartBorder}`, borderRadius: '8px' }} /></PieChart>
-                  </ResponsiveContainer>
-                ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data</p>}
-              </div>
-              <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
                 <h3 className={`${t.text} font-bold text-sm mb-3`}>Rata-rata Nilai per Mapel</h3>
                 {gradeData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
@@ -531,10 +539,9 @@ export default function Kepsek() {
                   </ResponsiveContainer>
                 ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data</p>}
               </div>
-            </div>
-            <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className={`${t.text} font-bold text-sm`}>Tren Keuangan</h3>
+              <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`${t.text} font-bold text-sm`}>Tren Keuangan</h3>
                 <div className="flex gap-3 text-xs">
                   <span className="text-emerald-500 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> {formatRupiah(stats.totalPemasukan)}</span>
                   <span className="text-red-500 flex items-center gap-1"><TrendingDown className="w-3 h-3" /> {formatRupiah(stats.totalPengeluaran)}</span>
@@ -544,7 +551,8 @@ export default function Kepsek() {
                 <ResponsiveContainer width="100%" height={180}>
                   <AreaChart data={keuanganTrend}><defs><linearGradient id="masukGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={0.5} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient><linearGradient id="keluarGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#ef4444" stopOpacity={0.5} /><stop offset="100%" stopColor="#ef4444" stopOpacity={0} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" stroke={t.chartGrid} /><XAxis dataKey="tanggal" tick={{ fill: t.chartText, fontSize: 10 }} /><YAxis tick={{ fill: t.chartText, fontSize: 10 }} tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}jt` : v >= 1000 ? `${(v/1000).toFixed(0)}rb` : v} /><Tooltip contentStyle={{ background: t.chartBg, border: `1px solid ${t.chartBorder}`, borderRadius: '8px' }} formatter={(v) => formatRupiah(v)} /><Area type="monotone" dataKey="masuk" stroke="#10b981" fill="url(#masukGrad)" strokeWidth={2} /><Area type="monotone" dataKey="keluar" stroke="#ef4444" fill="url(#keluarGrad)" strokeWidth={2} /></AreaChart>
                 </ResponsiveContainer>
-              ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data transaksi</p>}
+                ) : <p className={`${t.textMuted} text-xs text-center py-10`}>Tidak ada data transaksi</p>}
+              </div>
             </div>
           </div>
         </div>
