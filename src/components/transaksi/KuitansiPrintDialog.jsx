@@ -9,7 +9,7 @@ import { id as idLocale } from 'date-fns/locale';
 
 const formatNumber = (v) => new Intl.NumberFormat('id-ID').format(v || 0);
 const MONO = `font-family:'Courier New',Courier,monospace`;
-const DEFAULT_MARGINS = { left: 6, right: 6, top: 4, bottom: 4, fontSize: 11 };
+const DEFAULT_MARGINS = { left: 10, right: 30, top: 10, bottom: 4, fontSize: 13 };
 
 export default function KuitansiPrintDialog({ isOpen, onClose, transaksi }) {
   const [margins, setMargins] = useState(DEFAULT_MARGINS);
@@ -217,7 +217,7 @@ function buildKuitansiInnerHtml(transaksi, fontSize) {
 }
 
 function buildKuitansiHtml(transaksi, opts = {}) {
-  const { left = 6, right = 6, top = 4, bottom = 4, fontSize = 11 } = opts;
+  const { left = 10, right = 30, top = 10, bottom = 4, fontSize = 13 } = opts;
   const inner = buildKuitansiInnerHtml(transaksi, fontSize);
   return `<!DOCTYPE html>
 <html>

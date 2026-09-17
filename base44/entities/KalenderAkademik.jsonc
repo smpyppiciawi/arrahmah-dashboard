@@ -40,6 +40,29 @@
     "warna": {
       "type": "string",
       "description": "Warna penanda (hex atau nama)"
+    },
+    "tugas_untuk_aktif": {
+      "type": "boolean",
+      "default": false,
+      "description": "True jika kegiatan ini menugaskan pegawai tertentu (mengaktifkan isian Tugas Untuk)"
+    },
+    "pegawai_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "ID Guru/Pegawai yang ditugaskan pada kegiatan (bisa lebih dari 1)"
+    },
+    "pegawai_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Nama pegawai yang ditugaskan (auto dari data pegawai)"
+    },
+    "tugas_h1_notif_at": {
+      "type": "string",
+      "description": "Timestamp (ISO) saat pengingat WA H-1 terkirim ke pegawai yang ditugaskan (dedup)"
     }
   },
   "required": [

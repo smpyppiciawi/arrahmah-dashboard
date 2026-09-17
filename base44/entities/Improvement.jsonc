@@ -94,6 +94,13 @@
     "catatan": {
       "type": "string",
       "description": "Catatan tambahan"
+    },
+    "foto_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Foto bukti kegiatan improvement (URL publik, otomatis terkompresi; bisa lebih dari 1)"
     }
   },
   "required": [

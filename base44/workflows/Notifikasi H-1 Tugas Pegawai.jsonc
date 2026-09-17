@@ -1,0 +1,44 @@
+{
+  "trigger": {
+    "condition": null,
+    "config": {
+      "trigger_type": "scheduled",
+      "events": [],
+      "schedule_mode": "recurring",
+      "cron_expression": "30 6 * * *",
+      "one_time_date": null,
+      "timezone": "Asia/Jakarta",
+      "interval_value": null,
+      "interval_unit": null,
+      "interval_anchor": null,
+      "ends_type": "never",
+      "ends_on_date": null,
+      "ends_after_count": null
+    }
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "h1_tugas_pegawai",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "kirim_wa_h1_tugas": {
+          "call": "invoke_backend_function",
+          "with": {
+            "function_name": "notifTugasPegawai"
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Kirim WA H-1 Tugas Pegawai",
+            "description": "Cek kegiatan besok & kirim WA ke pegawai"
+          }
+        }
+      }
+    ]
+  },
+  "name": "Notifikasi H-1 Tugas Pegawai",
+  "description": "Setiap hari pukul 06:30 WIB, cek kegiatan Kalender Akademik besok yang menugaskan pegawai tertentu dan kirim pengingat WA H-1 melalui WA Gateway ke tiap pegawai terpilih (dedup per kegiatan)"
+}

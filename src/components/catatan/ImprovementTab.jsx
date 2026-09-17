@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock } from "lucide-react";
+import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock, BarChart3, Camera } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import CatatanCompactTable from "./CatatanCompactTable";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
@@ -19,6 +19,8 @@ import PengaturanImprovementDialog from "./PengaturanImprovementDialog";
 import KelolaKodePelanggaranDialog from "./KelolaKodePelanggaranDialog";
 import KelolaKegiatanPembinaanDialog from "./KelolaKegiatanPembinaanDialog";
 import ApprovalPoinDialog from "./ApprovalPoinDialog";
+import RekapPoinTab from "./RekapPoinTab";
+import FotoGalleryDialog from "./FotoGalleryDialog";
 
 const KATEGORI_COLOR = {
   "Hukum & Keselamatan": "bg-red-100 text-red-700",
@@ -52,6 +54,7 @@ export default function ImprovementTab() {
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteType, setDeleteType] = useState(null);
+  const [fotoView, setFotoView] = useState(null);
 
   // Filters
   const [filterKelas, setFilterKelas] = useState('');
@@ -61,8 +64,6 @@ export default function ImprovementTab() {
   useEffect(() => { base44.auth.me().then(setCurrentUser).catch(() => {}); }, []);
 
   const isAdmin = currentUser?.role === 'admin';
-  const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role);
-  const canDelete = ['admin', 'tu'].includes(currentUser?.role);
 
   // Queries
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
@@ -75,10 +76,12 @@ export default function ImprovementTab() {
   const { data: pengaturan } = useQuery({ queryKey: ['pengaturan-improvement'], queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; } });
   const { data: jadwalPiketList = [] } = useQuery({ queryKey: ['jadwal-piket'], queryFn: () => base44.entities.JadwalPiket.list('hari') });
 
-  // Approval Poin: ADMIN/TU/KEPSEK atau Guru dgn Tugas Tambahan WAKA KESISWAAN/KURIKULUM
+  // Hak akses WAKA (Waka Kesiswaan/Kurikulum): Approval Poin, Kelola Data & Hapus record Improvement
   const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
   const isWaka = !!myGuru && /waka\s*(kesiswa*n|kurikulum)/i.test(myGuru.tugas_tambahan || '');
   const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
+  const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
+  const canDelete = ['admin', 'tu'].includes(currentUser?.role) || isWaka;
   const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
 
   const siswaMap = useMemo(() => Object.fromEntries(siswaList.map(s => [s.id, s])), [siswaList]);
@@ -147,6 +150,11 @@ export default function ImprovementTab() {
       <div className="min-w-0">
         <div className="font-medium text-slate-700 truncate">{r.kegiatan_pembinaan_nama || r.uraian}</div>
         {r.uraian && r.kegiatan_pembinaan_nama && <p className="text-xs text-slate-500 truncate">{r.uraian}</p>}
+        {(r.foto_urls || []).length > 0 && (
+          <button type="button" onClick={() => setFotoView(r)} className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-indigo-600 hover:underline">
+            <Camera className="w-3 h-3" />{r.foto_urls.length} foto bukti
+          </button>
+        )}
       </div>
     ) },
     { key: 'poin_pengurangan', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-emerald-100 text-emerald-700">−{r.poin_pengurangan} poin</Badge> },
@@ -255,6 +263,10 @@ export default function ImprovementTab() {
             <TrendingDown className="w-4 h-4" />
             <span>Improvement ({filteredImprovement.length})</span>
           </TabsTrigger>
+          <TabsTrigger value="rekap" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all">
+            <BarChart3 className="w-4 h-4" />
+            <span>Rekap</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pelanggaran">
@@ -295,6 +307,16 @@ export default function ImprovementTab() {
               <CatatanCompactTable columns={improvementColumns} data={filteredImprovement} searchKeys={improvementSearchKeys} pageSize={10} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="rekap">
+          <RekapPoinTab
+            pelanggaranImprovementList={pelanggaranImprovementList}
+            improvementList={improvementList}
+            siswaList={siswaList}
+            kelasList={kelasList}
+            pengaturan={pengaturan}
+          />
         </TabsContent>
       </Tabs>
 
@@ -340,6 +362,8 @@ export default function ImprovementTab() {
         siswaList={siswaList}
         currentUser={currentUser}
       />
+
+      <FotoGalleryDialog record={fotoView} onClose={() => setFotoView(null)} />
 
       <ConfirmDialog
         open={!!deleteTarget}

@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, TrendingDown, Lock } from "lucide-react";
+import { Search, TrendingDown, Lock, ImagePlus, X, Loader2 } from "lucide-react";
+import { compressImage } from '@/lib/imageCompress';
 import { getMingguKey } from '@/lib/dapodikConstants';
 import { recomputeRaporForSiswa } from '@/lib/raporStatus';
 
@@ -27,12 +28,13 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
     kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
     uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
     limit_mingguan: 30, limit_universal_applied: true, minggu_key: '',
-    validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif'
+    validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif', foto_urls: []
   });
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
   const [openKegiatanSearch, setOpenKegiatanSearch] = useState(false);
   const [searchKegiatan, setSearchKegiatan] = useState('');
+  const [uploadingFoto, setUploadingFoto] = useState(false);
 
   const isGuru = currentUser?.role === 'guru';
   const limitUniversalAktif = pengaturan?.limit_universal_aktif ?? true;
@@ -54,7 +56,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setFormData({ ...formData, ...editing });
+      setFormData({ ...formData, ...editing, foto_urls: editing.foto_urls || [] });
     } else {
       const f = {
         tanggal: new Date().toISOString().split('T')[0],
@@ -62,7 +64,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
         kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
         uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
         limit_mingguan: limitUniversalAktif ? limitUniversal : 30, limit_universal_applied: limitUniversalAktif,
-        minggu_key: '', validator_id: '', validator_nama: '', tahun_ajaran: tahunAjaran || '', catatan: '', status: 'Aktif'
+        minggu_key: '', validator_id: '', validator_nama: '', tahun_ajaran: tahunAjaran || '', catatan: '', status: 'Aktif', foto_urls: []
       };
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setFormData(f);
@@ -96,7 +98,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
       kegiatan_pembinaan_id: '', kegiatan_pembinaan_nama: '', kategori: 'Perilaku',
       uraian: '', poin_pengurangan: 0, sesuai_penetapan: false,
       limit_mingguan: 30, limit_universal_applied: true, minggu_key: '',
-      validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif'
+      validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif', foto_urls: []
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKegiatanSearch(false); setSearchKegiatan('');
     onOpenChange(false);
@@ -138,6 +140,29 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
     const g = guruList.find(x => x.id === guruId);
     if (g) setFormData(f => ({ ...f, validator_id: g.id, validator_nama: g.nama }));
   };
+
+  const handleFotoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    setUploadingFoto(true);
+    try {
+      const urls = [];
+      for (const f of files) {
+        // Kompresi otomatis: maks 1600px, JPEG 75% — tetap jelas saat dicetak/dilihat, ringan diunggah
+        const compressed = await compressImage(f);
+        const res = await base44.integrations.Core.UploadPublicFile({ file: compressed });
+        if (res?.file_url) urls.push(res.file_url);
+      }
+      setFormData(prev => ({ ...prev, foto_urls: [...(prev.foto_urls || []), ...urls] }));
+    } catch (err) {
+      toast({ title: 'Gagal mengunggah foto', description: err?.message || 'Terjadi kesalahan', variant: 'destructive' });
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
+  const removeFoto = (idx) => setFormData(prev => ({ ...prev, foto_urls: (prev.foto_urls || []).filter((_, i) => i !== idx) }));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -290,6 +315,25 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
           <div>
             <Label>Catatan (opsional)</Label>
             <Textarea value={formData.catatan} onChange={(e) => setFormData({ ...formData, catatan: e.target.value })} rows={2} />
+          </div>
+
+          {/* Foto Bukti (bisa lebih dari 1 — otomatis dikompresi agar jelas namun ringan) */}
+          <div>
+            <Label>Foto Bukti <span className="text-xs text-slate-400">(opsional, bisa lebih dari 1)</span></Label>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {(formData.foto_urls || []).map((url, idx) => (
+                <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                  <img src={url} alt={`foto-${idx + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeFoto(idx)} className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600" title="Hapus foto">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <label className={`w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-all ${uploadingFoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 hover:border-emerald-400 hover:bg-emerald-50'}`}>
+                {uploadingFoto ? <Loader2 className="w-5 h-5 animate-spin text-emerald-500" /> : <ImagePlus className="w-5 h-5 text-slate-400" />}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleFotoChange} disabled={uploadingFoto} />
+              </label>
+            </div>
           </div>
 
           <div className="flex gap-3 pt-2">

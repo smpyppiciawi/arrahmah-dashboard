@@ -6,9 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, ExternalLink } from "lucide-react";
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, ExternalLink, Users, X, Check } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import { useToast } from "@/components/ui/use-toast";
@@ -33,7 +36,7 @@ const TAHUN_AJARAN_OPTIONS = () => {
   return [`${y-1}/${y}`, `${y}/${y+1}`, `${y+1}/${y+2}`];
 };
 
-const EMPTY_FORM = { judul: '', tanggal_mulai: '', tanggal_selesai: '', kategori: '', keterangan: '', tahun_ajaran: '', warna: '' };
+const EMPTY_FORM = { judul: '', tanggal_mulai: '', tanggal_selesai: '', kategori: '', keterangan: '', tahun_ajaran: '', warna: '', tugas_untuk_aktif: false, pegawai_ids: [] };
 
 export default function KalenderAkademik() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -62,25 +65,41 @@ export default function KalenderAkademik() {
     queryKey: ['kalender'],
     queryFn: () => base44.entities.KalenderAkademik.list('-tanggal_mulai'),
   });
+  const { data: guruList = [] } = useQuery({ queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama') });
+  const [openPegawaiSelect, setOpenPegawaiSelect] = useState(false);
+  const togglePegawai = (id) => setFormData(prev => {
+    const cur = prev.pegawai_ids || [];
+    return { ...prev, pegawai_ids: cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id] };
+  });
 
   const sendEventNotifications = async (eventData, isUpdate) => {
     try {
       if (!eventData?.tanggal_mulai) return;
-      const guruList = await base44.entities.Guru.list();
-      const emails = guruList.filter(g => g.email).map(g => g.email);
-      if (emails.length === 0) return;
+      const guruListLocal = await base44.entities.Guru.list();
       const eventDate = format(parseISO(eventData.tanggal_mulai), 'd MMMM yyyy', { locale: idLocale });
       const eventEndDate = eventData.tanggal_selesai ? ` s/d ${format(parseISO(eventData.tanggal_selesai), 'd MMMM yyyy', { locale: idLocale })}` : '';
-      const body = `Kegiatan ${isUpdate ? 'diperbarui' : 'baru'} di Kalender Akademik:\n\n${eventData.judul}\nTanggal: ${eventDate}${eventEndDate}\nKategori: ${eventData.kategori}${eventData.keterangan ? `\nKeterangan: ${eventData.keterangan}` : ''}\n\nTambahkan ke Google Calendar:\n${getGoogleCalendarLink(eventData)}`;
+      const gcalLink = getGoogleCalendarLink(eventData);
+      const tugasAktif = eventData.tugas_untuk_aktif && (eventData.pegawai_ids || []).length > 0;
+      let recipients;
+      let body;
+      if (tugasAktif) {
+        // Kegiatan bertugas: email hanya ke pegawai yang ditugaskan (dengan link Google Calendar)
+        recipients = guruListLocal.filter(g => g.email && (eventData.pegawai_ids || []).includes(g.id));
+        body = `Anda ditugaskan pada kegiatan ${isUpdate ? '(diperbarui)' : 'baru'} di Kalender Akademik:\n\n${eventData.judul}\nTanggal: ${eventDate}${eventEndDate}\nKategori: ${eventData.kategori}${eventData.keterangan ? `\nKeterangan: ${eventData.keterangan}` : ''}\n\nTambahkan ke Google Calendar:\n${gcalLink}\n\n- Sistem Informasi Sekolah YPPI ARRAHMAH`;
+      } else {
+        recipients = guruListLocal.filter(g => g.email);
+        body = `Kegiatan ${isUpdate ? 'diperbarui' : 'baru'} di Kalender Akademik:\n\n${eventData.judul}\nTanggal: ${eventDate}${eventEndDate}\nKategori: ${eventData.kategori}${eventData.keterangan ? `\nKeterangan: ${eventData.keterangan}` : ''}\n\nTambahkan ke Google Calendar:\n${gcalLink}`;
+      }
+      if (recipients.length === 0) return;
       let sentCount = 0;
-      for (const email of emails) {
+      for (const g of recipients) {
         try {
-          await base44.integrations.Core.SendEmail({ to: email, subject: `📅 ${eventData.judul} - Kalender Akademik`, body });
+          await base44.integrations.Core.SendEmail({ to: g.email, subject: `📅 ${eventData.judul} - Kalender Akademik`, body });
           sentCount++;
         } catch (e) { /* skip unregistered emails */ }
       }
       if (sentCount > 0) {
-        toast({ title: '📧 Notifikasi Email Terkirim', description: `${sentCount} guru/pegawai mendapat notifikasi.` });
+        toast({ title: '📧 Notifikasi Email Terkirim', description: tugasAktif ? `${sentCount} pegawai terkait kegiatan diberi notifikasi.` : `${sentCount} guru/pegawai mendapat notifikasi.` });
       }
     } catch (e) { console.error('Email notification error:', e); }
   };
@@ -117,8 +136,16 @@ export default function KalenderAkademik() {
   const handleEdit = (ev) => { setEditData(ev); setFormData(ev); setIsOpen(true); };
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Pastikan tahun_ajaran selalu terisi (default ke tahun ajaran aktif)
-    const finalData = { ...formData, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
+    // Tugas untuk Pegawai: hanya simpan jika switch ON; Off = bersihkan penugasan
+    const pegawai_ids = formData.tugas_untuk_aktif ? (formData.pegawai_ids || []) : [];
+    let pegawai_names;
+    if (pegawai_ids.length > 0) {
+      pegawai_names = pegawai_ids.map(id => guruList.find(g => g.id === id)?.nama).filter(Boolean);
+      if (pegawai_names.length === 0) pegawai_names = (editData?.pegawai_names || formData.pegawai_names || []);
+    } else {
+      pegawai_names = [];
+    }
+    const finalData = { ...formData, pegawai_ids, pegawai_names, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
     if (editData) updateMutation.mutate({ id: editData.id, data: finalData });
     else createMutation.mutate(finalData);
   };
@@ -247,6 +274,60 @@ export default function KalenderAkademik() {
                 <div>
                   <Label className="text-xs text-slate-500">Keterangan (opsional)</Label>
                   <Input className="mt-1" value={formData.keterangan} onChange={(e) => setFormData({...formData, keterangan: e.target.value})} placeholder="Keterangan tambahan..." />
+                </div>
+
+                {/* Tugas untuk Pegawai (Switch On/Off) */}
+                <div className="rounded-xl border border-slate-200 p-3 space-y-3 bg-slate-50/50">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs text-slate-600">Tugas untuk Pegawai</Label>
+                    <Switch checked={!!formData.tugas_untuk_aktif} onCheckedChange={(v) => setFormData({ ...formData, tugas_untuk_aktif: v })} />
+                  </div>
+                  {formData.tugas_untuk_aktif && (
+                    <>
+                      <Popover open={openPegawaiSelect} onOpenChange={setOpenPegawaiSelect}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" type="button" className="w-full justify-start text-left font-normal h-9">
+                            <Users className="w-4 h-4 mr-2 text-slate-400" />
+                            {(formData.pegawai_ids || []).length ? `${(formData.pegawai_ids || []).length} pegawai dipilih` : 'Pilih pegawai yang ditugaskan...'}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-80 p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Cari nama pegawai..." />
+                            <CommandList className="max-h-64">
+                              <CommandEmpty>Tidak ditemukan</CommandEmpty>
+                              <CommandGroup>
+                                {guruList.map(g => (
+                                  <CommandItem key={g.id} value={`${g.nama} ${g.jabatan || ''} ${g.tugas_tambahan || ''}`} onSelect={() => togglePegawai(g.id)} className="cursor-pointer">
+                                    <div className="flex items-center justify-between w-full">
+                                      <span className="text-sm">{g.nama}</span>
+                                      {(formData.pegawai_ids || []).includes(g.id)
+                                        ? <Check className="w-4 h-4 text-emerald-600" />
+                                        : <span className="text-[10px] text-slate-400 truncate max-w-24">{g.jabatan || ''}</span>}
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {(formData.pegawai_ids || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {(formData.pegawai_ids || []).map(id => {
+                            const g = guruList.find(x => x.id === id);
+                            return g ? (
+                              <Badge key={id} className="bg-indigo-100 text-indigo-700">
+                                {g.nama}
+                                <button type="button" onClick={() => togglePegawai(id)} className="ml-1 text-indigo-400 hover:text-red-500"><X className="w-3 h-3" /></button>
+                              </Badge>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-slate-400">Pegawai terpilih menerima email + link Google Calendar; pengingat WA otomatis dikirim H-1 kegiatan.</p>
+                    </>
+                  )}
                 </div>
                 <div className="flex gap-3 pt-1">
                   <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
@@ -438,6 +519,12 @@ export default function KalenderAkademik() {
                                   </p>
                                 )}
                                 {ev.keterangan && <p className="text-xs mt-1 opacity-70">{ev.keterangan}</p>}
+                                {(ev.pegawai_names || []).length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                    <span className="text-[10px] text-slate-500 font-medium">Tugas:</span>
+                                    {ev.pegawai_names.map(n => <Badge key={n} className="bg-indigo-100 text-indigo-700 text-[10px]">{n}</Badge>)}
+                                  </div>
+                                )}
                               </div>
                               <div className="flex flex-col gap-1">
                                 <button onClick={() => handleEdit(ev)} className="p-1 rounded hover:bg-white/60 transition-all">
@@ -544,6 +631,9 @@ export default function KalenderAkademik() {
                               </span>
                             )}
                             {ev.keterangan && <span className="text-[10px] text-slate-400 truncate">{ev.keterangan}</span>}
+                            {(ev.pegawai_names || []).length > 0 && (
+                              <span className="text-[10px] text-indigo-600 truncate">Tugas: {ev.pegawai_names.join(', ')}</span>
+                            )}
                           </div>
                         </div>
                         <div className="flex gap-1">

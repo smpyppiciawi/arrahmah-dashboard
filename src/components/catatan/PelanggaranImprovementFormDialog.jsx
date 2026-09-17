@@ -79,6 +79,17 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       if (vars?.siswa_id) { recomputeRaporForSiswa(vars.siswa_id).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      // Notifikasi Pelanggaran Berulang: siswa tercatat dengan kode yang sama >= 3x (termasuk record ini)
+      if (!editing && vars?.siswa_id && vars?.kode) {
+        const count = (pelanggaranImprovementExisting || []).filter(r => r.siswa_id === vars.siswa_id && r.kode === vars.kode && r.status !== 'Dibatalkan').length + 1;
+        if (count >= 3) {
+          toast({
+            title: "⚠️ Pelanggaran Berulang",
+            description: `${vars.nama_siswa} (${vars.nama_kelas}) kini tercatat [${vars.kode}] sebanyak ${count}x. Mohon perhatian & tindak lanjut Wali Kelas.`,
+            duration: 8000,
+          });
+        }
+      }
       handleClose();
     }
   });
