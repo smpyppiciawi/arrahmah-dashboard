@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Printer, BarChart3, History, Search, Filter, X } from "lucide-react";
+import { Printer, BarChart3, History, Search, Filter, X, ListOrdered } from "lucide-react";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { sumPoinPelanggaranAktif, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
@@ -24,11 +25,13 @@ const RENTANG_POIN = [
 ];
 
 export default function RekapPoinTab({ pelanggaranImprovementList, improvementList, siswaList, kelasList, pengaturan }) {
+  const [activeTab, setActiveTab] = useState('siswa');
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
   const [poinMin, setPoinMin] = useState('');
   const [poinMax, setPoinMax] = useState('');
   const [filterKode, setFilterKode] = useState('');
+  const [rentangKey, setRentangKey] = useState('');
   const [riwayatSiswa, setRiwayatSiswa] = useState(null);
 
   const akumulasiLama = pengaturan?.akumulasi_poin_lama_aktif;
@@ -51,13 +54,19 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
     });
   }, [siswaList, pelanggaranImprovementList, improvementList, akumulasiLama, pelanggaranLamaList]);
 
-  // 1. Distribusi rentang poin
+  // Distribusi rentang poin (kartu interaktif — klik untuk memfilter Daftar Siswa)
   const rentangRows = useMemo(() =>
     RENTANG_POIN.map(r => ({ ...r, count: rows.filter(x => x.poinBersih >= r.min && x.poinBersih <= r.max).length })),
     [rows]);
   const maxRentang = Math.max(...rentangRows.map(r => r.count), 1);
+  const rentangAktif = useMemo(() => RENTANG_POIN.find(r => r.key === rentangKey) || null, [rentangKey]);
 
-  // 2. Rekap Akumulasi Poin per kelas
+  const handleRentangClick = (r) => {
+    setRentangKey(prev => (prev === r.key ? '' : r.key));
+    setActiveTab('siswa');
+  };
+
+  // Rekap Akumulasi Poin per kelas (Kelas berurut A-Z)
   const kelasRows = useMemo(() => (kelasList || []).map(k => {
     const members = rows.filter(x => x.kelas_id === k.id);
     const poinPelanggaran = members.reduce((s, m) => s + m.poinPelanggaran, 0);
@@ -67,14 +76,14 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
       poinBersih: poinPelanggaran - poinImprovement,
       rataBersih: members.length ? Math.round((poinPelanggaran - poinImprovement) / members.length) : 0,
     };
-  }).sort((a, b) => b.poinBersih - a.poinBersih), [kelasList, rows]);
+  }).sort((a, b) => (a.kelas || '').localeCompare(b.kelas || '', 'id')), [kelasList, rows]);
 
   // Daftar kode pelanggaran (untuk Filter Kode)
   const kodeOptions = useMemo(() =>
     [...new Set((pelanggaranImprovementList || []).filter(r => r.kode && r.status !== 'Dibatalkan').map(r => r.kode))].sort(),
     [pelanggaranImprovementList]);
 
-  // Statistik kode terpilih: jumlah pelanggar total & per kelas
+  // Statistik kode terpilih: kategori, uraian, jumlah pelanggar total & per kelas
   const kodeStats = useMemo(() => {
     if (!filterKode) return null;
     const recs = (pelanggaranImprovementList || []).filter(r => r.kode === filterKode && r.status !== 'Dibatalkan');
@@ -88,6 +97,8 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
     }
     return {
       kode: filterKode,
+      kategoriUtama: recs[0]?.kategori_utama || '-',
+      uraian: recs[0]?.uraian_pelanggaran || '-',
       totalKejadian: recs.length,
       totalSiswa: siswaSet.size,
       perKelas: Object.entries(perKelasMap).map(([kelas, set]) => ({ kelas, count: set.size })).sort((a, b) => a.kelas.localeCompare(b.kelas, 'id')),
@@ -95,7 +106,7 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
     };
   }, [filterKode, pelanggaranImprovementList]);
 
-  // 3. Daftar siswa sesuai semua filter aktif
+  // Daftar siswa sesuai semua filter aktif (Daftar Siswa saja)
   const filteredRows = useMemo(() => {
     const q = (search || '').trim().toLowerCase();
     const min = poinMin === '' ? null : Number(poinMin);
@@ -106,12 +117,13 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
       if (min !== null && !isNaN(min) && r.poinBersih < min) return false;
       if (max !== null && !isNaN(max) && r.poinBersih > max) return false;
       if (filterKode && !kodeStats?.siswaIds?.has(r.id)) return false;
+      if (rentangAktif && (r.poinBersih < rentangAktif.min || r.poinBersih > rentangAktif.max)) return false;
       return true;
     }).sort((a, b) => b.poinBersih - a.poinBersih || a.nama.localeCompare(b.nama, 'id'));
-  }, [rows, search, filterKelas, poinMin, poinMax, filterKode, kodeStats]);
+  }, [rows, search, filterKelas, poinMin, poinMax, filterKode, kodeStats, rentangAktif]);
 
-  const hasFilter = !!(search || filterKelas || poinMin !== '' || poinMax !== '' || filterKode);
-  const resetFilter = () => { setSearch(''); setFilterKelas(''); setPoinMin(''); setPoinMax(''); setFilterKode(''); };
+  const hasFilter = !!(search || filterKelas || poinMin !== '' || poinMax !== '' || filterKode || rentangKey);
+  const resetFilter = () => { setSearch(''); setFilterKelas(''); setPoinMin(''); setPoinMax(''); setFilterKode(''); setRentangKey(''); };
 
   // Riwayat pelanggaran & improvement siswa terpilih
   const riwayat = useMemo(() => {
@@ -127,6 +139,7 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
     const now = format(new Date(), 'd MMMM yyyy HH:mm', { locale: idLocale });
     const filterInfo = [
       filterKelas ? `Kelas: ${(kelasList || []).find(k => k.id === filterKelas)?.nama_kelas || '-'}` : null,
+      rentangAktif ? `Rentang: ${rentangAktif.label}` : null,
       (poinMin !== '' || poinMax !== '') ? `Poin Bersih: ${poinMin === '' ? '0' : poinMin} – ${poinMax === '' ? '∞' : poinMax}` : null,
       filterKode ? `Kode Pelanggaran: ${filterKode}` : null,
       search ? `Cari: "${search}"` : null,
@@ -135,6 +148,7 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
     const kelasHtml = kelasRows.map(k => `<tr><td>${k.kelas}</td><td style="text-align:right">${k.jumlahSiswa}</td><td style="text-align:right">${k.poinPelanggaran}</td><td style="text-align:right">${k.poinImprovement}</td><td style="text-align:right">${k.poinBersih}</td><td style="text-align:right">${k.rataBersih}</td></tr>`).join('');
     const kodeHtml = kodeStats ? `
       <h2>Rekap Kode Pelanggaran [${kodeStats.kode}]</h2>
+      <p style="font-size:11px">Kategori Utama: <b>${kodeStats.kategoriUtama}</b> · Uraian: ${kodeStats.uraian}</p>
       <p style="font-size:11px">Jumlah Siswa Pelanggar: <b>${kodeStats.totalSiswa}</b> · Total Kejadian: <b>${kodeStats.totalKejadian}</b></p>
       <table><tr><th>Kelas</th><th style="width:140px">Jumlah Pelanggar</th></tr>
       ${kodeStats.perKelas.map(k => `<tr><td>${k.kelas}</td><td style="text-align:right">${k.count}</td></tr>`).join('')}</table>` : '';
@@ -155,7 +169,7 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
       <h2>2. Rekap Akumulasi Poin per Kelas</h2>
       <table><tr><th>Kelas</th><th>Siswa</th><th>Poin Pelanggaran</th><th>Poin Improvement</th><th>Total Bersih</th><th>Rata-rata Bersih</th></tr>${kelasHtml}</table>
       ${kodeHtml}
-      <h2>${kodeStats ? '3' : '3'}. Rekap Poin per Siswa</h2>
+      <h2>3. Rekap Poin per Siswa</h2>
       <table><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th>Poin Pelanggaran</th><th>Poin Improvement</th><th>Poin Bersih</th></tr>${siswaHtml}</table>
     </body></html>`;
     const w = window.open('', '', 'width=1000,height=700');
@@ -177,150 +191,190 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        {/* 1. Distribusi Rentang Poin Bersih */}
+        {/* Distribusi Rentang Poin Bersih — kartu interaktif: klik rentang untuk menampilkan daftar siswa */}
         <div>
-          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Distribusi Rentang Poin Bersih</h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Distribusi Rentang Poin Bersih</h4>
+            <span className="text-[10px] text-slate-400">Klik rentang untuk melihat daftar siswanya</span>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-            {rentangRows.map(r => (
-              <div key={r.key} className="rounded-xl border border-slate-200 p-2.5 bg-white">
-                <p className="text-[10px] text-slate-500">{r.label}</p>
-                <p className="text-xl font-bold text-slate-800">{r.count}</p>
-                <div className="h-1.5 rounded-full bg-slate-100 mt-1.5 overflow-hidden">
-                  <div className={`h-full ${r.color}`} style={{ width: `${Math.max(3, (r.count / maxRentang) * 100)}%` }} />
+            {rentangRows.map(r => {
+              const selected = rentangKey === r.key;
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={() => handleRentangClick(r)}
+                  className={`text-left rounded-xl border p-2.5 bg-white transition-all cursor-pointer ${
+                    selected
+                      ? 'border-indigo-400 ring-2 ring-indigo-200 shadow-md scale-[1.02]'
+                      : 'border-slate-200 hover:border-indigo-300 hover:shadow-md hover:scale-[1.02]'
+                  }`}
+                >
+                  <p className="text-[10px] text-slate-500">{r.label}</p>
+                  <p className="text-xl font-bold text-slate-800">{r.count}</p>
+                  <div className="h-1.5 rounded-full bg-slate-100 mt-1.5 overflow-hidden">
+                    <div className={`h-full ${r.color}`} style={{ width: `${Math.max(3, (r.count / maxRentang) * 100)}%` }} />
+                  </div>
+                  {selected && (
+                    <span className="inline-flex items-center gap-0.5 mt-1 text-[10px] font-medium text-indigo-600">
+                      <X className="w-3 h-3" /> hapus filter
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Tab Bar: Daftar Siswa (default) & Rekap Akumulasi Poin */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="flex w-fit gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+            <TabsTrigger value="siswa" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all">
+              <Search className="w-4 h-4" />
+              <span>Daftar Siswa</span>
+            </TabsTrigger>
+            <TabsTrigger value="akumulasi" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-indigo-500 data-[state=active]:text-white transition-all">
+              <ListOrdered className="w-4 h-4" />
+              <span>Rekap Akumulasi Poin</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: Daftar Siswa — filter & tabel siswa */}
+          <TabsContent value="siswa" className="mt-4 space-y-4">
+            {/* Filter Bar (hanya untuk Daftar Siswa) */}
+            <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+              <Filter className="w-4 h-4 text-slate-500" />
+              <div className="relative flex-1 min-w-52">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari Nama / NIS / Kelas..."
+                  className="w-full h-9 text-sm rounded-md border border-slate-200 pl-8 pr-3 bg-white" />
+              </div>
+              <Select value={filterKelas || 'all'} onValueChange={(v) => setFilterKelas(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-36 h-9 text-sm bg-white"><SelectValue placeholder="Filter Kelas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kelas</SelectItem>
+                  {(kelasList || []).sort((a, b) => (a.nama_kelas || '').localeCompare(b.nama_kelas || '', 'id')).map(k => (
+                    <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-1">
+                <Input type="number" value={poinMin} onChange={(e) => setPoinMin(e.target.value)} placeholder="Poin min" className="w-24 h-9 text-sm bg-white" />
+                <span className="text-slate-400 text-xs">–</span>
+                <Input type="number" value={poinMax} onChange={(e) => setPoinMax(e.target.value)} placeholder="Poin maks" className="w-24 h-9 text-sm bg-white" />
+              </div>
+              <Select value={filterKode || 'all'} onValueChange={(v) => setFilterKode(v === 'all' ? '' : v)}>
+                <SelectTrigger className="w-44 h-9 text-sm bg-white"><SelectValue placeholder="Kode Pelanggaran" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kode</SelectItem>
+                  {kodeOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {hasFilter && (
+                <Button variant="ghost" size="sm" onClick={resetFilter} className="text-slate-500 hover:text-red-500">
+                  <X className="w-4 h-4 mr-1" /> Reset
+                </Button>
+              )}
+            </div>
+
+            {/* Ringkasan kode pelanggaran terpilih: Kategori Utama & Uraian + jumlah pelanggar */}
+            {kodeStats && (
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-slate-700 text-white font-mono">{kodeStats.kode}</Badge>
+                  <Badge variant="outline" className="bg-white text-[10px]">{kodeStats.kategoriUtama}</Badge>
+                  <span className="text-xs text-slate-500 line-clamp-1">{kodeStats.uraian}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-slate-600">Total Siswa Pelanggar: <b className="text-slate-800">{kodeStats.totalSiswa}</b> · Total Kejadian: <b className="text-slate-800">{kodeStats.totalKejadian}</b></span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="text-[10px] text-slate-500 font-medium">Jumlah Pelanggar per Kelas:</span>
+                  {kodeStats.perKelas.map(k => (
+                    <Badge key={k.kelas} variant="outline" className="bg-white text-[10px]">{k.kelas}: {k.count}</Badge>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            )}
 
-        {/* 2. Rekap Akumulasi Poin (per Kelas) */}
-        <div>
-          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Rekap Akumulasi Poin</h4>
-          <div className="overflow-x-auto rounded-xl border border-slate-100">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs">Kelas</TableHead>
-                  <TableHead className="text-xs text-center">Siswa</TableHead>
-                  <TableHead className="text-xs text-center">Poin Pelanggaran</TableHead>
-                  <TableHead className="text-xs text-center">Poin Improvement</TableHead>
-                  <TableHead className="text-xs text-center">Total Bersih</TableHead>
-                  <TableHead className="text-xs text-center">Rata-rata Bersih</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {kelasRows.map(k => (
-                  <TableRow key={k.kelas} className="hover:bg-slate-50">
-                    <TableCell className="font-medium">{k.kelas}</TableCell>
-                    <TableCell className="text-center">{k.jumlahSiswa}</TableCell>
-                    <TableCell className="text-center text-red-600">{k.poinPelanggaran}</TableCell>
-                    <TableCell className="text-center text-emerald-600">{k.poinImprovement}</TableCell>
-                    <TableCell className={`text-center font-semibold ${k.poinBersih > 0 ? 'text-amber-600' : 'text-slate-500'}`}>{k.poinBersih}</TableCell>
-                    <TableCell className="text-center text-slate-500">{k.rataBersih}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-
-        {/* 3. Filter Bar */}
-        <div className="flex flex-wrap items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-          <Filter className="w-4 h-4 text-slate-500" />
-          <div className="relative flex-1 min-w-52">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari Nama / NIS / Kelas..."
-              className="w-full h-9 text-sm rounded-md border border-slate-200 pl-8 pr-3 bg-white" />
-          </div>
-          <Select value={filterKelas || 'all'} onValueChange={(v) => setFilterKelas(v === 'all' ? '' : v)}>
-            <SelectTrigger className="w-36 h-9 text-sm bg-white"><SelectValue placeholder="Filter Kelas" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kelas</SelectItem>
-              {(kelasList || []).sort((a, b) => (a.nama_kelas || '').localeCompare(b.nama_kelas || '', 'id')).map(k => (
-                <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="flex items-center gap-1">
-            <Input type="number" value={poinMin} onChange={(e) => setPoinMin(e.target.value)} placeholder="Poin min" className="w-24 h-9 text-sm bg-white" />
-            <span className="text-slate-400 text-xs">–</span>
-            <Input type="number" value={poinMax} onChange={(e) => setPoinMax(e.target.value)} placeholder="Poin maks" className="w-24 h-9 text-sm bg-white" />
-          </div>
-          <Select value={filterKode || 'all'} onValueChange={(v) => setFilterKode(v === 'all' ? '' : v)}>
-            <SelectTrigger className="w-44 h-9 text-sm bg-white"><SelectValue placeholder="Kode Pelanggaran" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Semua Kode</SelectItem>
-              {kodeOptions.map(k => <SelectItem key={k} value={k}>{k}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          {hasFilter && (
-            <Button variant="ghost" size="sm" onClick={resetFilter} className="text-slate-500 hover:text-red-500">
-              <X className="w-4 h-4 mr-1" /> Reset
-            </Button>
-          )}
-        </div>
-
-        {/* Ringkasan kode pelanggaran terpilih */}
-        {kodeStats && (
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-slate-700 text-white font-mono">{kodeStats.kode}</Badge>
-              <span className="text-xs text-slate-600">Total Siswa Pelanggar: <b className="text-slate-800">{kodeStats.totalSiswa}</b> · Total Kejadian: <b className="text-slate-800">{kodeStats.totalKejadian}</b></span>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] text-slate-500 font-medium">Jumlah Pelanggar per Kelas:</span>
-              {kodeStats.perKelas.map(k => (
-                <Badge key={k.kelas} variant="outline" className="bg-white text-[10px]">{k.kelas}: {k.count}</Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 4. Daftar siswa sesuai filter (kolom tidak berubah) */}
-        <div>
-          <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Daftar Siswa {hasFilter ? `(${filteredRows.length} sesuai filter)` : ''}
-          </h4>
-          <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-[420px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-slate-50">
-                  <TableHead className="text-xs">NIS</TableHead>
-                  <TableHead className="text-xs">Nama</TableHead>
-                  <TableHead className="text-xs">Kelas</TableHead>
-                  <TableHead className="text-xs text-center">Pelanggaran</TableHead>
-                  <TableHead className="text-xs text-center">Improvement</TableHead>
-                  <TableHead className="text-xs text-center">Bersih</TableHead>
-                  <TableHead className="text-xs">Rapor</TableHead>
-                  <TableHead className="text-xs text-center">Riwayat</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredRows.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">Tidak ada data sesuai filter</TableCell></TableRow>
-                ) : filteredRows.map(r => {
-                  const st = getRaporStatus(r, r.poinBersih);
-                  return (
-                    <TableRow key={r.id} className="hover:bg-slate-50">
-                      <TableCell className="text-xs font-mono text-slate-500">{r.nis || '-'}</TableCell>
-                      <TableCell className="font-medium text-sm">{r.nama}</TableCell>
-                      <TableCell className="text-xs">{r.nama_kelas || '-'}</TableCell>
-                      <TableCell className="text-center text-xs text-red-600">{r.poinPelanggaran}</TableCell>
-                      <TableCell className="text-center text-xs text-emerald-600">{r.poinImprovement}</TableCell>
-                      <TableCell className={`text-center text-xs font-semibold ${r.poinBersih > 0 ? 'text-amber-600' : 'text-slate-500'}`}>{r.poinBersih}</TableCell>
-                      <TableCell>{st.level !== 'normal' ? <Badge className={RAPOR_BADGE_CLASS[st.level]}>{st.label}</Badge> : <span className="text-xs text-slate-400">Normal</span>}</TableCell>
-                      <TableCell className="text-center">
-                        <button onClick={() => setRiwayatSiswa(r)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline">
-                          <History className="w-3.5 h-3.5" /> Lihat
-                        </button>
-                      </TableCell>
+            {/* Tabel Daftar Siswa (kolom tidak berubah) */}
+            <div>
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                Daftar Siswa {hasFilter ? `(${filteredRows.length} sesuai filter)` : ''}
+              </h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-100 max-h-[420px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-slate-50">
+                      <TableHead className="text-xs">NIS</TableHead>
+                      <TableHead className="text-xs">Nama</TableHead>
+                      <TableHead className="text-xs">Kelas</TableHead>
+                      <TableHead className="text-xs text-center">Pelanggaran</TableHead>
+                      <TableHead className="text-xs text-center">Improvement</TableHead>
+                      <TableHead className="text-xs text-center">Bersih</TableHead>
+                      <TableHead className="text-xs">Rapor</TableHead>
+                      <TableHead className="text-xs text-center">Riwayat</TableHead>
                     </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRows.length === 0 ? (
+                      <TableRow><TableCell colSpan={8} className="text-center py-6 text-slate-400 text-sm">Tidak ada data sesuai filter</TableCell></TableRow>
+                    ) : filteredRows.map(r => {
+                      const st = getRaporStatus(r, r.poinBersih);
+                      return (
+                        <TableRow key={r.id} className="hover:bg-slate-50">
+                          <TableCell className="text-xs font-mono text-slate-500">{r.nis || '-'}</TableCell>
+                          <TableCell className="font-medium text-sm">{r.nama}</TableCell>
+                          <TableCell className="text-xs">{r.nama_kelas || '-'}</TableCell>
+                          <TableCell className="text-center text-xs text-red-600">{r.poinPelanggaran}</TableCell>
+                          <TableCell className="text-center text-xs text-emerald-600">{r.poinImprovement}</TableCell>
+                          <TableCell className={`text-center text-xs font-semibold ${r.poinBersih > 0 ? 'text-amber-600' : 'text-slate-500'}`}>{r.poinBersih}</TableCell>
+                          <TableCell>{st.level !== 'normal' ? <Badge className={RAPOR_BADGE_CLASS[st.level]}>{st.label}</Badge> : <span className="text-xs text-slate-400">Normal</span>}</TableCell>
+                          <TableCell className="text-center">
+                            <button onClick={() => setRiwayatSiswa(r)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline">
+                              <History className="w-3.5 h-3.5" /> Lihat
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* TAB 2: Rekap Akumulasi Poin (per kelas, berurut) — tanpa filter */}
+          <TabsContent value="akumulasi" className="mt-4">
+            <div className="overflow-x-auto rounded-xl border border-slate-100">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50">
+                    <TableHead className="text-xs">Kelas</TableHead>
+                    <TableHead className="text-xs text-center">Siswa</TableHead>
+                    <TableHead className="text-xs text-center">Poin Pelanggaran</TableHead>
+                    <TableHead className="text-xs text-center">Poin Improvement</TableHead>
+                    <TableHead className="text-xs text-center">Total Bersih</TableHead>
+                    <TableHead className="text-xs text-center">Rata-rata Bersih</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kelasRows.map(k => (
+                    <TableRow key={k.kelas} className="hover:bg-slate-50">
+                      <TableCell className="font-medium">{k.kelas}</TableCell>
+                      <TableCell className="text-center">{k.jumlahSiswa}</TableCell>
+                      <TableCell className="text-center text-red-600">{k.poinPelanggaran}</TableCell>
+                      <TableCell className="text-center text-emerald-600">{k.poinImprovement}</TableCell>
+                      <TableCell className={`text-center font-semibold ${k.poinBersih > 0 ? 'text-amber-600' : 'text-slate-500'}`}>{k.poinBersih}</TableCell>
+                      <TableCell className="text-center text-slate-500">{k.rataBersih}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       <RiwayatDialog siswa={riwayatSiswa} riwayat={riwayat} onClose={() => setRiwayatSiswa(null)} />
@@ -333,7 +387,7 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
   const handlePrintSiswa = () => {
     if (!siswa) return;
     const now = format(new Date(), 'd MMMM yyyy HH:mm', { locale: idLocale });
-    const pelHtml = (riwayat?.pelanggaran || []).map(p => `<tr><td>${p.tanggal || '-'}</td><td>${p.kode || '-'}</td><td>${p.uraian_pelanggaran || ''}</td><td style="text-align:right">${p.poin}</td><td>${p.status}</td></tr>`).join('');
+    const pelHtml = (riwayat?.pelanggaran || []).map(p => `<tr><td>${p.tanggal || '-'}</td><td>${p.kode || '-'}</td><td>${p.kategori_utama || '-'}</td><td>${p.uraian_pelanggaran || ''}</td><td style="text-align:right">${p.poin}</td><td>${p.status}</td></tr>`).join('');
     const impHtml = (riwayat?.improvement || []).map(i => `<tr><td>${i.tanggal || '-'}</td><td>${i.kegiatan_pembinaan_nama || i.uraian || ''}</td><td style="text-align:right">−${i.poin_pengurangan}</td><td>${i.validator_nama || '-'}</td></tr>`).join('');
     const html = `<!DOCTYPE html><html><head><title>Rekap Detail Siswa</title><style>
       body { font-family: Arial, sans-serif; color: #1f2937; padding: 24px; }
@@ -353,7 +407,7 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
         <tr class="idrow"><td style="font-weight:bold">Poin Pelanggaran</td><td>${siswa.poinPelanggaran}</td><td style="font-weight:bold">Poin Improvement</td><td>${siswa.poinImprovement}</td></tr>
       </table>
       <h2>Riwayat Pelanggaran (${(riwayat?.pelanggaran || []).length})</h2>
-      ${(riwayat?.pelanggaran || []).length ? `<table><tr><th>Tanggal</th><th>Kode</th><th>Uraian</th><th>Poin</th><th>Status</th></tr>${pelHtml}</table>` : '<p style="font-size:11px">Tidak ada pelanggaran tercatat</p>'}
+      ${(riwayat?.pelanggaran || []).length ? `<table><tr><th>Tanggal</th><th>Kode</th><th>Kategori Utama</th><th>Uraian</th><th>Poin</th><th>Status</th></tr>${pelHtml}</table>` : '<p style="font-size:11px">Tidak ada pelanggaran tercatat</p>'}
       <h2>Riwayat Improvement (${(riwayat?.improvement || []).length})</h2>
       ${(riwayat?.improvement || []).length ? `<table><tr><th>Tanggal</th><th>Kegiatan</th><th>Poin</th><th>Validator</th></tr>${impHtml}</table>` : '<p style="font-size:11px">Tidak ada improvement tercatat</p>'}
     </body></html>`;
@@ -398,6 +452,7 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Badge className="bg-slate-700 text-white font-mono text-[10px]">{p.kode}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{p.kategori_utama}</Badge>
                   <span className="text-[10px] text-slate-400">{p.tanggal}</span>
                   <Badge className="bg-blue-100 text-blue-700 text-[10px]">{p.status}</Badge>
                 </div>
