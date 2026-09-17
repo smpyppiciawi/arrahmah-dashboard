@@ -158,7 +158,7 @@ export function useAbsen3Hari(siswaList, kalenderList) {
           _izinCount: recs.filter((r) => r.status === 'Izin').length,
           _lastAbsenDate: dates[dates.length - 1],
           _kriteriaLabel: kriteria.join(' · '),
-          _sameDayInfo,
+          _sameDayInfo: sameDayInfo,
           _consecutive: beruntun,
           _carryover: !!qualifyWeek && qualifyWeek.weekStart < curWeekStart,
           _weekStart: qualifyWeek ? qualifyWeek.weekStart : curWeekStart,
