@@ -15,6 +15,7 @@ const countOf = (row, key) => (key === 'Hadir' ? (row.Hadir || 0) + (row.Terlamb
 
 export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoading, kelasList, isDark, t }) {
   const [rankCat, setRankCat] = useState('Alfa');
+  const [rankScope, setRankScope] = useState('kelas'); // kelas | siswa
   const [kelasId, setKelasId] = useState('');
   const [search, setSearch] = useState('');
 
@@ -29,11 +30,14 @@ export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoad
     Alfa: totals.Alfa || 0,
   };
 
-  const rankedKelas = useMemo(() => (rekap?.perKelas || [])
-    .map((k) => ({ nama: k.nama_kelas || '-', val: countOf(k, rankCat) }))
-    .sort((a, b) => b.val - a.val)
-    .slice(0, 5), [rekap, rankCat]);
-  const maxRank = rankedKelas[0]?.val || 1;
+  // Ranking terbanyak — 2 tab: per Kelas & per Siswa
+  const rankedRows = useMemo(() => {
+    const src = rankScope === 'siswa'
+      ? (rekap?.perSiswa || []).map((s) => ({ key: s.siswa_id, label: s.nama || '-', sub: s.nama_kelas || '', val: countOf(s, rankCat) }))
+      : (rekap?.perKelas || []).map((k) => ({ key: k.kelas_id || k.nama_kelas || '-', label: k.nama_kelas || '-', sub: '', val: countOf(k, rankCat) }));
+    return src.sort((a, b) => b.val - a.val).slice(0, 5);
+  }, [rekap, rankCat, rankScope]);
+  const maxRank = rankedRows[0]?.val || 1;
   const rankStyle = RANK_CATS.find((c) => c.key === rankCat);
 
   const kelasTotals = useMemo(() => {
@@ -51,6 +55,13 @@ export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoad
       .map((s) => ({ ...s, _hadir: countOf(s, 'Hadir') }))
       .sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id'));
   }, [rekap, kelasId, search]);
+
+  const scopeBtn = (active) => active
+    ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-800 text-white')
+    : (isDark ? 'text-slate-400 hover:text-slate-200' : 'text-slate-500 hover:text-slate-700');
+  const catBtn = (active) => active
+    ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-800 text-white')
+    : (isDark ? 'bg-slate-700/50 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200');
 
   return (
     <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
@@ -80,33 +91,42 @@ export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoad
           </div>
           <p className={`text-[10px] ${t.textSubtle} mt-1.5`}>{hariEfektif} hari sekolah terdata · total akumulasi seluruh kelas</p>
 
-          {/* Ranking kelas terbanyak per kategori */}
+          {/* Ranking terbanyak: tab Kelas / Siswa */}
           <div className="mt-3">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className={`text-xs font-semibold ${t.text}`}>Kelas {rankCat} Terbanyak</span>
-              <div className="flex gap-1 ml-auto">
+              <span className={`text-xs font-semibold ${t.text}`}>{rankScope === 'siswa' ? 'Siswa' : 'Kelas'} {rankCat} Terbanyak</span>
+              <div className="flex gap-1 ml-auto flex-wrap justify-end">
+                <div className={`flex rounded-md overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                  {['kelas', 'siswa'].map((sc) => (
+                    <button key={sc} onClick={() => setRankScope(sc)}
+                      className={`px-2.5 py-0.5 text-[10px] font-medium transition-colors ${scopeBtn(rankScope === sc)}`}>
+                      {sc === 'kelas' ? 'Kelas' : 'Siswa'}
+                    </button>
+                  ))}
+                </div>
                 {RANK_CATS.map((c) => (
                   <button key={c.key} onClick={() => setRankCat(c.key)}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${rankCat === c.key
-                      ? (isDark ? 'bg-slate-600 text-white' : 'bg-slate-800 text-white')
-                      : (isDark ? 'bg-slate-700/50 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200')}`}>
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${catBtn(rankCat === c.key)}`}>
                     {c.label}
                   </button>
                 ))}
               </div>
             </div>
             <div className="space-y-1.5">
-              {rankedKelas.length === 0 ? (
+              {rankedRows.length === 0 ? (
                 <p className={`text-[10px] ${t.textMuted}`}>Tidak ada data</p>
-              ) : rankedKelas.map((k, i) => (
-                <div key={`${k.nama}-${i}`} className="flex items-center gap-2">
+              ) : rankedRows.map((r, i) => (
+                <div key={r.key || i} className="flex items-center gap-2">
                   <span className={`text-[10px] w-4 text-center ${t.textMuted}`}>{i + 1}</span>
-                  <span className={`text-xs w-14 font-medium ${t.text}`}>{k.nama}</span>
-                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
-                    <div className={`h-full ${rankStyle.dot} rounded-full`} style={{ width: `${Math.max(4, (k.val / maxRank) * 100)}%` }} />
+                  <div className="w-24 md:w-28 min-w-0">
+                    <p className={`text-xs font-medium truncate ${t.text}`}>{r.label}</p>
+                    {r.sub && <p className={`text-[9px] ${t.textMuted} truncate`}>{r.sub}</p>}
                   </div>
-                  <span className={`text-xs font-bold w-8 text-right ${rankStyle.text}`}>{k.val}</span>
+                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${isDark ? 'bg-slate-700/50' : 'bg-slate-100'}`}>
+                    <div className={`h-full ${rankStyle.dot} rounded-full`} style={{ width: `${Math.max(4, (r.val / maxRank) * 100)}%` }} />
+                  </div>
+                  <span className={`text-xs font-bold w-8 text-right ${rankStyle.text}`}>{r.val}</span>
                 </div>
               ))}
             </div>
