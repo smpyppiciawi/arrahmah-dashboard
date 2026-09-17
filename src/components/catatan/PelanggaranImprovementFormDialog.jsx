@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, AlertTriangle, Lock, Info } from "lucide-react";
+import { Search, AlertTriangle, Lock, Info, ImagePlus, X, Loader2 } from "lucide-react";
+import { compressImage } from '@/lib/imageCompress';
 import { recomputeRaporForSiswa, isPendingPoin } from '@/lib/raporStatus';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
@@ -26,7 +27,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
     kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
     rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-    pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses'
+    pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
   });
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
@@ -36,6 +37,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   // Rincian acuan otomatis dari DB (ditampilkan sebagai placeholder, bukan nilai)
   const [rincianHint, setRincianHint] = useState('');
   const [showDupConfirm, setShowDupConfirm] = useState(false);
+  const [uploadingFoto, setUploadingFoto] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
 
   const isGuru = currentUser?.role === 'guru';
@@ -57,7 +59,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setFormData({ ...formData, ...editing });
+      setFormData({ ...formData, ...editing, foto_urls: editing.foto_urls || [] });
       setRincianHint(editing.rincian || '');
     } else {
       const f = {
@@ -65,7 +67,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
         kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
         rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-        pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses'
+        pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
       };
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setRincianHint('');
@@ -110,7 +112,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
       kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
       rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-      pelapor_id: '', pelapor_nama: '', tahun_ajaran: '', status: 'Proses'
+      pelapor_id: '', pelapor_nama: '', tahun_ajaran: '', status: 'Proses', foto_urls: []
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKodeSearch(false); setSearchKode('');
     setRincianHint('');
@@ -187,6 +189,29 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     }
     createMutation.mutate(payload);
   };
+
+  const handleFotoChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!files.length) return;
+    setUploadingFoto(true);
+    try {
+      const urls = [];
+      for (const f of files) {
+        // Kompresi otomatis: maks 1600px, JPEG 75% — tetap jelas saat dicetak/dilihat, ringan diunggah
+        const compressed = await compressImage(f);
+        const res = await base44.integrations.Core.UploadPublicFile({ file: compressed });
+        if (res?.file_url) urls.push(res.file_url);
+      }
+      setFormData(prev => ({ ...prev, foto_urls: [...(prev.foto_urls || []), ...urls] }));
+    } catch (err) {
+      toast({ title: 'Gagal mengunggah foto', description: err?.message || 'Terjadi kesalahan', variant: 'destructive' });
+    } finally {
+      setUploadingFoto(false);
+    }
+  };
+
+  const removeFoto = (idx) => setFormData(prev => ({ ...prev, foto_urls: (prev.foto_urls || []).filter((_, i) => i !== idx) }));
 
   const handleSubmit = (e) => {
     e?.preventDefault();
@@ -343,6 +368,25 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
               rows={2}
               placeholder={rincianHint || "Ketik rincian pelanggaran sesuai keadaan..."}
             />
+          </div>
+
+          {/* Foto Bukti (bisa lebih dari 1 — otomatis dikompresi) */}
+          <div>
+            <Label>Foto Bukti <span className="text-xs text-slate-400">(opsional, bisa lebih dari 1)</span></Label>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {(formData.foto_urls || []).map((url, idx) => (
+                <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200">
+                  <img src={url} alt={`foto-${idx + 1}`} className="w-full h-full object-cover" />
+                  <button type="button" onClick={() => removeFoto(idx)} className="absolute top-0.5 right-0.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600" title="Hapus foto">
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              <label className={`w-16 h-16 rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-all ${uploadingFoto ? 'border-red-400 bg-red-50' : 'border-slate-300 hover:border-red-400 hover:bg-red-50'}`}>
+                {uploadingFoto ? <Loader2 className="w-5 h-5 animate-spin text-red-500" /> : <ImagePlus className="w-5 h-5 text-slate-400" />}
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleFotoChange} disabled={uploadingFoto} />
+              </label>
+            </div>
           </div>
 
           {/* Poin (default min, within range) */}

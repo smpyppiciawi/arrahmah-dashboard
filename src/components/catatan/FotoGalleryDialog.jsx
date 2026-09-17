@@ -12,7 +12,7 @@ export default function FotoGalleryDialog({ record, onClose }) {
           <DialogTitle>Foto Bukti — {record?.nama_siswa} ({record?.nama_kelas})</DialogTitle>
         </DialogHeader>
         <p className="text-xs text-slate-500 -mt-2 mb-3">
-          {record?.kegiatan_pembinaan_nama || record?.uraian || ''} · {record?.tanggal || ''}
+          {record?.uraian_pelanggaran || record?.kegiatan_pembinaan_nama || record?.uraian || ''} · {record?.tanggal || ''}
         </p>
         {fotos.length === 0 ? (
           <p className="text-sm text-slate-400 text-center py-6">Tidak ada foto</p>

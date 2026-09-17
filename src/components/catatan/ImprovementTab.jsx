@@ -184,6 +184,11 @@ export default function ImprovementTab() {
           <Badge className={`${KATEGORI_COLOR[r.kategori_utama] || KATEGORI_COLOR.Lainnya} text-xs`}>{r.kategori_utama}</Badge>
         </div>
         <p className="text-xs text-slate-500 mt-1 line-clamp-2">{r.uraian_pelanggaran}</p>
+        {(r.foto_urls || []).length > 0 && (
+          <button type="button" onClick={() => setFotoView(r)} className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-indigo-600 hover:underline">
+            <Camera className="w-3 h-3" />{r.foto_urls.length} foto bukti
+          </button>
+        )}
       </div>
     ) },
     { key: 'poin', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },

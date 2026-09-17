@@ -92,6 +92,13 @@
     "approved_at": {
       "type": "string",
       "description": "Timestamp persetujuan poin (ISO)"
+    },
+    "foto_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Foto bukti pelanggaran (URL publik, otomatis terkompresi; bisa lebih dari 1)"
     }
   },
   "required": [
