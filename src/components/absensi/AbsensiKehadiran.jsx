@@ -264,7 +264,7 @@ export default function AbsensiKehadiran() {
             )}
           </div>
           {isOnline && pendingCount > 0 && (
-            <Button size="sm" variant="outline" onClick={syncNow} disabled={syncing} className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100">
+            <Button size="sm" variant="outline" onClick={() => syncNow()} disabled={syncing} className="h-7 text-xs gap-1 border-amber-300 text-amber-700 hover:bg-amber-100">
               {syncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
               {syncing ? 'Menyinkron...' : 'Sinkron Sekarang'}
             </Button>

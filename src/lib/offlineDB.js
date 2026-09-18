@@ -52,6 +52,17 @@ export async function removePending(id) {
   });
 }
 
+// Simpan ulang batch (put) — dipakai sinkronisasi untuk menyimpan sisa record yang masih gagal
+export async function savePending(record) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(record);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function getPendingCount() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
