@@ -54,8 +54,9 @@ export default function PenyebaranSiswaMap({ homeVisitList = [] }) {
       <div style={{ height: '320px' }} className="rounded-lg overflow-hidden border border-slate-600 z-0">
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; OpenStreetMap'
+            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
+            subdomains={['a', 'b', 'c', 'd']}
+            attribution='&copy; OpenStreetMap contributors &copy; CARTO'
           />
           {markers.map(hv => (
             <Marker key={hv.id} position={hv.pos}>
