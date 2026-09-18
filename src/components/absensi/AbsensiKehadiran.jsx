@@ -156,54 +156,72 @@ export default function AbsensiKehadiran() {
       return;
     }
 
-    // Online — save individually, queue failures
+    // Online — kirim massal (bulk): 1 panggilan update + 1 panggilan create,
+    // cek duplikat lokal memakai existingAbsensi yang sudah dimuat (tanpa panggilan per siswa)
     let created = 0, updated = 0;
     const failed = [];
     const newIds = {};
     const savedSids = [];
-    for (const record of records) {
-      try {
-        const savedIsAlfa = record.payload.status === 'Alfa';
-        if (record.existing_id) {
-          await base44.entities.Absensi.update(record.existing_id, record.payload);
-          updated++;
-        } else {
-          // Cegah dobel: cek record yang sudah ada (siswa + tanggal + jenis) sebelum membuat baru —
-          // bila sudah ada, perbarui record tersebut (bukan hapus-buat) agar riwayat status utuh.
-          const existingCheck = await base44.entities.Absensi.filter({
-            siswa_id: record.siswa_id, tanggal: record.payload.tanggal, jenis_absensi: 'Kehadiran',
-          });
-          if (existingCheck.length > 0) {
-            await base44.entities.Absensi.update(existingCheck[0].id, record.payload);
-            newIds[record.siswa_id] = existingCheck[0].id;
-            updated++;
-          } else {
-            const result = await base44.entities.Absensi.create(record.payload);
-            newIds[record.siswa_id] = result.id;
-            created++;
-          }
-        }
-        savedSids.push(record.siswa_id);
-        // Auto-pelanggaran F-02 untuk Alfa manual (non-blocking — jangan gagalkan simpan absensi)
-        if (savedIsAlfa) {
-          try {
-            await base44.functions.invoke('autoPelanggaranAlfa', {
-              action: 'create',
-              absensi: {
-                siswa_id: record.payload.siswa_id,
-                nis: record.payload.nis,
-                nama_siswa: record.payload.nama_siswa,
-                kelas_id: record.payload.kelas_id,
-                nama_kelas: record.payload.nama_kelas,
-                tanggal: record.payload.tanggal,
-                jenis_absensi: record.payload.jenis_absensi,
-              },
-            });
-          } catch (e) { /* pelanggaran otomatis gagal — absensi tetap tersimpan */ }
-        }
-      } catch (err) {
-        failed.push(record);
+
+    const updateRecords = [];
+    const createRecords = [];
+    records.forEach(record => {
+      const localExisting = record.existing_id
+        || existingAbsensi.find(a => a.siswa_id === record.siswa_id && a.jenis_absensi !== 'Jumat')?.id;
+      if (localExisting) {
+        record.existing_id = localExisting;
+        updateRecords.push(record);
+      } else {
+        createRecords.push(record);
       }
+    });
+
+    // Bulk update — semua siswa yang sudah punya record dalam 1 panggilan
+    if (updateRecords.length > 0) {
+      try {
+        await base44.entities.Absensi.bulkUpdate(updateRecords.map(r => ({ id: r.existing_id, ...r.payload })));
+        updateRecords.forEach(r => savedSids.push(r.siswa_id));
+        updated = updateRecords.length;
+      } catch {
+        failed.push(...updateRecords);
+      }
+    }
+
+    // Bulk create — semua siswa baru dalam 1 panggilan
+    if (createRecords.length > 0) {
+      try {
+        const result = await base44.entities.Absensi.bulkCreate(createRecords.map(r => r.payload));
+        const createdArr = Array.isArray(result) ? result : [];
+        createdArr.forEach((res, i) => {
+          const rec = createRecords[i];
+          if (!rec) return;
+          const newId = typeof res === 'string' ? res : res?.id;
+          if (newId) newIds[rec.siswa_id] = newId;
+        });
+        createRecords.forEach(r => savedSids.push(r.siswa_id));
+        created = createRecords.length;
+      } catch {
+        failed.push(...createRecords);
+      }
+    }
+
+    // Auto-pelanggaran F-02 untuk Alfa yang tersimpan (non-blocking — jangan gagalkan simpan absensi)
+    const alfaSaved = records.filter(r => savedSids.includes(r.siswa_id) && r.payload.status === 'Alfa');
+    for (const record of alfaSaved) {
+      try {
+        await base44.functions.invoke('autoPelanggaranAlfa', {
+          action: 'create',
+          absensi: {
+            siswa_id: record.payload.siswa_id,
+            nis: record.payload.nis,
+            nama_siswa: record.payload.nama_siswa,
+            kelas_id: record.payload.kelas_id,
+            nama_kelas: record.payload.nama_kelas,
+            tanggal: record.payload.tanggal,
+            jenis_absensi: record.payload.jenis_absensi,
+          },
+        });
+      } catch (e) { /* pelanggaran otomatis gagal — absensi tetap tersimpan */ }
     }
 
     // Perbarui snapshot ke kondisi tersimpan agar simpan berikutnya tetap akurat

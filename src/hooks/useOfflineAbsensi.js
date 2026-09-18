@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 /**
  * Offline-first hook for Absensi module.
  * - Queues failed saves to IndexedDB
- * - Syncs per-record: satu record gagal tidak membatalkan batch lain
+ * - Sinkron massal (bulk): sedikit panggilan API untuk seluruh antrian, chunk gagal diperiksa ulang per record
  * - Fallback existing_id basi (dihapus pembersihan duplikat): cari (siswa+tanggal+jenis) lalu update/create
  * - Toast hasil sinkron (tombol & auto-sync saat online kembali)
  */
@@ -48,59 +48,113 @@ export function useOfflineAbsensi() {
     [refreshCount]
   );
 
-  // Sinkron satu record: update existing_id; jika rujukan basi, cari (siswa+tanggal+jenis) lalu update/create
-  const syncRecord = async (record) => {
-    if (record.existing_id) {
-      try {
-        await base44.entities.Absensi.update(record.existing_id, record.payload);
-        return;
-      } catch {
-        // existing_id sudah tidak ada (mis. dihapus pembersihan duplikat) — fallback pencarian di bawah
-      }
-    }
-    const existingCheck = await base44.entities.Absensi.filter({
-      siswa_id: record.siswa_id,
-      tanggal: record.payload.tanggal,
-      jenis_absensi: record.payload.jenis_absensi || 'Kehadiran',
-    });
-    if (existingCheck.length > 0) {
-      await base44.entities.Absensi.update(existingCheck[0].id, record.payload);
-    } else {
-      await base44.entities.Absensi.create(record.payload);
-    }
-  };
+  const CHUNK = 100;
 
   /**
-   * Sinkron antrian per-record: record gagal tetap di antrian, record lain tetap tersinkron.
+   * Sinkron antrian secara massal (bulk): 1-3 panggilan API per kelompok, bukan per record.
+   * Record dengan rujukan basi otomatis diarahkan ke pemeriksaan massal (kelas+tanggal+jenis),
+   * lalu bulkUpdate yang sudah ada / bulkCreate yang belum. Record yang masih gagal tetap di antrian.
    * opts: { silent } — true untuk auto-sync senyap (mis. saat mount).
    */
   const syncNow = useCallback(async (opts) => {
     const silent = opts === true || opts?.silent === true;
     const batches = await getAllPending();
-    const totalPending = batches.reduce((n, b) => n + (b.records?.length || 0), 0);
+    const allRecords = batches.flatMap(b => b.records || []);
+    const totalPending = allRecords.length;
     if (totalPending === 0) return { totalSynced: 0, failed: 0 };
 
     setSyncing(true);
-    let totalSynced = 0;
+    const succeeded = new Set();
+    const needsCheck = [];
 
-    for (const batch of batches) {
-      const remaining = [];
-      for (const record of batch.records || []) {
-        try {
-          await syncRecord(record);
-          totalSynced++;
-        } catch {
-          remaining.push(record);
+    // 1. Record dengan rujukan existing_id → bulkUpdate per chunk.
+    //    Chunk gagal (kemungkinan ada rujukan basi) → retry per-record; rujukan basi lanjut ke pemeriksaan massal.
+    const withExisting = allRecords.filter(r => r.existing_id);
+    for (let i = 0; i < withExisting.length; i += CHUNK) {
+      const chunk = withExisting.slice(i, i + CHUNK);
+      try {
+        await base44.entities.Absensi.bulkUpdate(chunk.map(r => ({ id: r.existing_id, ...r.payload })));
+        chunk.forEach(r => succeeded.add(r));
+      } catch {
+        for (const r of chunk) {
+          try {
+            await base44.entities.Absensi.update(r.existing_id, r.payload);
+            succeeded.add(r);
+          } catch {
+            needsCheck.push(r);
+          }
         }
       }
-      // Perbarui antrian per batch: hapus batch yang habis, simpan sisa record yang masih gagal
+    }
+
+    // 2. Record tanpa rujukan / rujukan basi → cek massal per kelompok (kelas+tanggal+jenis),
+    //    lalu bulkUpdate yang sudah ada dan bulkCreate yang belum.
+    const noExisting = allRecords.filter(r => !r.existing_id);
+    const groups = {};
+    [...needsCheck, ...noExisting].forEach(r => {
+      const g = `${r.payload.kelas_id}|${r.payload.tanggal}|${r.payload.jenis_absensi || 'Kehadiran'}`;
+      (groups[g] = groups[g] || []).push(r);
+    });
+
+    for (const groupRecords of Object.values(groups)) {
+      // Dedup antrian: siswa dengan >1 record tertunda → pakai yang terakhir, yang lama dianggap tergantikan
+      const seen = new Map();
+      groupRecords.forEach(r => {
+        const prev = seen.get(r.siswa_id);
+        if (prev) succeeded.add(prev);
+        seen.set(r.siswa_id, r);
+      });
+      const uniq = [...seen.values()];
+      const sample = uniq[0].payload;
+
+      let existingList = [];
+      try {
+        existingList = await base44.entities.Absensi.filter({
+          kelas_id: sample.kelas_id,
+          tanggal: sample.tanggal,
+          jenis_absensi: sample.jenis_absensi || 'Kehadiran',
+        });
+      } catch {
+        continue; // kelompok ini tetap di antrian
+      }
+
+      const bySiswa = new Map(existingList.map(a => [a.siswa_id, a]));
+      const toUpdate = [];
+      const toCreate = [];
+      uniq.forEach(r => {
+        const found = bySiswa.get(r.siswa_id);
+        if (found) toUpdate.push({ rec: r, id: found.id });
+        else toCreate.push(r);
+      });
+
+      for (let i = 0; i < toUpdate.length; i += CHUNK) {
+        const chunk = toUpdate.slice(i, i + CHUNK);
+        try {
+          await base44.entities.Absensi.bulkUpdate(chunk.map(({ rec, id }) => ({ id, ...rec.payload })));
+          chunk.forEach(({ rec }) => succeeded.add(rec));
+        } catch { /* tetap di antrian */ }
+      }
+      for (let i = 0; i < toCreate.length; i += CHUNK) {
+        const chunk = toCreate.slice(i, i + CHUNK);
+        try {
+          await base44.entities.Absensi.bulkCreate(chunk.map(r => r.payload));
+          chunk.forEach(r => succeeded.add(r));
+        } catch { /* tetap di antrian */ }
+      }
+    }
+
+    // Perbarui antrian per batch: hapus batch yang habis, simpan sisa record yang masih gagal
+    for (const batch of batches) {
+      const recs = batch.records || [];
+      const remaining = recs.filter(r => !succeeded.has(r));
       if (remaining.length === 0) {
         await removePending(batch.id);
-      } else if (remaining.length !== (batch.records || []).length) {
+      } else if (remaining.length !== recs.length) {
         await savePending({ ...batch, records: remaining });
       }
     }
 
+    const totalSynced = succeeded.size;
     const failed = totalPending - totalSynced;
     await refreshCount();
     if (totalSynced > 0) {
