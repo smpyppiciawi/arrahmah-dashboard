@@ -18,6 +18,7 @@ import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAuth } from '@/lib/AuthContext';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
+import { useIsMobile } from "@/hooks/use-mobile";
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -48,7 +49,9 @@ export default function HomeVisit() {
   const [filterKelas, setFilterKelas] = useState('all');
   const [filterYatim, setFilterYatim] = useState('all');
   const [mapFullscreen, setMapFullscreen] = useState(false);
+  const [mapLayer, setMapLayer] = useState('peta');
   const [detailData, setDetailData] = useState(null);
+  const isMobile = useIsMobile();
   const { user: currentUser } = useAuth();
   const { activeAcademicYear } = useActiveAcademicYear();
   const { pendingCount, pendingItems, syncing, syncNow, addPending, removePending, isOnline } = useOfflineSync();
@@ -156,20 +159,32 @@ export default function HomeVisit() {
   ];
 
   const renderMap = () => (
-    <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
-      <MapResizer />
-      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
-      {markersWithCoord.map(hv => (
-        <Marker key={hv.id} position={hv.pos}>
-          <Popup>
-            <strong>{hv.nama_siswa}</strong><br />
-            Kelas: {hv.nama_kelas}<br />
-            {hv.keadaan_rumah && <span>Rumah: {hv.keadaan_rumah}</span>}
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+    <div className="relative w-full h-full">
+      <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
+        <MapResizer />
+        {mapLayer === 'peta' ? (
+          <TileLayer key="peta" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+        ) : (
+          <>
+            <TileLayer key="satelit" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
+            <TileLayer key="satelit-labels" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+          </>
+        )}
+        {markersWithCoord.map(hv => (
+          <Marker key={hv.id} position={hv.pos}>
+            <Popup>
+              <strong>{hv.nama_siswa}</strong><br />
+              Kelas: {hv.nama_kelas}<br />
+              {hv.keadaan_rumah && <span>Rumah: {hv.keadaan_rumah}</span>}
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+      <div className="absolute top-2 right-2 z-10 flex rounded-lg overflow-hidden border border-slate-200 bg-white shadow-md text-xs font-medium">
+        <button type="button" onClick={() => setMapLayer('peta')} className={`px-3 py-1.5 ${mapLayer === 'peta' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Peta</button>
+        <button type="button" onClick={() => setMapLayer('satelit')} className={`px-3 py-1.5 ${mapLayer === 'satelit' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Satelit</button>
+      </div>
+    </div>
   );
 
   return (
@@ -293,6 +308,32 @@ export default function HomeVisit() {
               <div className="text-center py-10">
                 <Home className="w-10 h-10 text-slate-300 mx-auto mb-3" />
                 <p className="text-slate-400">Belum ada data home visit</p>
+              </div>
+            ) : isMobile ? (
+              <div className="grid gap-2">
+                {filteredList.map(hv => {
+                  const status = getSiswaHvStatus(hv.siswa_id);
+                  return (
+                    <button key={hv.id} type="button" onClick={() => setDetailData(hv)} className="text-left w-full p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-slate-800 truncate">{hv.nama_siswa}</span>
+                        {status === 'complete' ? (
+                          <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center shrink-0"><CheckCircle2 className="w-3 h-3" /> Lengkap</Badge>
+                        ) : status === 'partial' ? (
+                          <Badge className="bg-amber-100 text-amber-700 gap-1 inline-flex items-center shrink-0"><Clock className="w-3 h-3" /> Sebagian</Badge>
+                        ) : (
+                          <Badge className="bg-slate-100 text-slate-500 shrink-0">-</Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        <Badge className="bg-blue-100 text-blue-700">{hv.nama_kelas || '-'}</Badge>
+                        {hv.keadaan_rumah && <Badge className={hv.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{hv.keadaan_rumah === 'Layak Huni' ? 'Layak' : 'Tidak'}</Badge>}
+                        {hv.keadaan_orang_tua?.includes('Yatim') && <Badge className="bg-purple-100 text-purple-700">{hv.keadaan_orang_tua}</Badge>}
+                        {hv.koordinat_rumah && <Badge className="bg-sky-100 text-sky-700 gap-1 inline-flex items-center"><MapPin className="w-3 h-3" /> Titik</Badge>}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             ) : (
               <DataTable columns={columns} data={filteredList} pageSize={10} onRowClick={(row) => setDetailData(row)} />

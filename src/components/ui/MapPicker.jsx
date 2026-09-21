@@ -32,21 +32,34 @@ function parseCoord(v) {
   return null;
 }
 
-function MapView({ center, markerPos, onClick, interactive }) {
+function MapView({ center, markerPos, onClick, interactive, layer, setLayer }) {
   return (
-    <MapContainer center={center} zoom={15} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
-      <MapResizer />
-      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
-      {interactive && <LocationClicker onClick={onClick} />}
-      {markerPos && <Marker position={[markerPos.lat, markerPos.lng]} />}
-    </MapContainer>
+    <div className="relative w-full h-full">
+      <MapContainer center={center} zoom={15} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
+        <MapResizer />
+        {layer === 'peta' ? (
+          <TileLayer key="peta" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+        ) : (
+          <>
+            <TileLayer key="satelit" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
+            <TileLayer key="satelit-labels" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+          </>
+        )}
+        {interactive && <LocationClicker onClick={onClick} />}
+        {markerPos && <Marker position={[markerPos.lat, markerPos.lng]} />}
+      </MapContainer>
+      <div className="absolute top-2 right-2 z-10 flex rounded-lg overflow-hidden border border-slate-200 bg-white shadow-md text-xs font-medium">
+        <button type="button" onClick={() => setLayer('peta')} className={`px-3 py-1.5 ${layer === 'peta' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Peta</button>
+        <button type="button" onClick={() => setLayer('satelit')} className={`px-3 py-1.5 ${layer === 'satelit' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}>Satelit</button>
+      </div>
+    </div>
   );
 }
 
 export default function MapPicker({ value, onChange, height = '320px' }) {
   const [manualInput, setManualInput] = useState(value || '');
   const [fullscreen, setFullscreen] = useState(false);
+  const [layer, setLayer] = useState('peta');
   const parsed = parseCoord(value);
   const [center, setCenter] = useState(parsed ? [parsed.lat, parsed.lng] : DEFAULT_CENTER);
 
@@ -106,14 +119,14 @@ export default function MapPicker({ value, onChange, height = '320px' }) {
         </Button>
       </div>
       <div style={{ height }} className="relative isolate rounded-lg overflow-hidden border border-slate-200">
-        <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
+        <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive layer={layer} setLayer={setLayer} />
       </div>
       <p className="text-xs text-slate-400">Klik peta untuk menentukan titik, gunakan tombol lokasi saat ini, atau buka fullscreen untuk tampilan penuh.</p>
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-3xl h-[80vh] p-0 overflow-hidden">
           <div className="w-full h-full relative isolate">
-            <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive />
+            <MapView center={center} markerPos={markerPos} onClick={handleMapClick} interactive layer={layer} setLayer={setLayer} />
           </div>
         </DialogContent>
       </Dialog>
