@@ -176,12 +176,9 @@ export default function HomeVisit() {
       <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
         <MapResizer />
         {mapLayer === 'peta' ? (
-          <TileLayer key="peta" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+          <TileLayer key="peta" url="https://mt{s}.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}" subdomains={['0', '1', '2', '3']} attribution='&copy; Google' />
         ) : (
-          <>
-            <TileLayer key="satelit" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
-            <TileLayer key="satelit-labels" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
-          </>
+          <TileLayer key="satelit" url="https://mt{s}.google.com/vt/lyrs=y&hl=id&x={x}&y={y}&z={z}" subdomains={['0', '1', '2', '3']} attribution='&copy; Google' />
         )}
         {markersWithCoord.map(hv => (
           <Marker key={hv.id} position={hv.pos}>
