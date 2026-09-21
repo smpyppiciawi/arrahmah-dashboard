@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Home, Search, Edit2, Trash2, MapPin, CloudOff, RefreshCw, Wifi, CheckCircle2, Maximize2, Clock } from "lucide-react";
+import { Home, Search, Edit2, Trash2, MapPin, CloudOff, RefreshCw, Wifi, CheckCircle2, Maximize2, Clock, ChevronLeft, ChevronRight } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import HomeVisitForm from "@/components/homevisit/HomeVisitForm";
@@ -52,6 +52,8 @@ export default function HomeVisit() {
   const [mapLayer, setMapLayer] = useState('peta');
   const [detailData, setDetailData] = useState(null);
   const isMobile = useIsMobile();
+  const [mobileSort, setMobileSort] = useState('terbaru');
+  const [mobilePage, setMobilePage] = useState(1);
   const { user: currentUser } = useAuth();
   const { activeAcademicYear } = useActiveAcademicYear();
   const { pendingCount, pendingItems, syncing, syncNow, addPending, removePending, isOnline } = useOfflineSync();
@@ -115,6 +117,17 @@ export default function HomeVisit() {
     return matchSearch && matchKelas && matchYatim;
   });
 
+  // Urutkan & paginasi khusus tampilan grid mobile
+  const mobileSortedList = [...filteredList].sort((a, b) => {
+    if (mobileSort === 'nama-asc') return (a.nama_siswa || '').localeCompare(b.nama_siswa || '');
+    if (mobileSort === 'nama-desc') return (b.nama_siswa || '').localeCompare(a.nama_siswa || '');
+    if (mobileSort === 'terlama') return new Date(a.tanggal_homevisit || 0) - new Date(b.tanggal_homevisit || 0);
+    return new Date(b.tanggal_homevisit || 0) - new Date(a.tanggal_homevisit || 0);
+  });
+  const mobileTotalPages = Math.max(1, Math.ceil(mobileSortedList.length / 5));
+  const mobilePageSafe = Math.min(mobilePage, mobileTotalPages);
+  const mobilePagedList = mobileSortedList.slice((mobilePageSafe - 1) * 5, mobilePageSafe * 5);
+
   const markersWithCoord = homeVisitList.filter(hv => hv.koordinat_rumah).map(hv => ({ ...hv, pos: parseCoord(hv.koordinat_rumah) })).filter(hv => hv.pos);
   const mapCenter = markersWithCoord[0]?.pos || [-6.2, 106.8];
 
@@ -163,7 +176,7 @@ export default function HomeVisit() {
       <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
         <MapResizer />
         {mapLayer === 'peta' ? (
-          <TileLayer key="peta" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+          <TileLayer key="peta" url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
         ) : (
           <>
             <TileLayer key="satelit" url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
@@ -281,20 +294,22 @@ export default function HomeVisit() {
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <Input className="pl-9" placeholder="Cari nama atau NIS siswa..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               </div>
-              <Select value={filterKelas} onValueChange={setFilterKelas}>
-                <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Kelas</SelectItem>
-                  {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterYatim} onValueChange={setFilterYatim}>
-                <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Semua Status</SelectItem>
-                  <SelectItem value="yatim">Yatim/Piatu</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 gap-3 sm:contents">
+                <Select value={filterKelas} onValueChange={setFilterKelas}>
+                  <SelectTrigger className="w-full sm:w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kelas</SelectItem>
+                    {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterYatim} onValueChange={setFilterYatim}>
+                  <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Status</SelectItem>
+                    <SelectItem value="yatim">Yatim/Piatu</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -310,11 +325,32 @@ export default function HomeVisit() {
                 <p className="text-slate-400">Belum ada data home visit</p>
               </div>
             ) : isMobile ? (
-              <div className="grid gap-2">
-                {filteredList.map(hv => {
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <Select value={mobileSort} onValueChange={setMobileSort}>
+                    <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="terbaru">Terbaru</SelectItem>
+                      <SelectItem value="terlama">Terlama</SelectItem>
+                      <SelectItem value="nama-asc">Nama A-Z</SelectItem>
+                      <SelectItem value="nama-desc">Nama Z-A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1.5 text-xs text-slate-500 shrink-0">
+                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={mobilePageSafe <= 1} onClick={() => setMobilePage(mobilePageSafe - 1)}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="tabular-nums">{mobilePageSafe}/{mobileTotalPages}</span>
+                    <Button size="sm" variant="outline" className="h-8 w-8 p-0" disabled={mobilePageSafe >= mobileTotalPages} onClick={() => setMobilePage(mobilePageSafe + 1)}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                {mobilePagedList.map(hv => {
                   const status = getSiswaHvStatus(hv.siswa_id);
                   return (
-                    <button key={hv.id} type="button" onClick={() => setDetailData(hv)} className="text-left w-full p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors">
+                    <button key={hv.id} type="button" onClick={() => setDetailData(hv)} className="text-left w-full min-w-0 p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors overflow-hidden">
                       <div className="flex items-center justify-between gap-2">
                         <span className="text-sm font-semibold text-slate-800 truncate">{hv.nama_siswa}</span>
                         {status === 'complete' ? (
@@ -334,6 +370,7 @@ export default function HomeVisit() {
                     </button>
                   );
                 })}
+                </div>
               </div>
             ) : (
               <DataTable columns={columns} data={filteredList} pageSize={10} onRowClick={(row) => setDetailData(row)} />
