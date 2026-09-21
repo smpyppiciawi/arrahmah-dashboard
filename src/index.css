@@ -177,3 +177,45 @@ button:focus-visible {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
 }
+
+/* ===== Buku Induk: mode cetak ===== */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  #buku-induk-print-root,
+  #buku-induk-print-root * {
+    visibility: visible;
+  }
+  .bi-dialog {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+  #buku-induk-print-root {
+    position: static;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    display: block !important;
+    background: white;
+  }
+  .bi-no-print {
+    display: none !important;
+  }
+  .bi-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+    break-after: page;
+  }
+  .bi-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+}

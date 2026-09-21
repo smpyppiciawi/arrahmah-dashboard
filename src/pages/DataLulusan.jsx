@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, ArrowLeft, Search, Eye, Calendar, Users, Loader2 } from "lucide-react";
+import { GraduationCap, ArrowLeft, Search, Eye, Calendar, Users, Loader2, BookText } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { motion } from 'framer-motion';
 import DetailRiwayatSiswa from '@/components/lulusan/DetailRiwayatSiswa';
 
@@ -13,6 +14,7 @@ export default function DataLulusan() {
   const [selectedTahun, setSelectedTahun] = useState(null);
   const [selectedSiswa, setSelectedSiswa] = useState(null);
   const [search, setSearch] = useState('');
+  const navigate = useNavigate();
 
   const { data: lulusanList = [], isLoading } = useQuery({
     queryKey: ['siswa-lulus'],
@@ -174,14 +176,24 @@ export default function DataLulusan() {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                onClick={() => setSelectedSiswa(siswa)}
-                              >
-                                <Eye className="w-3.5 h-3.5" /> Detail Riwayat
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                                  onClick={() => setSelectedSiswa(siswa)}
+                                >
+                                  <Eye className="w-3.5 h-3.5" /> Detail Riwayat
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="gap-1 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+                                  onClick={() => navigate(`/BukuInduk?nis=${siswa.nis}`)}
+                                >
+                                  <BookText className="w-3.5 h-3.5" /> Buku Induk
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))

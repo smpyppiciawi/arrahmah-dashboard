@@ -6,7 +6,7 @@ import {
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
-  PanelLeftClose, PanelLeftOpen, ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck
+  PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,6 +34,7 @@ const FULL_ACCESS_MENU = {
     { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
     { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
     { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
+    { name: 'Buku Induk', icon: BookText, page: 'BukuInduk', color: '#7c3aed' },
     { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
     { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
   ],
@@ -97,6 +98,7 @@ const ROLE_MENU = {
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
+      { name: 'Buku Induk', icon: BookText, page: 'BukuInduk', color: '#7c3aed' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
       { name: 'Pengaturan', icon: Settings, page: 'Pengaturan', color: '#64748b' },
@@ -137,6 +139,7 @@ const ROLE_MENU = {
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
+      { name: 'Buku Induk', icon: BookText, page: 'BukuInduk', color: '#7c3aed' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
