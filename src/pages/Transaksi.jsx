@@ -179,7 +179,12 @@ export default function Transaksi() {
       label: 'Sumber / Penerima',
       filterAccessor: (row) => row.nama_siswa || row.nama_pegawai || row.nama_donatur || row.penerima || '',
       render: (row) => {
-        if (row.nama_siswa) return <span className="text-blue-600 text-sm font-medium">{row.nama_siswa}</span>;
+        if (row.nama_siswa) return (
+          <div>
+            <span className="text-blue-600 text-sm font-medium">{row.nama_siswa}</span>
+            {row.kelas && <span className="block text-xs text-slate-400">{row.kelas}</span>}
+          </div>
+        );
         if (row.nama_pegawai) return <span className="text-purple-600 text-sm font-medium">{row.nama_pegawai}</span>;
         if (row.nama_donatur) return <span className="text-pink-600 text-sm font-medium">{row.nama_donatur}</span>;
         if (row.penerima) return <span className="text-slate-600 text-sm font-medium">{row.penerima}</span>;

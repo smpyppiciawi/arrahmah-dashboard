@@ -36,7 +36,8 @@ function MapView({ center, markerPos, onClick, interactive }) {
   return (
     <MapContainer center={center} zoom={15} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
       <MapResizer />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
       {interactive && <LocationClicker onClick={onClick} />}
       {markerPos && <Marker position={[markerPos.lat, markerPos.lng]} />}
     </MapContainer>

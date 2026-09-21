@@ -140,6 +140,13 @@ export default function HomeVisit() {
     { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge className="bg-blue-100 text-blue-700">{row.nama_kelas || '-'}</Badge> },
     { key: 'keadaan_rumah', label: 'Rumah', render: (row) => row.keadaan_rumah ? <Badge className={row.keadaan_rumah === 'Layak Huni' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.keadaan_rumah === 'Layak Huni' ? 'Layak' : 'Tidak'}</Badge> : '-' },
     { key: 'keadaan_orang_tua', label: 'Yatim/Piatu', render: (row) => row.keadaan_orang_tua?.includes('Yatim') ? <Badge className="bg-purple-100 text-purple-700">{row.keadaan_orang_tua}</Badge> : '-' },
+    { key: 'koordinat_rumah', label: 'Titik', sortable: false, filterable: false, render: (row) => row.koordinat_rumah ? (
+      <a href={`https://www.google.com/maps?q=${row.koordinat_rumah}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={`Buka titik: ${row.koordinat_rumah}`}>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1">
+          <MapPin className="w-3.5 h-3.5 text-blue-500" /> Terisi
+        </Button>
+      </a>
+    ) : <span className="text-xs text-slate-300">-</span> },
     { key: 'sync', label: 'Kelengkapan', sortable: false, filterable: false, render: (row) => {
       const status = getSiswaHvStatus(row.siswa_id);
       if (status === 'complete') return <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center"><CheckCircle2 className="w-3 h-3" /> Lengkap</Badge>;
@@ -151,7 +158,8 @@ export default function HomeVisit() {
   const renderMap = () => (
     <MapContainer center={mapCenter} zoom={13} scrollWheelZoom className="relative isolate z-0 overflow-hidden" style={{ height: '100%', width: '100%' }}>
       <MapResizer />
-      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
+      <TileLayer url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" attribution='Tiles &copy; Esri, Maxar, Earthstar Geographics' />
+      <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png" subdomains={['a', 'b', 'c', 'd']} attribution='&copy; OpenStreetMap contributors &copy; CARTO' />
       {markersWithCoord.map(hv => (
         <Marker key={hv.id} position={hv.pos}>
           <Popup>
