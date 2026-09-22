@@ -30,6 +30,13 @@ const TIPE_TO_KATEGORI = {
   'Gaji/Honorarium': 'Gaji',
 };
 
+// Kategori otomatis dari jenis tarif iuran — menjaga transaksi siswa selalu terintegrasi
+const JENIS_IURAN_TO_KATEGORI = {
+  'SPP': 'SPP',
+  'Ujian': 'Ujian',
+  'Awal Tahun': 'Daftar Ulang',
+};
+
 const FALLBACK_TIPE = {
   siswa: ['SPP/Bulanan', 'Ujian Sekolah', 'Daftar Ulang', 'Kelulusan'],
   pegawai: ['Gaji/Honorarium', 'Kasbon Pegawai', 'Lainnya'],
@@ -279,7 +286,7 @@ export default function TransaksiForm({
       setFormData(prev => ({
         ...prev,
         tipe_transaksi: tarif.nama,
-        kategori: TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
+        kategori: JENIS_IURAN_TO_KATEGORI[tarif.jenis_iuran] || TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
         jumlah: nominal,
         uraian: tarif.nama,
         bulan_dibayar: isSpp ? prev.bulan_dibayar : [],

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, XCircle, Gift, AlertTriangle, Wallet } from 'lucide-react';
-import { tarifMatchesTingkat, getGratisBulanSPP, getSppTarif, BULAN_SPP, formatDateID, computeTunggakan } from '@/lib/sppUtils';
+import { tarifMatchesTingkat, getGratisBulanSPP, getSppTarif, BULAN_SPP, formatDateID, computeTunggakan, matchIuranItemTransactions } from '@/lib/sppUtils';
 
 const JENIS_TABS = [
   { key: 'SPP', label: 'SPP' },
@@ -77,13 +77,17 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     return computeTunggakan(siswa, keuanganList, tarifList, biayaKhususList);
   }, [siswa, keuanganList, tarifList, biayaKhususList]);
 
-  // Other iuran status (Ujian, Awal Tahun)
+  // Other iuran status (Ujian, Awal Tahun) — per item, toleran variasi penamaan
   const otherIuranList = useMemo(() => {
     const match = JENIS_MATCH[activeIuran];
     if (!match) return [];
     const tarifs = relevantTarif.filter(t => t.jenis_iuran === activeIuran);
-    const paid = keuanganList.some(k => k.tipe_transaksi === match.tipe || k.kategori === match.kategori);
-    return tarifs.map(t => ({ ...t, lunas: paid }));
+    return tarifs.map(t => {
+      const trans = matchIuranItemTransactions(t, keuanganList, relevantTarif);
+      const lunas = trans.some(k => (k.status_bayar || 'Lunas') === 'Lunas');
+      const cicilan = !lunas && trans.some(k => k.status_bayar === 'Cicilan');
+      return { ...t, lunas, cicilan };
+    });
   }, [relevantTarif, keuanganList, activeIuran]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -172,8 +176,10 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
                     </div>
                     {t.lunas ? (
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">Lunas</span>
+                    ) : t.cicilan ? (
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Cicilan</span>
                     ) : (
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Belum Lunas</span>
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-700">Belum Lunas</span>
                     )}
                   </div>
                 ))}

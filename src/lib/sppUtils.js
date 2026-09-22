@@ -81,6 +81,65 @@ export function formatDateID(dateStr) {
 }
 
 /**
+ * Normalisasi nama iuran untuk pencocokan toleran variasi penamaan:
+ * lowercase, 'smt' → 'semester', spasi ganda dirapatkan.
+ */
+export function normalizeIuranName(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/\bsmt\b/g, 'semester')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Fallback generik transaksi lama per jenis iuran (uraian tanpa nama item spesifik)
+const JENIS_IURAN_GENERIC_MATCH = {
+  'Ujian': { tipe: 'Ujian Sekolah', kategori: 'Ujian' },
+  'Awal Tahun': { tipe: 'Daftar Ulang', kategori: 'Daftar Ulang' },
+};
+
+/**
+ * Ambil transaksi Keuangan siswa yang cocok dengan satu item TarifIuran.
+ * Cocok bila: (a) uraian/tipe_transaksi sama persis nama item setelah
+ * normalisasi, (b) uraian/tipe mengandung nama item — selama transaksi tidak
+ * teridentifikasi ke item lain sejenis (siblings jenis_iuran sama), atau
+ * (c) fallback legacy tipe/kategori generik untuk transaksi lama yang tidak
+ * menyebut item spesifik. SPP tidak dicakup (tetap berbasis bulan_dibayar).
+ */
+export function matchIuranItemTransactions(tarif, keuanganList = [], allTarifs = []) {
+  if (!tarif) return [];
+  const isSpp = tarif.jenis_iuran === 'SPP' || (tarif.nama || '').toLowerCase().includes('spp');
+  if (isSpp) {
+    return keuanganList.filter(k =>
+      (k.tipe_transaksi || '').toLowerCase().includes('spp') || (k.bulan_dibayar || []).length > 0
+    );
+  }
+  const target = normalizeIuranName(tarif.nama);
+  const siblings = (allTarifs.length > 0 ? allTarifs : [tarif]).filter(s => s.jenis_iuran === tarif.jenis_iuran);
+  const generic = JENIS_IURAN_GENERIC_MATCH[tarif.jenis_iuran];
+  const identifiesName = (text, name) => {
+    const t = normalizeIuranName(text);
+    const n = normalizeIuranName(name);
+    return !!n && !!t && (t === n || t.includes(n));
+  };
+  return keuanganList.filter(k => {
+    // (a) nama persis setelah normalisasi
+    if (target && (normalizeIuranName(k.uraian) === target || normalizeIuranName(k.tipe_transaksi) === target)) return true;
+    // transaksi teridentifikasi ke item lain sejenis → bukan untuk item ini
+    const keItemLain = siblings.some(s =>
+      s.id !== tarif.id &&
+      (identifiesName(k.uraian, s.nama) || identifiesName(k.tipe_transaksi, s.nama))
+    );
+    if (keItemLain) return false;
+    // (b) mengandung nama item (variasi penamaan, cth: tipe 'Ulangan PTS SMT 1')
+    if (target && (identifiesName(k.uraian, tarif.nama) || identifiesName(k.tipe_transaksi, tarif.nama))) return true;
+    // (c) fallback legacy: transaksi lama tanpa nama item spesifik
+    if (generic && (k.tipe_transaksi === generic.tipe || k.kategori === generic.kategori)) return true;
+    return false;
+  });
+}
+
+/**
  * Compute total tunggakan (arrears) for a student.
  * @param {object} siswa - siswa record
  * @param {array} keuanganList - siswa's Keuangan records
@@ -116,23 +175,21 @@ export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biaya
     biayaKhususTunggakan += sisa;
   });
 
-  // Other iuran tunggakan (Ujian, Daftar Ulang, Kelulusan) — if not paid
+  // Other iuran tunggakan (Ujian, Awal Tahun) — per item via pencocokan transaksi
   let otherTunggakan = 0;
+  const otherJenis = ['Ujian', 'Awal Tahun'];
   const relevantTarifs = tarifList.filter(t => tarifMatchesTingkat(t, tingkat));
-  const otherJenis = ['Ujian Sekolah', 'Daftar Ulang', 'Kelulusan'];
   relevantTarifs.forEach(t => {
     if (!otherJenis.includes(t.jenis_iuran)) return;
-    // Check if student has a BiayaKhusus for this tarif (skip if gratis)
-    const bk = biayaKhususList.find(b => b.tarif_iuran_id === t.id);
+    // BiayaKhusus per siswa untuk tarif ini (skip jika gratis)
+    const bk = biayaKhususList.find(b => b.tarif_iuran_id === t.id && b.siswa_id === siswa?.id);
     if (bk?.is_gratis) return;
-    const paid = keuanganList.some(k =>
-      k.tipe_transaksi === t.jenis_iuran ||
-      (t.jenis_iuran === 'Ujian Sekolah' && k.kategori === 'Ujian') ||
-      (t.jenis_iuran === 'Daftar Ulang' && k.kategori === 'Daftar Ulang')
-    );
-    if (!paid) {
-      otherTunggakan += bk ? (bk.nominal_khusus || t.nominal || 0) : (t.nominal || 0);
-    }
+    const tagihan = bk ? (bk.nominal_khusus || t.nominal || 0) : (t.nominal || 0);
+    const trans = matchIuranItemTransactions(t, keuanganList, relevantTarifs);
+    const dibayar = trans
+      .filter(k => k.jenis !== 'Pengeluaran')
+      .reduce((sum, k) => sum + (k.jumlah || 0), 0);
+    otherTunggakan += Math.max(0, tagihan - dibayar);
   });
 
   return {

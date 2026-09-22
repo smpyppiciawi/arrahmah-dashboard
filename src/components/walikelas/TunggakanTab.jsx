@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History } from 'lucide-react';
-import { getGratisBulanSPP } from '@/lib/sppUtils';
+import { getGratisBulanSPP, matchIuranItemTransactions } from '@/lib/sppUtils';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -93,11 +93,12 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
       return { status: 'Belum', detail: 'Belum Bayar', tagihan, sudahBayar: 0, sisa: tagihan };
     }
     const isSpp = (tarif.nama || '').toLowerCase().includes('spp') || tarif.jenis_iuran === 'SPP' || tarif.periode === 'Bulanan';
-    const trans = siswaKeuangan.filter(k => k.siswa_id === siswa.id && (
-      k.tipe_transaksi === tarif.nama ||
-      k.uraian === tarif.nama ||
-      (isSpp && ((k.tipe_transaksi || '').toLowerCase().includes('spp') || (k.bulan_dibayar || []).length > 0))
-    ));
+    // Pencocokan terpusat: toleran variasi penamaan (uraian/tipe), identik dengan akun siswa
+    const trans = matchIuranItemTransactions(
+      tarif,
+      siswaKeuangan.filter(k => k.siswa_id === siswa.id),
+      activeTarif
+    );
     if (isSpp) {
       const paidMonths = new Set();
       trans.forEach(t => (t.bulan_dibayar || []).forEach(m => paidMonths.add(m)));
