@@ -6,7 +6,7 @@ import {
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
-  PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText
+  PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText, Camera
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +57,7 @@ const FULL_ACCESS_MENU = {
       color: '#ef4444',
       items: [
         { name: 'Siswa', icon: Users, page: 'Siswa', color: '#3b82f6' },
+        { name: 'Foto Siswa', icon: Camera, page: 'FotoSiswa', color: '#0ea5e9' },
         { name: 'Pegawai', icon: GraduationCap, page: 'Guru', color: '#7c3aed' },
         { name: 'Kelas', icon: Building, page: 'Kelas', color: '#8b5cf6' },
         { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
@@ -114,6 +115,7 @@ const ROLE_MENU = {
           { name: 'Siswa Mutasi', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+        { name: 'Foto Siswa', icon: Camera, page: 'FotoSiswa', color: '#0ea5e9' },
         ]
       }
     ]

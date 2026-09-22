@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
 import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
+import SiswaFotoGrid from "@/components/siswa/SiswaFotoGrid";
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 
 export default function Siswa() {
@@ -25,6 +26,7 @@ export default function Siswa() {
   const [deleteId, setDeleteId] = useState(null);
   const [keluarSiswa, setKeluarSiswa] = useState(null);
   const [detailSiswa, setDetailSiswa] = useState(null);
+  const [viewMode, setViewMode] = useState('tabel');
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -50,6 +52,12 @@ export default function Siswa() {
   const { data: kelasList = [] } = useQuery({
     queryKey: ['kelas'],
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
+  });
+
+  const { data: siswaLulus = [] } = useQuery({
+    queryKey: ['siswa', 'lulus'],
+    queryFn: () => base44.entities.Siswa.filter({ status: 'Lulus' }),
+    enabled: viewMode === 'foto',
   });
 
   const deleteMutation = useMutation({
@@ -196,6 +204,15 @@ export default function Siswa() {
             <p className="text-slate-500 mt-1">Kelola data siswa aktif</p>
           </div>
           
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 gap-1 self-start">
+            <Button size="sm" variant={viewMode === 'tabel' ? 'default' : 'ghost'} onClick={() => setViewMode('tabel')}>
+              <LayoutList className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tabel</span>
+            </Button>
+            <Button size="sm" variant={viewMode === 'foto' ? 'default' : 'ghost'} onClick={() => setViewMode('foto')}>
+              <Images className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Foto</span>
+            </Button>
+          </div>
+
           {canEdit && (
             <div className="flex flex-wrap gap-2">
               <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
@@ -222,7 +239,15 @@ export default function Siswa() {
             <CardTitle>Data Siswa</CardTitle>
           </CardHeader>
           <CardContent>
-            <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
+            {viewMode === 'foto' ? (
+              <SiswaFotoGrid
+                siswaList={[...siswaList, ...siswaLulus]}
+                kelasList={kelasList}
+                onSelect={setDetailSiswa}
+              />
+            ) : (
+              <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
+            )}
           </CardContent>
         </Card>
 

@@ -192,6 +192,30 @@
       "type": "string",
       "description": "Koordinat rumah (lat,lng)"
     },
+    "foto_7": {
+      "type": "string",
+      "description": "URL foto siswa jenjang 7 (rasio 3:4, terkompresi otomatis)"
+    },
+    "foto_8": {
+      "type": "string",
+      "description": "URL foto siswa jenjang 8 (rasio 3:4, terkompresi otomatis)"
+    },
+    "foto_9": {
+      "type": "string",
+      "description": "URL foto siswa jenjang 9 (rasio 3:4, terkompresi otomatis)"
+    },
+    "foto_ayah": {
+      "type": "string",
+      "description": "URL foto ayah kandung (opsional, terkompresi otomatis)"
+    },
+    "foto_ibu": {
+      "type": "string",
+      "description": "URL foto ibu kandung (opsional, terkompresi otomatis)"
+    },
+    "foto_wali": {
+      "type": "string",
+      "description": "URL foto wali (opsional, terkompresi otomatis)"
+    },
     "status": {
       "type": "string",
       "enum": [

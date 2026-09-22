@@ -1,5 +1,6 @@
 import React from 'react';
 import { SectionBar, FieldRow, PhotoBox } from './docBits';
+import { getFotoPerJenjang, getFotoOrtu } from '@/lib/fotoSiswa';
 
 export default function HalamanDataPribadi({ bundle }) {
   const s = bundle.siswa;
@@ -94,7 +95,7 @@ export default function HalamanDataPribadi({ bundle }) {
               <div key={j.tingkat} className="flex flex-col items-center gap-1">
                 <PhotoBox
                   label={`Foto Kelas ${bundle.kelasNama[i] || `Tingkat ${j.tingkat}`}`}
-                  src={null}
+                  src={getFotoPerJenjang(s, j.tingkat)}
                 />
                 <span className="text-[8px] text-[#555]">Kelas {bundle.kelasNama[i] || `Tingkat ${j.tingkat}`} — {j.tahunAjaran}</span>
               </div>
@@ -104,9 +105,9 @@ export default function HalamanDataPribadi({ bundle }) {
         <div className="border border-[#777]">
           <SectionBar>FOTO ORANG TUA / WALI</SectionBar>
           <div className="flex flex-wrap justify-center gap-2 py-2">
-            <PhotoBox label="Foto Ayah" src={null} />
-            <PhotoBox label="Foto Ibu" src={null} />
-            <PhotoBox label="Foto Wali" src={null} />
+            <PhotoBox label="Foto Ayah" src={getFotoOrtu(s, 'ayah')} />
+            <PhotoBox label="Foto Ibu" src={getFotoOrtu(s, 'ibu')} />
+            <PhotoBox label="Foto Wali" src={getFotoOrtu(s, 'wali')} />
           </div>
         </div>
       </div>

@@ -27,6 +27,7 @@ import ProfilSekolah from './pages/ProfilSekolah';
 import BukuTamu from './pages/BukuTamu';
 import TugasGuru from './pages/TugasGuru';
 import BukuInduk from './pages/BukuInduk';
+import FotoSiswa from './pages/FotoSiswa';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -144,6 +145,11 @@ const AuthenticatedApp = () => {
       <Route path="/BukuInduk" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="BukuInduk"><BukuInduk /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/FotoSiswa" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="FotoSiswa"><FotoSiswa /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 
