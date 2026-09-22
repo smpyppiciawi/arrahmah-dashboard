@@ -10,7 +10,21 @@ export default function BukuIndukPreviewDialog({ open, bundles, defaultDownload,
   const [busy, setBusy] = useState(null);
   if (!open || !bundles?.length) return null;
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    // Pindahkan dokumen ke body agar print dirender di root halaman (bukan di dalam layout aplikasi)
+    const root = document.getElementById('buku-induk-print-root');
+    if (!root) { window.print(); return; }
+    const parent = root.parentNode;
+    const next = root.nextSibling;
+    document.body.appendChild(root);
+    const restore = () => {
+      window.removeEventListener('afterprint', restore);
+      if (root.parentNode === document.body) parent.insertBefore(root, next);
+    };
+    window.addEventListener('afterprint', restore);
+    window.setTimeout(restore, 120000);
+    window.print();
+  };
 
   const handleDownloadCombined = async () => {
     setBusy('pdf');
