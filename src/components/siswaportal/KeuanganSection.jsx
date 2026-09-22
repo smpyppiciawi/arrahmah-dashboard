@@ -84,11 +84,17 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     const tarifs = relevantTarif.filter(t => t.jenis_iuran === activeIuran);
     return tarifs.map(t => {
       const trans = matchIuranItemTransactions(t, keuanganList, relevantTarif);
-      const lunas = trans.some(k => (k.status_bayar || 'Lunas') === 'Lunas');
-      const cicilan = !lunas && trans.some(k => k.status_bayar === 'Cicilan');
-      return { ...t, lunas, cicilan };
+      const bk = biayaKhususList.find(b => b.tarif_iuran_id === t.id && b.siswa_id === siswa?.id);
+      const tagihan = bk && !bk.is_gratis ? (bk.nominal_khusus || t.nominal || 0) : (t.nominal || 0);
+      const sudahBayar = trans
+        .filter(k => k.jenis !== 'Pengeluaran')
+        .reduce((sum, k) => sum + (k.jumlah || 0), 0);
+      const sisa = Math.max(0, tagihan - sudahBayar);
+      const lunas = bk?.is_gratis || trans.some(k => (k.status_bayar || 'Lunas') === 'Lunas');
+      const cicilan = !lunas && trans.some(k => k.status_bayar === 'Cicilan' || k.jumlah > 0);
+      return { ...t, lunas, cicilan, sisa, sudahBayar };
     });
-  }, [relevantTarif, keuanganList, activeIuran]);
+  }, [relevantTarif, keuanganList, activeIuran, biayaKhususList, siswa?.id]);
 
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
@@ -177,7 +183,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
                     {t.lunas ? (
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-700">Lunas</span>
                     ) : t.cicilan ? (
-                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Cicilan</span>
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-amber-100 text-amber-700">Cicilan · Sisa {formatRupiah(t.sisa)}</span>
                     ) : (
                       <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-700">Belum Lunas</span>
                     )}
