@@ -1,0 +1,52 @@
+{
+  "name": "NilaiTKA",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa (dipetakan dari NIS saat import)"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS siswa (kunci pencocokan import CSV)"
+    },
+    "nisn": {
+      "type": "string",
+      "description": "NISN peserta"
+    },
+    "nama_siswa": {
+      "type": "string",
+      "description": "Nama peserta TKA"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "nilai_matematika": {
+      "type": "number",
+      "description": "Nilai TKA Matematika"
+    },
+    "kriteria_matematika": {
+      "type": "string",
+      "description": "Kriteria nilai Matematika"
+    },
+    "nilai_bahasa_indonesia": {
+      "type": "number",
+      "description": "Nilai TKA Bahasa Indonesia"
+    },
+    "kriteria_bahasa_indonesia": {
+      "type": "string",
+      "description": "Kriteria nilai Bahasa Indonesia"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran TKA"
+    }
+  },
+  "required": [
+    "nis",
+    "nama_siswa"
+  ]
+}

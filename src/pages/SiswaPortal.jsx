@@ -18,6 +18,7 @@ import CatatanSection from '@/components/siswaportal/CatatanSection';
 import KeuanganSection from '@/components/siswaportal/KeuanganSection';
 import HapalanProgressCard from '@/components/siswaportal/HapalanProgressCard';
 import NilaiSection from '@/components/siswaportal/NilaiSection';
+import TkaCard from '@/components/siswaportal/TkaCard';
 import { getFotoAktif } from '@/lib/fotoSiswa';
 
 // ===== Date Helpers (Indonesian) =====
@@ -568,6 +569,9 @@ export default function SiswaPortal() {
               />
             </div>
           </div>
+
+          {/* Nilai TKA — tampil hanya jika diaktifkan Admin */}
+          <TkaCard siswa={currentSiswa} />
 
           {/* Quick Actions */}
           <div className="px-4 mb-4">

@@ -23,6 +23,11 @@
       "type": "boolean",
       "default": true,
       "description": "Master switch fitur Backfill Alfa & auto-pelanggaran Alfa. False = tombol Backfill dinonaktifkan DAN workflow 'Pelanggaran Otomatis Alfa' dijeda (tidak ada pelanggaran otomatis dari status Alfa sama sekali)."
+    },
+    "tka_tampil_beranda": {
+      "type": "boolean",
+      "default": false,
+      "description": "ON = Nilai TKA tampil pada Beranda Akun Siswa; OFF = tidak tampil. Diatur dari Tab TKA pada Menu Nilai."
     }
   },
   "required": [

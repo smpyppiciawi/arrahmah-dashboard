@@ -79,25 +79,22 @@ export default function CatatanSection({ siswa, pelanggaranList = [], pelanggara
           </div>
         </div>
 
-        {/* Kartu Ringkasan per Kategori — klik untuk detail */}
-        <div className="grid grid-cols-2 gap-3">
+        {/* Kartu Ringkasan per Kategori — berbaris ke bawah, klik untuk detail */}
+        <div className="space-y-2">
           {sections.map(s => (
             <button
               key={s.key}
               onClick={() => setSelected(s)}
-              className="bg-white rounded-2xl shadow-sm p-4 text-left active:scale-95 transition-transform"
+              className="w-full bg-white rounded-2xl shadow-sm p-3.5 flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xl">{s.emoji}</span>
-                <span className="text-2xl font-black text-slate-800">{s.records.length}</span>
-              </div>
-              <p className="font-bold text-slate-700 text-xs mt-2">{s.title}</p>
-              <p className="text-[10px] text-slate-400">data tercatat</p>
-              {s.poin != null && (
-                <p className={`text-[10px] font-bold mt-1 ${s.key === 'pelanggaran' ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {s.poin} poin
+              <span className="text-xl shrink-0">{s.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-slate-700 text-sm">{s.title}</p>
+                <p className="text-[10px] text-slate-400">
+                  {s.records.length} data tercatat{s.poin != null ? ` · ${s.poin} poin` : ''}
                 </p>
-              )}
+              </div>
+              <span className={`text-xl font-black shrink-0 ${s.key === 'pelanggaran' && s.poin > 0 ? 'text-red-500' : 'text-slate-800'}`}>{s.records.length}</span>
             </button>
           ))}
         </div>

@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Search, Edit2, Trash2, TrendingUp, Calculator, CheckCircle, XCircle } from "lucide-react";
+import { BookOpen, Plus, Search, Edit2, Trash2, TrendingUp, Calculator, CheckCircle, XCircle, Award } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
+import TkaTab from "@/components/nilai/TkaTab";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 const MAPEL_LIST = [
@@ -75,6 +76,16 @@ export default function Nilai() {
   const { data: guruList = [] } = useQuery({ queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama'), staleTime: 60000 });
 
   const guruData = guruList.find(g => g.email === currentUser?.email);
+
+  // Akses Tab TKA: Admin/TU/Kepsek, Guru Wali Kelas 9, atau Guru Waka Kurikulum/Kesiswaan
+  const tugasTambahanLc = String(guruData?.tugas_tambahan || '').toLowerCase();
+  const isWakaTKA = userRole === 'guru' && tugasTambahanLc.includes('waka') && (tugasTambahanLc.includes('kurikulum') || tugasTambahanLc.includes('kesiswaan'));
+  const isWaliKelas9TKA = userRole === 'guru' && kelasList.some(k =>
+    String(k.nama_kelas || '').trim().startsWith('9') &&
+    (k.wali_kelas === guruData?.nama || k.wali_kelas === currentUser?.full_name)
+  );
+  const canAccessTKA = ['admin', 'tu', 'kepsek'].includes(userRole) || isWakaTKA || isWaliKelas9TKA;
+  const tabs = [...TABS, ...(canAccessTKA ? [{ key: 'tka', label: 'TKA', icon: Award }] : [])];
 
   // Fetch Pembelajaran assignments for guru
   const { data: pembelajaranGuru = [] } = useQuery({
@@ -207,7 +218,7 @@ export default function Nilai() {
 
         {/* Tab Navigation */}
         <div className="flex gap-1 mb-6 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit">
-          {TABS.map(tab => {
+          {tabs.map(tab => {
             const Icon = tab.icon;
             return (
               <button
@@ -228,6 +239,7 @@ export default function Nilai() {
 
         {activeTab === 'analisis' && <AnalisisNilai />}
         {activeTab === 'pengelolaan' && <PengelolaanNilai />}
+        {activeTab === 'tka' && <TkaTab userRole={userRole} guruData={guruData} kelasList={kelasList} siswaList={siswaList} currentUser={currentUser} />}
 
         {activeTab === 'input' && (
           <div className="space-y-5">
