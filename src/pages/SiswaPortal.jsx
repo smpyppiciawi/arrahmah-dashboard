@@ -17,6 +17,8 @@ import {
 import CatatanSection from '@/components/siswaportal/CatatanSection';
 import KeuanganSection from '@/components/siswaportal/KeuanganSection';
 import HapalanProgressCard from '@/components/siswaportal/HapalanProgressCard';
+import NilaiSection from '@/components/siswaportal/NilaiSection';
+import { getFotoAktif } from '@/lib/fotoSiswa';
 
 // ===== Date Helpers (Indonesian) =====
 const HARI_NAMA = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -202,6 +204,13 @@ export default function SiswaPortal() {
     select: (data) => data[0],
   });
 
+  // Home Visit — untuk integrasi dua arah titik koordinat rumah
+  const { data: homeVisitList = [] } = useQuery({
+    queryKey: ['siswa-homevisit-portal', siswa?.id],
+    queryFn: () => base44.entities.HomeVisit.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+
   const updateSiswaMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Siswa.update(id, data),
     onSuccess: () => {
@@ -231,6 +240,30 @@ export default function SiswaPortal() {
   const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
   const currentSiswa = siswaData || siswa;
+
+  // Koordinat rumah — terintegrasi dua arah dengan Home Visit (data terbaru menang)
+  const latestHomeVisit = useMemo(
+    () => [...homeVisitList].sort((a, b) => new Date(b.tanggal_homevisit) - new Date(a.tanggal_homevisit))[0] || null,
+    [homeVisitList]
+  );
+  const koordinatTampil = currentSiswa?.koordinat || latestHomeVisit?.koordinat_rumah || '';
+
+  // Update dari Profil -> sinkron ke record Home Visit terbaru
+  const syncKoordinatKeHomeVisit = (coord) => {
+    if (!latestHomeVisit?.id || !coord) return;
+    base44.entities.HomeVisit.update(latestHomeVisit.id, { koordinat_rumah: coord })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['siswa-homevisit-portal'] }))
+      .catch(() => {});
+  };
+
+  // Home Visit sudah terisi -> otomatis isi koordinat di Data Profil siswa
+  useEffect(() => {
+    if (currentSiswa?.id && !currentSiswa?.koordinat && latestHomeVisit?.koordinat_rumah) {
+      base44.entities.Siswa.update(currentSiswa.id, { koordinat: latestHomeVisit.koordinat_rumah })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['siswa-profil'] }))
+        .catch(() => {});
+    }
+  }, [currentSiswa?.id, currentSiswa?.koordinat, latestHomeVisit?.koordinat_rumah]);
 
   // Selalu sinkron form nomor telepon dengan data Siswa terbaru
   useEffect(() => {
@@ -264,7 +297,7 @@ export default function SiswaPortal() {
   const handleEditProfil = () => {
     setProfilForm({
       alamat: currentSiswa?.alamat || '',
-      koordinat: currentSiswa?.koordinat || '',
+      koordinat: koordinatTampil,
       nama_ayah_kandung: currentSiswa?.nama_ayah_kandung || '',
       nama_ibu_kandung: currentSiswa?.nama_ibu_kandung || '',
       nama_wali: currentSiswa?.nama_wali || '',
@@ -274,6 +307,7 @@ export default function SiswaPortal() {
 
   const handleSaveProfil = () => {
     if (!currentSiswa?.id) return;
+    if (profilForm.koordinat && profilForm.koordinat !== currentSiswa?.koordinat) syncKoordinatKeHomeVisit(profilForm.koordinat);
     updateSiswaMutation.mutate({ id: currentSiswa.id, data: {
       alamat: profilForm.alamat,
       koordinat: profilForm.koordinat,
@@ -289,6 +323,7 @@ export default function SiswaPortal() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const coord = `${position.coords.latitude},${position.coords.longitude}`;
+        syncKoordinatKeHomeVisit(coord);
         updateSiswaMutation.mutate({ id: currentSiswa.id, data: { koordinat: coord } });
         if (profilForm) setProfilForm(prev => ({ ...prev, koordinat: coord }));
       },
@@ -309,8 +344,10 @@ export default function SiswaPortal() {
             <ArrowLeft className="w-5 h-5" /> Kembali
           </button>
           <div className="flex items-center gap-4">
-            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl font-black text-white border-2 border-white/30">
-              {currentSiswa?.nama?.charAt(0) || 'S'}
+            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl font-black text-white border-2 border-white/30 overflow-hidden">
+              {getFotoAktif(currentSiswa)
+                ? <img src={getFotoAktif(currentSiswa)} alt="Foto Profil" className="w-full h-full object-cover" />
+                : (currentSiswa?.nama?.charAt(0) || 'S')}
             </div>
             <div>
               <h2 className="text-white font-bold text-xl leading-tight">{currentSiswa?.nama}</h2>
@@ -372,14 +409,14 @@ export default function SiswaPortal() {
               ) : (
                 <>
                   <InfoItem icon="📍" label="Alamat" value={currentSiswa?.alamat} />
-                  <InfoItem icon="🗺️" label="Koordinat Rumah" value={currentSiswa?.koordinat} />
-                  {currentSiswa?.koordinat && (
-                    <a href={`https://maps.google.com/?q=${currentSiswa.koordinat}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs flex items-center gap-1 ml-9 mt-0.5">
+                  <InfoItem icon="🗺️" label="Koordinat Rumah" value={koordinatTampil} />
+                  {koordinatTampil && (
+                    <a href={`https://maps.google.com/?q=${koordinatTampil}`} target="_blank" rel="noopener noreferrer" className="text-indigo-600 text-xs flex items-center gap-1 ml-9 mt-0.5">
                       <MapPin className="w-3 h-3" /> Lihat di Maps
                     </a>
                   )}
                   <button onClick={handleSetCoordinate} className="ml-9 mt-1 text-xs font-medium text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg flex items-center gap-1 w-fit">
-                    <MapPin className="w-3 h-3" /> {currentSiswa?.koordinat ? 'Update Koordinat' : 'Tambah Koordinat'}
+                    <MapPin className="w-3 h-3" /> {koordinatTampil ? 'Update Koordinat' : 'Tambah Koordinat'}
                   </button>
                 </>
               )}
@@ -786,66 +823,7 @@ export default function SiswaPortal() {
 
       {/* ====== NILAI ====== */}
       {activeTab === 'nilai' && (
-        <div className="pb-24">
-          <PageHeader title="Nilai" emoji="📊" gradient="from-blue-500 to-cyan-500" />
-          <div className="px-4 mt-4">
-            {/* Summary */}
-            <div className="bg-white rounded-3xl shadow-sm p-4 mb-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-slate-400">Rata-rata Nilai</p>
-                  <p className={`text-4xl font-black ${stats.rataRataNilai >= 75 ? 'text-blue-600' : 'text-red-500'}`}>{stats.rataRataNilai || '-'}</p>
-                </div>
-                <div className="w-20 h-20 rounded-full border-8 border-blue-100 flex items-center justify-center">
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-emerald-600">{nilaiList.filter(n => n.status_ketuntasan === 'Tuntas').length}</p>
-                    <p className="text-[9px] text-slate-400">Tuntas</p>
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-3 mt-3">
-                <div className="flex-1 bg-emerald-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-emerald-600">{nilaiList.filter(n => n.status_ketuntasan === 'Tuntas').length}</p>
-                  <p className="text-[10px] text-emerald-500">Tuntas</p>
-                </div>
-                <div className="flex-1 bg-red-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-red-500">{nilaiList.filter(n => n.status_ketuntasan === 'Belum Tuntas').length}</p>
-                  <p className="text-[10px] text-red-400">Belum Tuntas</p>
-                </div>
-                <div className="flex-1 bg-blue-50 rounded-2xl px-3 py-2 text-center">
-                  <p className="text-lg font-black text-blue-600">{nilaiList.length}</p>
-                  <p className="text-[10px] text-blue-400">Total</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              {nilaiList.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).map((n, idx) => (
-                <div key={idx} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  <div className="flex items-center">
-                    <div className={`w-16 shrink-0 flex items-center justify-center py-4 ${n.nilai >= (n.kkm || 75) ? 'bg-emerald-500' : 'bg-red-500'}`}>
-                      <span className="text-white font-black text-xl">{n.nilai}</span>
-                    </div>
-                    <div className="flex-1 px-4 py-3">
-                      <p className="font-bold text-slate-800 text-sm">{n.mapel}</p>
-                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{n.jenis_penilaian}</span>
-                        <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{n.semester}</span>
-                        {n.kompetensi_bab && <span className="text-[10px] text-slate-400">{n.kompetensi_bab}</span>}
-                      </div>
-                    </div>
-                    <div className="pr-4">
-                      <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${n.nilai >= (n.kkm || 75) ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-600'}`}>
-                        {n.nilai >= (n.kkm || 75) ? '✓ Tuntas' : '✗ Belum'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {nilaiList.length === 0 && <EmptyState emoji="📊" text="Belum ada data nilai" />}
-            </div>
-          </div>
-        </div>
+        <NilaiSection siswa={currentSiswa} nilaiList={nilaiList} />
       )}
 
       {/* ====== CATATAN ====== */}
