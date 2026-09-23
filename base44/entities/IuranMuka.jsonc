@@ -1,0 +1,90 @@
+{
+  "name": "IuranMuka",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa pemilik saldo"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS siswa"
+    },
+    "nama_siswa": {
+      "type": "string",
+      "description": "Nama siswa"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Kelas siswa saat setoran"
+    },
+    "tanggal_setoran": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal uang setoran diterima (tanggal transaksi kas)"
+    },
+    "transaksi_setoran_id": {
+      "type": "string",
+      "description": "ID transaksi Keuangan pemasukan setoran (is_iuran_muka = true)"
+    },
+    "tahun_ajaran_tujuan": {
+      "type": "string",
+      "description": "Tahun ajaran tujuan saldo (contoh: 2027/2028)"
+    },
+    "nama_iuran": {
+      "type": "string",
+      "description": "Nama tarif iuran tujuan (mis. SPP, Ujian Sekolah)"
+    },
+    "nominal": {
+      "type": "number",
+      "description": "Nominal setoran untuk alokasi ini"
+    },
+    "nominal_diterapkan": {
+      "type": "number",
+      "default": 0,
+      "description": "Total yang sudah diterapkan menjadi transaksi pembayaran resmi"
+    },
+    "penerapan": {
+      "type": "array",
+      "description": "Riwayat penerapan saldo menjadi transaksi resmi",
+      "items": {
+        "type": "object",
+        "properties": {
+          "transaksi_id": {
+            "type": "string",
+            "description": "ID transaksi Keuangan hasil penerapan"
+          },
+          "nominal": {
+            "type": "number",
+            "description": "Nominal yang diterapkan"
+          },
+          "tanggal": {
+            "type": "string",
+            "description": "Tanggal penerapan"
+          },
+          "uraian": {
+            "type": "string",
+            "description": "Uraian transaksi penerapan"
+          },
+          "pic": {
+            "type": "string",
+            "description": "Bendahara yang menerapkan"
+          }
+        }
+      }
+    },
+    "keterangan": {
+      "type": "string",
+      "description": "Keterangan tambahan setoran"
+    },
+    "pencatat": {
+      "type": "string",
+      "description": "Bendahara pencatat setoran"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "nominal"
+  ]
+}

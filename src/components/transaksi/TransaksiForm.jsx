@@ -20,6 +20,8 @@ import PenerimaSearch from './PenerimaSearch';
 import BuktiUpload from './BuktiUpload';
 import RupiahInput from '@/components/ui/RupiahInput';
 import { terbilang } from '@/lib/terbilang';
+import MukaAllocationEditor, { buildTaOptions } from './MukaAllocationEditor';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const TIPE_TO_KATEGORI = {
   'SPP/Bulanan': 'SPP',
@@ -84,6 +86,8 @@ export default function TransaksiForm({
   const [selectedTarifId, setSelectedTarifId] = useState('');
   const [selectedMonths, setSelectedMonths] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [isMuka, setIsMuka] = useState(false);
+  const [mukaRows, setMukaRows] = useState([]);
 
   useEffect(() => {
     if (isOpen) {
@@ -105,6 +109,8 @@ export default function TransaksiForm({
         setSelectedMonths([]);
       }
       setSelectedTarifId('');
+      setIsMuka(false);
+      setMukaRows([]);
     }
   }, [isOpen, editingData, activeAcademicYear]);
 
@@ -169,12 +175,12 @@ export default function TransaksiForm({
   }, [selectedTarifId, tarifIuranList, formData.siswa_id, biayaKhususList, activeAcademicYear, siswaList, kelasList]);
 
   const showSppChecklist = useMemo(() => {
-    if (jenisTransaksi !== 'siswa' || !formData.siswa_id) return false;
+    if (jenisTransaksi !== 'siswa' || !formData.siswa_id || isMuka) return false;
     // Only show SPP checklist when the selected tarif is actually SPP
     const selectedTarif = selectedTarifId ? tarifIuranList.find(t => t.id === selectedTarifId) : null;
     return (selectedTarif?.jenis_iuran === 'SPP') ||
       (formData.tipe_transaksi?.toLowerCase().includes('spp') && !selectedTarifId);
-  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList]);
+  }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList, isMuka]);
 
   const siswaRiwayat = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -287,12 +293,34 @@ export default function TransaksiForm({
         ...prev,
         tipe_transaksi: tarif.nama,
         kategori: JENIS_IURAN_TO_KATEGORI[tarif.jenis_iuran] || TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
-        jumlah: nominal,
-        uraian: tarif.nama,
-        bulan_dibayar: isSpp ? prev.bulan_dibayar : [],
+        jumlah: isMuka ? prev.jumlah : nominal,
+        uraian: isMuka ? prev.uraian : tarif.nama,
+        bulan_dibayar: isSpp && !isMuka ? prev.bulan_dibayar : [],
       }));
-      if (!isSpp) setSelectedMonths([]);
+      if (!isSpp || isMuka) setSelectedMonths([]);
+      if (isMuka) setMukaRows(prev => prev.map(r => (!r.iuran ? { ...r, iuran: tarif.nama } : r)));
     }
+  };
+
+  const taTujuanOptions = useMemo(() => buildTaOptions(activeAcademicYear), [activeAcademicYear]);
+
+  const toggleMuka = (checked) => {
+    setIsMuka(checked);
+    if (checked) {
+      setSelectedMonths([]);
+      setFormData(prev => ({ ...prev, bulan_dibayar: [] }));
+      setMukaRows(prev => (prev.length > 0 ? prev : [{
+        ta: taTujuanOptions[1] || taTujuanOptions[0] || '',
+        iuran: tarifIuranList.find(t => t.id === selectedTarifId)?.nama || 'SPP',
+        nominal: '',
+      }]));
+    }
+  };
+
+  const handleMukaRowsChange = (rows) => {
+    setMukaRows(rows);
+    const total = rows.reduce((s, r) => s + Number(r.nominal || 0), 0);
+    set('jumlah', total > 0 ? String(total) : '');
   };
 
   const handleTipeChange = (tipe) => {
@@ -352,6 +380,23 @@ export default function TransaksiForm({
       return;
     }
 
+    // Validasi alokasi Iuran Muka: total per TA + iuran harus sama dengan Jumlah
+    const mukaActive = isMuka && jenisTransaksi === 'siswa' && !editingData;
+    const mukaValidRows = mukaActive ? mukaRows.filter(r => r.ta && r.iuran && Number(r.nominal) > 0) : [];
+    const totalAlokasi = mukaValidRows.reduce((s, r) => s + Number(r.nominal || 0), 0);
+    if (mukaActive && (!mukaValidRows.length || totalAlokasi !== Number(formData.jumlah))) {
+      toast({
+        title: "Alokasi Iuran Muka belum lengkap",
+        description: "Isi TA tujuan, jenis iuran, dan nominal hingga total alokasi sama dengan Jumlah.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (mukaActive) {
+      const t0 = tarifIuranList.find(t => t.nama === mukaValidRows[0]?.iuran);
+      resolvedKategori = JENIS_IURAN_TO_KATEGORI[t0?.jenis_iuran] || 'Lainnya';
+    }
+
     setSubmitting(true);
     const payload = {
       ...formData,
@@ -363,6 +408,12 @@ export default function TransaksiForm({
       penerima: jenisTransaksi === 'siswa' ? (formData.pic || currentUser?.full_name || '') : formData.penerima,
       tahun_ajaran: activeAcademicYear || '',
       ...(jenisTransaksi === 'donatur' ? { kategori: 'Donatur', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
+      is_iuran_muka: mukaActive,
+      ...(mukaActive ? {
+        tipe_transaksi: mukaValidRows[0]?.iuran || formData.tipe_transaksi,
+        uraian: formData.uraian || `Iuran Muka — ${[...new Set(mukaValidRows.map(r => `${r.iuran} TP ${r.ta}`))].join('; ')}`,
+        bulan_dibayar: [],
+      } : {}),
     };
 
     try {
@@ -370,10 +421,29 @@ export default function TransaksiForm({
         await base44.entities.Keuangan.update(editingData.id, payload);
         toast({ title: "Transaksi berhasil diperbarui" });
       } else {
-        await base44.entities.Keuangan.create(payload);
-        toast({ title: "Transaksi berhasil disimpan" });
+        const created = await base44.entities.Keuangan.create(payload);
+        // Setoran Iuran Muka → buat saldo per alokasi (per TA tujuan & jenis iuran)
+        if (mukaActive && created?.id) {
+          await base44.entities.IuranMuka.bulkCreate(mukaValidRows.map(r => ({
+            siswa_id: formData.siswa_id,
+            nis: formData.nis,
+            nama_siswa: formData.nama_siswa,
+            nama_kelas: formData.kelas,
+            tanggal_setoran: formData.tanggal,
+            transaksi_setoran_id: created.id,
+            tahun_ajaran_tujuan: r.ta,
+            nama_iuran: r.iuran,
+            nominal: Number(r.nominal),
+            nominal_diterapkan: 0,
+            penerapan: [],
+            keterangan: payload.uraian,
+            pencatat: payload.pic,
+          })));
+        }
+        toast({ title: mukaActive ? "Setoran Iuran Muka berhasil disimpan" : "Transaksi berhasil disimpan" });
       }
       queryClient.invalidateQueries({ queryKey: ['keuangan'] });
+      queryClient.invalidateQueries({ queryKey: ['iuran-muka'] });
       // Sinkron angka di semua modul keuangan setelah transaksi tersimpan
       queryClient.invalidateQueries({ queryKey: ['keuangan-tunggakan'] });
       queryClient.invalidateQueries({ queryKey: ['siswa-keuangan'] });
@@ -537,6 +607,27 @@ export default function TransaksiForm({
                       </SelectContent>
                     </Select>
                   </div>
+                  {!editingData && (
+                    <div
+                      className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer"
+                      onClick={() => toggleMuka(!isMuka)}
+                    >
+                      <Checkbox checked={isMuka} onCheckedChange={(v) => toggleMuka(v === true)} className="mt-0.5 pointer-events-none" />
+                      <div>
+                        <p className="text-sm font-semibold text-slate-700">Pembayaran Di Muka (Tahun Depan / Multi-Tahun)</p>
+                        <p className="text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggikan tahun aktif.</p>
+                      </div>
+                    </div>
+                  )}
+                  {isMuka && (
+                    <MukaAllocationEditor
+                      value={mukaRows}
+                      onChange={handleMukaRowsChange}
+                      tarifIuranList={tarifIuranList}
+                      activeAcademicYear={activeAcademicYear}
+                      jumlah={Number(formData.jumlah || 0)}
+                    />
+                  )}
                   {showSppChecklist && (
                     <SppChecklist
                       tarifNominal={sppTarifNominal}

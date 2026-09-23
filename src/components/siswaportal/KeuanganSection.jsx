@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
-import { CheckCircle, XCircle, Gift } from 'lucide-react';
+import { CheckCircle, XCircle, Gift, PiggyBank } from 'lucide-react';
 import { getGratisBulanSPP, getSppTarif, BULAN_SPP, formatDateID, computeStatusKeuangan } from '@/lib/sppUtils';
 
 const JENIS_TABS = [
@@ -31,6 +31,19 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
     queryFn: () => base44.entities.BiayaKhusus.filter({ siswa_id: siswa.id }),
     enabled: !!siswa?.id,
   });
+
+  // Saldo Iuran Muka (pembayaran untuk TA mendatang — tidak mengurangi tunggikan TA aktif)
+  const { data: mukaList = [] } = useQuery({
+    queryKey: ['iuran-muka-siswa', siswa?.id],
+    queryFn: () => base44.entities.IuranMuka.filter({ siswa_id: siswa.id }),
+    enabled: !!siswa?.id,
+  });
+  const mukaSisa = useMemo(() =>
+    mukaList
+      .map(m => ({ ...m, sisa: Math.max(0, (m.nominal || 0) - (m.nominal_diterapkan || 0)) }))
+      .filter(m => m.sisa > 0),
+  [mukaList]);
+  const totalMukaSisa = mukaSisa.reduce((s, m) => s + m.sisa, 0);
 
   // ===== Hitungan terpusat — angka identik dengan Laporan Bendahara & Wali Kelas =====
   const statusKeuangan = useMemo(() => computeStatusKeuangan({
@@ -108,6 +121,32 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
             ))}
           </div>
         </div>
+
+        {/* Saldo Iuran Muka */}
+        {mukaSisa.length > 0 && (
+          <div className="bg-white rounded-3xl shadow-sm p-4">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <PiggyBank className="w-4 h-4 text-purple-500" /> Saldo Iuran Muka
+              </p>
+              <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-full">{formatRupiah(totalMukaSisa)}</span>
+            </div>
+            <p className="text-[11px] text-slate-400 mb-3">Pembayaran untuk tahun ajaran mendatang — tidak mengurangi tunggikan tahun ajaran ini.</p>
+            <div className="space-y-2">
+              {mukaSisa.map(m => (
+                <div key={m.id} className="flex items-center justify-between gap-2 p-2.5 bg-purple-50/50 rounded-2xl">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-700 truncate">{m.nama_iuran} · TP {m.tahun_ajaran_tujuan}</p>
+                    {(m.nominal_diterapkan || 0) > 0 && (
+                      <p className="text-[11px] text-slate-400">Sudah diterapkan {formatRupiah(m.nominal_diterapkan)} dari {formatRupiah(m.nominal)}</p>
+                    )}
+                  </div>
+                  <span className="text-sm font-bold text-purple-700 shrink-0">{formatRupiah(m.sisa)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* SPP Monthly Recap */}
         {activeIuran === 'SPP' && (

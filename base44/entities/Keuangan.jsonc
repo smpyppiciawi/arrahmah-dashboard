@@ -200,6 +200,16 @@
     "tahun_ajaran": {
       "type": "string",
       "description": "Tahun ajaran transaksi"
+    },
+    "is_iuran_muka": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = setoran Iuran Muka (pembayaran iuran tahun mendatang). TIDAK dihitung sebagai pembayaran iuran mana pun \u2014 uang sudah masuk kas dan tersimpan sebagai saldo IuranMuka per siswa per TA tujuan."
+    },
+    "aplikasi_iuran_muka": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = transaksi hasil penerapan Saldo Iuran Muka. Mengurangi tagihan iuran tahun ajaran tujuan, tetapi NETRAL terhadap kas (saldo kas sudah masuk saat setoran Iuran Muka)."
     }
   },
   "required": [

@@ -87,7 +87,8 @@ export default function LaporanKeuangan() {
     const map = {};
     sumberDanaList.forEach(s => { map[s.nama] = 0; });
     keuanganList.forEach(k => {
-      if (!k.sumber_rekening) return;
+      // Penerapan Iuran Muka netral terhadap kas — uang masuk saat setoran
+      if (!k.sumber_rekening || k.aplikasi_iuran_muka) return;
       if (!map[k.sumber_rekening]) map[k.sumber_rekening] = 0;
       map[k.sumber_rekening] += k.jenis === 'Pemasukan' ? (k.jumlah || 0) : -(k.jumlah || 0);
     });
@@ -119,7 +120,8 @@ export default function LaporanKeuangan() {
 
   // Filter data for Laporan Pemasukan & Pengeluaran tab (kategori + donatur)
   const laporanFilteredData = useMemo(() => {
-    let data = [...filteredData];
+    // Penerapan Iuran Muka netral terhadap kas — tidak masuk laporan pemasukan/pengeluaran
+    let data = [...filteredData].filter(k => !k.aplikasi_iuran_muka);
     if (filterKategori) data = data.filter(k => k.kategori === filterKategori);
     if (filterDonatur) data = data.filter(k => k.nama_donatur === filterDonatur);
     return data;
@@ -157,7 +159,7 @@ export default function LaporanKeuangan() {
     const sorted = [...allEntries].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
     let balance = 0;
     return sorted.map(t => {
-      if (!t.is_transfer) {
+      if (!t.is_transfer && !t.aplikasi_iuran_muka) {
         balance += t.jenis === 'Pemasukan' ? (t.jumlah || 0) : -(t.jumlah || 0);
       }
       return { ...t, saldo: balance };

@@ -37,9 +37,17 @@ export default function PemeriksaanKonsistensi({ activeAcademicYear }) {
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
   });
+  const { data: allSiswaList = [] } = useQuery({
+    queryKey: ['siswa-all'],
+    queryFn: () => base44.entities.Siswa.list(),
+  });
+  const { data: iuranMukaList = [] } = useQuery({
+    queryKey: ['iuran-muka'],
+    queryFn: () => base44.entities.IuranMuka.list(),
+  });
 
   const invalidateAll = () => {
-    ['tarif-iuran', 'keuangan', 'biaya-khusus', 'keuangan-tunggakan', 'biaya-khusus-siswa'].forEach(key =>
+    ['tarif-iuran', 'keuangan', 'biaya-khusus', 'keuangan-tunggakan', 'biaya-khusus-siswa', 'iuran-muka'].forEach(key =>
       queryClient.invalidateQueries({ queryKey: [key] })
     );
   };
@@ -304,7 +312,7 @@ export default function PemeriksaanKonsistensi({ activeAcademicYear }) {
     // 10. Potensi pembayaran terhitung ganda (sudah bayar manual + transaksi tercatat)
     const keuBySiswa = {};
     keuanganList.forEach(k => {
-      if (k.siswa_id && k.jenis !== 'Pengeluaran') (keuBySiswa[k.siswa_id] ||= []).push(k);
+      if (k.siswa_id && k.jenis !== 'Pengeluaran' && !k.is_iuran_muka) (keuBySiswa[k.siswa_id] ||= []).push(k);
     });
     const doubleCount = biayaKhususList.filter(b => {
       if (b.is_gratis || !((b.sudah_bayar || 0) > 0)) return false;
@@ -326,8 +334,57 @@ export default function PemeriksaanKonsistensi({ activeAcademicYear }) {
       }),
     });
 
+    // 11-13. Iuran Muka: sisa saldo, siswa non-aktif, tumpang tindih Sudah Bayar manual
+    const mukaSisa = iuranMukaList.filter(m => (m.nominal || 0) - (m.nominal_diterapkan || 0) > 0);
+    if (mukaSisa.length) g.push({
+      id: 'muka-sisa', level: 'check',
+      judul: 'Saldo iuran muka belum diterapkan',
+      deskripsi: 'Saldo iuran muka berikut belum seluruhnya diarahkan menjadi transaksi pembayaran. Terapkan lewat tab Iuran Muka saat tahun ajaran/iuran tujuan tiba.',
+      rows: mukaSisa.map(m => ({
+        id: m.id, label: `${m.nama_siswa || '-'} · ${m.nama_iuran || '-'}`,
+        sub: `TA ${m.tahun_ajaran_tujuan || '-'} · sisa ${angka((m.nominal || 0) - (m.nominal_diterapkan || 0))}`,
+      })),
+    });
+
+    const mukaNonaktif = mukaSisa.filter(m => {
+      const s = allSiswaList.find(x => x.id === m.siswa_id);
+      return !s || s.status !== 'Aktif';
+    });
+    if (mukaNonaktif.length) g.push({
+      id: 'muka-nonaktif', level: 'check',
+      judul: 'Siswa pindah/keluar/lulus masih menyimpan saldo muka',
+      deskripsi: 'Siswa berikut tidak aktif tetapi masih punya saldo iuran muka yang belum dipakai. Putuskan pengembaliannya secara manual (pengembalian dicatat sebagai pengeluaran kas).',
+      rows: mukaNonaktif.map(m => {
+        const s = allSiswaList.find(x => x.id === m.siswa_id);
+        return {
+          id: m.id, label: `${m.nama_siswa || '-'} · ${m.nama_iuran || '-'}`,
+          sub: `Status: ${s?.status || 'tidak ditemukan'} · TA ${m.tahun_ajaran_tujuan || '-'} · sisa ${angka((m.nominal || 0) - (m.nominal_diterapkan || 0))}`,
+        };
+      }),
+    });
+
+    const mukaOverlapBk = mukaSisa.filter(m => biayaKhususList.some(b =>
+      b.siswa_id === m.siswa_id &&
+      b.nama_iuran === m.nama_iuran &&
+      (b.sudah_bayar || 0) > 0 &&
+      b.tahun_ajaran === m.tahun_ajaran_tujuan
+    ));
+    if (mukaOverlapBk.length) g.push({
+      id: 'muka-bk-double', level: 'check',
+      judul: 'Potensi dobel hitung: Sudah Bayar manual + Iuran Muka',
+      deskripsi: 'Iuran ini punya isian "Sudah Bayar" manual DAN saldo iuran muka untuk tahun ajaran yang sama. Saat saldo diterapkan, pembayaran bisa terhitung dua kali — kosongkan salah satunya.',
+      rows: mukaOverlapBk.map(m => {
+        const b = biayaKhususList.find(x =>
+          x.siswa_id === m.siswa_id && x.nama_iuran === m.nama_iuran && x.tahun_ajaran === m.tahun_ajaran_tujuan);
+        return {
+          id: m.id, label: `${m.nama_siswa || '-'} · ${m.nama_iuran || '-'} TA ${m.tahun_ajaran_tujuan || '-'}`,
+          sub: `Sudah bayar manual: ${angka(b?.sudah_bayar)} · sisa saldo muka: ${angka((m.nominal || 0) - (m.nominal_diterapkan || 0))}`,
+        };
+      }),
+    });
+
     return g;
-  }, [tarifList, keuanganList, biayaKhususList, siswaList]);
+  }, [tarifList, keuanganList, biayaKhususList, siswaList, allSiswaList, iuranMukaList]);
 
   const fixable = (group) => group.rows.some(r => r.fixType);
 

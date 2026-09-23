@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   Settings, Plus, Edit2, Trash2, Tags, Layers, Wallet, 
-  CreditCard, Users, UserCheck, Award, ShieldCheck
+  CreditCard, Users, UserCheck, Award, ShieldCheck, PiggyBank
 } from "lucide-react";
 import RupiahInput from '@/components/ui/RupiahInput';
 import HonorariumTab from '@/components/keuangan/HonorariumTab';
@@ -21,6 +21,7 @@ import PemeriksaanKonsistensi from '@/components/keuangan/PemeriksaanKonsistensi
 import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
 import PilihSiswaDialog from '@/components/keuangan/PilihSiswaDialog';
 import BiayaKhususPerSiswa from '@/components/keuangan/BiayaKhususPerSiswa';
+import IuranMukaTab from '@/components/keuangan/IuranMukaTab';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function KelolaDataKeuangan() {
@@ -316,6 +317,7 @@ export default function KelolaDataKeuangan() {
             <TabsTrigger value="sumber" className="flex items-center gap-1"><Wallet className="w-3 h-3" /> Sumber Dana</TabsTrigger>
             <TabsTrigger value="tarif" className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Tarif Iuran</TabsTrigger>
             <TabsTrigger value="biaya-khusus" className="flex items-center gap-1"><Users className="w-3 h-3" /> Biaya Khusus</TabsTrigger>
+            <TabsTrigger value="iuran-muka" className="flex items-center gap-1"><PiggyBank className="w-3 h-3" /> Iuran Muka</TabsTrigger>
             <TabsTrigger value="honorarium" className="flex items-center gap-1"><Award className="w-3 h-3" /> Honorarium</TabsTrigger>
             <TabsTrigger value="pemeriksaan" className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Pemeriksaan</TabsTrigger>
           </TabsList>
@@ -398,6 +400,14 @@ export default function KelolaDataKeuangan() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Iuran Muka */}
+          <TabsContent value="iuran-muka">
+            <IuranMukaTab
+              tarifIuranList={tarifIuranList}
+              biayaKhususList={biayaKhususList}
+            />
           </TabsContent>
 
           {/* Honorarium */}

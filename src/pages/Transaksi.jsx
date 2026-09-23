@@ -129,7 +129,7 @@ export default function Transaksi() {
     });
   }, [keuanganList, activeTab, filterDateFrom, filterDateTo]);
 
-  const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
+  const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.aplikasi_iuran_muka).reduce((s, k) => s + (k.jumlah || 0), 0);
   const totalPengeluaran = keuanganList.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
   const saldo = totalPemasukan - totalPengeluaran;
 

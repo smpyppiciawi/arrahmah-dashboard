@@ -149,6 +149,8 @@ export function matchIuranItemTransactions(tarif, keuanganList = [], allTarifs =
  */
 export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biayaKhususList = []) {
   const tingkat = siswa?.nama_kelas?.charAt(0) || '';
+  // Setoran Iuran Muka bukan pembayaran iuran tahun ini — kecualikan dari hitungan
+  const keuanganNonMuka = keuanganList.filter(k => !k.is_iuran_muka);
   const gratisMonths = getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList);
   const gratisSet = new Set(gratisMonths);
   const sppTarif = getSppTarif(tarifList, tingkat);
@@ -156,7 +158,7 @@ export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biaya
   // SPP tunggakan: unpaid non-gratis months
   let sppTunggakan = 0;
   if (sppTarif) {
-    const sppRecords = keuanganList.filter(k => k.tipe_transaksi === 'SPP/Bulanan');
+    const sppRecords = keuanganNonMuka.filter(k => k.tipe_transaksi === 'SPP/Bulanan');
     const paidMonths = new Set();
     sppRecords.forEach(r => {
       if (r.bulan_dibayar && Array.isArray(r.bulan_dibayar)) {
@@ -185,7 +187,7 @@ export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biaya
     const bk = biayaKhususList.find(b => b.tarif_iuran_id === t.id && b.siswa_id === siswa?.id);
     if (bk?.is_gratis) return;
     const tagihan = bk ? (bk.nominal_khusus || t.nominal || 0) : (t.nominal || 0);
-    const trans = matchIuranItemTransactions(t, keuanganList, relevantTarifs);
+    const trans = matchIuranItemTransactions(t, keuanganNonMuka, relevantTarifs);
     const dibayar = trans
       .filter(k => k.jenis !== 'Pengeluaran')
       .reduce((sum, k) => sum + (k.jumlah || 0), 0);
@@ -254,9 +256,11 @@ export function computeStatusKeuangan({
   const tingkat = getTingkat(siswa, kelasList) || '';
   const taCocok = (ta) => !tahunAjaran || !ta || ta === tahunAjaran;
 
-  // Pembayaran yang diakui: pemasukan dalam TA terpilih (data lama tanpa TA tetap dihitung)
+  // Pembayaran yang diakui: pemasukan dalam TA terpilih (data lama tanpa TA tetap dihitung).
+  // Setoran Iuran Muka TIDAK dihitung sebagai pembayaran iuran — saldo diterapkan
+  // sebagai transaksi resmi (aplikasi_iuran_muka) saat tahun tujuan tiba.
   const payments = keuanganList.filter(k =>
-    k.jenis !== 'Pengeluaran' && taCocok(k.tahun_ajaran)
+    k.jenis !== 'Pengeluaran' && !k.is_iuran_muka && taCocok(k.tahun_ajaran)
   );
 
   const bkSiswa = biayaKhususList.filter(b =>
