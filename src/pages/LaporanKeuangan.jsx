@@ -464,15 +464,15 @@ export default function LaporanKeuangan() {
   const statusBadgeCls = (status) => status === 'Lunas'
     ? 'bg-emerald-100 text-emerald-700'
     : status === 'Cicilan' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
-  const sisaRender = (v) => <span className={v > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(v)}</span>;
+  const sisaRender = (row, field) => <span className={row[field] > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row[field])}</span>;
 
   const tunggakanColumns = [
     { key: 'nis', label: 'NIS' },
     { key: 'nama', label: 'Nama' },
     { key: 'nama_kelas', label: 'Kelas' },
     { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
-    { key: 'sisa_jatuh_tempo', label: 'Sisa Bayar (Jatuh Tempo)', render: sisaRender },
-    { key: 'sisa_setahun', label: 'Sisa Bayar (Setahun)', render: sisaRender },
+    { key: 'sisa_jatuh_tempo', label: 'Sisa Bayar (Jatuh Tempo)', render: (row) => sisaRender(row, 'sisa_jatuh_tempo') },
+    { key: 'sisa_setahun', label: 'Sisa Bayar (Setahun)', render: (row) => sisaRender(row, 'sisa_setahun') },
     ...(selectedIuran ? [{ key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> }] : []),
     { key: 'status_keuangan', label: 'Status', render: (row) => <Badge className={statusBadgeCls(row.status_keuangan)}>{row.status_keuangan}</Badge> }
   ];
