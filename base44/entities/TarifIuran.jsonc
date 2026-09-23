@@ -68,6 +68,10 @@
       "type": "boolean",
       "default": false,
       "description": "Khusus PPDB Gel 1: SPP bulan pertama (Juli) digratiskan"
+    },
+    "tipe_transaksi_id": {
+      "type": "string",
+      "description": "ID TipeTransaksi yang dipetakan resmi (pemetaan tarif iuran \u2192 tipe transaksi siswa). Dipakai form transaksi untuk auto-fill Tipe Transaksi."
     }
   },
   "required": [

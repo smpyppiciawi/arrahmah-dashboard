@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   Settings, Plus, Edit2, Trash2, Tags, Layers, Wallet, 
-  CreditCard, Users, UserCheck, Award, ShieldCheck, PiggyBank
+  CreditCard, Users, UserCheck, Award, ShieldCheck, PiggyBank, RefreshCw
 } from "lucide-react";
 import RupiahInput from '@/components/ui/RupiahInput';
 import HonorariumTab from '@/components/keuangan/HonorariumTab';
@@ -22,6 +22,7 @@ import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
 import PilihSiswaDialog from '@/components/keuangan/PilihSiswaDialog';
 import BiayaKhususPerSiswa from '@/components/keuangan/BiayaKhususPerSiswa';
 import IuranMukaTab from '@/components/keuangan/IuranMukaTab';
+import { toast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 export default function KelolaDataKeuangan() {
@@ -72,7 +73,7 @@ export default function KelolaDataKeuangan() {
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
+  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, tipe_transaksi_id: '' });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [pilihSiswaOpen, setPilihSiswaOpen] = useState(false);
   const [pilihSiswaTarif, setPilihSiswaTarif] = useState(null);
@@ -162,7 +163,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false });
+    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, tipe_transaksi_id: '' });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -181,7 +182,12 @@ export default function KelolaDataKeuangan() {
     if (type === 'kategori') setKategoriForm(data);
     else if (type === 'tipe') setTipeForm(data);
     else if (type === 'sumber') setSumberForm(data);
-    else if (type === 'tarif') setTarifForm({ ...data, tingkat: Array.isArray(data.tingkat) ? data.tingkat : (data.tingkat ? [data.tingkat] : ['Semua']) });
+    else if (type === 'tarif') setTarifForm({
+      ...data,
+      tingkat: Array.isArray(data.tingkat) ? data.tingkat : (data.tingkat ? [data.tingkat] : ['Semua']),
+      // Isi pemetaan dari data; bila kosong, coba pasangkan dengan tipe yang namanya sama
+      tipe_transaksi_id: data.tipe_transaksi_id || tipeTransaksiList.find(t => t.nama === data.nama && t.jenis === 'Siswa')?.id || '',
+    });
     else if (type === 'biaya-khusus') setBiayaKhususForm(data);
     setIsOpen(true);
   };
@@ -195,6 +201,10 @@ export default function KelolaDataKeuangan() {
     } else if (formType === 'sumber') {
       editingData ? updateSumberMutation.mutate({ id: editingData.id, data: sumberForm }) : createSumberMutation.mutate(sumberForm);
     } else if (formType === 'tarif') {
+      if (!tarifForm.tipe_transaksi_id) {
+        toast({ title: 'Tipe Transaksi wajib dipilih', description: 'Pilih tipe transaksi untuk tarif ini, atau gunakan tombol Sinkronkan di daftar tarif.', variant: 'destructive' });
+        return;
+      }
       editingData ? updateTarifMutation.mutate({ id: editingData.id, data: tarifForm }) : createTarifMutation.mutate(tarifForm);
     } else if (formType === 'biaya-khusus') {
       editingData ? updateBiayaKhususMutation.mutate({ id: editingData.id, data: biayaKhususForm }) : createBiayaKhususMutation.mutate(biayaKhususForm);
@@ -212,6 +222,50 @@ export default function KelolaDataKeuangan() {
     const tarif = tarifIuranList.find(t => t.id === tarifId);
     if (tarif) {
       setBiayaKhususForm(prev => ({ ...prev, tarif_iuran_id: tarif.id, nama_iuran: tarif.nama }));
+    }
+  };
+
+  // ===== Sinkronisasi Tarif Iuran ↔ Tipe Transaksi (pemetaan resmi) =====
+  const siswaTipeList = useMemo(() => tipeTransaksiList.filter(t => t.jenis === 'Siswa'), [tipeTransaksiList]);
+
+  const tarifMapped = (tarif) =>
+    !!tarif.tipe_transaksi_id || siswaTipeList.some(t => t.nama === tarif.nama);
+
+  const unmappedTarifCount = useMemo(
+    () => tarifIuranList.filter(t => !tarifMapped(t)).length,
+    [tarifIuranList, siswaTipeList]
+  );
+
+  const [syncingTarifTipe, setSyncingTarifTipe] = useState(false);
+  const syncTarifTipe = async () => {
+    setSyncingTarifTipe(true);
+    try {
+      const tipes = [...siswaTipeList];
+      const updates = [];
+      let created = 0;
+      for (const tarif of tarifIuranList) {
+        if (tarif.tipe_transaksi_id) continue;
+        let tipe = tipes.find(t => t.nama === tarif.nama);
+        if (!tipe) {
+          tipe = await base44.entities.TipeTransaksi.create({ nama: tarif.nama, jenis: 'Siswa' });
+          tipes.push(tipe);
+          created++;
+        }
+        updates.push({ id: tarif.id, tipe_transaksi_id: tipe.id });
+      }
+      if (updates.length) await base44.entities.TarifIuran.bulkUpdate(updates);
+      queryClient.invalidateQueries({ queryKey: ['tarif-iuran'] });
+      queryClient.invalidateQueries({ queryKey: ['tipe-transaksi'] });
+      toast({
+        title: 'Sinkronisasi selesai',
+        description: updates.length
+          ? `${created} tipe transaksi baru dibuat, ${updates.length} tarif iuran dipetakan.`
+          : 'Semua tarif iuran sudah terpetakan.',
+      });
+    } catch (e) {
+      toast({ title: 'Gagal sinkronisasi', description: e.message, variant: 'destructive' });
+    } finally {
+      setSyncingTarifTipe(false);
     }
   };
 
@@ -269,6 +323,12 @@ export default function KelolaDataKeuangan() {
       return <Badge className={arr.includes('Semua') ? 'bg-slate-100 text-slate-700' : 'bg-blue-100 text-blue-700'}>{arr.join(', ')}</Badge>;
     } },
     { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
+    { key: 'pemetaan', label: 'Tipe Transaksi', render: (row) => {
+      const tipe = siswaTipeList.find(t => t.id === row.tipe_transaksi_id) || siswaTipeList.find(t => t.nama === row.nama);
+      return tipe
+        ? <Badge className="bg-emerald-100 text-emerald-700">Terpetakan: {tipe.nama}</Badge>
+        : <Badge className="bg-red-100 text-red-700">Belum Terpetakan</Badge>;
+    } },
     { key: 'tahun_ajaran', label: 'Tahun Ajaran', render: (row) => row.tahun_ajaran || '-' },
     { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{row.status}</Badge> },
     {
@@ -371,10 +431,23 @@ export default function KelolaDataKeuangan() {
           <TabsContent value="tarif">
             <Card className="border-0 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Daftar Tarif Iuran (SPP, Ujian, dll)</CardTitle>
-                <Button onClick={() => openAddForm('tarif')} className="bg-purple-600 hover:bg-purple-700">
-                  <Plus className="w-4 h-4 mr-2" /> Tambah Tarif
-                </Button>
+                <div className="flex items-center gap-3">
+                  <CardTitle>Daftar Tarif Iuran (SPP, Ujian, dll)</CardTitle>
+                  {unmappedTarifCount > 0 && <Badge className="bg-red-100 text-red-700">{unmappedTarifCount} belum terpetakan</Badge>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={syncTarifTipe}
+                    disabled={syncingTarifTipe}
+                    className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${syncingTarifTipe ? 'animate-spin' : ''}`} /> Sinkronkan
+                  </Button>
+                  <Button onClick={() => openAddForm('tarif')} className="bg-purple-600 hover:bg-purple-700">
+                    <Plus className="w-4 h-4 mr-2" /> Tambah Tarif
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <DataTable columns={tarifColumns} data={tarifIuranList} pageSize={10} />
@@ -487,6 +560,18 @@ export default function KelolaDataKeuangan() {
                         <SelectItem value="PPDB Gel 2">PPDB Gel 2</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div>
+                    <Label>Tipe Transaksi (Pemetaan)</Label>
+                    <Select value={tarifForm.tipe_transaksi_id} onValueChange={(v) => setTarifForm({...tarifForm, tipe_transaksi_id: v})}>
+                      <SelectTrigger><SelectValue placeholder="Pilih tipe transaksi" /></SelectTrigger>
+                      <SelectContent>
+                        {siswaTipeList.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.nama}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-400 mt-1">Dipakai form transaksi siswa untuk auto-fill Tipe Transaksi. Belum ada pasangannya? Klik Sinkronkan di daftar tarif.</p>
                   </div>
                   <div><Label>Nominal (Rp)</Label><RupiahInput value={tarifForm.nominal} onChange={(val) => setTarifForm({...tarifForm, nominal: val})} placeholder="0" required /></div>
                   <div className="grid grid-cols-2 gap-4">

@@ -114,6 +114,15 @@ export default function TransaksiForm({
     }
   }, [isOpen, editingData, activeAcademicYear]);
 
+  // Mode edit: pulihkan pilihan tarif iuran dari tipe transaksi yang tercatat.
+  // Daftar tarif bisa dimuat asinkron, jadi coba lagi setiap daftar tarif berubah.
+  useEffect(() => {
+    if (isOpen && editingData && !selectedTarifId && formData.tipe_transaksi) {
+      const matched = tarifIuranList.find(t => t.nama === formData.tipe_transaksi);
+      if (matched) setSelectedTarifId(matched.id);
+    }
+  }, [isOpen, editingData, tarifIuranList, selectedTarifId, formData.tipe_transaksi]);
+
   // Mode edit transaksi setoran muka: muat alokasi tersimpan
   const { data: linkedMukaList = [] } = useQuery({
     queryKey: ['iuran-muka-trans', editingData?.id],
@@ -298,25 +307,32 @@ export default function TransaksiForm({
   const handleTarifSelect = (tarifId) => {
     setSelectedTarifId(tarifId);
     const tarif = tarifIuranList.find(t => t.id === tarifId);
-    if (tarif) {
-      const bk = (biayaKhususList || []).find(b =>
-        b.siswa_id === formData.siswa_id &&
-        b.tarif_iuran_id === tarifId &&
-        (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
-      );
-      const nominal = bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || tarif.nominal)) : tarif.nominal;
-      const isSpp = tarif.jenis_iuran === 'SPP' || tarif.nama?.toLowerCase().includes('spp');
-      setFormData(prev => ({
-        ...prev,
-        tipe_transaksi: tarif.nama,
-        kategori: JENIS_IURAN_TO_KATEGORI[tarif.jenis_iuran] || TIPE_TO_KATEGORI[tarif.nama] || prev.kategori,
-        jumlah: isMuka ? prev.jumlah : nominal,
-        uraian: isMuka ? prev.uraian : tarif.nama,
-        bulan_dibayar: isSpp && !isMuka ? prev.bulan_dibayar : [],
-      }));
-      if (!isSpp || isMuka) setSelectedMonths([]);
+    if (!tarif) return;
+    // Mode edit, memilih ulang tarif yang SAMA dengan yang tercatat: jangan timpa data tersimpan
+    if (editingData && tarif.nama === editingData.tipe_transaksi) {
       if (isMuka) setMukaRows(prev => prev.map(r => (!r.iuran ? { ...r, iuran: tarif.nama } : r)));
+      return;
     }
+    const bk = (biayaKhususList || []).find(b =>
+      b.siswa_id === formData.siswa_id &&
+      b.tarif_iuran_id === tarifId &&
+      (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
+    );
+    const nominal = bk ? (bk.is_gratis ? 0 : (bk.nominal_khusus || tarif.nominal)) : tarif.nominal;
+    const isSpp = tarif.jenis_iuran === 'SPP' || tarif.nama?.toLowerCase().includes('spp');
+    // Tipe transaksi dari pemetaan resmi tarif → tipe (fallback ke nama tarif untuk tarif lama)
+    const mappedTipe = tipeTransaksiList.find(t => t.id === tarif.tipe_transaksi_id);
+    const tipeNama = mappedTipe?.nama || tarif.nama;
+    setFormData(prev => ({
+      ...prev,
+      tipe_transaksi: tipeNama,
+      kategori: JENIS_IURAN_TO_KATEGORI[tarif.jenis_iuran] || TIPE_TO_KATEGORI[tipeNama] || prev.kategori,
+      jumlah: isMuka ? prev.jumlah : nominal,
+      uraian: isMuka ? prev.uraian : tarif.nama,
+      bulan_dibayar: isSpp && !isMuka ? prev.bulan_dibayar : [],
+    }));
+    if (!isSpp || isMuka) setSelectedMonths([]);
+    if (isMuka) setMukaRows(prev => prev.map(r => (!r.iuran ? { ...r, iuran: tarif.nama } : r)));
   };
 
   const taTujuanOptions = useMemo(() => buildTaOptions(activeAcademicYear), [activeAcademicYear]);
@@ -646,9 +662,13 @@ export default function TransaksiForm({
                   </div>
                   <div
                     className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer"
-                    onClick={() => toggleMuka(!isMuka)}
+                    onClick={(e) => {
+                      // Checkbox adalah pengendali tunggal — klik langsung pada checkbox tidak boleh memicu dobel
+                      if (e.target.closest('[role="checkbox"]')) return;
+                      toggleMuka(!isMuka);
+                    }}
                   >
-                      <Checkbox checked={isMuka} onCheckedChange={(v) => toggleMuka(v === true)} className="mt-0.5 pointer-events-none" />
+                      <Checkbox checked={isMuka} onCheckedChange={(v) => toggleMuka(v === true)} className="mt-0.5" />
                       <div>
                         <p className="text-sm font-semibold text-slate-700">Pembayaran Di Muka (Tahun Depan / Multi-Tahun)</p>
                         <p className="text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggikan tahun aktif.</p>
