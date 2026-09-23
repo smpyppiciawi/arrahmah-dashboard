@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -113,6 +113,23 @@ export default function TransaksiForm({
       setMukaRows([]);
     }
   }, [isOpen, editingData, activeAcademicYear]);
+
+  // Mode edit transaksi setoran muka: muat alokasi tersimpan
+  const { data: linkedMukaList = [] } = useQuery({
+    queryKey: ['iuran-muka-trans', editingData?.id],
+    queryFn: () => base44.entities.IuranMuka.filter({ transaksi_setoran_id: editingData.id }),
+    enabled: isOpen && !!editingData,
+  });
+  useEffect(() => {
+    if (editingData?.is_iuran_muka && linkedMukaList.length > 0) {
+      setIsMuka(true);
+      setMukaRows(linkedMukaList.map(m => ({
+        ta: m.tahun_ajaran_tujuan || '',
+        iuran: m.nama_iuran || '',
+        nominal: String(m.nominal || 0),
+      })));
+    }
+  }, [linkedMukaList, editingData]);
 
   const set = (field, val) => setFormData(prev => ({ ...prev, [field]: val }));
 
@@ -381,7 +398,7 @@ export default function TransaksiForm({
     }
 
     // Validasi alokasi Iuran Muka: total per TA + iuran harus sama dengan Jumlah
-    const mukaActive = isMuka && jenisTransaksi === 'siswa' && !editingData;
+    const mukaActive = isMuka && jenisTransaksi === 'siswa';
     const mukaValidRows = mukaActive ? mukaRows.filter(r => r.ta && r.iuran && Number(r.nominal) > 0) : [];
     const totalAlokasi = mukaValidRows.reduce((s, r) => s + Number(r.nominal || 0), 0);
     if (mukaActive && (!mukaValidRows.length || totalAlokasi !== Number(formData.jumlah))) {
@@ -395,6 +412,16 @@ export default function TransaksiForm({
     if (mukaActive) {
       const t0 = tarifIuranList.find(t => t.nama === mukaValidRows[0]?.iuran);
       resolvedKategori = JENIS_IURAN_TO_KATEGORI[t0?.jenis_iuran] || 'Lainnya';
+    }
+
+    // Edit setoran muka: blokir bila sebagian saldo sudah diterapkan menjadi pembayaran
+    if (editingData && linkedMukaList.some(m => (m.nominal_diterapkan || 0) > 0)) {
+      toast({
+        title: "Alokasi iuran muka tidak dapat diubah",
+        description: "Sebagian saldo sudah diterapkan menjadi pembayaran resmi. Batalkan penerapannya di tab Iuran Muka dahulu.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setSubmitting(true);
@@ -416,34 +443,44 @@ export default function TransaksiForm({
       } : {}),
     };
 
+    const mukaPayloads = (transaksiId) => mukaValidRows.map(r => ({
+      siswa_id: formData.siswa_id,
+      nis: formData.nis,
+      nama_siswa: formData.nama_siswa,
+      nama_kelas: formData.kelas,
+      tanggal_setoran: formData.tanggal,
+      transaksi_setoran_id: transaksiId,
+      tahun_ajaran_tujuan: r.ta,
+      nama_iuran: r.iuran,
+      nominal: Number(r.nominal),
+      nominal_diterapkan: 0,
+      penerapan: [],
+      keterangan: payload.uraian,
+      pencatat: payload.pic,
+    }));
+
     try {
       if (editingData) {
         await base44.entities.Keuangan.update(editingData.id, payload);
-        toast({ title: "Transaksi berhasil diperbarui" });
+        // Sinkron alokasi iuran muka: ganti alokasi lama dengan yang terbaru
+        if (linkedMukaList.length) {
+          await base44.entities.IuranMuka.deleteMany({ transaksi_setoran_id: editingData.id });
+        }
+        if (mukaActive && mukaValidRows.length) {
+          await base44.entities.IuranMuka.bulkCreate(mukaPayloads(editingData.id));
+        }
+        toast({ title: mukaActive ? "Setoran Iuran Muka berhasil diperbarui" : "Transaksi berhasil diperbarui" });
       } else {
         const created = await base44.entities.Keuangan.create(payload);
         // Setoran Iuran Muka → buat saldo per alokasi (per TA tujuan & jenis iuran)
         if (mukaActive && created?.id) {
-          await base44.entities.IuranMuka.bulkCreate(mukaValidRows.map(r => ({
-            siswa_id: formData.siswa_id,
-            nis: formData.nis,
-            nama_siswa: formData.nama_siswa,
-            nama_kelas: formData.kelas,
-            tanggal_setoran: formData.tanggal,
-            transaksi_setoran_id: created.id,
-            tahun_ajaran_tujuan: r.ta,
-            nama_iuran: r.iuran,
-            nominal: Number(r.nominal),
-            nominal_diterapkan: 0,
-            penerapan: [],
-            keterangan: payload.uraian,
-            pencatat: payload.pic,
-          })));
+          await base44.entities.IuranMuka.bulkCreate(mukaPayloads(created.id));
         }
         toast({ title: mukaActive ? "Setoran Iuran Muka berhasil disimpan" : "Transaksi berhasil disimpan" });
       }
       queryClient.invalidateQueries({ queryKey: ['keuangan'] });
       queryClient.invalidateQueries({ queryKey: ['iuran-muka'] });
+      queryClient.invalidateQueries({ queryKey: ['iuran-muka-trans'] });
       // Sinkron angka di semua modul keuangan setelah transaksi tersimpan
       queryClient.invalidateQueries({ queryKey: ['keuangan-tunggakan'] });
       queryClient.invalidateQueries({ queryKey: ['siswa-keuangan'] });
@@ -607,18 +644,16 @@ export default function TransaksiForm({
                       </SelectContent>
                     </Select>
                   </div>
-                  {!editingData && (
-                    <div
-                      className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer"
-                      onClick={() => toggleMuka(!isMuka)}
-                    >
+                  <div
+                    className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer"
+                    onClick={() => toggleMuka(!isMuka)}
+                  >
                       <Checkbox checked={isMuka} onCheckedChange={(v) => toggleMuka(v === true)} className="mt-0.5 pointer-events-none" />
                       <div>
                         <p className="text-sm font-semibold text-slate-700">Pembayaran Di Muka (Tahun Depan / Multi-Tahun)</p>
                         <p className="text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggikan tahun aktif.</p>
                       </div>
-                    </div>
-                  )}
+                  </div>
                   {isMuka && (
                     <MukaAllocationEditor
                       value={mukaRows}

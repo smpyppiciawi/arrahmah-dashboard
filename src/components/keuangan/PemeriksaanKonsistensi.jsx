@@ -91,6 +91,11 @@ export default function PemeriksaanKonsistensi({ activeAcademicYear }) {
         });
         if (updates.length) await base44.entities.Keuangan.bulkUpdate(updates);
       }
+      if (byType['bk-nolkan']?.length) {
+        await base44.entities.BiayaKhusus.bulkUpdate(
+          byType['bk-nolkan'].map(r => ({ id: r.id, sudah_bayar: 0 }))
+        );
+      }
       invalidateAll();
       toast({ title: `${rows.length} data berhasil diperbaiki` });
     } catch (e) {
@@ -319,17 +324,23 @@ export default function PemeriksaanKonsistensi({ activeAcademicYear }) {
       const tarif = tarifList.find(t => t.id === b.tarif_iuran_id);
       if (!tarif) return false;
       const trans = matchIuranItemTransactions(tarif, keuBySiswa[b.siswa_id] || [], tarifList);
-      return trans.reduce((s, k) => s + (k.jumlah || 0), 0) > 0;
+      const dibayarTrans = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+      const tagihan = b.nominal_khusus || tarif.nominal || 0;
+      // Dobel nyata: transaksi tercatat + isian manual melebihi tagihan
+      return dibayarTrans > 0 && (dibayarTrans + (b.sudah_bayar || 0)) > tagihan;
     });
     if (doubleCount.length) g.push({
-      id: 'bk-double', level: 'check',
-      judul: 'Potensi pembayaran terhitung ganda (Biaya Khusus)',
-      deskripsi: 'Siswa ini punya isian "Sudah Bayar" manual DAN transaksi tercatat untuk iuran yang sama. Pastikan isian manual hanya berisi pembayaran di luar transaksi — bila sudah termasuk, kosongkan isian manualnya di tab Pilih Siswa.',
+      id: 'bk-double', level: 'fix',
+      judul: 'Pembayaran terhitung ganda (transaksi + isian manual melebihi tagihan)',
+      deskripsi: 'Transaksi tercatat untuk iuran ini sudah mencakup seluruh tagihan, tetapi isian "Sudah Bayar" manual masih terisi — total pembayaran jadi kelebihan. Klik untuk mengosongkan isian manual (transaksi tetap sebagai bukti pembayaran).',
       rows: doubleCount.map(b => {
         const tarif = tarifList.find(t => t.id === b.tarif_iuran_id);
+        const trans = matchIuranItemTransactions(tarif, keuBySiswa[b.siswa_id] || [], tarifList);
+        const dibayarTrans = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
         return {
           id: b.id, label: `${b.nama_siswa || '-'} · ${b.nama_iuran || tarif?.nama || '-'}`,
-          sub: `Sudah bayar manual: ${angka(b.sudah_bayar)}`,
+          sub: `Tagihan ${angka(b.nominal_khusus || tarif?.nominal)} · transaksi tercatat ${angka(dibayarTrans)} · isian manual ${angka(b.sudah_bayar)}`,
+          fixType: 'bk-nolkan', fixLabel: 'Nolkan Isian Manual',
         };
       }),
     });
