@@ -19,6 +19,8 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useAuth } from '@/lib/AuthContext';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { useIsMobile } from "@/hooks/use-mobile";
+import AppHeader from '@/components/appui/AppHeader';
+import SummaryScroll from '@/components/appui/SummaryScroll';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -200,18 +202,19 @@ export default function HomeVisit() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-100 rounded-xl"><Home className="w-7 h-7 text-indigo-600" /></div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-slate-800">Home Visit</h1>
-              <p className="text-slate-500 mt-0.5 text-sm">Hasil home visit wali kelas ke rumah siswa</p>
+        <AppHeader
+          icon={Home}
+          tint="indigo"
+          title="Home Visit"
+          subtitle="Hasil home visit wali kelas ke rumah siswa"
+          right={
+            <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium ${isOnline ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+              {isOnline ? <><Wifi className="w-3.5 h-3.5" /> Online</> : <><CloudOff className="w-3.5 h-3.5" /> Offline</>}
             </div>
-          </div>
-          <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full font-medium ${isOnline ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-            {isOnline ? <><Wifi className="w-3.5 h-3.5" /> Online</> : <><CloudOff className="w-3.5 h-3.5" /> Mode Offline</>}
-          </div>
-        </div>
+          }
+        />
+
+        <div className="mb-5" />
 
         {pendingCount > 0 && (
           <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between flex-wrap gap-2">
@@ -253,20 +256,13 @@ export default function HomeVisit() {
           </Card>
         )}
 
-        <div className="flex flex-wrap gap-2 mb-4">
-          {[
-            { label: 'Sudah', value: stats.sudah, color: 'bg-slate-100 text-slate-700' },
-            { label: 'Belum', value: stats.belum, color: 'bg-amber-50 text-amber-600' },
-            { label: 'Layak', value: stats.layak, color: 'bg-emerald-50 text-emerald-600' },
-            { label: 'Tidak Layak', value: stats.tidakLayak, color: 'bg-red-50 text-red-600' },
-            { label: 'Yatim', value: stats.yatim, color: 'bg-purple-50 text-purple-600' },
-          ].map((stat, i) => (
-            <div key={i} className={`${stat.color} rounded-xl px-3 py-2 text-center flex-1 min-w-[80px]`}>
-              <p className="text-lg font-bold leading-none">{stat.value}</p>
-              <p className="text-[10px] mt-0.5 opacity-80">{stat.label}</p>
-            </div>
-          ))}
-        </div>
+        <SummaryScroll items={[
+          { label: 'Sudah Visit', value: stats.sudah, accent: 'slate' },
+          { label: 'Belum Visit', value: stats.belum, accent: 'amber' },
+          { label: 'Layak Huni', value: stats.layak, accent: 'emerald' },
+          { label: 'Tidak Layak', value: stats.tidakLayak, accent: 'red' },
+          { label: 'Yatim/Piatu', value: stats.yatim, accent: 'purple' },
+        ]} />
 
         {markersWithCoord.length > 0 && (
           <Card className="border-0 shadow-sm mb-4">

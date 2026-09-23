@@ -11,9 +11,15 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/lib/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Plus, Pencil, Trash2, LogOut as LogOutIcon, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, LogOut as LogOutIcon, Search, BookUser } from 'lucide-react';
 import BukuTamuForm from '@/components/bukutamu/BukuTamuForm';
+import BukuTamuCardList from '@/components/bukutamu/BukuTamuCardList';
+import BukuTamuDetailSheet from '@/components/bukutamu/BukuTamuDetailSheet';
+import AppHeader from '@/components/appui/AppHeader';
+import SummaryScroll from '@/components/appui/SummaryScroll';
+import StickyFilterBar from '@/components/appui/StickyFilterBar';
 import { ConfirmDialog } from '@/components/ui/alert-dialog-confirm';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const JENIS_TAMU = ['Tamu Dinas', 'Tamu Orang Tua/Wali', 'Tamu Yayasan', 'Tamu Sekolah Lain', 'Tamu Umum'];
 const JENIS_BADGE = {
@@ -37,6 +43,8 @@ export default function BukuTamu() {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [detailTamu, setDetailTamu] = useState(null);
+  const isMobile = useIsMobile();
 
   const applyPreset = (p) => {
     setPreset(p);
@@ -120,53 +128,62 @@ export default function BukuTamu() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Buku Tamu</h1>
-            <p className="text-slate-500 mt-0.5 text-sm">Catatan kunjungan tamu ke sekolah</p>
-          </div>
-          {canCreate && <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Catat Tamu</Button>}
-        </div>
+        <AppHeader
+          icon={BookUser}
+          tint="sky"
+          title="Buku Tamu"
+          subtitle={`Catatan kunjungan tamu · ${rangeLabel}`}
+          right={canCreate && (
+            <Button className="hidden md:inline-flex bg-blue-600 hover:bg-blue-700" onClick={() => { setEditing(null); setFormOpen(true); }}><Plus className="w-4 h-4 mr-2" /> Catat Tamu</Button>
+          )}
+        />
 
-        <Card className="border-0 shadow-sm">
-          <CardContent className="p-3 flex flex-wrap items-center gap-2">
+        <SummaryScroll items={[
+          { label: 'Total Kunjungan', value: allFiltered.length, accent: 'slate' },
+          { label: 'Sedang Berkunjung', value: allFiltered.filter(t => (t.status || 'Berkunjung') !== 'Selesai').length, accent: 'amber' },
+          { label: 'Dinas', value: allFiltered.filter(t => t.jenis_tamu === 'Tamu Dinas').length, accent: 'blue' },
+          { label: 'Ortu/Wali', value: allFiltered.filter(t => t.jenis_tamu === 'Tamu Orang Tua/Wali').length, accent: 'emerald' },
+          { label: 'Yayasan', value: allFiltered.filter(t => t.jenis_tamu === 'Tamu Yayasan').length, accent: 'purple' },
+          { label: 'Sekolah Lain', value: allFiltered.filter(t => t.jenis_tamu === 'Tamu Sekolah Lain').length, accent: 'orange' },
+          { label: 'Umum', value: allFiltered.filter(t => t.jenis_tamu === 'Tamu Umum').length, accent: 'sky' },
+        ]} />
+
+        <StickyFilterBar>
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input className="pl-9 h-10 rounded-full bg-white text-sm" placeholder="Cari nama / keperluan..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="flex gap-2 overflow-x-auto no-scrollbar mt-2.5 items-center">
             {[
               { key: 'today', label: 'Hari Ini' },
               { key: 'week', label: 'Minggu Ini' },
               { key: 'month', label: 'Bulan Ini' },
               { key: 'year', label: 'Tahun Ini' },
             ].map(p => (
-              <button key={p.key} onClick={() => applyPreset(p.key)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${preset === p.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>{p.label}</button>
+              <button key={p.key} onClick={() => applyPreset(p.key)} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap flex-none transition-colors ${preset === p.key ? 'bg-blue-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'}`}>{p.label}</button>
             ))}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-full px-3 py-1 flex-none">
               <input type="date" value={dateFrom} onChange={(e) => { setPreset('custom'); setDateFrom(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
               <span className="text-slate-400">-</span>
               <input type="date" value={dateTo} onChange={(e) => { setPreset('custom'); setDateTo(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
             </div>
-            <span className="text-xs text-slate-500 ml-auto">Menampilkan: <b className="text-slate-700">{rangeLabel}</b></span>
-          </CardContent>
-        </Card>
+          </div>
+        </StickyFilterBar>
 
         <Card className="border-0 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <CardTitle className="text-base">Daftar Tamu ({rangeLabel})</CardTitle>
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <Input className="pl-9 h-8 text-sm" placeholder="Cari nama / keperluan..." value={search} onChange={(e) => setSearch(e.target.value)} />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="pt-4">
             <Tabs defaultValue="Semua">
-              <TabsList className="mb-3 flex flex-wrap h-auto gap-1">
-                <TabsTrigger value="Semua" className="text-xs">Semua ({allFiltered.length})</TabsTrigger>
+              <TabsList className="mb-3 flex overflow-x-auto no-scrollbar h-auto gap-1 w-full">
+                <TabsTrigger value="Semua" className="text-xs whitespace-nowrap flex-none">Semua ({allFiltered.length})</TabsTrigger>
                 {JENIS_TAMU.map(j => {
                   const list = allFiltered.filter(t => t.jenis_tamu === j);
-                  return <TabsTrigger key={j} value={j} className="text-xs">{j.replace('Tamu ', '')} ({list.length})</TabsTrigger>;
+                  return <TabsTrigger key={j} value={j} className="text-xs whitespace-nowrap flex-none">{j.replace('Tamu ', '')} ({list.length})</TabsTrigger>;
                 })}
               </TabsList>
               <TabsContent value="Semua">
+                {isMobile ? (
+                  <BukuTamuCardList data={allFiltered} showTanggal={showTanggal} onOpen={setDetailTamu} />
+                ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-100">
                   <Table>
                     {COLUMNS(true, showTanggal)}
@@ -176,11 +193,15 @@ export default function BukuTamu() {
                     </TableBody>
                   </Table>
                 </div>
+                )}
               </TabsContent>
               {JENIS_TAMU.map(j => {
                 const list = allFiltered.filter(t => t.jenis_tamu === j);
                 return (
                   <TabsContent key={j} value={j}>
+                    {isMobile ? (
+                      <BukuTamuCardList data={list} showTanggal={showTanggal} onOpen={setDetailTamu} />
+                    ) : (
                     <div className="overflow-x-auto rounded-xl border border-slate-100">
                       <Table>
                         {COLUMNS(false, showTanggal)}
@@ -190,6 +211,7 @@ export default function BukuTamu() {
                         </TableBody>
                       </Table>
                     </div>
+                    )}
                   </TabsContent>
                 );
               })}
@@ -197,6 +219,27 @@ export default function BukuTamu() {
           </CardContent>
         </Card>
       </div>
+
+      {/* FAB — Catat Tamu (mobile) */}
+      {canCreate && (
+        <button
+          onClick={() => { setEditing(null); setFormOpen(true); }}
+          className="md:hidden fixed bottom-20 right-4 z-40 w-14 h-14 bg-blue-600 text-white rounded-2xl shadow-[0_8px_16px_rgba(37,99,235,0.35)] flex items-center justify-center active:scale-95 transition-transform"
+          title="Catat Tamu"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+      )}
+
+      <BukuTamuDetailSheet
+        tamu={detailTamu}
+        open={!!detailTamu}
+        onOpenChange={(v) => !v && setDetailTamu(null)}
+        canEdit={canCreate}
+        onSelesai={(t) => { setDetailTamu(null); selesaiMutation.mutate({ id: t.id, status: 'Selesai' }); }}
+        onEdit={(t) => { setDetailTamu(null); setEditing(t); setFormOpen(true); }}
+        onDelete={(t) => { setDetailTamu(null); setDeleteTarget(t); }}
+      />
 
       <BukuTamuForm isOpen={formOpen} onClose={() => setFormOpen(false)} editingData={editing} siswaList={siswaList} guruList={guruList} />
       <ConfirmDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)} title="Hapus Data Tamu" description={`Hapus catatan tamu ${deleteTarget ? namaTamu(deleteTarget) : ''}?`} onConfirm={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)} />

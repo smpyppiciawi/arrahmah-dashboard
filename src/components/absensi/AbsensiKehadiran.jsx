@@ -13,6 +13,9 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Save, CheckCircle, AlertCircle, Clock, UserX, FileText, Users, WifiOff, CloudOff, RefreshCw, Loader2, Sun } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useOfflineAbsensi } from '@/hooks/useOfflineAbsensi';
+import { useIsMobile } from "@/hooks/use-mobile";
+import AbsensiSiswaCardList from "@/components/absensi/AbsensiSiswaCardList";
+import AbsensiStatusSheet from "@/components/absensi/AbsensiStatusSheet";
 
 const STATUS_CONFIG = {
   'Hadir':     { icon: CheckCircle, active: 'bg-emerald-500 text-white shadow-sm shadow-emerald-200', inactive: 'bg-slate-100 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600' },
@@ -30,6 +33,8 @@ export default function AbsensiKehadiran() {
   const [currentUser, setCurrentUser] = useState(null);
   const [bulkJamMasuk, setBulkJamMasuk] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [sheetSiswaId, setSheetSiswaId] = useState(null);
+  const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -329,6 +334,20 @@ export default function AbsensiKehadiran() {
       )}
 
       {selectedKelas ? (
+        <>
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="w-4 h-4 text-emerald-500" />
+            <span className="text-sm font-semibold text-slate-700">Daftar Siswa — {kelasList.find(k => k.id === selectedKelas)?.nama_kelas}</span>
+            <Badge className="bg-slate-100 text-slate-600 text-xs border-0 ml-1">{total} siswa</Badge>
+          </div>
+
+          {isMobile ? (
+            siswaList.length === 0 ? (
+              <div className="text-center py-12 text-slate-400"><Users className="w-10 h-10 mx-auto mb-3 opacity-30" /><p className="text-sm">Tidak ada siswa aktif di kelas ini</p></div>
+            ) : (
+              <AbsensiSiswaCardList siswaList={sortedSiswaList} absensiData={absensiData} onOpen={(s) => setSheetSiswaId(s.id)} />
+            )
+          ) : (
         <Card className="border-0 shadow-sm overflow-hidden">
           <CardHeader className="pb-0 pt-4 px-4 border-b border-slate-100">
             <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
@@ -361,9 +380,22 @@ export default function AbsensiKehadiran() {
             </div>
           </CardContent>
         </Card>
+          )}
+        </>
       ) : (
         <Card className="border-0 shadow-sm"><CardContent className="p-16 text-center"><div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4"><Calendar className="w-8 h-8 text-emerald-400" /></div><p className="text-slate-700 font-semibold">Pilih tanggal dan kelas</p><p className="text-slate-400 text-sm mt-1">untuk memulai pencatatan absensi</p></CardContent></Card>
       )}
+
+      <AbsensiStatusSheet
+        siswa={sortedSiswaList.find(s => s.id === sheetSiswaId) || null}
+        data={sheetSiswaId ? absensiData[sheetSiswaId] : {}}
+        open={!!sheetSiswaId}
+        onOpenChange={(v) => !v && setSheetSiswaId(null)}
+        canEdit={canEdit}
+        isLibur={isLibur}
+        onStatus={handleStatusChange}
+        onField={(siswaId, field, value) => setAbsensiData(prev => ({ ...prev, [siswaId]: { ...prev[siswaId], [field]: value } }))}
+      />
     </div>
   );
 }

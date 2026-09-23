@@ -12,6 +12,8 @@ import AbsensiKehadiran from '@/components/absensi/AbsensiKehadiran';
 import AbsensiJumat from '@/components/absensi/AbsensiJumat';
 import RiwayatAbsensi from '@/components/absensi/RiwayatAbsensi';
 import RekapFilter from '@/components/absensi/RekapFilter';
+import AppHeader from '@/components/appui/AppHeader';
+import PillTabs from '@/components/appui/PillTabs';
 export default function Absensi() {
   const [activeTab, setActiveTab] = useState('rekap');
   const [rekapMode, setRekapMode] = useState('hari');
@@ -48,22 +50,15 @@ export default function Absensi() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto space-y-5">
-        <div>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 md:w-7 md:h-7 text-emerald-500" /> Absensi Siswa
-          </h1>
-        </div>
+        <AppHeader icon={Calendar} tint="emerald" title="Absensi Siswa" subtitle="Rekap & pencatatan kehadiran harian" />
 
-        <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm overflow-x-auto scrollbar-thin w-full lg:w-fit">
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            return (
-              <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all whitespace-nowrap ${activeTab === tab.key ? `${tab.color} text-white shadow-sm` : 'text-slate-500 hover:text-slate-700'}`}>
-                <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" /> {tab.label}
-              </button>
-            );
-          })}
+        <div className="sticky top-14 lg:top-0 z-30 bg-slate-50/95 backdrop-blur-md -mx-4 px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 py-2.5 border-b border-slate-100">
+          <PillTabs
+            tabs={tabs.map(t => ({ key: t.key, label: t.label, icon: t.icon }))}
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            tint="emerald"
+          />
         </div>
 
         {activeTab === 'rekap' && (
