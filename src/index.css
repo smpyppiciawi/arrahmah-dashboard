@@ -173,6 +173,13 @@ button:focus-visible {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
   .font-inter {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }

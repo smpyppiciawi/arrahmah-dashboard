@@ -7,13 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { BookOpen, Plus, Search, Edit2, Trash2, TrendingUp, Calculator, CheckCircle, XCircle, Award } from "lucide-react";
-import { DataTable } from "@/components/ui/data-table";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
 import TkaTab from "@/components/nilai/TkaTab";
+import NilaiCardList from "@/components/nilai/NilaiCardList";
+import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 const MAPEL_LIST = [
@@ -40,6 +40,7 @@ export default function Nilai() {
   const [currentUser, setCurrentUser] = useState(null);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [sheetRow, setSheetRow] = useState(null);
   const [kelasInputOpen, setKelasInputOpen] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
     kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '',
@@ -152,6 +153,17 @@ export default function Nilai() {
 
   const handleEdit = (data) => { setEditingData(data); setFormData(data); setIsOpen(true); };
 
+  // Simpan dari Bottom Sheet (edit cepat nilai)
+  const handleSheetSave = (nilai) => {
+    if (!sheetRow) return;
+    const numNilai = Number(nilai);
+    updateMutation.mutate({
+      id: sheetRow.id,
+      data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= (sheetRow.kkm || 75) ? 'Tuntas' : 'Belum Tuntas' }
+    });
+    setSheetRow(null);
+  };
+
   const handleKelasChange = (kelasId) => {
     const kelas = kelasList.find(k => k.id === kelasId);
     const siswaInKelas = siswaList.filter(s => s.kelas_id === kelasId).sort((a, b) => a.nama.localeCompare(b.nama));
@@ -207,17 +219,26 @@ export default function Nilai() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 flex items-center gap-2">
-            <BookOpen className="w-7 h-7 text-amber-500" />
-            Nilai
-          </h1>
-          <p className="text-slate-500 mt-0.5 text-sm">Input, analisis, dan pengelolaan nilai siswa</p>
+        {/* Header — App Bar Style */}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <BookOpen className="w-5 h-5 text-amber-500" />
+            </div>
+            <div>
+              <h1 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight">Nilai Siswa</h1>
+              <p className="text-xs text-slate-500 font-medium">Tahun Ajaran {activeAcademicYear || '-'}</p>
+            </div>
+          </div>
+          {canEdit && (
+            <Button variant="outline" size="sm" className="rounded-full gap-2 shadow-sm flex-shrink-0" onClick={() => setKelasInputOpen(true)}>
+              <Users className="w-4 h-4" /> <span className="hidden sm:inline">Input Per Kelas</span><span className="sm:hidden">Kelas</span>
+            </Button>
+          )}
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-1 mb-6 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-fit">
+        <div className="flex gap-1.5 mb-5 bg-white border border-slate-200 p-1 rounded-2xl shadow-sm w-fit max-w-full overflow-x-auto no-scrollbar">
           {tabs.map(tab => {
             const Icon = tab.icon;
             return (
@@ -243,15 +264,9 @@ export default function Nilai() {
 
         {activeTab === 'input' && (
           <div className="space-y-5">
-            {/* Action Buttons */}
             {canEdit && (
-              <div className="flex gap-2 justify-end">
+              <>
                 <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" className="gap-2 shadow-sm">
-                      <Plus className="w-4 h-4" /> Input Per Kelas
-                    </Button>
-                  </DialogTrigger>
                   <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader><DialogTitle>Input Nilai Per Kelas</DialogTitle></DialogHeader>
                     <form onSubmit={handleKelasSubmit} className="space-y-4">
@@ -341,11 +356,6 @@ export default function Nilai() {
                 </Dialog>
 
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                  <DialogTrigger asChild>
-                    <Button className="bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/25 gap-2">
-                      <Plus className="w-4 h-4" /> Input Per Siswa
-                    </Button>
-                  </DialogTrigger>
                   <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
                     <DialogHeader><DialogTitle>{editingData ? 'Edit Nilai' : 'Input Nilai Baru'}</DialogTitle></DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -433,7 +443,7 @@ export default function Nilai() {
                     </form>
                   </DialogContent>
                 </Dialog>
-              </div>
+              </>
             )}
 
             {isGuruRole && assignedKelasIds.length === 0 && (
@@ -446,96 +456,70 @@ export default function Nilai() {
               </Card>
             )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                { label: 'Total Data', val: totalSiswa, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                { label: 'Tuntas', val: totalTuntas, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-                { label: 'Belum Tuntas', val: totalBelumTuntas, color: 'bg-red-50 border-red-200 text-red-700' },
-                { label: '% Ketuntasan', val: `${persentaseTuntas}%`, color: 'bg-indigo-50 border-indigo-200 text-indigo-700' },
-              ].map(s => (
-                <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
-                  <p className="text-2xl font-bold">{s.val}</p>
-                  <p className="text-xs font-medium mt-0.5">{s.label}</p>
-                </div>
-              ))}
+            {/* Ringkasan Data — kartu scroll horizontal */}
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-4 mb-4">
+              <p className="text-sm font-semibold text-slate-700 mb-3">Ringkasan Data</p>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 snap-x">
+                {[
+                  { label: 'Total Data', val: totalSiswa, text: 'text-slate-800', bar: 'bg-blue-500' },
+                  { label: 'Tuntas', val: totalTuntas, text: 'text-emerald-600', bar: 'bg-emerald-500' },
+                  { label: 'Blm Tuntas', val: totalBelumTuntas, text: 'text-red-500', bar: 'bg-red-500' },
+                  { label: 'Ketuntasan', val: `${persentaseTuntas}%`, text: 'text-amber-500', bar: 'bg-amber-500' },
+                ].map(s => (
+                  <div key={s.label} className="min-w-[120px] flex-none bg-white border border-slate-200 rounded-2xl p-3 shadow-sm snap-start">
+                    <div className="text-slate-500 text-xs mb-1">{s.label}</div>
+                    <div className={`text-2xl font-bold ${s.text}`}>{s.val}</div>
+                    <div className={`mt-2 w-6 h-1 ${s.bar} rounded-full`} />
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Filters */}
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input placeholder="Cari nama atau NIS..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-                  </div>
-                  <Select value={filterKelas} onValueChange={setFilterKelas}>
-                    <SelectTrigger className="w-full md:w-36"><SelectValue placeholder="Kelas" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Kelas</SelectItem>
-                      {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterMapel} onValueChange={setFilterMapel}>
-                    <SelectTrigger className="w-full md:w-44"><SelectValue placeholder="Mapel" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Mapel</SelectItem>
-                      {availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <Select value={filterJenisPenilaian} onValueChange={setFilterJenisPenilaian}>
-                    <SelectTrigger className="w-full md:w-44"><SelectValue placeholder="Jenis Penilaian" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Semua Jenis</SelectItem>
-                      {['Ulangan Harian','Tugas','PTS','PAS','Praktik'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Pencarian & Filter — sticky, app style */}
+            <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur py-3 mb-3 shadow-sm border-b border-slate-200">
+              <div className="relative mb-3">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input placeholder="Cari siswa atau NIS..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10 pr-4 py-2.5 h-auto rounded-xl bg-white border-slate-300" />
+              </div>
+              <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                <Select value={filterKelas} onValueChange={setFilterKelas}>
+                  <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm w-auto">
+                    <SelectValue placeholder="Kelas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Kelas</SelectItem>
+                    {availableKelas.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterMapel} onValueChange={setFilterMapel}>
+                  <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm w-auto">
+                    <SelectValue placeholder="Mapel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Mapel</SelectItem>
+                    {availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Select value={filterJenisPenilaian} onValueChange={setFilterJenisPenilaian}>
+                  <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm w-auto">
+                    <SelectValue placeholder="Jenis" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Semua Jenis</SelectItem>
+                    {['Ulangan Harian','Tugas','PTS','PAS','Praktik'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-            {/* Table */}
-            <Card className="border-0 shadow-sm">
-              <CardContent className="p-4">
-                <DataTable
-                  columns={[
-                    { key: 'nama_siswa', label: 'Siswa', render: (row) => (
-                      <div>
-                        <p className="font-medium text-sm text-slate-800">{row.nama_siswa}</p>
-                        <p className="text-xs text-slate-400 font-mono">{row.nis}</p>
-                      </div>
-                    )},
-                    { key: 'nama_kelas', label: 'Kelas', render: (row) => (
-                      <Badge className="bg-blue-50 text-blue-700 text-xs border-0">{row.nama_kelas}</Badge>
-                    )},
-                    { key: 'mapel', label: 'Mapel', render: (row) => <span className="text-sm text-slate-700">{row.mapel}</span> },
-                    { key: 'jenis_penilaian', label: 'Jenis', render: (row) => <span className="text-xs text-slate-500">{row.jenis_penilaian}</span> },
-                    { key: 'nilai', label: 'Nilai', render: (row) => (
-                      <span className={`text-lg font-bold ${row.nilai >= (row.kkm || 75) ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {row.nilai}
-                      </span>
-                    )},
-                    { key: 'status_ketuntasan', label: 'Status', render: (row) => (
-                      <Badge className={`text-xs border-0 ${row.status_ketuntasan === 'Tuntas' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
-                        {row.status_ketuntasan}
-                      </Badge>
-                    )},
-                    { key: 'aksi', label: 'Aksi', sortable: false, filterable: false, render: (row) => canEdit ? (
-                      <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => handleEdit(row)} className="h-7 w-7 p-0 hover:bg-amber-50 hover:text-amber-600">
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => { setDeleteId(row.id); setDeleteConfirmOpen(true); }} className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ) : <span className="text-xs text-slate-300">-</span> }
-                  ]}
-                  data={filteredData}
-                  pageSize={10}
-                />
-              </CardContent>
-            </Card>
+            {/* Daftar Siswa — kartu app style */}
+            <div className="pb-24">
+              <NilaiCardList
+                data={filteredData}
+                canEdit={canEdit}
+                onEdit={(row) => setSheetRow(row)}
+              />
+            </div>
 
             <ConfirmDialog
               open={deleteConfirmOpen}
@@ -544,6 +528,26 @@ export default function Nilai() {
               title="Hapus Data Nilai"
               description="Apakah Anda yakin ingin menghapus data nilai ini?"
             />
+
+            {/* Bottom Sheet — Detail & Edit Nilai */}
+            <NilaiEditSheet
+              row={sheetRow}
+              open={!!sheetRow}
+              onOpenChange={(v) => !v && setSheetRow(null)}
+              onSave={handleSheetSave}
+              onDelete={(row) => { setSheetRow(null); setDeleteId(row.id); setDeleteConfirmOpen(true); }}
+            />
+
+            {/* FAB — Input Nilai Per Siswa */}
+            {canEdit && (
+              <button
+                onClick={() => { resetForm(); setIsOpen(true); }}
+                className="fixed bottom-20 lg:bottom-8 right-4 lg:right-8 z-40 w-14 h-14 bg-amber-500 text-white rounded-2xl shadow-[0_8px_16px_rgba(245,158,11,0.35)] flex items-center justify-center active:scale-95 transition-transform"
+                title="Input Nilai Per Siswa"
+              >
+                <Plus className="w-6 h-6" />
+              </button>
+            )}
           </div>
         )}
       </div>
