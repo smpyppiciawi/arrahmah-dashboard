@@ -3,12 +3,11 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/AuthContext';
-import { PiggyBank, Search, ArrowRightLeft, Loader2, Wallet, CheckCircle2 } from 'lucide-react';
+import { PiggyBank, Search, Loader2, Wallet, CheckCircle2 } from 'lucide-react';
 import TerapkanMukaDialog from './TerapkanMukaDialog';
-import { formatDateID } from '@/lib/sppUtils';
+import IuranMukaDetailDialog from './IuranMukaDetailDialog';
 
 const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
@@ -22,6 +21,7 @@ export default function IuranMukaTab({ tarifIuranList, biayaKhususList }) {
   const [search, setSearch] = useState('');
   const [terapkanRecord, setTerapkanRecord] = useState(null);
   const [terapkanOpen, setTerapkanOpen] = useState(false);
+  const [detailKey, setDetailKey] = useState(null);
 
   const { data: mukaList = [], isLoading } = useQuery({
     queryKey: ['iuran-muka'],
@@ -48,11 +48,26 @@ export default function IuranMukaTab({ tarifIuranList, biayaKhususList }) {
   const totalDiterapkan = mukaList.reduce((s, m) => s + (m.nominal_diterapkan || 0), 0);
   const jumlahSiswaSaldo = new Set(rows.filter(m => m.sisa > 0).map(m => m.siswa_id)).size;
 
-  const statusBadge = (m) => {
-    if (m.sisa <= 0) return <Badge className="bg-emerald-100 text-emerald-700">Selesai</Badge>;
-    if ((m.nominal_diterapkan || 0) > 0) return <Badge className="bg-amber-100 text-amber-700">Sebagian Diterapkan</Badge>;
-    return <Badge className="bg-blue-100 text-blue-700">Menunggu Penerapan</Badge>;
-  };
+  // Kelompokkan per siswa: satu kartu = satu siswa, berisi semua alokasi iuran mukanya
+  const siswaGroups = useMemo(() => {
+    const map = new Map();
+    rows.forEach(m => {
+      const key = m.siswa_id || `${m.nis}|${m.nama_siswa}`;
+      if (!map.has(key)) {
+        map.set(key, { key, siswa_id: m.siswa_id, nis: m.nis, nama_siswa: m.nama_siswa, nama_kelas: m.nama_kelas, records: [] });
+      }
+      const g = map.get(key);
+      if (m.nama_kelas) g.nama_kelas = m.nama_kelas;
+      g.records.push(m);
+    });
+    return [...map.values()].map(g => ({
+      ...g,
+      totalSaldo: g.records.reduce((s, r) => s + r.sisa, 0),
+      totalSetoran: g.records.reduce((s, r) => s + (r.nominal || 0), 0),
+      totalDiterapkan: g.records.reduce((s, r) => s + (r.nominal_diterapkan || 0), 0),
+    })).sort((a, b) => b.totalSaldo - a.totalSaldo || String(a.nama_siswa).localeCompare(String(b.nama_siswa)));
+  }, [rows]);
+  const detailGroup = detailKey ? siswaGroups.find(g => g.key === detailKey) : null;
 
   return (
     <div className="space-y-4">
@@ -119,68 +134,57 @@ export default function IuranMukaTab({ tarifIuranList, biayaKhususList }) {
           </CardContent>
         </Card>
       ) : (
-        rows.map(m => (
-          <Card key={m.id} className="border-0 shadow-sm">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-slate-800 truncate">
-                    {m.nama_siswa} <span className="font-normal text-slate-400">· {m.nis || '-'}</span>
-                  </p>
-                  <p className="text-xs text-slate-400">
-                    {m.nama_kelas || '-'} · Setoran {formatDateID(m.tanggal_setoran)}{m.pencatat ? ` · dicatat ${m.pencatat}` : ''}
-                  </p>
-                </div>
-                {statusBadge(m)}
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
-                <div className="p-2 rounded-lg bg-slate-50">
-                  <p className="text-[10px] text-slate-400 uppercase">Iuran / TA Tujuan</p>
-                  <p className="text-xs font-bold text-slate-700 mt-0.5">{m.nama_iuran}<br />TP {m.tahun_ajaran_tujuan || '-'}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-slate-50">
-                  <p className="text-[10px] text-slate-400 uppercase">Setoran</p>
-                  <p className="text-xs font-bold text-slate-700 mt-0.5">{formatRupiah(m.nominal)}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-emerald-50">
-                  <p className="text-[10px] text-emerald-500 uppercase">Diterapkan</p>
-                  <p className="text-xs font-bold text-emerald-700 mt-0.5">{formatRupiah(m.nominal_diterapkan)}</p>
-                </div>
-                <div className="p-2 rounded-lg bg-purple-50">
-                  <p className="text-[10px] text-purple-500 uppercase">Sisa Saldo</p>
-                  <p className="text-xs font-bold text-purple-700 mt-0.5">{formatRupiah(m.sisa)}</p>
-                </div>
-              </div>
-
-              {(m.penerapan || []).length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-slate-500 uppercase">Riwayat Penerapan</p>
-                  {m.penerapan.map((p, i) => (
-                    <div key={i} className="flex items-center justify-between gap-2 text-xs p-2 rounded-lg bg-slate-50">
-                      <span className="text-slate-600 truncate">
-                        {formatDateID(p.tanggal)} · {p.uraian}{p.pic ? ` · PIC ${p.pic}` : ''}
-                      </span>
-                      <span className="font-bold text-emerald-600 shrink-0">{formatRupiah(p.nominal)}</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {siswaGroups.map(g => {
+            const selesai = g.records.every(r => r.sisa <= 0);
+            const jenisIuran = [...new Set(g.records.map(r => r.nama_iuran).filter(Boolean))];
+            return (
+              <Card
+                key={g.key}
+                className="border-0 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => setDetailKey(g.key)}
+              >
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{g.nama_siswa}</p>
+                      <p className="text-xs text-slate-400 truncate">{g.nis || '-'} · {g.nama_kelas || '-'}</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                    {selesai
+                      ? <Badge className="bg-emerald-100 text-emerald-700 shrink-0">Selesai</Badge>
+                      : <Badge className="bg-blue-100 text-blue-700 shrink-0">Menunggu Penerapan</Badge>}
+                  </div>
 
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700"
-                  disabled={m.sisa <= 0}
-                  onClick={() => { setTerapkanRecord(m); setTerapkanOpen(true); }}
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1" /> Terapkan sebagai Pembayaran
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))
+                  <div className="p-2.5 rounded-lg bg-purple-50 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-purple-500 uppercase font-medium">Total Saldo Iuran Muka</p>
+                      <p className="text-base font-bold text-purple-700 truncate">{formatRupiah(g.totalSaldo)}</p>
+                    </div>
+                    <PiggyBank className="w-6 h-6 text-purple-400 shrink-0" />
+                  </div>
+
+                  <div className="flex flex-wrap gap-1">
+                    {jenisIuran.map(nm => (
+                      <Badge key={nm} variant="outline" className="text-[10px] text-slate-600 bg-slate-50">{nm}</Badge>
+                    ))}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400">
+                    {g.records.length} setoran · Setoran {formatRupiah(g.totalSetoran)} · Diterapkan {formatRupiah(g.totalDiterapkan)}
+                  </p>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       )}
+
+      <IuranMukaDetailDialog
+        isOpen={!!detailGroup}
+        onClose={() => setDetailKey(null)}
+        group={detailGroup}
+        onTerapkan={(m) => { setTerapkanRecord(m); setTerapkanOpen(true); }}
+      />
 
       <TerapkanMukaDialog
         isOpen={terapkanOpen}
