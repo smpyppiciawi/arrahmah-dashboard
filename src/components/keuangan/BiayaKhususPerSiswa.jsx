@@ -1,28 +1,62 @@
 import React, { useState, useMemo } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Users, Trash2, ChevronRight, Gift } from "lucide-react";
+import { matchIuranItemTransactions } from "@/lib/sppUtils";
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
-
-const getStatusInfo = (b) => {
-  if (b.is_gratis) return { label: 'GRATIS', cls: 'bg-emerald-100 text-emerald-700' };
-  const tagihan = b.nominal_khusus || 0;
-  const sb = b.sudah_bayar || 0;
-  if (tagihan <= 0) return { label: 'Lunas', cls: 'bg-emerald-100 text-emerald-700' };
-  if (sb >= tagihan) return { label: 'Lunas', cls: 'bg-emerald-100 text-emerald-700' };
-  if (sb > 0) return { label: 'Cicil', cls: 'bg-amber-100 text-amber-700' };
-  return { label: 'Belum', cls: 'bg-red-100 text-red-700' };
-};
 
 export default function BiayaKhususPerSiswa({ biayaKhususList, kelasList, onDelete, activeAcademicYear }) {
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [detailSiswa, setDetailSiswa] = useState(null);
+
+  // Transaksi & tarif untuk hitungan "Sudah Bayar" otomatis dari transaksi
+  const { data: keuanganList = [] } = useQuery({
+    queryKey: ['keuangan'],
+    queryFn: () => base44.entities.Keuangan.list('-tanggal', 3000),
+  });
+  const { data: tarifList = [] } = useQuery({
+    queryKey: ['tarif-iuran'],
+    queryFn: () => base44.entities.TarifIuran.list('nama'),
+  });
+
+  const keuanganBySiswa = useMemo(() => {
+    const map = {};
+    keuanganList.forEach(k => {
+      if (k.siswa_id && k.jenis !== 'Pengeluaran') {
+        if (!map[k.siswa_id]) map[k.siswa_id] = [];
+        map[k.siswa_id].push(k);
+      }
+    });
+    return map;
+  }, [keuanganList]);
+
+  // Sudah Bayar = transaksi tercatat + isian manual (pembayaran di luar transaksi)
+  const hitungBayar = (b) => {
+    const tarif = tarifList.find(t => t.id === b.tarif_iuran_id);
+    let dibayarTrans = 0;
+    if (tarif) {
+      dibayarTrans = matchIuranItemTransactions(tarif, keuanganBySiswa[b.siswa_id] || [], tarifList)
+        .reduce((s, k) => s + (k.jumlah || 0), 0);
+    }
+    const manual = b.sudah_bayar || 0;
+    return { dibayarTrans, manual, total: dibayarTrans + manual };
+  };
+
+  const getStatusInfo = (b, dibayar) => {
+    if (b.is_gratis) return { label: 'GRATIS', cls: 'bg-emerald-100 text-emerald-700' };
+    const tagihan = b.nominal_khusus || 0;
+    if (tagihan <= 0 || dibayar >= tagihan) return { label: 'Lunas', cls: 'bg-emerald-100 text-emerald-700' };
+    if (dibayar > 0) return { label: 'Cicilan', cls: 'bg-amber-100 text-amber-700' };
+    return { label: 'Menunggak', cls: 'bg-red-100 text-red-700' };
+  };
 
   // Group by siswa_id
   const grouped = useMemo(() => {
@@ -166,10 +200,10 @@ export default function BiayaKhususPerSiswa({ biayaKhususList, kelasList, onDele
               </div>
 
               {detailSiswa.records.map(b => {
-                const st = getStatusInfo(b);
+                const { dibayarTrans, manual, total } = hitungBayar(b);
+                const st = getStatusInfo(b, total);
                 const tagihan = b.nominal_khusus || 0;
-                const sb = b.sudah_bayar || 0;
-                const sisa = Math.max(0, tagihan - sb);
+                const sisa = Math.max(0, tagihan - total);
                 return (
                   <div key={b.id} className="flex items-start justify-between p-3 rounded-lg border bg-white">
                     <div className="min-w-0 flex-1">
@@ -186,8 +220,9 @@ export default function BiayaKhususPerSiswa({ biayaKhususList, kelasList, onDele
                         ) : (
                           <span className="text-xs text-slate-400">
                             Tagihan: {formatRupiah(tagihan)}
-                            {sb > 0 && ` · Dibayar: ${formatRupiah(sb)}`}
-                            {sisa > 0 && sb > 0 && ` · Sisa: ${formatRupiah(sisa)}`}
+                            {total > 0 && ` · Dibayar: ${formatRupiah(total)}`}
+                            {dibayarTrans > 0 && manual > 0 && ` (transaksi ${formatRupiah(dibayarTrans)} + manual ${formatRupiah(manual)})`}
+                            {sisa > 0 && total > 0 && ` · Sisa: ${formatRupiah(sisa)}`}
                           </span>
                         )}
                       </div>

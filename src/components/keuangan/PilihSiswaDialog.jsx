@@ -175,7 +175,7 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
 
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
             <Lock className="w-3 h-3" />
-            <span>Isian "Sudah Bayar" terkunci hingga siswa diceklis.</span>
+            <span>Isian terkunci hingga siswa diceklis. Isi "Sudah Bayar" hanya untuk pembayaran di luar transaksi tercatat — pembayaran yang dicatat lewat menu Transaksi otomatis masuk ke hitungan.</span>
           </div>
 
           {isLoading ? (
@@ -198,7 +198,7 @@ export default function PilihSiswaDialog({ isOpen, onClose, tarif, siswaList, ke
                     {checked && (
                       <div className="px-2 pb-2 pl-9">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-500 whitespace-nowrap">Sudah Bayar:</span>
+                          <span className="text-xs text-slate-500 whitespace-nowrap">Sudah Bayar (manual):</span>
                           <div className="flex-1">
                             <RupiahInput
                               value={sudahBayar[siswa.id] ?? ''}

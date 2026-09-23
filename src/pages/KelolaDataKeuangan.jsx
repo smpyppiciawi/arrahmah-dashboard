@@ -13,10 +13,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DataTable } from "@/components/ui/data-table";
 import { 
   Settings, Plus, Edit2, Trash2, Tags, Layers, Wallet, 
-  CreditCard, Users, UserCheck, Award
+  CreditCard, Users, UserCheck, Award, ShieldCheck
 } from "lucide-react";
 import RupiahInput from '@/components/ui/RupiahInput';
 import HonorariumTab from '@/components/keuangan/HonorariumTab';
+import PemeriksaanKonsistensi from '@/components/keuangan/PemeriksaanKonsistensi';
 import BiayaKhususForm from '@/components/keuangan/BiayaKhususForm';
 import PilihSiswaDialog from '@/components/keuangan/PilihSiswaDialog';
 import BiayaKhususPerSiswa from '@/components/keuangan/BiayaKhususPerSiswa';
@@ -316,6 +317,7 @@ export default function KelolaDataKeuangan() {
             <TabsTrigger value="tarif" className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Tarif Iuran</TabsTrigger>
             <TabsTrigger value="biaya-khusus" className="flex items-center gap-1"><Users className="w-3 h-3" /> Biaya Khusus</TabsTrigger>
             <TabsTrigger value="honorarium" className="flex items-center gap-1"><Award className="w-3 h-3" /> Honorarium</TabsTrigger>
+            <TabsTrigger value="pemeriksaan" className="flex items-center gap-1"><ShieldCheck className="w-3 h-3" /> Pemeriksaan</TabsTrigger>
           </TabsList>
 
           {/* Kategori */}
@@ -401,6 +403,11 @@ export default function KelolaDataKeuangan() {
           {/* Honorarium */}
           <TabsContent value="honorarium">
             <HonorariumTab />
+          </TabsContent>
+
+          {/* Pemeriksaan Konsistensi */}
+          <TabsContent value="pemeriksaan">
+            <PemeriksaanKonsistensi activeAcademicYear={activeAcademicYear} />
           </TabsContent>
         </Tabs>
 

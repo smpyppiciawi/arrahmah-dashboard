@@ -9,15 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History } from 'lucide-react';
-import { getGratisBulanSPP, matchIuranItemTransactions } from '@/lib/sppUtils';
+import { computeStatusKeuangan } from '@/lib/sppUtils';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  Cicil: 'bg-amber-100 text-amber-700 border-amber-200',
-  Belum: 'bg-red-100 text-red-700 border-red-200',
+  Cicilan: 'bg-amber-100 text-amber-700 border-amber-200',
+  Menunggak: 'bg-red-100 text-red-700 border-red-200',
 };
 
-const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
+const STATUS_ICON = { Lunas: CheckCircle2, Cicilan: Clock, Menunggak: XCircle };
 
 const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
@@ -51,18 +51,35 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     staleTime: 5 * 60 * 1000,
   });
 
-  const kelasTingkat = kelasWali?.tingkat || (kelasWali?.nama_kelas?.charAt(0) || '');
-
   const siswaIds = useMemo(() => new Set(siswaKelas.map(s => s.id)), [siswaKelas]);
 
-  const activeTarif = useMemo(() => {
-    return tarifList.filter(t => {
-      if (t.status !== 'Aktif') return false;
-      if (t.tahun_ajaran && t.tahun_ajaran !== activeAcademicYear) return false;
-      const tk = Array.isArray(t.tingkat) ? t.tingkat : (t.tingkat ? [t.tingkat] : ['Semua']);
-      return tk.includes('Semua') || tk.includes(kelasTingkat);
+  // Transaksi kelas ini per siswa (TA aktif; data lama tanpa TA tetap dihitung)
+  const keuanganBySiswa = useMemo(() => {
+    const map = {};
+    keuanganList.forEach(k => {
+      if (!k.siswa_id || !siswaIds.has(k.siswa_id)) return;
+      if (activeAcademicYear && k.tahun_ajaran && k.tahun_ajaran !== activeAcademicYear) return;
+      if (!map[k.siswa_id]) map[k.siswa_id] = [];
+      map[k.siswa_id].push(k);
     });
-  }, [tarifList, activeAcademicYear, kelasTingkat]);
+    return map;
+  }, [keuanganList, siswaIds, activeAcademicYear]);
+
+  // ===== Hitungan terpusat per siswa — identik dengan Laporan Bendahara & Akun Siswa =====
+  const siswaStatusMap = useMemo(() => {
+    const map = new Map();
+    siswaKelas.forEach(s => {
+      map.set(s.id, computeStatusKeuangan({
+        siswa: s,
+        keuanganList: keuanganBySiswa[s.id] || [],
+        tarifList,
+        biayaKhususList,
+        kelasList: kelasWali ? [kelasWali] : [],
+        tahunAjaran: activeAcademicYear || '',
+      }));
+    });
+    return map;
+  }, [siswaKelas, keuanganBySiswa, tarifList, biayaKhususList, kelasWali, activeAcademicYear]);
 
   const siswaArsipMap = useMemo(() => {
     const map = new Map();
@@ -75,68 +92,18 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     return map;
   }, [arsipKeuanganList, siswaIds]);
 
-  const siswaKeuangan = useMemo(() => {
-    return keuanganList.filter(k => k.siswa_id && siswaIds.has(k.siswa_id) && (!activeAcademicYear || k.tahun_ajaran === activeAcademicYear));
-  }, [keuanganList, siswaIds, activeAcademicYear]);
-
-  const getStatus = (siswa, tarif) => {
-    if (PER_SISWA_JENIS.includes(tarif.jenis_iuran)) {
-      const khusus = getKhusus(siswa, tarif);
-      if (!khusus) return null;
-      if (khusus.is_gratis) return { status: 'Lunas', detail: 'Gratis', tagihan: 0, sudahBayar: 0, sisa: 0 };
-      const tagihan = khusus.nominal_khusus || tarif.nominal || 0;
-      const sb = khusus.sudah_bayar || 0;
-      if (tagihan <= 0) return { status: 'Lunas', detail: 'Tanpa tagihan', tagihan: 0, sudahBayar: 0, sisa: 0 };
-      const sisa = tagihan - sb;
-      if (sb >= tagihan) return { status: 'Lunas', detail: 'Sudah Bayar', tagihan, sudahBayar: sb, sisa: 0 };
-      if (sb > 0) return { status: 'Cicil', detail: 'Cicilan', tagihan, sudahBayar: sb, sisa };
-      return { status: 'Belum', detail: 'Belum Bayar', tagihan, sudahBayar: 0, sisa: tagihan };
-    }
-    const isSpp = (tarif.nama || '').toLowerCase().includes('spp') || tarif.jenis_iuran === 'SPP' || tarif.periode === 'Bulanan';
-    // Pencocokan terpusat: toleran variasi penamaan (uraian/tipe), identik dengan akun siswa
-    const trans = matchIuranItemTransactions(
-      tarif,
-      siswaKeuangan.filter(k => k.siswa_id === siswa.id),
-      activeTarif
-    );
-    if (isSpp) {
-      const paidMonths = new Set();
-      trans.forEach(t => (t.bulan_dibayar || []).forEach(m => paidMonths.add(m)));
-      const gratisMonths = getGratisBulanSPP(siswa.id, biayaKhususList, tarifList);
-      const totalCovered = paidMonths.size + gratisMonths.length;
-      const gratisLabel = gratisMonths.length > 0 ? ` +${gratisMonths.length} gratis` : '';
-      if (totalCovered >= 12) return { status: 'Lunas', detail: `${paidMonths.size}/12 bulan${gratisLabel}` };
-      if (paidMonths.size > 0) return { status: 'Cicil', detail: `${paidMonths.size}/12 bulan${gratisLabel}` };
-      return { status: 'Belum', detail: `0/12 bulan${gratisLabel}` };
-    }
-    if (trans.length === 0) return { status: 'Belum', detail: '-' };
-    const hasLunas = trans.some(t => (t.status_bayar || 'Lunas') === 'Lunas');
-    const hasCicil = trans.some(t => t.status_bayar === 'Cicilan');
-    if (hasCicil) return { status: 'Cicil', detail: 'Cicilan' };
-    if (hasLunas) return { status: 'Lunas', detail: 'Lunas' };
-    return { status: 'Belum', detail: 'Belum Lunas' };
-  };
-
-  const getKhusus = (siswa, tarif) => biayaKhususList.find(b =>
-    b.siswa_id === siswa.id &&
-    b.tarif_iuran_id === tarif.id &&
-    (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
-  );
-
   const siswaSummary = useMemo(() => {
-    // eslint-disable-next-line
     return siswaKelas.map(s => {
-      let belum = 0, cicil = 0, lunas = 0;
-      activeTarif.forEach(t => {
-        const st = getStatus(s, t);
-        if (!st) return;
-        if (st.status === 'Belum') belum++;
-        else if (st.status === 'Cicil') cicil++;
-        else lunas++;
+      const res = siswaStatusMap.get(s.id);
+      let lunas = 0, cicil = 0, belum = 0;
+      (res?.items || []).forEach(it => {
+        if (it.status === 'Lunas') lunas++;
+        else if (it.status === 'Cicilan') cicil++;
+        else belum++;
       });
       return { siswa: s, belum, cicil, lunas };
     });
-  }, [siswaKelas, activeTarif, siswaKeuangan, biayaKhususList]);
+  }, [siswaKelas, siswaStatusMap]);
 
   const filtered = siswaSummary
     .filter(({ siswa }) =>
@@ -168,9 +135,9 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                 <TableHead className="text-xs">NIS</TableHead>
                 <TableHead className="text-xs">Nama Siswa</TableHead>
                 <TableHead className="text-xs text-center">Lunas</TableHead>
-                <TableHead className="text-xs text-center">Cicil</TableHead>
+                <TableHead className="text-xs text-center">Cicilan</TableHead>
                 <TableHead className="text-xs text-center">Tunggakan Thn Lalu</TableHead>
-                <TableHead className="text-xs text-center">Belum</TableHead>
+                <TableHead className="text-xs text-center">Menunggak</TableHead>
                 <TableHead className="text-xs w-28">Aksi</TableHead>
               </TableRow>
             </TableHeader>
@@ -214,19 +181,20 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
               Detail Iuran — {detailSiswa?.nama}
             </DialogTitle>
           </DialogHeader>
-          {detailSiswa && (
-            <div className="space-y-2">
-              <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
-                <span>NIS: <b className="font-mono text-slate-600">{detailSiswa.nis}</b></span>
-                <span>•</span>
-                <span>Kelas: <b className="text-slate-600">{detailSiswa.nama_kelas}</b></span>
-              </div>
-              {/* Tunggakan Tahun Lalu (Arsip Keuangan) */}
-              {(() => {
-                const arsip = siswaArsipMap.get(detailSiswa.id) || [];
-                const totalLalu = arsip.reduce((s, a) => s + (a.sisa_tunggakan || 0), 0);
-                if (arsip.length === 0) return null;
-                return (
+          {detailSiswa && (() => {
+            const res = siswaStatusMap.get(detailSiswa.id);
+            const items = res?.items || [];
+            const arsip = siswaArsipMap.get(detailSiswa.id) || [];
+            const totalLalu = arsip.reduce((s, a) => s + (a.sisa_tunggakan || 0), 0);
+            return (
+              <div className="space-y-2">
+                <div className="text-xs text-slate-400 flex items-center gap-2 flex-wrap">
+                  <span>NIS: <b className="font-mono text-slate-600">{detailSiswa.nis}</b></span>
+                  <span>•</span>
+                  <span>Kelas: <b className="text-slate-600">{detailSiswa.nama_kelas}</b></span>
+                </div>
+                {/* Tunggakan Tahun Lalu (Arsip Keuangan) */}
+                {arsip.length > 0 && (
                   <div className="p-3 rounded-lg border border-red-200 bg-red-50">
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-semibold text-red-700 flex items-center gap-1.5">
@@ -249,47 +217,45 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                       ))}
                     </div>
                   </div>
-                );
-              })()}
-              {activeTarif.length === 0 ? (
-                <p className="text-center py-8 text-slate-400 text-sm">Tidak ada iuran aktif untuk tahun pelajaran ini.</p>
-              ) : activeTarif.map(tarif => {
-                const st = getStatus(detailSiswa, tarif);
-                if (!st) return null;
-                const khusus = getKhusus(detailSiswa, tarif);
-                return (
-                  <div key={tarif.id} className="flex items-center justify-between px-4 py-3 rounded-lg border bg-white">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate">{tarif.nama}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <span className="text-xs text-slate-400">{tarif.periode}{tarif.tingkat !== 'Semua' ? ` · Tingkat ${tarif.tingkat}` : ''}</span>
-                        {khusus && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded">
-                            <Tag className="w-3 h-3" />
-                            {khusus.is_gratis ? 'Gratis' : `Khusus: ${khusus.kategori || '-'}`}
-                          </span>
-                        )}
+                )}
+                {items.length === 0 ? (
+                  <p className="text-center py-8 text-slate-400 text-sm">Tidak ada iuran aktif untuk tahun pelajaran ini.</p>
+                ) : items.map(item => {
+                  const Icon = STATUS_ICON[item.status];
+                  return (
+                    <div key={item.key} className="flex items-center justify-between px-4 py-3 rounded-lg border bg-white">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{item.nama}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs text-slate-400">{item.detail || item.periode}</span>
+                          {item.khusus && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded">
+                              <Tag className="w-3 h-3" />
+                              {item.gratis ? 'Gratis' : `Khusus: ${item.khusus}`}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="text-right">
+                          {!item.gratis && item.tagihan > 0 && (
+                            <div className="text-[10px] text-slate-400 leading-tight">
+                              {item.dibayar > 0 && <div>Dibayar: <b className="text-emerald-600">{formatRupiah(item.dibayar)}</b></div>}
+                              {item.sisa_jatuh_tempo > 0 && <div>Sisa: <b className="text-red-500">{formatRupiah(item.sisa_jatuh_tempo)}</b></div>}
+                            </div>
+                          )}
+                          <Badge className={`border ${STATUS_STYLE[item.status]}`}>
+                            <Icon className="w-3 h-3 mr-1" />
+                            {item.status}
+                          </Badge>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="text-right">
-                        {st.tagihan > 0 && !khusus?.is_gratis && (
-                          <div className="text-[10px] text-slate-400 leading-tight">
-                            {st.sudahBayar > 0 && <div>Dibayar: <b className="text-emerald-600">{formatRupiah(st.sudahBayar)}</b></div>}
-                            {st.sisa > 0 && <div>Sisa: <b className="text-red-500">{formatRupiah(st.sisa)}</b></div>}
-                          </div>
-                        )}
-                        <Badge className={`border ${STATUS_STYLE[st.status]}`}>
-                          {st.status === 'Lunas' ? <CheckCircle2 className="w-3 h-3 mr-1" /> : st.status === 'Cicil' ? <Clock className="w-3 h-3 mr-1" /> : <XCircle className="w-3 h-3 mr-1" />}
-                          {st.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </Card>

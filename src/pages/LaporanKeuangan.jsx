@@ -18,11 +18,9 @@ import {
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
 import TransferDanaDialog from '@/components/transaksi/TransferDanaDialog';
-import { getGratisBulanSPP, getSppTarif, tarifMatchesTingkat } from '@/lib/sppUtils';
+import { computeStatusKeuangan, tarifMatchesTingkat } from '@/lib/sppUtils';
 import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
-
-const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
 
 export default function LaporanKeuangan() {
   const { activeAcademicYear } = useActiveAcademicYear();
@@ -36,6 +34,7 @@ export default function LaporanKeuangan() {
   const [selectedSiswa, setSelectedSiswa] = useState('');
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedIuran, setSelectedIuran] = useState('');
+  const [selectedTA, setSelectedTA] = useState('__aktif__');
 
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
@@ -206,36 +205,28 @@ export default function LaporanKeuangan() {
     return kelasTingkatMap[siswa.kelas_id] || (siswa.nama_kelas?.[0] || '');
   };
 
-  // Helper: calculate expected total for a tingkat
-  const calculateExpected = (siswaId, tingkat, iuranName = null) => {
-    return tarifIuranList
-      .filter(t => {
-        if (!tarifMatchesTingkat(t, tingkat)) return false;
-        if (iuranName && t.nama !== iuranName) return false;
-        return true;
-      })
-      .reduce((sum, t) => {
-        // Per-siswa iuran (Mutasi/PPDB): hanya berlaku jika ada BiayaKhusus record
-        if (PER_SISWA_JENIS.includes(t.jenis_iuran)) {
-          const khusus = biayaKhususList.find(b =>
-            b.siswa_id === siswaId &&
-            b.tarif_iuran_id === t.id &&
-            (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear)
-          );
-          if (!khusus) return sum; // siswa tidak punya iuran ini
-          if (khusus.is_gratis) return sum; // gratis = tanpa tagihan
-          return sum + (khusus.nominal_khusus || t.nominal || 0);
-        }
-        let multiplier = 1;
-        switch (t.periode) {
-          case 'Bulanan': multiplier = 12; break;
-          case 'Semester': multiplier = 2; break;
-          case 'Tahunan': multiplier = 1; break;
-          case 'Sekali': multiplier = 1; break;
-        }
-        return sum + (t.nominal * multiplier);
-      }, 0);
-  };
+  // Tahun ajaran yang bisa dipilih bendahara (default: TA aktif)
+  const taOptions = useMemo(() => {
+    const set = new Set();
+    if (activeAcademicYear) set.add(activeAcademicYear);
+    tarifIuranList.forEach(t => { if (t.tahun_ajaran) set.add(t.tahun_ajaran); });
+    keuanganList.forEach(k => { if (k.tahun_ajaran) set.add(k.tahun_ajaran); });
+    return [...set].sort((a, b) => b.localeCompare(a));
+  }, [activeAcademicYear, tarifIuranList, keuanganList]);
+
+  // TA yang dipakai perhitungan — '' berarti semua tahun ajaran
+  const taTerpilih = selectedTA === '__aktif__' ? (activeAcademicYear || '') : selectedTA;
+
+  // Transaksi dikelompokkan per siswa agar hitungan per siswa ringan
+  const keuanganBySiswa = useMemo(() => {
+    const map = {};
+    keuanganList.forEach(k => {
+      if (!k.siswa_id) return;
+      if (!map[k.siswa_id]) map[k.siswa_id] = [];
+      map[k.siswa_id].push(k);
+    });
+    return map;
+  }, [keuanganList]);
 
   // Helper: get periode label for iuran
   const getIuranPeriode = (iuranName, tingkat) => {
@@ -250,49 +241,7 @@ export default function LaporanKeuangan() {
     }
   };
 
-  // Helper: calculate paid for siswa (all or specific iuran)
-  const calculatePaid = (siswaId, iuranName = null) => {
-    let total = keuanganList
-      .filter(k => k.siswa_id === siswaId && k.jenis === 'Pemasukan')
-      .filter(k => {
-        if (!iuranName) return true;
-        return k.tipe_transaksi?.toLowerCase().includes(iuranName.toLowerCase()) ||
-               k.kategori?.toLowerCase().includes(iuranName.toLowerCase());
-      })
-      .reduce((sum, k) => sum + (k.jumlah || 0), 0);
 
-    // Tambahkan "Sudah Bayar" dari BiayaKhusus (pembayaran tahun ajaran lalu)
-    biayaKhususList
-      .filter(b => b.siswa_id === siswaId && !b.is_gratis &&
-        (!activeAcademicYear || !b.tahun_ajaran || b.tahun_ajaran === activeAcademicYear))
-      .forEach(b => {
-        const tarif = tarifIuranList.find(t => t.id === b.tarif_iuran_id);
-        if (!tarif || !PER_SISWA_JENIS.includes(tarif.jenis_iuran)) return;
-        if (iuranName && tarif.nama !== iuranName) return;
-        total += (b.sudah_bayar || 0);
-      });
-
-    // Tambahkan nilai bulan SPP gratis (PPDB Gel 1/2 spp_gratis_bulan_pertama, Prestasi gratis_bulan_spp)
-    if (!iuranName || iuranName.toLowerCase().includes('spp')) {
-      const siswa = siswaList.find(s => s.id === siswaId);
-      const tingkat = siswa ? (kelasTingkatMap[siswa.kelas_id] || (siswa.nama_kelas?.[0] || '')) : '';
-      const gratisMonths = getGratisBulanSPP(siswaId, biayaKhususList, tarifIuranList);
-      if (gratisMonths.length > 0) {
-        const paidMonthsFromTrans = new Set(
-          keuanganList
-            .filter(k => k.siswa_id === siswaId && k.jenis === 'Pemasukan' && k.bulan_dibayar)
-            .flatMap(k => k.bulan_dibayar || [])
-        );
-        const unpaidGratis = gratisMonths.filter(m => !paidMonthsFromTrans.has(m));
-        const sppTarif = getSppTarif(tarifIuranList, tingkat);
-        if (sppTarif && unpaidGratis.length > 0) {
-          total += (sppTarif.nominal || 0) * unpaidGratis.length;
-        }
-      }
-    }
-
-    return total;
-  };
 
   // Filter siswa by kelas
   const filteredSiswaList = useMemo(() => {
@@ -300,24 +249,28 @@ export default function LaporanKeuangan() {
     return siswaList.filter(s => s.kelas_id === selectedKelas);
   }, [siswaList, selectedKelas]);
 
-  // Laporan Tunggakan Siswa
+  // Laporan Tunggakan Siswa — logika terpusat (identik dengan Akun Siswa & Wali Kelas)
   const laporanTunggakan = useMemo(() => {
     return filteredSiswaList.map(siswa => {
-      const tingkat = getTingkat(siswa);
-      const expected = calculateExpected(siswa.id, tingkat, selectedIuran || null);
-      const totalDibayar = calculatePaid(siswa.id, selectedIuran || null);
-      const tunggakan = Math.max(0, expected - totalDibayar);
-      const periode = selectedIuran ? getIuranPeriode(selectedIuran, tingkat) : '-';
-
+      const statusKeu = computeStatusKeuangan({
+        siswa,
+        keuanganList: keuanganBySiswa[siswa.id] || [],
+        tarifList: tarifIuranList,
+        biayaKhususList,
+        kelasList,
+        tahunAjaran: taTerpilih,
+        iuranNama: selectedIuran || null,
+      });
       return {
         ...siswa,
-        total_dibayar: totalDibayar,
-        tunggakan,
-        periode,
-        status: tunggakan > 0 ? 'Menunggak' : 'Lunas'
+        total_dibayar: statusKeu.totalDibayar,
+        sisa_jatuh_tempo: statusKeu.sisaJatuhTempo,
+        sisa_setahun: statusKeu.sisaSetahun,
+        status_keuangan: statusKeu.status,
+        periode: selectedIuran ? getIuranPeriode(selectedIuran, getTingkat(siswa)) : '-',
       };
     }).filter(s => selectedSiswa ? s.id === selectedSiswa : true);
-  }, [filteredSiswaList, keuanganList, tarifIuranList, biayaKhususList, selectedSiswa, selectedIuran, kelasTingkatMap, activeAcademicYear]);
+  }, [filteredSiswaList, keuanganBySiswa, tarifIuranList, biayaKhususList, kelasList, taTerpilih, selectedIuran, selectedSiswa]);
 
   // Print functions
   const printRekeningKoran = () => {
@@ -453,11 +406,12 @@ export default function LaporanKeuangan() {
             .right { text-align: right; }
             .red { color: red; }
             .green { color: green; }
+            .orange { color: #b45300; }
           </style>
         </head>
         <body>
           <h2>LAPORAN TUNGGAKAN IURAN SISWA</h2>
-          <p>Kelas: ${selectedKelas ? kelasList.find(k => k.id === selectedKelas)?.nama_kelas : 'Semua Kelas'}${selectedIuran ? ` | Iuran: ${selectedIuran}` : ' | Semua Iuran'}</p>
+          <p>Tahun Ajaran: ${taTerpilih || 'Semua Tahun Ajaran'} | Kelas: ${selectedKelas ? kelasList.find(k => k.id === selectedKelas)?.nama_kelas : 'Semua Kelas'}${selectedIuran ? ` | Iuran: ${selectedIuran}` : ' | Semua Iuran'}</p>
           <table>
             <tr>
               <th>No</th>
@@ -465,7 +419,8 @@ export default function LaporanKeuangan() {
               <th>Nama</th>
               <th>Kelas</th>
               <th>Total Bayar</th>
-              <th>Tunggakan</th>
+              <th>Sisa Bayar (Jatuh Tempo)</th>
+              <th>Sisa Bayar (Setahun)</th>
               ${selectedIuran ? '<th>Periode</th>' : ''}
               <th>Status</th>
             </tr>
@@ -476,14 +431,15 @@ export default function LaporanKeuangan() {
                 <td>${s.nama}</td>
                 <td>${s.nama_kelas}</td>
                 <td class="right">${formatRupiah(s.total_dibayar)}</td>
-                <td class="right ${s.tunggakan > 0 ? 'red' : ''}">${formatRupiah(s.tunggakan)}</td>
+                <td class="right ${s.sisa_jatuh_tempo > 0 ? 'red' : ''}">${formatRupiah(s.sisa_jatuh_tempo)}</td>
+                <td class="right ${s.sisa_setahun > 0 ? 'red' : ''}">${formatRupiah(s.sisa_setahun)}</td>
                 ${selectedIuran ? `<td>${s.periode}</td>` : ''}
-                <td class="${s.status === 'Lunas' ? 'green' : 'red'}">${s.status}</td>
+                <td class="${s.status_keuangan === 'Lunas' ? 'green' : s.status_keuangan === 'Cicilan' ? 'orange' : 'red'}">${s.status_keuangan}</td>
               </tr>
             `).join('')}
           </table>
-          <p style="margin-top: 15px;">Total Siswa Menunggak: ${laporanTunggakan.filter(s => s.tunggakan > 0).length}</p>
-          <p>Total Tunggakan: ${formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.tunggakan, 0))}</p>
+          <p style="margin-top: 15px;">Lunas: ${laporanTunggakan.filter(s => s.status_keuangan === 'Lunas').length} siswa | Cicilan: ${laporanTunggakan.filter(s => s.status_keuangan === 'Cicilan').length} siswa | Menunggak: ${laporanTunggakan.filter(s => s.status_keuangan === 'Menunggak').length} siswa</p>
+          <p>Total Sisa Bayar (Jatuh Tempo): ${formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_jatuh_tempo, 0))} | Total Sisa Bayar (Setahun): ${formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_setahun, 0))}</p>
           <p style="text-align: right; margin-top: 20px;">Dicetak: ${format(new Date(), 'd MMMM yyyy HH:mm', { locale: idLocale })}</p>
         </body>
       </html>
@@ -505,24 +461,21 @@ export default function LaporanKeuangan() {
     { key: 'saldo', label: 'Saldo', render: (row) => <span className="font-medium">{formatRupiah(row.saldo)}</span> }
   ];
 
-  const tunggakanColumns = selectedIuran
-    ? [
-        { key: 'nis', label: 'NIS' },
-        { key: 'nama', label: 'Nama' },
-        { key: 'nama_kelas', label: 'Kelas' },
-        { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
-        { key: 'tunggakan', label: 'Nominal Tunggakan', render: (row) => <span className={row.tunggakan > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row.tunggakan)}</span> },
-        { key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> },
-        { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.status}</Badge> }
-      ]
-    : [
-        { key: 'nis', label: 'NIS' },
-        { key: 'nama', label: 'Nama' },
-        { key: 'nama_kelas', label: 'Kelas' },
-        { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
-        { key: 'tunggakan', label: 'Nominal Tunggakan', render: (row) => <span className={row.tunggakan > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row.tunggakan)}</span> },
-        { key: 'status', label: 'Status', render: (row) => <Badge className={row.status === 'Lunas' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{row.status}</Badge> }
-      ];
+  const statusBadgeCls = (status) => status === 'Lunas'
+    ? 'bg-emerald-100 text-emerald-700'
+    : status === 'Cicilan' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700';
+  const sisaRender = (v) => <span className={v > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(v)}</span>;
+
+  const tunggakanColumns = [
+    { key: 'nis', label: 'NIS' },
+    { key: 'nama', label: 'Nama' },
+    { key: 'nama_kelas', label: 'Kelas' },
+    { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
+    { key: 'sisa_jatuh_tempo', label: 'Sisa Bayar (Jatuh Tempo)', render: sisaRender },
+    { key: 'sisa_setahun', label: 'Sisa Bayar (Setahun)', render: sisaRender },
+    ...(selectedIuran ? [{ key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> }] : []),
+    { key: 'status_keuangan', label: 'Status', render: (row) => <Badge className={statusBadgeCls(row.status_keuangan)}>{row.status_keuangan}</Badge> }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
@@ -726,31 +679,57 @@ export default function LaporanKeuangan() {
                         {iuranNames.map(name => (
                           <SelectItem key={name} value={name}>{name}</SelectItem>
                         ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                        </SelectContent>
+                        </Select>
+                        </div>
+                        <div>
+                        <Label className="text-xs">Tahun Ajaran</Label>
+                        <Select value={selectedTA} onValueChange={setSelectedTA}>
+                        <SelectTrigger className="w-44"><SelectValue placeholder="TA Aktif" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__aktif__">TA Aktif{activeAcademicYear ? ` (${activeAcademicYear})` : ''}</SelectItem>
+                          {taOptions.map(ta => (
+                            <SelectItem key={ta} value={ta}>{ta}</SelectItem>
+                          ))}
+                          <SelectItem value={null}>Semua Tahun Ajaran</SelectItem>
+                        </SelectContent>
+                        </Select>
+                        </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Summary */}
-            <div className="grid md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
               <Card className="border-0 shadow-sm bg-blue-50">
                 <CardContent className="p-4">
                   <p className="text-sm text-blue-600">Total Siswa</p>
                   <p className="text-2xl font-bold text-blue-700">{laporanTunggakan.length}</p>
                 </CardContent>
               </Card>
-              <Card className="border-0 shadow-sm bg-red-50">
+              <Card className="border-0 shadow-sm bg-emerald-50">
                 <CardContent className="p-4">
-                  <p className="text-sm text-red-600">Siswa Menunggak</p>
-                  <p className="text-2xl font-bold text-red-700">{laporanTunggakan.filter(s => s.tunggakan > 0).length}</p>
+                  <p className="text-sm text-emerald-600">Lunas</p>
+                  <p className="text-2xl font-bold text-emerald-700">{laporanTunggakan.filter(s => s.status_keuangan === 'Lunas').length}</p>
                 </CardContent>
               </Card>
               <Card className="border-0 shadow-sm bg-amber-50">
                 <CardContent className="p-4">
-                  <p className="text-sm text-amber-600">Total Tunggakan</p>
-                  <p className="text-2xl font-bold text-amber-700">{formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.tunggakan, 0))}</p>
+                  <p className="text-sm text-amber-600">Cicilan</p>
+                  <p className="text-2xl font-bold text-amber-700">{laporanTunggakan.filter(s => s.status_keuangan === 'Cicilan').length}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm bg-red-50">
+                <CardContent className="p-4">
+                  <p className="text-sm text-red-600">Menunggak</p>
+                  <p className="text-2xl font-bold text-red-700">{laporanTunggakan.filter(s => s.status_keuangan === 'Menunggak').length}</p>
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-sm bg-slate-50">
+                <CardContent className="p-4">
+                  <p className="text-sm text-slate-600">Total Sisa Bayar</p>
+                  <p className="text-lg font-bold text-slate-800">{formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_jatuh_tempo, 0))}</p>
+                  <p className="text-[11px] text-slate-400">Setahun: {formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_setahun, 0))}</p>
                 </CardContent>
               </Card>
             </div>

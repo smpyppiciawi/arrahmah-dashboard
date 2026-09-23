@@ -374,6 +374,9 @@ export default function TransaksiForm({
         toast({ title: "Transaksi berhasil disimpan" });
       }
       queryClient.invalidateQueries({ queryKey: ['keuangan'] });
+      // Sinkron angka di semua modul keuangan setelah transaksi tersimpan
+      queryClient.invalidateQueries({ queryKey: ['keuangan-tunggakan'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa-keuangan'] });
       // Auto-create Donatur entity jika nama donatur baru
       if (formData.nama_donatur && formData.nama_donatur.trim()) {
         const exists = (donaturList || []).some(d => d.nama?.toLowerCase() === formData.nama_donatur.trim().toLowerCase());

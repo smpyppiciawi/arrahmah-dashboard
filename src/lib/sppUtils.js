@@ -199,3 +199,184 @@ export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biaya
     otherTunggakan,
   };
 }
+
+// =====================================================================
+// STATUS KEUANGAN TERPUSAT
+// Satu logika untuk Laporan Tunggakan Bendahara, Akun Siswa (Portal),
+// Wali Kelas, dan Kelola Data — semua modul menampilkan angka yang sama.
+// Status tiga tingkat: Lunas (sisa 0), Cicilan (dibayar sebagian),
+// Menunggak (belum membayar sama sekali). SPP dihitung dua angka:
+// sisa jatuh tempo (Juli s/d bulan berjalan) dan sisa setahun (12 bulan).
+// =====================================================================
+
+export const PER_SISWA_JENIS = ['Mutasi', 'PPDB Gel 1', 'PPDB Gel 2'];
+
+const NAMA_BULAN_KALENDER = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+/**
+ * Bulan SPP yang sudah jatuh tempo: Juli s/d bulan berjalan (urutan TA Juli-Juni).
+ */
+export function bulanJatuhTempo(asOf = new Date()) {
+  const d = asOf instanceof Date ? asOf : new Date(asOf);
+  if (isNaN(d)) return [...BULAN_SPP];
+  const idx = BULAN_SPP.indexOf(NAMA_BULAN_KALENDER[d.getMonth()]);
+  if (idx < 0) return [...BULAN_SPP];
+  return BULAN_SPP.slice(0, idx + 1);
+}
+
+const statusDariSisa = (tagihan, dibayar, sisa) => {
+  if (tagihan <= 0 || sisa <= 0) return 'Lunas';
+  return dibayar > 0 ? 'Cicilan' : 'Menunggak';
+};
+
+/**
+ * Hitung status keuangan satu siswa dengan logika tunggal.
+ * @param {object} siswa - record Siswa
+ * @param {array} keuanganList - seluruh transaksi Keuangan siswa (tanpa filter TA)
+ * @param {array} tarifList - daftar TarifIuran
+ * @param {array} biayaKhususList - seluruh BiayaKhusus (difilter per siswa di sini)
+ * @param {array} kelasList - daftar Kelas (untuk tingkat)
+ * @param {string} tahunAjaran - TA terpilih; '' = semua tahun (toleran: data tanpa TA tetap dihitung)
+ * @param {Date} asOf - tanggal acuan jatuh tempo (default hari ini)
+ * @param {string|null} iuranNama - batasi ke satu item tarif (filter iuran laporan)
+ * @returns {object} { items, totalTagihan, totalDibayar, sisaJatuhTempo, sisaSetahun, status }
+ */
+export function computeStatusKeuangan({
+  siswa,
+  keuanganList = [],
+  tarifList = [],
+  biayaKhususList = [],
+  kelasList = [],
+  tahunAjaran = '',
+  asOf = new Date(),
+  iuranNama = null,
+}) {
+  const tingkat = getTingkat(siswa, kelasList) || '';
+  const taCocok = (ta) => !tahunAjaran || !ta || ta === tahunAjaran;
+
+  // Pembayaran yang diakui: pemasukan dalam TA terpilih (data lama tanpa TA tetap dihitung)
+  const payments = keuanganList.filter(k =>
+    k.jenis !== 'Pengeluaran' && taCocok(k.tahun_ajaran)
+  );
+
+  const bkSiswa = biayaKhususList.filter(b =>
+    b.siswa_id === siswa?.id && taCocok(b.tahun_ajaran)
+  );
+
+  const gratisSet = new Set(getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList));
+
+  const relevantTarifs = tarifList.filter(t =>
+    t.status !== 'Tidak Aktif' &&
+    tarifMatchesTingkat(t, tingkat) &&
+    taCocok(t.tahun_ajaran) &&
+    (!iuranNama || t.nama === iuranNama)
+  );
+
+  const items = [];
+
+  // --- SPP (bulanan): dua angka — jatuh tempo & setahun ---
+  const sppTarif = getSppTarif(relevantTarifs, tingkat);
+  if (sppTarif) {
+    const trans = matchIuranItemTransactions(sppTarif, payments, relevantTarifs);
+    const dibayar = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+    const paidMonths = new Set();
+    trans.forEach(r => (r.bulan_dibayar || []).forEach(m => paidMonths.add(m)));
+    const nominal = sppTarif.nominal || 0;
+    const nonGratis = BULAN_SPP.filter(m => !gratisSet.has(m));
+    const jatuhTempo = bulanJatuhTempo(asOf).filter(m => !gratisSet.has(m));
+    const tagihanSetahun = nominal * nonGratis.length;
+    const tagihanJatuhTempo = nominal * jatuhTempo.length;
+    const sisaSetahun = Math.max(0, tagihanSetahun - dibayar);
+    const sisaJatuhTempo = Math.max(0, tagihanJatuhTempo - dibayar);
+    const gratisCount = BULAN_SPP.length - nonGratis.length;
+    items.push({
+      key: `spp-${sppTarif.id}`,
+      jenis: 'SPP',
+      nama: sppTarif.nama,
+      periode: sppTarif.periode,
+      gratis: false,
+      khusus: null,
+      tagihan: tagihanSetahun,
+      tagihan_jatuh_tempo: tagihanJatuhTempo,
+      dibayar,
+      sisa_jatuh_tempo: sisaJatuhTempo,
+      sisa_setahun: sisaSetahun,
+      status: statusDariSisa(tagihanJatuhTempo, dibayar, sisaJatuhTempo),
+      detail: `${paidMonths.size}/${BULAN_SPP.length} bulan${gratisCount > 0 ? ` · ${gratisCount} gratis` : ''}`,
+    });
+  }
+
+  // --- Iuran umum per tingkat (Ujian, Awal Tahun, dll) ---
+  relevantTarifs.forEach(t => {
+    if (sppTarif && t.id === sppTarif.id) return;
+    if (t.jenis_iuran === 'SPP' || (t.nama || '').toLowerCase().includes('spp')) return;
+    if (PER_SISWA_JENIS.includes(t.jenis_iuran)) return;
+    const bk = bkSiswa.find(b => b.tarif_iuran_id === t.id);
+    if (bk?.is_gratis) {
+      items.push({
+        key: `gratis-${t.id}`, jenis: t.jenis_iuran || 'Lainnya', nama: t.nama, periode: t.periode,
+        gratis: true, khusus: bk.kategori, tagihan: 0, tagihan_jatuh_tempo: 0, dibayar: 0,
+        sisa_jatuh_tempo: 0, sisa_setahun: 0, status: 'Lunas', detail: 'Gratis',
+      });
+      return;
+    }
+    let multiplier = 1;
+    if (t.periode === 'Bulanan') multiplier = 12;
+    else if (t.periode === 'Semester') multiplier = 2;
+    const tagihan = (bk ? (bk.nominal_khusus || t.nominal || 0) : (t.nominal || 0)) * multiplier;
+    const trans = matchIuranItemTransactions(t, payments, relevantTarifs);
+    const dibayar = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+    const sisa = Math.max(0, tagihan - dibayar);
+    items.push({
+      key: t.id, jenis: t.jenis_iuran || 'Lainnya', nama: t.nama, periode: t.periode,
+      gratis: false, khusus: bk?.kategori || null,
+      tagihan, tagihan_jatuh_tempo: tagihan, dibayar,
+      sisa_jatuh_tempo: sisa, sisa_setahun: sisa,
+      status: statusDariSisa(tagihan, dibayar, sisa), detail: t.periode,
+    });
+  });
+
+  // --- Iuran per siswa (Mutasi / PPDB): dibayar = transaksi tercatat + isian manual (di luar transaksi) ---
+  bkSiswa.forEach(b => {
+    const tarif = tarifList.find(t => t.id === b.tarif_iuran_id);
+    if (!tarif || !PER_SISWA_JENIS.includes(tarif.jenis_iuran)) return;
+    if (iuranNama && tarif.nama !== iuranNama) return;
+    const nama = b.nama_iuran || tarif.nama;
+    if (b.is_gratis) {
+      items.push({
+        key: `gratis-${b.id}`, jenis: tarif.jenis_iuran, nama, periode: tarif.periode,
+        gratis: true, khusus: b.kategori, tagihan: 0, tagihan_jatuh_tempo: 0, dibayar: 0,
+        sisa_jatuh_tempo: 0, sisa_setahun: 0, status: 'Lunas', detail: 'Gratis',
+      });
+      return;
+    }
+    const tagihan = b.nominal_khusus || tarif.nominal || 0;
+    const trans = matchIuranItemTransactions(tarif, payments, tarifList);
+    const dibayarTrans = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+    const dibayarManual = b.sudah_bayar || 0;
+    const dibayar = dibayarTrans + dibayarManual;
+    const sisa = Math.max(0, tagihan - dibayar);
+    items.push({
+      key: b.id, jenis: tarif.jenis_iuran, nama, periode: tarif.periode,
+      gratis: false, khusus: b.kategori || null,
+      tagihan, tagihan_jatuh_tempo: tagihan, dibayar,
+      sisa_jatuh_tempo: sisa, sisa_setahun: sisa,
+      status: statusDariSisa(tagihan, dibayar, sisa), detail: 'Sekali Bayar',
+      dibayar_transaksi: dibayarTrans,
+      dibayar_manual: dibayarManual,
+    });
+  });
+
+  const totalTagihan = items.reduce((s, i) => s + i.tagihan, 0);
+  const totalDibayar = items.reduce((s, i) => s + i.dibayar, 0);
+  const sisaJatuhTempo = items.reduce((s, i) => s + i.sisa_jatuh_tempo, 0);
+  const sisaSetahun = items.reduce((s, i) => s + i.sisa_setahun, 0);
+  return {
+    items,
+    totalTagihan,
+    totalDibayar,
+    sisaJatuhTempo,
+    sisaSetahun,
+    status: sisaJatuhTempo <= 0 ? 'Lunas' : (totalDibayar > 0 ? 'Cicilan' : 'Menunggak'),
+  };
+}
