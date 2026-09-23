@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight, Check } from "lucide-react";
 import SiswaSearch from './SiswaSearch';
 import DonaturSearch from './DonaturSearch';
 import { getGratisBulanSPP, getTingkat as getTingkatSiswa, tarifMatchesTingkat, getSppTarif } from '@/lib/sppUtils';
@@ -21,7 +21,6 @@ import BuktiUpload from './BuktiUpload';
 import RupiahInput from '@/components/ui/RupiahInput';
 import { terbilang } from '@/lib/terbilang';
 import MukaAllocationEditor, { buildTaOptions } from './MukaAllocationEditor';
-import { Checkbox } from '@/components/ui/checkbox';
 
 const TIPE_TO_KATEGORI = {
   'SPP/Bulanan': 'SPP',
@@ -660,20 +659,21 @@ export default function TransaksiForm({
                       </SelectContent>
                     </Select>
                   </div>
-                  <div
-                    className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer"
-                    onClick={(e) => {
-                      // Checkbox adalah pengendali tunggal — klik langsung pada checkbox tidak boleh memicu dobel
-                      if (e.target.closest('[role="checkbox"]')) return;
-                      toggleMuka(!isMuka);
-                    }}
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isMuka}
+                    onClick={() => toggleMuka(!isMuka)}
+                    className="w-full flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer text-left transition-colors hover:bg-amber-100/60"
                   >
-                      <Checkbox checked={isMuka} onCheckedChange={(v) => toggleMuka(v === true)} className="mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700">Pembayaran Di Muka (Tahun Depan / Multi-Tahun)</p>
-                        <p className="text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggikan tahun aktif.</p>
-                      </div>
-                  </div>
+                      <span className={`mt-0.5 w-4 h-4 shrink-0 rounded flex items-center justify-center transition-colors ${isMuka ? 'bg-blue-600 border border-blue-600' : 'bg-white border border-slate-300'}`}>
+                        {isMuka && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700">Pembayaran Di Muka (Tahun Depan / Multi-Tahun)</span>
+                        <span className="block text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggakan tahun aktif.</span>
+                      </span>
+                  </button>
                   {isMuka && (
                     <MukaAllocationEditor
                       value={mukaRows}
