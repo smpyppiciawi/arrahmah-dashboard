@@ -14,6 +14,26 @@
       "type": "boolean",
       "default": true,
       "description": "Apakah mapel default sistem"
+    },
+    "nama_di_rapor": {
+      "type": "string",
+      "description": "Nama baris mapel di Rapor LHBS sesuai template (contoh: Seni Budaya). Kosong = belum dipetakan (tidak muncul di Rapor & Legger PTS). Beberapa mapel database boleh dipetakan ke baris yang sama (digabung rata-rata, contoh: Seni Musik + Seni Rupa -> Seni Budaya)."
+    },
+    "kelompok_rapor": {
+      "type": "string",
+      "enum": [
+        "Nasional",
+        "Mulok"
+      ],
+      "description": "Kelompok baris di Rapor: Nasional (MUATAN NASIONAL) atau Mulok (MUATAN LOKAL)"
+    },
+    "kode_legger": {
+      "type": "string",
+      "description": "Kode singkat untuk kolom Legger (contoh: PAI, PP, BIND, MTK, SBK)"
+    },
+    "urutan_rapor": {
+      "type": "number",
+      "description": "Urutan baris dalam kelompok di Rapor & urutan kolom di Legger (1, 2, 3, ...)"
     }
   },
   "required": [

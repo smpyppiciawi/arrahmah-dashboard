@@ -1,17 +1,27 @@
 import { jsPDF } from 'jspdf';
+import { terbilang } from '@/lib/terbilang';
 
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-function tanggalIndo() {
-  const d = new Date();
-  return `${d.getDate()} ${BULAN[d.getMonth()]} ${d.getFullYear()}`;
+/** '2026-09-24' -> '24 September 2026' */
+export function formatTanggalIndo(iso) {
+  if (!iso) return '';
+  const [y, m, d] = String(iso).split('-').map(Number);
+  if (!y || !m || !d) return '';
+  return `${d} ${BULAN[m - 1]} ${y}`;
 }
 
 function nilaiTeks(v) {
   return (v === null || v === undefined || v === '') ? '' : String(v);
 }
 
-// Singkat nama mapel untuk header legger, mis. "Pendidikan Agama Islam" -> "P. A. Islam"
+// Nilai huruf (terbilang) untuk kolom "Huruf" pada rapor, mis. 85 -> "Delapan Puluh Lima"
+function nilaiHuruf(v) {
+  if (v === null || v === undefined || v === '') return '';
+  return terbilang(Math.round(Number(v))).replace(/\s?rupiah$/i, '');
+}
+
+// Singkat nama mapel untuk fallback kode legger
 function singkatMapel(nama) {
   const words = String(nama || '').split(/\s+/).filter(Boolean);
   return words.map((w, i) => (i === words.length - 1 || w.length <= 4) ? w : `${w[0]}.`).join(' ');
@@ -33,125 +43,157 @@ function kopSekolah(doc, profil, lebar) {
   doc.line(15, garisY + 1.4, lebar - 15, garisY + 1.4);
 }
 
-/* ============ RAPOR PTS (A4 portrait, 1 halaman per siswa) ============ */
+/* ================= RAPOR / LHBS (A4 portrait, 1 halaman per siswa) ================= */
+/* Format mengikuti template: LAPORAN HASIL BELAJAR SISWA (LHBS) */
 
-function halamanRapor(doc, { profil, siswa, semester, tahunAjaran }) {
+function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
   const W = 210;
   kopSekolah(doc, profil, W);
-
   doc.setTextColor(30, 41, 59);
+
+  // Judul
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.text('LAPORAN HASIL BELAJAR (RAPOR)', W / 2, 37, { align: 'center' });
+  doc.setFontSize(12.5);
+  doc.text('LAPORAN HASIL BELAJAR SISWA ( LHBS )', W / 2, 36.5, { align: 'center' });
   doc.setFontSize(11);
-  doc.text('PENILAIAN TENGAH SEMESTER (PTS)', W / 2, 43.5, { align: 'center' });
+  doc.text(`SUMATIF TENGAH SEMESTER ${String(semesterLabel).toUpperCase()}`, W / 2, 42.5, { align: 'center' });
+  doc.setFontSize(10.5);
+  doc.text(`TAHUN PELAJARAN ${tahunAjaran}`, W / 2, 48, { align: 'center' });
+
+  // Blok identitas: NIS / Nama Siswa (kiri), Kelas / Semester (kanan)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.text(`Semester ${semester} - Tahun Ajaran ${tahunAjaran}`, W / 2, 49.5, { align: 'center' });
-
-  // Blok identitas
-  let y = 58;
   doc.setFontSize(10);
-  const kiri = [['Nama Siswa', siswa.nama], ['NIS', siswa.nis || '-'], ['Kelas', siswa.nama_kelas || '-']];
-  const kanan = [['Wali Kelas', siswa.wali_kelas || '-'], ['Semester', semester], ['Tahun Ajaran', tahunAjaran]];
-  kiri.forEach(([label, val]) => {
-    doc.setFont('helvetica', 'normal');
-    doc.text(label, 25, y);
-    doc.text(':', 60, y);
-    doc.setFont('helvetica', 'bold');
-    doc.text(String(val), 63, y);
-    y += 6.5;
+  let iy = 56.5;
+  [['NIS', siswa.nis || '-'], ['Nama Siswa', siswa.nama || '-']].forEach(([l, v]) => {
+    doc.text(l, 25, iy); doc.text(':', 62, iy); doc.text(String(v), 65, iy); iy += 6;
   });
-  y = 58;
-  kanan.forEach(([label, val]) => {
-    doc.setFont('helvetica', 'normal');
-    doc.text(label, 115, y);
-    doc.text(':', 152, y);
-    doc.text(String(val), 155, y);
-    y += 6.5;
+  iy = 56.5;
+  [['Kelas', siswa.nama_kelas || '-'], ['Semester', semesterLabel]].forEach(([l, v]) => {
+    doc.text(l, 112, iy); doc.text(':', 152, iy); doc.text(String(v), 155, iy); iy += 6;
   });
 
-  // Tabel nilai
-  const items = siswa.mapelNilai || [];
-  const headerTop = 82;
-  const avail = 235 - (headerTop + 8);
-  const rowH = items.length ? Math.min(7.5, Math.max(5, avail / items.length)) : 7.5;
-  const tableBottom = headerTop + 8 + rowH * items.length;
+  // Geometri tabel
+  const xNo = 25, wNo = 10, xMapel = 35, wMapel = 60, xKkm = 95, wKkm = 14;
+  const xAngka = 109, wAngka = 16, xHuruf = 125, wHuruf = 34, xKet = 159, wKet = 26, xRight = 185;
+  const headerTop = 72;
+  const hH1 = 7, hH2 = 5.5, hGroup = 6, hFooter = 7.5;
 
+  const groups = [
+    { huruf: 'A', judul: 'MUATAN NASIONAL', list: rows.filter(r => r.kelompok !== 'Mulok') },
+    { huruf: 'B', judul: 'MUATAN LOKAL (MULOK)', list: rows.filter(r => r.kelompok === 'Mulok') },
+  ].filter(g => g.list.length);
+  const nData = groups.reduce((a, g) => a + g.list.length, 0);
+  const reserved = headerTop + hH1 + hH2 + groups.length * hGroup + 3 * hFooter;
+  const rowH = nData ? Math.min(7.5, Math.max(5, (226 - reserved) / nData)) : 7.5;
+
+  const dataByLabel = siswa.rowValues || {};
+
+  // Header tabel
   doc.setFillColor(241, 245, 249);
-  doc.rect(25, headerTop, 160, 8, 'F');
+  doc.rect(xNo, headerTop, xRight - xNo, hH1 + hH2, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
-  doc.text('No', 30, headerTop + 5.3, { align: 'center' });
-  doc.text('Mata Pelajaran', 70, headerTop + 5.3, { align: 'center' });
-  doc.text('Nilai', 115, headerTop + 5.3, { align: 'center' });
-  doc.text('KKM', 135, headerTop + 5.3, { align: 'center' });
-  doc.text('Ketuntasan', 165, headerTop + 5.3, { align: 'center' });
+  const hcY = headerTop + (hH1 + hH2) / 2 + 1;
+  doc.text('No', xNo + wNo / 2, hcY, { align: 'center' });
+  doc.text('Mata Pelajaran', xMapel + wMapel / 2, hcY, { align: 'center' });
+  doc.text('KKM', xKkm + wKkm / 2, hcY, { align: 'center' });
+  doc.text('Nilai', xAngka + (wAngka + wHuruf) / 2, headerTop + hH1 / 2 + 1, { align: 'center' });
+  doc.text('Angka', xAngka + wAngka / 2, headerTop + hH1 + hH2 / 2 + 1, { align: 'center' });
+  doc.text('Huruf', xHuruf + wHuruf / 2, headerTop + hH1 + hH2 / 2 + 1, { align: 'center' });
+  doc.text('Keterangan', xKet + wKet / 2, hcY, { align: 'center' });
 
-  let ry = headerTop + 8;
-  doc.setFont('helvetica', 'normal');
-  items.forEach((m, i) => {
-    if (i % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(25, ry, 160, rowH, 'F');
-    }
-    const cy = ry + rowH / 2 + 1;
-    doc.text(String(i + 1), 30, cy, { align: 'center' });
-    doc.text(String(m.mapel || ''), 28, cy);
-    doc.text(nilaiTeks(m.nilai) || '-', 115, cy, { align: 'center' });
-    doc.text(nilaiTeks(m.kkm), 135, cy, { align: 'center' });
-    doc.text(m.status || '-', 165, cy, { align: 'center' });
-    ry += rowH;
+  let y = headerTop + hH1 + hH2;
+  // Grup + baris mapel (nomor per grup, reset tiap grup)
+  groups.forEach(group => {
+    doc.setFillColor(248, 250, 252);
+    doc.rect(xNo, y, xRight - xNo, hGroup, 'F');
+    doc.setFont('helvetica', 'bolditalic');
+    doc.setFontSize(8.5);
+    const cy = y + hGroup / 2 + 1;
+    doc.text(group.huruf, xNo + wNo / 2, cy, { align: 'center' });
+    doc.text(group.judul, xMapel + 2, cy);
+    y += hGroup;
+    let no = 1;
+    group.list.forEach(row => {
+      const d = dataByLabel[row.label] || {};
+      const cy2 = y + rowH / 2 + 1;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.text(String(no), xNo + wNo / 2, cy2, { align: 'center' });
+      const namaMapel = String(row.label || '');
+      doc.setFontSize(namaMapel.length > 30 ? 7 : 8.5);
+      doc.text(namaMapel, xMapel + 2, cy2);
+      doc.setFontSize(8.5);
+      doc.text(nilaiTeks(d.nilai) || '-', xAngka + wAngka / 2, cy2, { align: 'center' });
+      doc.text(nilaiHuruf(d.nilai), xHuruf + 2, cy2);
+      doc.setFontSize(7.5);
+      doc.text(d.keterangan || '-', xKet + wKet / 2, cy2, { align: 'center' });
+      no += 1;
+      y += rowH;
+    });
   });
+  const dataBottom = y;
+
+  // Baris footer: Jumlah Nilai + Predikat, Rata-Rata, Peringkat
+  const footer = [
+    { label: 'Jumlah Nilai', angka: siswa.jumlah != null ? String(siswa.jumlah) : '-', huruf: 'Predikat', ket: siswa.predikat || '-' },
+    { label: 'Rata - Rata Nilai', angka: siswa.rata != null ? String(siswa.rata) : '-', huruf: '', ket: '' },
+    { label: 'Peringkat Ke', angka: siswa.peringkat != null ? String(siswa.peringkat) : '-', huruf: 'Dari sebanyak', ket: siswa.total_siswa != null ? String(siswa.total_siswa) : '-' },
+  ];
+  doc.setFontSize(8.5);
+  footer.forEach(f => {
+    const cy = y + hFooter / 2 + 1;
+    doc.setFont('helvetica', 'bold');
+    doc.text(f.label, xNo + 3, cy);
+    doc.setFont('helvetica', 'normal');
+    doc.text(f.angka, xAngka + wAngka / 2, cy, { align: 'center' });
+    doc.text(f.huruf, xHuruf + 2, cy);
+    doc.text(f.ket, xKet + wKet / 2, cy, { align: 'center' });
+    y += hFooter;
+  });
+  const tableBottom = y;
 
   // Garis tabel
   doc.setDrawColor(120);
-  doc.rect(25, headerTop, 160, tableBottom - headerTop);
-  [35, 105, 125, 145].forEach(x => doc.line(x, headerTop, x, tableBottom));
-  let ly = headerTop + 8;
-  for (let i = 0; i < items.length; i++) {
-    ly += rowH;
-    doc.line(25, ly, 185, ly);
-  }
-  doc.line(25, headerTop + 8, 185, headerTop + 8);
+  doc.rect(xNo, headerTop, xRight - xNo, tableBottom - headerTop);
+  doc.line(xAngka, headerTop + hH1, xKet, headerTop + hH1); // bawah baris "Nilai" (area Angka-Huruf saja)
+  [xMapel, xKkm].forEach(x => doc.line(x, headerTop, x, dataBottom));
+  [xAngka, xHuruf, xKet].forEach(x => doc.line(x, headerTop, x, tableBottom));
+  let ly = headerTop + hH1 + hH2;
+  groups.forEach(group => {
+    doc.line(xNo, ly, xRight, ly);
+    ly += hGroup;
+    group.list.forEach(() => { ly += rowH; doc.line(xNo, ly, xRight, ly); });
+  });
+  doc.line(xNo, dataBottom, xRight, dataBottom);
+  footer.forEach(() => { ly += hFooter; doc.line(xNo, ly, xRight, ly); });
 
-  // Rata-rata
-  const nilaiAda = items.map(m => m.nilai).filter(v => v !== null && v !== undefined);
-  if (nilaiAda.length) {
-    const avg = nilaiAda.reduce((a, b) => a + Number(b), 0) / nilaiAda.length;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.text(`Rata-rata Nilai PTS : ${Math.round(avg * 10) / 10}`, 25, tableBottom + 7);
-  }
-
-  // Tanda tangan
-  const sigY = 248;
+  // Blok tanda tangan: Wali Murid | Wali Kelas | Kepala Sekolah
+  const sigTop = Math.min(234, Math.max(tableBottom + 8, 226));
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  doc.text(`${profil?.kab_kota || '................'}, ${tanggalIndo()}`, 185, sigY, { align: 'right' });
-  doc.text('Orang Tua/Wali,', 45, sigY + 8, { align: 'center' });
-  doc.text('( ______________ )', 45, sigY + 28, { align: 'center' });
-  doc.text('Kepala Sekolah,', 105, sigY + 8, { align: 'center' });
+  doc.text(`Ciawi, ${tanggalRapor || '.....................'}`, 160, sigTop, { align: 'center' });
+  const labelY = sigTop + 7;
+  doc.text('Wali Murid', 55, labelY, { align: 'center' });
+  doc.text('Wali Kelas', 105, labelY, { align: 'center' });
+  doc.text('Kepala Sekolah,', 160, labelY, { align: 'center' });
+  const nameY = sigTop + 30;
+  doc.text('( __________________ )', 55, nameY, { align: 'center' });
   doc.setFont('helvetica', 'bold');
-  doc.text(profil?.nama_kepala_sekolah || '( ______________ )', 105, sigY + 28, { align: 'center' });
-  if (profil?.nip_kepala_sekolah) {
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
-    doc.text(`NIP. ${profil.nip_kepala_sekolah}`, 105, sigY + 33.5, { align: 'center' });
-  }
+  doc.text(siswa.wali_kelas || '( ______________ )', 105, nameY, { align: 'center' });
+  doc.text('Hadi Teguh Raharjo, S.Pd.', 160, nameY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Wali Kelas,', 165, sigY + 8, { align: 'center' });
-  doc.setFont('helvetica', 'bold');
-  doc.text(siswa.wali_kelas || '( ______________ )', 165, sigY + 28, { align: 'center' });
+  doc.setFontSize(9);
+  if (siswa.nuptk_wali) doc.text(`NUPTK. ${siswa.nuptk_wali}`, 105, nameY + 5.5, { align: 'center' });
+  doc.text('NRKS. 19023L0720205231096408', 160, nameY + 5.5, { align: 'center' });
 }
 
-export function buatRaporPtsPdf({ profil, siswaList, semester, tahunAjaran }) {
+export function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
   siswaList.forEach((s, idx) => {
     if (idx > 0) doc.addPage();
-    halamanRapor(doc, { profil, siswa: s, semester, tahunAjaran });
+    halamanRapor(doc, { profil, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows });
   });
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
@@ -165,133 +207,170 @@ export function buatRaporPtsPdf({ profil, siswaList, semester, tahunAjaran }) {
   return doc;
 }
 
-/* ============ LEGGER PTS (A4 landscape, grid siswa x mapel) ============ */
+/* ============ LEGGER PTS (A4 landscape, kolom kode mapel hasil pemetaan) ============ */
 
-const LEG_M = 12;          // margin kiri
-const LEG_NO_W = 8;
-const LEG_NIS_W = 20;
-const LEG_NAMA_W = 44;
-const LEG_HEADER_H = 26;   // tinggi header utk label mapel diputar
-const LEG_ROW_H = 6.3;
+const LG = { m: 12, noW: 8, nisW: 20, namaW: 42, jmlW: 11, rataW: 12, rankW: 10, ketW: 16, rowH: 6.3, h1: 6 };
 
-function leggerHeader(doc, { profil, kelas, semester, tahunAjaran, topY }) {
+function geometriLegger(rows) {
+  const areaX = LG.m + LG.noW + LG.nisW + LG.namaW;
+  const right = 297 - LG.m;
+  const areaW = right - areaX - (LG.jmlW + LG.rataW + LG.rankW + LG.ketW);
+  const colW = rows.length ? areaW / rows.length : 0;
+  const jmlX = areaX + areaW;
+  const rataX = jmlX + LG.jmlW;
+  const rankX = rataX + LG.rataW;
+  const ketX = rankX + LG.rankW;
+  return { areaX, areaW, colW, jmlX, rataX, rankX, ketX, right };
+}
+
+function kodeLegger(row) {
+  return row.kode || singkatMapel(row.label).slice(0, 6);
+}
+
+function hitungRank(siswaList) {
+  const sorted = [...siswaList].sort((a, b) => (b.rata ?? -1) - (a.rata ?? -1));
+  const map = new Map();
+  let lastRata = null, lastRank = 0;
+  sorted.forEach((s, i) => {
+    const r = (s.rata === lastRata) ? lastRank : i + 1;
+    map.set(s, r);
+    lastRata = s.rata;
+    lastRank = r;
+  });
+  return map;
+}
+
+function gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan }) {
   const W = 297;
   kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(`LEGGER NILAI - PENILAIAN TENGAH SEMESTER (PTS) - KELAS ${kelas.nama_kelas || '-'}`, W / 2, topY - 6, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(11.5);
   doc.text(
-    `Semester ${semester} - Tahun Ajaran ${tahunAjaran} - Wali Kelas: ${kelas.wali_kelas || '-'} - Jumlah Siswa: ${kelas.siswaList.length}`,
-    W / 2, topY - 0.5, { align: 'center' }
+    `DAFTAR NILAI SUMATIF TENGAH SEMESTER ${String(semesterLabel).toUpperCase()} T.P. ${tahunAjaran}${lanjutan ? ' (LANJUTAN)' : ''}`,
+    W / 2, 31, { align: 'center' }
   );
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9.5);
+  let iy = 38.5;
+  [['Kelas', kelas.nama_kelas || '-'], ['Wali Kelas', kelas.wali_kelas || '-']].forEach(([l, v]) => {
+    doc.text(l, 15, iy); doc.text(':', 45, iy); doc.text(String(v), 48, iy); iy += 5.5;
+  });
+  iy = 38.5;
+  [['Semester', semesterLabel], ['Tahun Pelajaran', tahunAjaran]].forEach(([l, v]) => {
+    doc.text(l, 165, iy); doc.text(':', 207, iy); doc.text(String(v), 210, iy); iy += 5.5;
+  });
 }
 
-function gambarHeaderTabel(doc, { mapels, topY }) {
-  const areaX = LEG_M + LEG_NO_W + LEG_NIS_W + LEG_NAMA_W;
-  const areaW = (297 - LEG_M) - areaX;
-  const colW = mapels.length ? Math.min(13, areaW / mapels.length) : 0;
-  const tableRight = areaX + colW * mapels.length;
-  const bottom = topY + LEG_HEADER_H;
+function gambarTabelHeaderLegger(doc, { rows, g, topY }) {
+  const codes = rows.map(r => {
+    const kode = kodeLegger(r);
+    return { kode, rotate: kode.length * 1.15 > g.colW - 1.5 };
+  });
+  const h2 = Math.max(7, ...codes.map(c => (c.rotate ? c.kode.length * 1.15 + 2.5 : 7)), 7);
+  const headerBottom = topY + LG.h1 + h2;
 
   doc.setFillColor(241, 245, 249);
-  doc.rect(LEG_M, topY, tableRight - LEG_M, LEG_HEADER_H, 'F');
+  doc.rect(LG.m, topY, g.right - LG.m, LG.h1 + h2, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('No', LEG_M + LEG_NO_W / 2, topY + LEG_HEADER_H / 2 + 1, { align: 'center' });
-  doc.text('NIS', LEG_M + LEG_NO_W + LEG_NIS_W / 2, topY + LEG_HEADER_H / 2 + 1, { align: 'center' });
-  doc.text('Nama Siswa', LEG_M + LEG_NO_W + LEG_NIS_W + LEG_NAMA_W / 2, topY + LEG_HEADER_H / 2 + 1, { align: 'center' });
-
-  doc.setFontSize(6.5);
-  mapels.forEach((m, i) => {
-    const x = areaX + i * colW;
-    doc.text(singkatMapel(m).slice(0, 18), x + colW - 1.2, bottom - 1.5, { angle: 90 });
+  doc.setFontSize(7.5);
+  const hcY = topY + (LG.h1 + h2) / 2 + 1;
+  doc.text('NO', LG.m + LG.noW / 2, hcY, { align: 'center' });
+  doc.text('NIS', LG.m + LG.noW + LG.nisW / 2, hcY, { align: 'center' });
+  doc.text('NAMA SISWA', LG.m + LG.noW + LG.nisW + LG.namaW / 2, hcY, { align: 'center' });
+  doc.text('MATA PELAJARAN', g.areaX + g.areaW / 2, topY + LG.h1 / 2 + 1, { align: 'center' });
+  doc.text('JML', g.jmlX + LG.jmlW / 2, hcY, { align: 'center' });
+  doc.text('RATA2', g.rataX + LG.rataW / 2, hcY, { align: 'center' });
+  doc.text('RANK', g.rankX + LG.rankW / 2, hcY, { align: 'center' });
+  doc.text('KET', g.ketX + LG.ketW / 2, hcY, { align: 'center' });
+  // Baris kode mapel
+  rows.forEach((r, i) => {
+    const x = g.areaX + i * g.colW;
+    const c = codes[i];
+    if (c.rotate) {
+      doc.setFontSize(6);
+      doc.text(c.kode, x + g.colW - 1.2, headerBottom - 1.2, { angle: 90 });
+    } else {
+      doc.setFontSize(6.5);
+      doc.text(c.kode, x + g.colW / 2, topY + LG.h1 + h2 / 2 + 1, { align: 'center' });
+    }
   });
-
-  // garis
-  doc.setDrawColor(120);
-  doc.rect(LEG_M, topY, tableRight - LEG_M, LEG_HEADER_H);
-  let vx = LEG_M + LEG_NO_W;
-  doc.line(vx, topY, vx, bottom);
-  vx += LEG_NIS_W;
-  doc.line(vx, topY, vx, bottom);
-  vx += LEG_NAMA_W;
-  doc.line(vx, topY, vx, bottom);
-  for (let i = 1; i < mapels.length; i++) {
-    doc.line(areaX + i * colW, topY, areaX + i * colW, bottom);
-  }
-
-  return { areaX, colW, tableRight, bottom };
+  return { headerBottom, h2 };
 }
 
-function gambarBaris(doc, { s, no, y, mapels, areaX, colW, tableRight }) {
-  if (no % 2 === 0) {
-    doc.setFillColor(248, 250, 252);
-    doc.rect(LEG_M, y, tableRight - LEG_M, LEG_ROW_H, 'F');
-  }
+function gambarBarisLegger(doc, { s, no, y, rows, g, rank }) {
+  const cy = y + LG.rowH / 2 + 1;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
-  const cy = y + LEG_ROW_H / 2 + 1;
-  doc.text(String(no), LEG_M + LEG_NO_W / 2, cy, { align: 'center' });
-  doc.text(nilaiTeks(s.nis), LEG_M + LEG_NO_W + LEG_NIS_W / 2, cy, { align: 'center' });
-  doc.text(String(s.nama || '').slice(0, 30), LEG_M + LEG_NO_W + LEG_NIS_W + 1.5, cy);
-  mapels.forEach((m, i) => {
-    const v = s.nilaiByMapel?.[m];
-    doc.text(nilaiTeks(v), areaX + i * colW + colW / 2, cy, { align: 'center' });
+  doc.text(String(no), LG.m + LG.noW / 2, cy, { align: 'center' });
+  doc.text(nilaiTeks(s.nis), LG.m + LG.noW + LG.nisW / 2, cy, { align: 'center' });
+  doc.text(String(s.nama || '').slice(0, 30), LG.m + LG.noW + LG.nisW + 1.5, cy);
+  rows.forEach((r, i) => {
+    const v = s.nilaiByRow?.[r.label];
+    doc.text(nilaiTeks(v), g.areaX + i * g.colW + g.colW / 2, cy, { align: 'center' });
   });
+  doc.text(s.jumlah != null ? String(s.jumlah) : '', g.jmlX + LG.jmlW / 2, cy, { align: 'center' });
+  doc.text(s.rata != null ? String(s.rata) : '', g.rataX + LG.rataW / 2, cy, { align: 'center' });
+  doc.text(rank != null ? String(rank) : '', g.rankX + LG.rankW / 2, cy, { align: 'center' });
 }
 
-function gambarKelasLegger(doc, { profil, kelas, mapels, semester, tahunAjaran, mulaiHalaman }) {
-  const topY = 38;
-  const bottomLimit = 198;
-  const perPage = Math.max(1, Math.floor((bottomLimit - (topY + LEG_HEADER_H)) / LEG_ROW_H));
+function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjaran }) {
+  const g = geometriLegger(rows);
+  const topY = 51;
+  const bottomLimit = 199;
+  const rankMap = hitungRank(kelas.siswaList);
+  const list = kelas.siswaList;
+  // h2 bervariasi tiap halaman, hitung dulu untuk kapasitas
+  const codes = rows.map(r => ({ kode: kodeLegger(r), rotate: kodeLegger(r).length * 1.15 > g.colW - 1.5 }));
+  const h2 = Math.max(7, ...codes.map(c => (c.rotate ? c.kode.length * 1.15 + 2.5 : 7)), 7);
+  const perPage = Math.max(1, Math.floor((bottomLimit - (topY + LG.h1 + h2)) / LG.rowH));
 
-  let hal = 0;
-  let rowIdx = 0;
-  const rows = kelas.siswaList;
-  while (rowIdx < rows.length || hal === 0) {
+  let hal = 0, rowIdx = 0;
+  while (rowIdx < list.length || hal === 0) {
     if (hal > 0) doc.addPage();
-    leggerHeader(doc, { profil, kelas, semester, tahunAjaran, topY });
-    const { areaX, colW, tableRight } = gambarHeaderTabel(doc, { mapels, topY });
-    let y = topY + LEG_HEADER_H;
+    gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan: hal > 0 });
+    const { headerBottom } = gambarTabelHeaderLegger(doc, { rows, g, topY });
+    let y = headerBottom;
     let halCount = 0;
-    while (rowIdx < rows.length && halCount < perPage) {
-      gambarBaris(doc, { s: rows[rowIdx], no: rowIdx + 1, y, mapels, areaX, colW, tableRight });
-      doc.setDrawColor(120);
-      doc.line(LEG_M, y + LEG_ROW_H, tableRight, y + LEG_ROW_H);
-      y += LEG_ROW_H;
-      rowIdx++;
-      halCount++;
+    while (rowIdx < list.length && halCount < perPage) {
+      if (rowIdx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(LG.m, y, g.right - LG.m, LG.rowH, 'F');
+      }
+      gambarBarisLegger(doc, { s: list[rowIdx], no: rowIdx + 1, y, rows, g, rank: rankMap.get(list[rowIdx]) });
+      y += LG.rowH;
+      rowIdx++; halCount++;
     }
-    // garis vertikal tabel
+    // Garis
     doc.setDrawColor(120);
-    let vx = LEG_M + LEG_NO_W;
+    let vx = LG.m + LG.noW;
+    doc.line(vx, topY, vx, y); vx += LG.nisW;
+    doc.line(vx, topY, vx, y); vx += LG.namaW;
     doc.line(vx, topY, vx, y);
-    vx += LEG_NIS_W;
-    doc.line(vx, topY, vx, y);
-    vx += LEG_NAMA_W;
-    doc.line(vx, topY, vx, y);
-    for (let i = 1; i < mapels.length; i++) {
-      doc.line(areaX + i * colW, topY, areaX + i * colW, y);
-    }
-    doc.rect(LEG_M, topY, tableRight - LEG_M, y - topY);
+    for (let i = 1; i < rows.length; i++) doc.line(g.areaX + i * g.colW, topY, g.areaX + i * g.colW, y);
+    doc.line(g.jmlX, topY, g.jmlX, y);
+    doc.line(g.rataX, topY, g.rataX, y);
+    doc.line(g.rankX, topY, g.rankX, y);
+    doc.line(g.ketX, topY, g.ketX, y);
+    doc.line(LG.m, topY + LG.h1 + h2, g.right, topY + LG.h1 + h2);
+    let ly = headerBottom;
+    for (let i = 0; i < halCount; i++) { ly += LG.rowH; doc.line(LG.m, ly, g.right, ly); }
+    doc.rect(LG.m, topY, g.right - LG.m, y - topY);
     hal++;
-    if (rows.length === 0) break;
-  }
-  if (!rows.length) {
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
-    doc.text('Belum ada data nilai PTS untuk kelas ini.', 297 / 2, topY + LEG_HEADER_H + 10, { align: 'center' });
+    if (!list.length) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.text('Belum ada data nilai PTS untuk kelas ini.', 297 / 2, headerBottom + 10, { align: 'center' });
+      break;
+    }
   }
 }
 
-export function buatLeggerPtsPdf({ profil, kelasList, mapels, semester, tahunAjaran }) {
+export function buatLeggerPtsPdf({ profil, kelasList, rows, semesterLabel, tahunAjaran }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   kelasList.forEach((kelas, idx) => {
     if (idx > 0) doc.addPage();
-    gambarKelasLegger(doc, { profil, kelas, mapels, semester, tahunAjaran, mulaiHalaman: idx === 0 });
+    gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjaran });
   });
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
