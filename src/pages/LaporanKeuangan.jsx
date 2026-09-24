@@ -17,6 +17,8 @@ import {
   ArrowLeftRight
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
+import TunggakanDetailDialog from '@/components/laporan/TunggakanDetailDialog';
+import CetakTunggakanDialog from '@/components/laporan/CetakTunggakanDialog';
 import TransferDanaDialog from '@/components/transaksi/TransferDanaDialog';
 import { computeStatusKeuangan, tarifMatchesTingkat } from '@/lib/sppUtils';
 import { useAuth } from '@/lib/AuthContext';
@@ -35,6 +37,8 @@ export default function LaporanKeuangan() {
   const [selectedKelas, setSelectedKelas] = useState('');
   const [selectedIuran, setSelectedIuran] = useState('');
   const [selectedTA, setSelectedTA] = useState('__aktif__');
+  const [detailRow, setDetailRow] = useState(null);
+  const [cetakOpen, setCetakOpen] = useState(false);
 
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
@@ -265,6 +269,7 @@ export default function LaporanKeuangan() {
       });
       return {
         ...siswa,
+        status_items: statusKeu.items,
         total_dibayar: statusKeu.totalDibayar,
         sisa_jatuh_tempo: statusKeu.sisaJatuhTempo,
         sisa_setahun: statusKeu.sisaSetahun,
@@ -392,63 +397,6 @@ export default function LaporanKeuangan() {
     setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
   };
 
-  const printLaporanTunggakan = () => {
-    const printWindow = window.open('', '', 'width=800,height=600');
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Laporan Tunggakan Siswa</title>
-          <style>
-            body { font-family: Arial, sans-serif; font-size: 10px; margin: 20px; }
-            h2 { text-align: center; margin-bottom: 15px; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 4px; }
-            th { background: #f0f0f0; }
-            .right { text-align: right; }
-            .red { color: red; }
-            .green { color: green; }
-            .orange { color: #b45300; }
-          </style>
-        </head>
-        <body>
-          <h2>LAPORAN TUNGGAKAN IURAN SISWA</h2>
-          <p>Tahun Ajaran: ${taTerpilih || 'Semua Tahun Ajaran'} | Kelas: ${selectedKelas ? kelasList.find(k => k.id === selectedKelas)?.nama_kelas : 'Semua Kelas'}${selectedIuran ? ` | Iuran: ${selectedIuran}` : ' | Semua Iuran'}</p>
-          <table>
-            <tr>
-              <th>No</th>
-              <th>NIS</th>
-              <th>Nama</th>
-              <th>Kelas</th>
-              <th>Total Bayar</th>
-              <th>Sisa Bayar (Jatuh Tempo)</th>
-              <th>Sisa Bayar (Setahun)</th>
-              ${selectedIuran ? '<th>Periode</th>' : ''}
-              <th>Status</th>
-            </tr>
-            ${laporanTunggakan.map((s, i) => `
-              <tr>
-                <td>${i + 1}</td>
-                <td>${s.nis}</td>
-                <td>${s.nama}</td>
-                <td>${s.nama_kelas}</td>
-                <td class="right">${formatRupiah(s.total_dibayar)}</td>
-                <td class="right ${s.sisa_jatuh_tempo > 0 ? 'red' : ''}">${formatRupiah(s.sisa_jatuh_tempo)}</td>
-                <td class="right ${s.sisa_setahun > 0 ? 'red' : ''}">${formatRupiah(s.sisa_setahun)}</td>
-                ${selectedIuran ? `<td>${s.periode}</td>` : ''}
-                <td class="${s.status_keuangan === 'Lunas' ? 'green' : s.status_keuangan === 'Cicilan' ? 'orange' : 'red'}">${s.status_keuangan}</td>
-              </tr>
-            `).join('')}
-          </table>
-          <p style="margin-top: 15px;">Lunas: ${laporanTunggakan.filter(s => s.status_keuangan === 'Lunas').length} siswa | Cicilan: ${laporanTunggakan.filter(s => s.status_keuangan === 'Cicilan').length} siswa | Menunggak: ${laporanTunggakan.filter(s => s.status_keuangan === 'Menunggak').length} siswa</p>
-          <p>Total Sisa Bayar (Jatuh Tempo): ${formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_jatuh_tempo, 0))} | Total Sisa Bayar (Setahun): ${formatRupiah(laporanTunggakan.reduce((sum, s) => sum + s.sisa_setahun, 0))}</p>
-          <p style="text-align: right; margin-top: 20px;">Dicetak: ${format(new Date(), 'd MMMM yyyy HH:mm', { locale: idLocale })}</p>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 250);
-  };
 
   // Columns for tables
   const rekeningKoranColumns = [
@@ -469,14 +417,26 @@ export default function LaporanKeuangan() {
   const sisaRender = (row, field) => <span className={row[field] > 0 ? 'text-red-600 font-medium' : 'text-emerald-600'}>{formatRupiah(row[field])}</span>;
 
   const tunggakanColumns = [
-    { key: 'nis', label: 'NIS' },
-    { key: 'nama', label: 'Nama' },
-    { key: 'nama_kelas', label: 'Kelas' },
-    { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => formatRupiah(row.total_dibayar) },
+    { key: 'nis', label: 'NIS', render: (row) => <span className="text-xs text-slate-500 font-mono">{row.nis}</span> },
+    { key: 'nama', label: 'Nama', render: (row) => (
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+          {row.nama?.split(' ').map(n => n[0]).slice(0, 2).join('') || '?'}
+        </div>
+        <span className="font-semibold text-slate-800">{row.nama}</span>
+      </div>
+    ) },
+    { key: 'nama_kelas', label: 'Kelas', render: (row) => <Badge variant="outline" className="text-xs">{row.nama_kelas}</Badge> },
+    { key: 'total_dibayar', label: 'Total Dibayar', render: (row) => <span className="font-semibold text-emerald-600">{formatRupiah(row.total_dibayar)}</span> },
     { key: 'sisa_jatuh_tempo', label: 'Sisa Bayar (Jatuh Tempo)', render: (row) => sisaRender(row, 'sisa_jatuh_tempo') },
     { key: 'sisa_setahun', label: 'Sisa Bayar (Setahun)', render: (row) => sisaRender(row, 'sisa_setahun') },
     ...(selectedIuran ? [{ key: 'periode', label: 'Periode', render: (row) => <Badge variant="outline">{row.periode}</Badge> }] : []),
-    { key: 'status_keuangan', label: 'Status', render: (row) => <Badge className={statusBadgeCls(row.status_keuangan)}>{row.status_keuangan}</Badge> }
+    { key: 'status_keuangan', label: 'Status', render: (row) => (
+      <Badge className={`${statusBadgeCls(row.status_keuangan)} gap-1.5`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${row.status_keuangan === 'Lunas' ? 'bg-emerald-500' : row.status_keuangan === 'Cicilan' ? 'bg-amber-500' : 'bg-red-500'}`} />
+        {row.status_keuangan}
+      </Badge>
+    ) }
   ];
 
   return (
@@ -737,14 +697,22 @@ export default function LaporanKeuangan() {
             </div>
 
             <Card className="border-0 shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Data Tunggakan Siswa</CardTitle>
-                <Button onClick={printLaporanTunggakan} variant="outline">
+              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
+                <div>
+                  <CardTitle>Data Tunggakan Siswa</CardTitle>
+                  <p className="text-xs text-slate-400 mt-0.5">Klik baris siswa untuk detail &amp; cetak per siswa</p>
+                </div>
+                <Button onClick={() => setCetakOpen(true)} variant="outline">
                   <Printer className="w-4 h-4 mr-2" /> Cetak
                 </Button>
               </CardHeader>
               <CardContent>
-                <DataTable columns={tunggakanColumns} data={laporanTunggakan} pageSize={10} />
+                <DataTable
+                  columns={tunggakanColumns}
+                  data={laporanTunggakan}
+                  pageSize={10}
+                  onRowClick={(row) => setDetailRow(row)}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -753,6 +721,22 @@ export default function LaporanKeuangan() {
             <PengumumanBendahara />
           </TabsContent>
         </Tabs>
+
+        <TunggakanDetailDialog
+          isOpen={!!detailRow}
+          onClose={() => setDetailRow(null)}
+          row={detailRow}
+          taLabel={taTerpilih || 'Semua Tahun Ajaran'}
+        />
+
+        <CetakTunggakanDialog
+          isOpen={cetakOpen}
+          onClose={() => setCetakOpen(false)}
+          rows={laporanTunggakan}
+          taLabel={taTerpilih || 'Semua Tahun Ajaran'}
+          kelasLabel={selectedKelas ? (kelasList.find(k => k.id === selectedKelas)?.nama_kelas || 'Semua Kelas') : 'Semua Kelas'}
+          iuranLabel={selectedIuran || 'Semua Iuran'}
+        />
 
         <TransferDanaDialog
           open={transferOpen}
