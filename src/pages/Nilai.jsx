@@ -7,13 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users } from "lucide-react";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, FileText } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
 import TkaTab from "@/components/nilai/TkaTab";
 import NilaiCardList from "@/components/nilai/NilaiCardList";
 import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
+import PtsTab from "@/components/nilai/PtsTab";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 // Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
@@ -27,6 +28,7 @@ const TABS = [
   { key: 'input', label: 'Input Nilai', icon: BookOpen },
   { key: 'analisis', label: 'Analisis', icon: TrendingUp },
   { key: 'pengelolaan', label: 'Pengelolaan', icon: Calculator },
+  { key: 'pts', label: 'PTS', icon: FileText },
 ];
 
 export default function Nilai() {
@@ -268,6 +270,7 @@ export default function Nilai() {
         {activeTab === 'analisis' && <AnalisisNilai />}
         {activeTab === 'pengelolaan' && <PengelolaanNilai />}
         {activeTab === 'tka' && <TkaTab userRole={userRole} guruData={guruData} kelasList={kelasList} siswaList={siswaList} currentUser={currentUser} />}
+        {activeTab === 'pts' && <PtsTab nilaiList={nilaiList} siswaList={siswaList} kelasList={kelasList} availableKelas={availableKelas} activeAcademicYear={activeAcademicYear} />}
 
         {activeTab === 'input' && (
           <div className="space-y-5">
