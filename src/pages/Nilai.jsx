@@ -16,7 +16,8 @@ import NilaiCardList from "@/components/nilai/NilaiCardList";
 import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
-const MAPEL_LIST = [
+// Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
+const MAPEL_FALLBACK = [
   "PAI", "Bahasa Indonesia", "Matematika", "IPA", "IPS",
   "Bahasa Inggris", "PJOK", "Seni Musik", "Seni Rupa",
   "Akidah Akhlak", "BTAQ"
@@ -75,6 +76,7 @@ export default function Nilai() {
   const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
   const { data: guruList = [] } = useQuery({ queryKey: ['guru'], queryFn: () => base44.entities.Guru.list('nama'), staleTime: 60000 });
+  const { data: mapelList = [] } = useQuery({ queryKey: ['mapel'], queryFn: () => base44.entities.Mapel.list('nama'), staleTime: 60000 });
 
   const guruData = guruList.find(g => g.email === currentUser?.email);
 
@@ -99,7 +101,12 @@ export default function Nilai() {
   const assignedKelasIds = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.kelas_id))] : [], [isGuruRole, pembelajaranGuru]);
   const assignedMapel = useMemo(() => isGuruRole ? [...new Set(pembelajaranGuru.map(p => p.mapel))] : [], [isGuruRole, pembelajaranGuru]);
   const availableKelas = isGuruRole ? kelasList.filter(k => assignedKelasIds.includes(k.id)) : kelasList;
-  const availableMapel = isGuruRole ? assignedMapel : MAPEL_LIST;
+  // Daftar mapel dinamis dari data Mapel terdaftar (fallback ke daftar lama jika kosong)
+  const daftarMapel = useMemo(() => {
+    const nama = [...new Set(mapelList.map(m => m?.nama).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    return nama.length > 0 ? nama : MAPEL_FALLBACK;
+  }, [mapelList]);
+  const availableMapel = isGuruRole ? assignedMapel : daftarMapel;
 
   const { data: nilaiList = [], isLoading } = useQuery({
     queryKey: ['nilai', currentUser?.email, userRole, assignedKelasIds, assignedMapel],
