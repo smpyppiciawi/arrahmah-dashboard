@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { FileText, Table2, User, Users, Layers, Search, Printer, Settings2, CalendarDays, Link2, ListChecks } from 'lucide-react';
+import { FileText, Table2, User, Users, Layers, Search, Printer, Settings2, CalendarDays, Link2, ListChecks, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { buatRaporPtsPdf, buatLeggerPtsPdf, formatTanggalIndo } from '@/lib/ptsPdf';
@@ -17,6 +17,7 @@ import PtsStatusMapelView from '@/components/nilai/PtsStatusMapelView';
 import PtsProgressDetailDialog from '@/components/nilai/PtsProgressDetailDialog';
 import PaginationBar from '@/components/appui/PaginationBar';
 import PillTabs from '@/components/appui/PillTabs';
+import LeggerDownloadDialog from '@/components/nilai/LeggerDownloadDialog';
 
 const SORT_SISWA = [
   { value: 'nama', label: 'Nama A-Z' },
@@ -48,6 +49,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   const [pageSize, setPageSize] = useState(10);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pemetaanOpen, setPemetaanOpen] = useState(false);
+  const [leggerDlOpen, setLeggerDlOpen] = useState(false);
   const [statusDetail, setStatusDetail] = useState(null);
   const [preview, setPreview] = useState(null);
   const { toast } = useToast();
@@ -449,6 +451,9 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
               <Button size="sm" variant="outline" className="gap-2 rounded-full" onClick={() => bukaLegger(filterKelas === 'all' ? null : filterKelas)}>
                 <Printer className="w-4 h-4" /> {filterKelas === 'all' ? 'Legger Semua Kelas' : `Legger Kelas ${kelasList.find(k => k.id === filterKelas)?.nama_kelas || ''}`}
               </Button>
+              <Button size="sm" variant="outline" className="gap-2 rounded-full" onClick={() => setLeggerDlOpen(true)}>
+                <Download className="w-4 h-4" /> Download Excel/CSV
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -592,6 +597,17 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
       </Dialog>
 
       <PemetaanMapelDialog open={pemetaanOpen} onOpenChange={setPemetaanOpen} mapelList={mapelList} kkmPts={kkmPts} onSaveKkm={simpanKkmPts} />
+      <LeggerDownloadDialog
+        open={leggerDlOpen}
+        onOpenChange={setLeggerDlOpen}
+        availableKelas={availableKelas}
+        kelasList={kelasList}
+        dataPerSiswa={dataPerSiswa}
+        rowsDef={rowsDef}
+        semesterLabel={labelSemester}
+        tahunAjaran={tahunAjaran}
+        initialKelas={filterKelas}
+      />
       <PtsProgressDetailDialog open={!!statusDetail} onOpenChange={(v) => !v && setStatusDetail(null)} detail={statusDetail} />
       <PtsPreviewDialog preview={preview} onClose={() => setPreview(null)} />
     </div>

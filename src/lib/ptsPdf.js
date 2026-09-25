@@ -30,21 +30,21 @@ function singkatMapel(nama) {
 /* ===== Kop surat — susunan baris dihitung dinamis dari Profil Sekolah ===== */
 
 function kopLayout(profil) {
+  // Susunan mengikuti format DOCX: Yayasan / Sekolah / NPSN / Alamat / Kontak
   const lines = [];
-  if (profil?.nama_yayasan) lines.push({ text: profil.nama_yayasan.toUpperCase(), size: 9, bold: true });
-  lines.push({ text: (profil?.nama_sekolah || 'YPPI Arrahmah').toUpperCase(), size: 13, bold: true });
-  const idLine = [profil?.nss ? `NSM/NSS: ${profil.nss}` : null, profil?.npsn ? `NPSN: ${profil.npsn}` : null].filter(Boolean).join('  |  ');
-  if (idLine) lines.push({ text: idLine, size: 8.5 });
+  if (profil?.nama_yayasan) lines.push({ text: profil.nama_yayasan.toUpperCase(), size: 11, bold: true });
+  lines.push({ text: (profil?.nama_sekolah || 'YPPI Arrahmah').toUpperCase(), size: 14, bold: true });
+  if (profil?.npsn) lines.push({ text: `NPSN: ${profil.npsn}`, size: 9.5, bold: true });
   const alamat = [profil?.alamat_jalan, profil?.desa_kelurahan, profil?.kecamatan, profil?.kab_kota, profil?.kode_pos].filter(Boolean).join(', ');
-  if (alamat) lines.push({ text: alamat, size: 8.5 });
+  if (alamat) lines.push({ text: alamat, size: 9.5 });
   const kontak = [profil?.telepon ? `Telp. ${profil.telepon}` : null, profil?.email].filter(Boolean).join('  |  ');
-  if (kontak) lines.push({ text: kontak, size: 8.5 });
-  let y = 15;
+  if (kontak) lines.push({ text: kontak, size: 9.5 });
+  let y = 14;
   const pos = lines.map((l, i) => {
-    if (i > 0) y += (lines[i - 1].size >= 13 ? 5.5 : 4.5);
+    if (i > 0) y += (lines[i - 1].size >= 11 ? 6 : 4.8);
     return { ...l, y };
   });
-  return { pos, bottom: y + 5 };
+  return { pos, bottom: y + 5.5 };
 }
 
 function kopSekolah(doc, profil, lebar) {
