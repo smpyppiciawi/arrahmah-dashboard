@@ -111,7 +111,8 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   const rowsDef = useMemo(() => {
     const byLabel = new Map();
     mapelList.forEach(m => {
-      if (!m.nama_di_rapor) return;
+      // Mapel tampil di Rapor/Legger hanya bila pemetaannya lengkap (Nama + Kode + Urutan)
+      if (!m.nama_di_rapor || !m.kode_legger || !m.urutan_rapor) return;
       const kelompok = m.kelompok_rapor || 'Nasional';
       const key = `${kelompok}::${m.nama_di_rapor}`;
       if (!byLabel.has(key)) {
@@ -251,8 +252,9 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
     return idx;
   }, [ptsRecords]);
 
+  // Status Progres Penilaian hanya menampilkan mapel dengan pemetaan lengkap (Nama + Kode + Urutan)
   const mapelDbNames = useMemo(
-    () => [...new Set(mapelList.map(m => m?.nama).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    () => [...new Set(mapelList.filter(m => m.nama_di_rapor && m.kode_legger && m.urutan_rapor).map(m => m?.nama).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [mapelList]
   );
 

@@ -10,7 +10,7 @@ const MODES = [
   { key: 'global', label: 'Seluruh Data', desc: 'Semua siswa sesuai filter aktif', icon: FileText },
   { key: 'kelas', label: 'Per Kelas', desc: 'Dipisah section tiap kelas', icon: School },
   { key: 'siswa', label: 'Per Siswa', desc: 'Detail lengkap tiap siswa', icon: Users },
-  { key: 'iuran', label: 'Per Jenis Iuran', desc: 'Rekap per jenis iuran', icon: BookOpen },
+  { key: 'iuran', label: 'Per Jenis Iuran', desc: 'Rekap jenis iuran terpilih (ceklis)', icon: BookOpen },
   { key: 'status', label: 'Per Status', desc: 'Kelompok Lunas/Cicilan/Menunggak', icon: Activity },
 ];
 
@@ -22,28 +22,35 @@ const MODES = [
 export default function CetakTunggakanDialog({ isOpen, onClose, rows, taLabel, kelasLabel, iuranLabel }) {
   const [mode, setMode] = useState('global');
   const [pick, setPick] = useState('');
+  const [iuranChecked, setIuranChecked] = useState([]);
   const [onlySisa, setOnlySisa] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
 
   useEffect(() => {
-    if (isOpen) { setMode('global'); setPick(''); setOnlySisa(false); setShowDetail(false); }
+    if (isOpen) { setMode('global'); setPick(''); setIuranChecked([]); setOnlySisa(false); setShowDetail(false); }
   }, [isOpen]);
 
   const options = useMemo(() => {
     if (mode === 'kelas') return [...new Set(rows.map(r => r.nama_kelas).filter(Boolean))].sort();
-    if (mode === 'iuran') return [...new Set(rows.flatMap(r => (r.status_items || []).map(it => it.nama)))].sort();
     if (mode === 'siswa') return rows.map(r => ({ id: r.id, label: `${r.nama} (${r.nama_kelas})` }));
     return [];
   }, [mode, rows]);
 
-  const showPick = mode === 'kelas' || mode === 'siswa' || mode === 'iuran';
-  const pickLabel = mode === 'kelas' ? 'Pilih Kelas' : mode === 'siswa' ? 'Pilih Siswa' : 'Pilih Jenis Iuran';
+  // Daftar jenis iuran untuk ceklisan (mode 'iuran')
+  const iuranOptions = useMemo(
+    () => [...new Set(rows.flatMap(r => (r.status_items || []).map(it => it.nama)))].sort(),
+    [rows]
+  );
+
+  const showPick = mode === 'kelas' || mode === 'siswa';
+  const pickLabel = mode === 'kelas' ? 'Pilih Kelas' : 'Pilih Siswa';
 
   const handleCetak = () => {
     printTunggakanReport({
       rows, taLabel, kelasLabel, iuranLabel,
       mode,
       pick: pick && pick !== 'all' ? pick : '',
+      iuranPicks: mode === 'iuran' ? iuranChecked : null,
       onlySisa,
       showDetail,
     });
@@ -67,7 +74,7 @@ export default function CetakTunggakanDialog({ isOpen, onClose, rows, taLabel, k
               return (
                 <button
                   key={m.key}
-                  onClick={() => { setMode(m.key); setPick(''); }}
+                  onClick={() => { setMode(m.key); setPick(''); if (m.key === 'iuran') setIuranChecked(iuranOptions); }}
                   className={`text-left p-3 rounded-xl border transition-all ${active ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-slate-200 hover:bg-slate-50'}`}
                 >
                   <div className="flex items-center gap-2">
@@ -93,6 +100,34 @@ export default function CetakTunggakanDialog({ isOpen, onClose, rows, taLabel, k
                   : options.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
               </SelectContent>
             </Select>
+          </div>
+        )}
+
+        {mode === 'iuran' && (
+          <div>
+            <Label className="text-xs text-slate-500">Ceklis Jenis Iuran yang Muncul pada Cetak Laporan</Label>
+            <div className="mt-1.5 max-h-40 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100">
+              {iuranOptions.length === 0 && (
+                <p className="p-3 text-sm text-slate-400">Tidak ada jenis iuran pada data ini.</p>
+              )}
+              {iuranOptions.map(nm => {
+                const on = iuranChecked.includes(nm);
+                return (
+                  <button
+                    key={nm}
+                    type="button"
+                    onClick={() => setIuranChecked(prev => on ? prev.filter(x => x !== nm) : [...prev, nm])}
+                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50"
+                  >
+                    <span className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${on ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-slate-300'}`}>
+                      {on && <Check className="w-3.5 h-3.5" />}
+                    </span>
+                    <span className={`text-sm ${on ? 'font-medium text-slate-800' : 'text-slate-400'}`}>{nm}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[11px] text-slate-400 mt-1">Cetak hanya menyertakan jenis iuran yang diceklis.</p>
           </div>
         )}
 

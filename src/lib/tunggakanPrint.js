@@ -33,9 +33,53 @@ function openPrintWindow(title, body) {
   setTimeout(() => { w.print(); w.close(); }, 250);
 }
 
+// SPP difokuskan ke bulan terpilih: tagihan/dibayar/sisa & status dihitung ulang per bulan
+function sppItemFokusBulan(it, bulan) {
+  const nominal = it.nominal_per_bulan || 0;
+  const paid = new Set(it.paid_months || []);
+  const gratis = new Set(it.gratis_months || []);
+  const nonGratis = bulan.filter(m => !gratis.has(m));
+  const tagihan = nominal * nonGratis.length;
+  const dibayar = nominal * nonGratis.filter(m => paid.has(m)).length;
+  const sisa = Math.max(0, tagihan - dibayar);
+  return {
+    ...it,
+    tagihan,
+    tagihan_jatuh_tempo: tagihan,
+    dibayar,
+    sisa_jatuh_tempo: sisa,
+    sisa_setahun: sisa,
+    status: sisa <= 0 ? 'Lunas' : (dibayar > 0 ? 'Cicilan' : 'Menunggak'),
+    fokus_bulan: bulan,
+  };
+}
+
+// Item iuran yang tampil sesuai pilihan (ceklisan jenis iuran & bulan SPP)
+function prepItems(s, opts = {}) {
+  let items = (s.status_items || []).slice();
+  if (opts.iuranPilihan) items = items.filter(it => opts.iuranPilihan.has(it.key));
+  if (opts.bulanPilihan && opts.bulanPilihan.length) {
+    items = items.map(it => (it.jenis === 'SPP' ? sppItemFokusBulan(it, opts.bulanPilihan) : it));
+  }
+  return items;
+}
+
+// Rekap angka (dibayar/sisa/status) dari item yang tampil
+function rekapDariItems(items, fallbackStatus) {
+  const totalDibayar = items.reduce((a, it) => a + it.dibayar, 0);
+  const totalSisa = items.reduce((a, it) => a + it.sisa_setahun, 0);
+  const status = fallbackStatus
+    ? fallbackStatus
+    : (totalSisa <= 0 ? 'Lunas' : (totalDibayar > 0 ? 'Cicilan' : 'Menunggak'));
+  return { totalDibayar, totalSisa, status };
+}
+
 /** Blok detail satu siswa (identitas + tabel per jenis iuran) */
-export function siswaDetailBlock(s) {
-  const itemRows = (s.status_items || []).map(it => `
+export function siswaDetailBlock(s, opts = {}) {
+  const items = prepItems(s, opts);
+  const difilter = !!(opts.iuranPilihan || (opts.bulanPilihan && opts.bulanPilihan.length));
+  const { totalDibayar, totalSisa, status } = rekapDariItems(items, difilter ? null : s.status_keuangan);
+  const itemRows = items.map(it => `
     <tr>
       <td>${it.nama}${it.gratis ? ' (Gratis)' : ''}</td>
       <td>${it.periode || '-'}</td>
@@ -44,6 +88,24 @@ export function siswaDetailBlock(s) {
       <td class="right ${it.sisa_setahun > 0 ? 'red' : 'green'}">${fmt(it.sisa_setahun)}</td>
       <td style="color:${statusColor(it.status)}; font-weight:bold">${it.status}</td>
     </tr>`).join('');
+
+  // Rincian SPP per bulan terpilih (mode Data Per Bulan)
+  const sppFokus = items.find(it => it.fokus_bulan);
+  const rincianSpp = sppFokus ? `
+      <table style="margin-top:4px">
+        <thead>
+          <tr><th>Rincian SPP — Bulan Terpilih (${sppFokus.fokus_bulan.length})</th><th>Nominal per Bulan</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          ${sppFokus.fokus_bulan.map(m => {
+            const isGratis = (sppFokus.gratis_months || []).includes(m);
+            const isPaid = (sppFokus.paid_months || []).includes(m);
+            const st = isGratis ? 'Gratis' : isPaid ? 'Lunas' : 'Belum Bayar';
+            return `<tr><td>${m}</td><td class="right">${fmt(sppFokus.nominal_per_bulan || 0)}</td><td class="${st === 'Belum Bayar' ? 'red' : 'green'}" style="font-weight:bold">${st}</td></tr>`;
+          }).join('')}
+        </tbody>
+      </table>` : '';
+
   return `
     <div class="block">
       <table class="noborder">
@@ -61,12 +123,13 @@ export function siswaDetailBlock(s) {
         <tfoot>
           <tr class="total">
             <td colspan="3">TOTAL</td>
-            <td class="right">${fmt(s.total_dibayar)}</td>
-            <td class="right ${s.sisa_setahun > 0 ? 'red' : 'green'}">${fmt(s.sisa_setahun)}</td>
-            <td style="color:${statusColor(s.status_keuangan)}">${s.status_keuangan}</td>
+            <td class="right">${fmt(totalDibayar)}</td>
+            <td class="right ${totalSisa > 0 ? 'red' : 'green'}">${fmt(totalSisa)}</td>
+            <td style="color:${statusColor(status)}">${status}</td>
           </tr>
         </tfoot>
       </table>
+      ${rincianSpp}
     </div>`;
 }
 
@@ -99,26 +162,34 @@ function ringkasTable(list) {
     </table>`;
 }
 
-/** Cetak data satu siswa (dari popup detail) */
-export function printSiswaStatement(s, taLabel) {
+/**
+ * Cetak data satu siswa (dari popup detail).
+ * opts: { iuranPilihan: Set<key item>, bulanPilihan: [nama bulan] (mode Data Per Bulan) }
+ */
+export function printSiswaStatement(s, taLabel, opts = {}) {
   if (!s) return;
+  const items = prepItems(s, opts);
+  const difilter = !!(opts.iuranPilihan || (opts.bulanPilihan && opts.bulanPilihan.length));
+  const { totalDibayar, totalSisa, status } = rekapDariItems(items, difilter ? null : s.status_keuangan);
+  const bulanInfo = opts.bulanPilihan && opts.bulanPilihan.length ? ` · Bulan Terpilih: ${opts.bulanPilihan.join(', ')}` : '';
   openPrintWindow(`Tunggakan ${s.nama || 'Siswa'}`, `
     <h2>DATA PEMBAYARAN &amp; TUNGGAKAN SISWA</h2>
-    <p class="sub">Tahun Ajaran: ${taLabel || '-'}</p>
-    ${siswaDetailBlock(s)}
+    <p class="sub">Tahun Ajaran: ${taLabel || '-'}${bulanInfo}</p>
+    ${siswaDetailBlock(s, opts)}
     <p class="info" style="margin-top:10px">
-      Sisa Bayar (Jatuh Tempo): <b>${fmt(s.sisa_jatuh_tempo)}</b> ·
-      Sisa Bayar (Setahun): <b>${fmt(s.sisa_setahun)}</b> ·
-      Status: <b style="color:${statusColor(s.status_keuangan)}">${s.status_keuangan}</b>
+      Total Dibayar: <b class="green">${fmt(totalDibayar)}</b> ·
+      Sisa Bayar: <b class="${totalSisa > 0 ? 'red' : 'green'}">${fmt(totalSisa)}</b> ·
+      Status: <b style="color:${statusColor(status)}">${status}</b>
     </p>`);
 }
 
 /**
  * Cetak laporan tunggakan sesuai mode pilihan.
  * mode: 'global' | 'kelas' | 'siswa' | 'iuran' | 'status'
- * pick: pilihan spesifik per mode (id siswa / nama kelas / nama iuran), '' = semua
+ * pick: pilihan spesifik per mode (id siswa / nama kelas), '' = semua
+ * iuranPicks: [nama iuran] terpilih lewat ceklisan (mode 'iuran'); null/[] = semua
  */
-export function printTunggakanReport({ rows = [], taLabel = '', kelasLabel = 'Semua Kelas', iuranLabel = 'Semua Iuran', mode = 'global', pick = '', onlySisa = false, showDetail = false }) {
+export function printTunggakanReport({ rows = [], taLabel = '', kelasLabel = 'Semua Kelas', iuranLabel = 'Semua Iuran', mode = 'global', pick = '', iuranPicks = null, onlySisa = false, showDetail = false }) {
   const list = onlySisa ? rows.filter(s => (s.sisa_setahun || 0) > 0) : [...rows];
   const detailBlocks = (l) => showDetail ? `<h3 class="section">Detail per Jenis Iuran</h3>${l.map(siswaDetailBlock).join('')}` : '';
   let title = 'LAPORAN TUNGGAKAN IURAN SISWA';
@@ -139,7 +210,10 @@ export function printTunggakanReport({ rows = [], taLabel = '', kelasLabel = 'Se
   } else if (mode === 'iuran') {
     title += ' — PER JENIS IURAN';
     const allIuran = [...new Set(list.flatMap(s => (s.status_items || []).map(it => it.nama)))].sort();
-    (pick ? allIuran.filter(n => n === pick) : allIuran).forEach(nm => {
+    const dipilih = Array.isArray(iuranPicks) && iuranPicks.length
+      ? allIuran.filter(n => iuranPicks.includes(n))
+      : (pick ? allIuran.filter(n => n === pick) : allIuran);
+    dipilih.forEach(nm => {
       const rowsIuran = list.filter(s => (s.status_items || []).some(it => it.nama === nm));
       if (rowsIuran.length === 0) return;
       body += `<h3 class="section">Iuran: ${nm}</h3>${ringkasTable(rowsIuran)}`;

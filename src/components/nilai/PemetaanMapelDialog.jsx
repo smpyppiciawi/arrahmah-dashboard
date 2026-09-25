@@ -109,7 +109,7 @@ export default function PemetaanMapelDialog({ open, onOpenChange, mapelList, kkm
           {/* Tab 1: Pemetaan Mapel */}
           <TabsContent value="pemetaan" className="flex-1 min-h-0 flex flex-col mt-3">
             <p className="text-xs text-slate-500 mb-2">
-              Petakan setiap mapel database ke baris Rapor resmi. Mapel yang dipetakan ke baris yang sama akan digabung (rata-rata) — contoh: Seni Musik + Seni Rupa → Seni Budaya. Kosongkan Nama di Rapor untuk mengecualikan mapel.
+              Petakan setiap mapel database ke baris Rapor resmi. Mapel yang dipetakan ke baris yang sama akan digabung (rata-rata) — contoh: Seni Musik + Seni Rupa → Seni Budaya. Mapel hanya tampil di Rapor/Legger/Progres Penilaian bila Nama di Rapor, Kode Legger, dan Urutan semuanya terisi.
             </p>
             <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
               <table className="w-full text-xs">
@@ -119,7 +119,7 @@ export default function PemetaanMapelDialog({ open, onOpenChange, mapelList, kkm
                     <th className="px-2 py-2 font-medium">Nama di Rapor</th>
                     <th className="px-2 py-2 font-medium">Kelompok</th>
                     <th className="px-2 py-2 font-medium">Kode Legger</th>
-                    <th className="px-2 py-2 font-medium w-16">Urutan</th>
+                    <th className="px-2 py-2 font-medium w-24 text-center">Urutan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -159,7 +159,7 @@ export default function PemetaanMapelDialog({ open, onOpenChange, mapelList, kkm
                           type="number"
                           value={r.urutan_rapor}
                           onChange={(e) => set(r.id, 'urutan_rapor', e.target.value)}
-                          className="h-7 text-xs rounded-lg"
+                          className="h-7 text-xs rounded-lg w-full text-center font-semibold"
                         />
                       </td>
                     </tr>

@@ -307,6 +307,9 @@ export function computeStatusKeuangan({
       sisa_setahun: sisaSetahun,
       status: statusDariSisa(tagihanJatuhTempo, dibayar, sisaJatuhTempo),
       detail: `${paidMonths.size}/${BULAN_SPP.length} bulan${gratisCount > 0 ? ` · ${gratisCount} gratis` : ''}`,
+      paid_months: [...paidMonths],
+      nominal_per_bulan: nominal,
+      gratis_months: BULAN_SPP.filter(m => gratisSet.has(m)),
     });
   }
 
