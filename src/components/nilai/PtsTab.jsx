@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { FileText, Table2, User, Users, Layers, Search, Printer, Settings2, CalendarDays, Link2, ListChecks, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
-import { buatRaporPtsPdf, buatLeggerPtsPdf, formatTanggalIndo } from '@/lib/ptsPdf';
+import { buatRaporPtsPdf, buatLeggerPtsPdf, formatTanggalIndo, muatAsetKop } from '@/lib/ptsPdf';
 import { normalisasiNama } from '@/lib/mapelTemplate';
 import PtsPreviewDialog from '@/components/nilai/PtsPreviewDialog';
 import PemetaanMapelDialog from '@/components/nilai/PemetaanMapelDialog';
@@ -307,7 +307,10 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
     setStatusDetail({ ...row, siswa: siswaKelas });
   };
 
-  const bukaRapor = (list, filename) => {
+  // Preload gambar kop agar PDF pertama tidak menunggu unduhan gambar
+  useEffect(() => { muatAsetKop(); }, []);
+
+  const bukaRapor = async (list, filename) => {
     if (perluPemetaan) {
       toast({ title: 'Pemetaan mapel belum diatur', description: 'Atur pemetaan Mapel Database → Mapel Rapor terlebih dahulu.', variant: 'destructive' });
       return;
@@ -316,11 +319,11 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
       toast({ title: 'Belum ada data', description: 'Tidak ada data nilai PTS sesuai filter yang dipilih.', variant: 'destructive' });
       return;
     }
-    const doc = buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef });
+    const doc = await buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef });
     setPreview({ doc, url: doc.output('bloburl'), filename });
   };
 
-  const bukaLegger = (kelasId) => {
+  const bukaLegger = async (kelasId) => {
     if (perluPemetaan) {
       toast({ title: 'Pemetaan mapel belum diatur', description: 'Atur pemetaan Mapel Database → Mapel Rapor terlebih dahulu.', variant: 'destructive' });
       return;
@@ -340,7 +343,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
         })),
       };
     });
-    const doc = buatLeggerPtsPdf({ profil, kelasList: kelasData, rows: rowsDef, semesterLabel: labelSemester, tahunAjaran });
+    const doc = await buatLeggerPtsPdf({ profil, kelasList: kelasData, rows: rowsDef, semesterLabel: labelSemester, tahunAjaran });
     const nama = kelasId ? (kelasList.find(k => k.id === kelasId)?.nama_kelas || 'Kelas') : 'Semua_Kelas';
     setPreview({ doc, url: doc.output('bloburl'), filename: `Legger_PTS_${String(nama).replace(/\s+/g, '_')}.pdf` });
   };

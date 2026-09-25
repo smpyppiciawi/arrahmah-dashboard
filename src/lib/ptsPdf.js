@@ -1,6 +1,94 @@
 import { jsPDF } from 'jspdf';
 import { terbilang } from '@/lib/terbilang';
 
+/* ===== Gambar kop resmi (A4_SMP_NEW): bar biru + logo + bar oranye + footer biru ===== */
+const KOP_IMAGE_URL = 'https://media.base44.com/images/public/697c5153cddf617e88adf956/bdcbe56ad_A4_SMP_NEW.png';
+
+let _asetKopPromise = null;
+
+// Muat & crop area kop + footer dari gambar referensi (sekali, lalu cache).
+// Return null bila gagal — PDF kembali memakai kop teks.
+export function muatAsetKop() {
+  if (!_asetKopPromise) {
+    _asetKopPromise = (async () => {
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image();
+          i.crossOrigin = 'anonymous';
+          i.onload = () => res(i);
+          i.onerror = rej;
+          i.src = KOP_IMAGE_URL;
+        });
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, c.width, c.height).data;
+        // Baris "bar" = dominan biru tua atau oranye (warna kop)
+        const barisBar = (y) => {
+          let hit = 0, n = 0;
+          for (let x = 0; x < c.width; x += 16) {
+            n += 1;
+            const i = (y * c.width + x) * 4;
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            if ((r < 90 && g < 110 && b > 70) || (r > 190 && g > 120 && b < 150)) hit += 1;
+          }
+          return n > 0 && hit / n > 0.25;
+        };
+        const toleransi = Math.max(4, Math.round(c.height * 0.015));
+        // Kop: blok bar berwarna paling atas
+        let y0 = 0;
+        while (y0 < c.height && !barisBar(y0)) y0++;
+        let kopEnd = y0;
+        for (let y = y0 + 1; y < c.height; y++) {
+          if (barisBar(y)) kopEnd = y;
+          else if (y - kopEnd > toleransi) break;
+        }
+        // Footer: blok bar berwarna paling bawah
+        let footEnd = c.height - 1;
+        while (footEnd >= 0 && !barisBar(footEnd)) footEnd--;
+        let footStart = footEnd;
+        for (let y = footEnd - 1; y >= 0; y--) {
+          if (barisBar(y)) footStart = y;
+          else if (footStart - y > toleransi) break;
+        }
+        if (kopEnd - y0 < c.height * 0.01 || footEnd < 0 || footStart <= kopEnd + c.height * 0.1) {
+          throw new Error('Deteksi area kop/footer gagal');
+        }
+        const potong = (ya, yb) => {
+          const cc = document.createElement('canvas');
+          cc.width = c.width;
+          cc.height = yb - ya + 1;
+          cc.getContext('2d').drawImage(c, 0, ya, c.width, yb - ya + 1, 0, 0, cc.width, cc.height);
+          return cc.toDataURL('image/png');
+        };
+        return {
+          lebar: c.width,
+          kop: { dataUrl: potong(0, kopEnd), tinggi: kopEnd + 1 },
+          footer: { dataUrl: potong(footStart, footEnd), tinggi: footEnd - footStart + 1 },
+        };
+      } catch (e) {
+        console.warn('Gagal memuat gambar kop, memakai kop teks.', e);
+        return null;
+      }
+    })();
+  }
+  return _asetKopPromise;
+}
+
+function gambarKopGambar(doc, aset, W) {
+  const h = W * (aset.kop.tinggi / aset.lebar);
+  doc.addImage(aset.kop.dataUrl, 'PNG', 0, 0, W, h);
+  return h;
+}
+
+function gambarFooterGambar(doc, aset, W, H) {
+  const h = W * (aset.footer.tinggi / aset.lebar);
+  doc.addImage(aset.footer.dataUrl, 'PNG', 0, H - h, W, h);
+  return h;
+}
+
 const BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
 /** '2026-09-24' -> '24 September 2026' */
@@ -64,9 +152,9 @@ function kopSekolah(doc, profil, lebar) {
 /* ================= RAPOR / LHBS (A4 portrait, 1 halaman per siswa) ================= */
 /* Format mengikuti template: LAPORAN HASIL BELAJAR SISWA (LHBS) */
 
-function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
+function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
   const W = 210;
-  const kopBottom = kopSekolah(doc, profil, W);
+  const kopBottom = aset ? gambarKopGambar(doc, aset, W) + 4 : kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
 
   // Judul (posisi mengikuti tinggi kop)
@@ -208,20 +296,26 @@ function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalR
   doc.text('NRKS. 19023L0720205231096408', 160, nameY + 5.5, { align: 'center' });
 }
 
-export function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
+export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
+  const aset = await muatAsetKop();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
+  const footerH = aset ? gambarFooterGambar(doc, aset, W, 297) : 0;
   siswaList.forEach((s, idx) => {
-    if (idx > 0) doc.addPage();
-    halamanRapor(doc, { profil, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows });
+    if (idx > 0) {
+      doc.addPage();
+      if (aset) gambarFooterGambar(doc, aset, W, 297);
+    }
+    halamanRapor(doc, { profil, aset, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows });
   });
   const total = doc.getNumberOfPages();
+  const pageNumY = aset ? 297 - footerH - 3 : 291;
   for (let p = 1; p <= total; p++) {
     doc.setPage(p);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text(`Halaman ${p} dari ${total}`, W / 2, 291, { align: 'center' });
+    doc.text(`Halaman ${p} dari ${total}`, W / 2, pageNumY, { align: 'center' });
     doc.setTextColor(30, 41, 59);
   }
   return doc;
@@ -260,9 +354,10 @@ function hitungRank(siswaList) {
   return map;
 }
 
-function gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan, titleY, infoY }) {
+function gambarHeaderLegger(doc, { profil, aset, kelas, semesterLabel, tahunAjaran, lanjutan, titleY, infoY }) {
   const W = 297;
-  kopSekolah(doc, profil, W);
+  if (aset) gambarKopGambar(doc, aset, W);
+  else kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11.5);
@@ -334,10 +429,10 @@ function gambarBarisLegger(doc, { s, no, y, rows, g, rank }) {
   doc.text(rank != null ? String(rank) : '', g.rankX + LG.rankW / 2, cy, { align: 'center' });
 }
 
-function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjaran }) {
+function gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran }) {
   const g = geometriLegger(rows);
   // Posisi judul/info/tabel mengikuti tinggi kop (kop digambar tiap halaman sama)
-  const kopBottom = kopLayout(profil).bottom + 1.4;
+  const kopBottom = aset ? 297 * (aset.kop.tinggi / aset.lebar) + 2 : kopLayout(profil).bottom + 1.4;
   const titleY = kopBottom + 7;
   const infoY = kopBottom + 13.5;
   const topY = kopBottom + 27;
@@ -352,7 +447,7 @@ function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjara
   let hal = 0, rowIdx = 0;
   while (rowIdx < list.length || hal === 0) {
     if (hal > 0) doc.addPage();
-    gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan: hal > 0, titleY, infoY });
+    gambarHeaderLegger(doc, { profil, aset, kelas, semesterLabel, tahunAjaran, lanjutan: hal > 0, titleY, infoY });
     const { headerBottom } = gambarTabelHeaderLegger(doc, { rows, g, topY });
     let y = headerBottom;
     let halCount = 0;
@@ -390,11 +485,12 @@ function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjara
   }
 }
 
-export function buatLeggerPtsPdf({ profil, kelasList, rows, semesterLabel, tahunAjaran }) {
+export async function buatLeggerPtsPdf({ profil, kelasList, rows, semesterLabel, tahunAjaran }) {
+  const aset = await muatAsetKop();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   kelasList.forEach((kelas, idx) => {
     if (idx > 0) doc.addPage();
-    gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjaran });
+    gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran });
   });
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
