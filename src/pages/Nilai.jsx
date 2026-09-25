@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, FileText } from "lucide-react";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
@@ -15,6 +15,7 @@ import TkaTab from "@/components/nilai/TkaTab";
 import NilaiCardList from "@/components/nilai/NilaiCardList";
 import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
 import PtsTab from "@/components/nilai/PtsTab";
+import PtsGuruView from "@/components/nilai/PtsGuruView";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 // Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
@@ -32,6 +33,8 @@ const TABS = [
 ];
 
 export default function Nilai() {
+  // Semester aktif tahun ajaran: Juli-Desember = Ganjil, Januari-Juni = Genap (otomatis)
+  const semesterAktif = new Date().getMonth() + 1 >= 7 ? 'Ganjil' : 'Genap';
   const [activeTab, setActiveTab] = useState('input');
   const [isOpen, setIsOpen] = useState(false);
   const [editingData, setEditingData] = useState(null);
@@ -45,13 +48,16 @@ export default function Nilai() {
   const [deleteId, setDeleteId] = useState(null);
   const [sheetRow, setSheetRow] = useState(null);
   const [kelasInputOpen, setKelasInputOpen] = useState(false);
+  const [inputChoiceOpen, setInputChoiceOpen] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
     kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '',
-    semester: '', tahun_ajaran: '', kkm: 75, nama_guru: ''
+    semester: semesterAktif, tahun_ajaran: '', kkm: 75, nama_guru: ''
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
   const queryClient = useQueryClient();
   const { activeAcademicYear } = useActiveAcademicYear();
+  const { data: pengaturanList = [] } = useQuery({ queryKey: ['pengaturan-aplikasi'], queryFn: () => base44.entities.PengaturanAplikasi.list(), staleTime: 300000 });
+  const kkmPts = Number(pengaturanList[0]?.kkm_pts) || 75;
 
   useEffect(() => {
     base44.auth.me().then(setCurrentUser).catch(console.error);
@@ -71,7 +77,7 @@ export default function Nilai() {
 
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
-    mapel: '', semester: '', tahun_ajaran: '', jenis_penilaian: '',
+    mapel: '', semester: semesterAktif, tahun_ajaran: '', jenis_penilaian: '',
     kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: ''
   });
 
@@ -138,7 +144,7 @@ export default function Nilai() {
   });
 
   const resetForm = () => {
-    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: '', tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '' });
+    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '' });
     setEditingData(null);
     setIsOpen(false);
   };
@@ -150,12 +156,14 @@ export default function Nilai() {
 
   const handleNilaiChange = (nilai) => {
     const numNilai = Number(nilai);
-    setFormData({ ...formData, nilai: numNilai, status_ketuntasan: numNilai >= (formData.kkm || 75) ? 'Tuntas' : 'Belum Tuntas' });
+    const kkmDipakai = formData.jenis_penilaian === 'PTS' ? kkmPts : (formData.kkm || 75);
+    setFormData({ ...formData, nilai: numNilai, status_ketuntasan: numNilai >= kkmDipakai ? 'Tuntas' : 'Belum Tuntas' });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { ...formData, nilai: Number(formData.nilai), kkm: Number(formData.kkm), tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
+    const kkmDipakai = formData.jenis_penilaian === 'PTS' ? kkmPts : Number(formData.kkm);
+    const payload = { ...formData, nilai: Number(formData.nilai), kkm: kkmDipakai, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
     if (editingData) updateMutation.mutate({ id: editingData.id, data: payload });
     else createMutation.mutate(payload);
   };
@@ -168,7 +176,7 @@ export default function Nilai() {
     const numNilai = Number(nilai);
     updateMutation.mutate({
       id: sheetRow.id,
-      data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= (sheetRow.kkm || 75) ? 'Tuntas' : 'Belum Tuntas' }
+      data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= (sheetRow.jenis_penilaian === 'PTS' ? kkmPts : (sheetRow.kkm || 75)) ? 'Tuntas' : 'Belum Tuntas' }
     });
     setSheetRow(null);
   };
@@ -192,16 +200,17 @@ export default function Nilai() {
   const handleKelasSubmit = async (e) => {
     e.preventDefault();
     const finalTahunAjaran = kelasFormData.tahun_ajaran || activeAcademicYear || '';
+    const kkmKelas = kelasFormData.jenis_penilaian === 'PTS' ? kkmPts : Number(kelasFormData.kkm);
     const records = kelasNilaiData.map(item => ({
       ...item, ...kelasFormData, kelas_id: kelasFormData.kelas_id,
       tahun_ajaran: finalTahunAjaran,
-      kkm: Number(kelasFormData.kkm),
-      status_ketuntasan: item.nilai >= Number(kelasFormData.kkm) ? 'Tuntas' : 'Belum Tuntas'
+      kkm: kkmKelas,
+      status_ketuntasan: item.nilai >= kkmKelas ? 'Tuntas' : 'Belum Tuntas'
     }));
     await base44.entities.Nilai.bulkCreate(records);
     queryClient.invalidateQueries({ queryKey: ['nilai'] });
     setKelasInputOpen(false);
-    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: '', tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
+    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
     setKelasNilaiData([]);
   };
 
@@ -239,22 +248,18 @@ export default function Nilai() {
               <p className="text-xs text-slate-500 font-medium">Tahun Ajaran {activeAcademicYear || '-'}</p>
             </div>
           </div>
-          {canEdit && (
-            <Button variant="outline" size="sm" className="rounded-full gap-2 shadow-sm flex-shrink-0" onClick={() => setKelasInputOpen(true)}>
-              <Users className="w-4 h-4" /> <span className="hidden sm:inline">Input Per Kelas</span><span className="sm:hidden">Kelas</span>
-            </Button>
-          )}
+
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-1.5 mb-5 bg-white border border-slate-200 p-1 rounded-2xl shadow-sm w-fit max-w-full overflow-x-auto no-scrollbar">
+        {/* Tab Navigation — grid 2 kolom di mobile agar rapi tanpa geser */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-nowrap sm:gap-1.5 gap-2 mb-5 bg-white border border-slate-200 p-1.5 sm:p-1 rounded-2xl shadow-sm sm:w-fit max-w-full">
           {tabs.map(tab => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   activeTab === tab.key
                     ? 'bg-amber-500 text-white shadow-md shadow-amber-500/25'
                     : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
@@ -270,7 +275,9 @@ export default function Nilai() {
         {activeTab === 'analisis' && <AnalisisNilai />}
         {activeTab === 'pengelolaan' && <PengelolaanNilai />}
         {activeTab === 'tka' && <TkaTab userRole={userRole} guruData={guruData} kelasList={kelasList} siswaList={siswaList} currentUser={currentUser} />}
-        {activeTab === 'pts' && <PtsTab nilaiList={nilaiList} siswaList={siswaList} kelasList={kelasList} availableKelas={availableKelas} activeAcademicYear={activeAcademicYear} />}
+        {activeTab === 'pts' && (isGuruRole
+          ? <PtsGuruView activeAcademicYear={activeAcademicYear} />
+          : <PtsTab nilaiList={nilaiList} siswaList={siswaList} kelasList={kelasList} availableKelas={availableKelas} activeAcademicYear={activeAcademicYear} />)}
 
         {activeTab === 'input' && (
           <div className="space-y-5">
@@ -307,26 +314,30 @@ export default function Nilai() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs text-slate-500">Semester</Label>
-                          <Select value={kelasFormData.semester} onValueChange={(v) => setKelasFormData({...kelasFormData, semester: v})}>
+                          <Label className="text-xs text-slate-500">Semester (Otomatis)</Label>
+                          <Select value={kelasFormData.semester} onValueChange={(v) => setKelasFormData({...kelasFormData, semester: v})} disabled>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent><SelectItem value="Ganjil">Ganjil</SelectItem><SelectItem value="Genap">Genap</SelectItem></SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <Label className="text-xs text-slate-500">KKM</Label>
-                          <Input type="number" value={kelasFormData.kkm} onChange={(e) => setKelasFormData({...kelasFormData, kkm: e.target.value})} className="mt-1" />
-                        </div>
+                        {kelasFormData.jenis_penilaian !== 'PTS' && (
+                          <div>
+                            <Label className="text-xs text-slate-500">KKM</Label>
+                            <Input type="number" value={kelasFormData.kkm} onChange={(e) => setKelasFormData({...kelasFormData, kkm: e.target.value})} className="mt-1" />
+                          </div>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Nama Guru</Label>
                           <Input value={kelasFormData.nama_guru} onChange={(e) => setKelasFormData({...kelasFormData, nama_guru: e.target.value})} placeholder="Otomatis dari Mapel" className="mt-1" />
                         </div>
-                        <div>
-                          <Label className="text-xs text-slate-500">Kompetensi/Bab</Label>
-                          <Input value={kelasFormData.kompetensi_bab} onChange={(e) => setKelasFormData({...kelasFormData, kompetensi_bab: e.target.value})} className="mt-1" />
-                        </div>
+                        {!['PTS','PAS'].includes(kelasFormData.jenis_penilaian) && (
+                          <div>
+                            <Label className="text-xs text-slate-500">Kompetensi/Bab</Label>
+                            <Input value={kelasFormData.kompetensi_bab} onChange={(e) => setKelasFormData({...kelasFormData, kompetensi_bab: e.target.value})} className="mt-1" />
+                          </div>
+                        )}
                         <div>
                           <Label className="text-xs text-slate-500">Tahun Ajaran</Label>
                           <Select value={kelasFormData.tahun_ajaran} onValueChange={(v) => setKelasFormData({...kelasFormData, tahun_ajaran: v})}>
@@ -346,7 +357,7 @@ export default function Nilai() {
                                 <span className="flex-1 text-sm text-slate-700">{item.nama_siswa}</span>
                                 <Input
                                   type="number" min="0" max="100"
-                                  className={`w-20 text-center h-8 text-sm font-medium ${item.nilai >= Number(kelasFormData.kkm) ? 'border-emerald-300 text-emerald-700' : item.nilai > 0 ? 'border-red-300 text-red-700' : ''}`}
+                                  className={`w-20 text-center h-8 text-sm font-medium ${item.nilai >= Number(kelasFormData.jenis_penilaian === 'PTS' ? kkmPts : kelasFormData.kkm) ? 'border-emerald-300 text-emerald-700' : item.nilai > 0 ? 'border-red-300 text-red-700' : ''}`}
                                   value={item.nilai}
                                   onChange={(e) => handleKelasNilaiChange(item.siswa_id, e.target.value)}
                                 />
@@ -405,8 +416,8 @@ export default function Nilai() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label className="text-xs text-slate-500">Semester</Label>
-                          <Select value={formData.semester} onValueChange={(v) => setFormData({...formData, semester: v})}>
+                          <Label className="text-xs text-slate-500">Semester (Otomatis)</Label>
+                          <Select value={formData.semester} onValueChange={(v) => setFormData({...formData, semester: v})} disabled>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent><SelectItem value="Ganjil">Ganjil</SelectItem><SelectItem value="Genap">Genap</SelectItem></SelectContent>
                           </Select>
@@ -419,19 +430,23 @@ export default function Nilai() {
                           </Select>
                         </div>
                       </div>
-                      <div>
-                        <Label className="text-xs text-slate-500">Kompetensi / Bab</Label>
-                        <Input className="mt-1" value={formData.kompetensi_bab} onChange={(e) => setFormData({...formData, kompetensi_bab: e.target.value})} placeholder="Contoh: Bab 1 - Teks Narasi" />
-                      </div>
-                      <div className="grid grid-cols-3 gap-4">
+                      {!['PTS','PAS'].includes(formData.jenis_penilaian) && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Kompetensi / Bab</Label>
+                          <Input className="mt-1" value={formData.kompetensi_bab} onChange={(e) => setFormData({...formData, kompetensi_bab: e.target.value})} placeholder="Contoh: Bab 1 - Teks Narasi" />
+                        </div>
+                      )}
+                      <div className={`grid gap-4 ${formData.jenis_penilaian === 'PTS' ? 'grid-cols-2' : 'grid-cols-3'}`}>
                         <div>
                           <Label className="text-xs text-slate-500">Nilai</Label>
                           <Input type="number" min="0" max="100" value={formData.nilai} onChange={(e) => handleNilaiChange(e.target.value)} required className="mt-1 text-center font-bold text-lg" />
                         </div>
-                        <div>
-                          <Label className="text-xs text-slate-500">KKM</Label>
-                          <Input type="number" value={formData.kkm} onChange={(e) => setFormData({...formData, kkm: Number(e.target.value)})} className="mt-1 text-center" />
-                        </div>
+                        {formData.jenis_penilaian !== 'PTS' && (
+                          <div>
+                            <Label className="text-xs text-slate-500">KKM</Label>
+                            <Input type="number" value={formData.kkm} onChange={(e) => setFormData({...formData, kkm: Number(e.target.value)})} className="mt-1 text-center" />
+                          </div>
+                        )}
                         <div>
                           <Label className="text-xs text-slate-500">Status</Label>
                           <div className={`mt-1 h-9 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold ${
@@ -548,12 +563,50 @@ export default function Nilai() {
               onDelete={(row) => { setSheetRow(null); setDeleteId(row.id); setDeleteConfirmOpen(true); }}
             />
 
-            {/* FAB — Input Nilai Per Siswa */}
+            {/* Dialog pilih mode input nilai */}
+            <Dialog open={inputChoiceOpen} onOpenChange={setInputChoiceOpen}>
+              <DialogContent className="w-[95vw] max-w-sm">
+                <DialogHeader><DialogTitle>Tambah Nilai</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <button
+                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-left"
+                    onClick={() => { setInputChoiceOpen(false); resetForm(); setIsOpen(true); }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">Input Nilai Per Siswa</p>
+                      <p className="text-xs text-slate-500">Tambah nilai untuk satu siswa</p>
+                    </div>
+                  </button>
+                  <button
+                    className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-left"
+                    onClick={() => {
+                      setInputChoiceOpen(false);
+                      setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
+                      setKelasNilaiData([]);
+                      setKelasInputOpen(true);
+                    }}
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center flex-shrink-0">
+                      <Users className="w-5 h-5 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm">Input Nilai Per Kelas</p>
+                      <p className="text-xs text-slate-500">Tambah nilai seluruh siswa satu kelas</p>
+                    </div>
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* FAB — Tambah Nilai */}
             {canEdit && (
               <button
-                onClick={() => { resetForm(); setIsOpen(true); }}
+                onClick={() => setInputChoiceOpen(true)}
                 className="fixed bottom-20 lg:bottom-8 right-4 lg:right-8 z-40 w-14 h-14 bg-amber-500 text-white rounded-2xl shadow-[0_8px_16px_rgba(245,158,11,0.35)] flex items-center justify-center active:scale-95 transition-transform"
-                title="Input Nilai Per Siswa"
+                title="Tambah Nilai"
               >
                 <Plus className="w-6 h-6" />
               </button>

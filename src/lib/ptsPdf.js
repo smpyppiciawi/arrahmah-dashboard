@@ -27,20 +27,38 @@ function singkatMapel(nama) {
   return words.map((w, i) => (i === words.length - 1 || w.length <= 4) ? w : `${w[0]}.`).join(' ');
 }
 
+/* ===== Kop surat — susunan baris dihitung dinamis dari Profil Sekolah ===== */
+
+function kopLayout(profil) {
+  const lines = [];
+  if (profil?.nama_yayasan) lines.push({ text: profil.nama_yayasan.toUpperCase(), size: 9, bold: true });
+  lines.push({ text: (profil?.nama_sekolah || 'YPPI Arrahmah').toUpperCase(), size: 13, bold: true });
+  const idLine = [profil?.nss ? `NSM/NSS: ${profil.nss}` : null, profil?.npsn ? `NPSN: ${profil.npsn}` : null].filter(Boolean).join('  |  ');
+  if (idLine) lines.push({ text: idLine, size: 8.5 });
+  const alamat = [profil?.alamat_jalan, profil?.desa_kelurahan, profil?.kecamatan, profil?.kab_kota, profil?.kode_pos].filter(Boolean).join(', ');
+  if (alamat) lines.push({ text: alamat, size: 8.5 });
+  const kontak = [profil?.telepon ? `Telp. ${profil.telepon}` : null, profil?.email].filter(Boolean).join('  |  ');
+  if (kontak) lines.push({ text: kontak, size: 8.5 });
+  let y = 15;
+  const pos = lines.map((l, i) => {
+    if (i > 0) y += (lines[i - 1].size >= 13 ? 5.5 : 4.5);
+    return { ...l, y };
+  });
+  return { pos, bottom: y + 5 };
+}
+
 function kopSekolah(doc, profil, lebar) {
-  const nama = (profil?.nama_sekolah || 'YPPI Arrahmah').toUpperCase();
-  const alamat = [profil?.alamat_jalan, profil?.desa_kelurahan, profil?.kecamatan, profil?.kab_kota].filter(Boolean).join(', ');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(nama, lebar / 2, 15, { align: 'center' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
-  if (alamat) doc.text(alamat, lebar / 2, 20, { align: 'center' });
-  const garisY = alamat ? 23.5 : 19;
+  const { pos, bottom } = kopLayout(profil);
+  pos.forEach(l => {
+    doc.setFont('helvetica', l.bold ? 'bold' : 'normal');
+    doc.setFontSize(l.size);
+    doc.text(l.text, lebar / 2, l.y, { align: 'center' });
+  });
   doc.setLineWidth(0.7);
-  doc.line(15, garisY, lebar - 15, garisY);
+  doc.line(15, bottom, lebar - 15, bottom);
   doc.setLineWidth(0.25);
-  doc.line(15, garisY + 1.4, lebar - 15, garisY + 1.4);
+  doc.line(15, bottom + 1.4, lebar - 15, bottom + 1.4);
+  return bottom + 1.4;
 }
 
 /* ================= RAPOR / LHBS (A4 portrait, 1 halaman per siswa) ================= */
@@ -48,26 +66,27 @@ function kopSekolah(doc, profil, lebar) {
 
 function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
   const W = 210;
-  kopSekolah(doc, profil, W);
+  const kopBottom = kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
 
-  // Judul
+  // Judul (posisi mengikuti tinggi kop)
+  const t0 = kopBottom + 11;
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12.5);
-  doc.text('LAPORAN HASIL BELAJAR SISWA ( LHBS )', W / 2, 36.5, { align: 'center' });
+  doc.text('LAPORAN HASIL BELAJAR SISWA ( LHBS )', W / 2, t0, { align: 'center' });
   doc.setFontSize(11);
-  doc.text(`SUMATIF TENGAH SEMESTER ${String(semesterLabel).toUpperCase()}`, W / 2, 42.5, { align: 'center' });
+  doc.text(`SUMATIF TENGAH SEMESTER ${String(semesterLabel).toUpperCase()}`, W / 2, t0 + 6, { align: 'center' });
   doc.setFontSize(10.5);
-  doc.text(`TAHUN PELAJARAN ${tahunAjaran}`, W / 2, 48, { align: 'center' });
+  doc.text(`TAHUN PELAJARAN ${tahunAjaran}`, W / 2, t0 + 11.5, { align: 'center' });
 
   // Blok identitas: NIS / Nama Siswa (kiri), Kelas / Semester (kanan)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
-  let iy = 56.5;
+  let iy = t0 + 20;
   [['NIS', siswa.nis || '-'], ['Nama Siswa', siswa.nama || '-']].forEach(([l, v]) => {
     doc.text(l, 25, iy); doc.text(':', 62, iy); doc.text(String(v), 65, iy); iy += 6;
   });
-  iy = 56.5;
+  iy = t0 + 20;
   [['Kelas', siswa.nama_kelas || '-'], ['Semester', semesterLabel]].forEach(([l, v]) => {
     doc.text(l, 112, iy); doc.text(':', 152, iy); doc.text(String(v), 155, iy); iy += 6;
   });
@@ -75,7 +94,7 @@ function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalR
   // Geometri tabel
   const xNo = 25, wNo = 10, xMapel = 35, wMapel = 60, xKkm = 95, wKkm = 14;
   const xAngka = 109, wAngka = 16, xHuruf = 125, wHuruf = 34, xKet = 159, wKet = 26, xRight = 185;
-  const headerTop = 72;
+  const headerTop = t0 + 35.5;
   const hH1 = 7, hH2 = 5.5, hGroup = 6, hFooter = 7.5;
 
   const groups = [
@@ -84,7 +103,8 @@ function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalR
   ].filter(g => g.list.length);
   const nData = groups.reduce((a, g) => a + g.list.length, 0);
   const reserved = headerTop + hH1 + hH2 + groups.length * hGroup + 3 * hFooter;
-  const rowH = nData ? Math.min(7.5, Math.max(5, (226 - reserved) / nData)) : 7.5;
+  const maxTableBottom = 246;
+  const rowH = nData ? Math.min(7.5, Math.max(5, (maxTableBottom - reserved) / nData)) : 7.5;
 
   const dataByLabel = siswa.rowValues || {};
 
@@ -169,7 +189,7 @@ function halamanRapor(doc, { profil, siswa, semesterLabel, tahunAjaran, tanggalR
   footer.forEach(() => { ly += hFooter; doc.line(xNo, ly, xRight, ly); });
 
   // Blok tanda tangan: Wali Murid | Wali Kelas | Kepala Sekolah
-  const sigTop = Math.min(234, Math.max(tableBottom + 8, 226));
+  const sigTop = Math.max(228, tableBottom + 8);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.text(`Ciawi, ${tanggalRapor || '.....................'}`, 160, sigTop, { align: 'center' });
@@ -240,7 +260,7 @@ function hitungRank(siswaList) {
   return map;
 }
 
-function gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan }) {
+function gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan, titleY, infoY }) {
   const W = 297;
   kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
@@ -248,15 +268,15 @@ function gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, la
   doc.setFontSize(11.5);
   doc.text(
     `DAFTAR NILAI SUMATIF TENGAH SEMESTER ${String(semesterLabel).toUpperCase()} T.P. ${tahunAjaran}${lanjutan ? ' (LANJUTAN)' : ''}`,
-    W / 2, 31, { align: 'center' }
+    W / 2, titleY, { align: 'center' }
   );
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
-  let iy = 38.5;
+  let iy = infoY;
   [['Kelas', kelas.nama_kelas || '-'], ['Wali Kelas', kelas.wali_kelas || '-']].forEach(([l, v]) => {
     doc.text(l, 15, iy); doc.text(':', 45, iy); doc.text(String(v), 48, iy); iy += 5.5;
   });
-  iy = 38.5;
+  iy = infoY;
   [['Semester', semesterLabel], ['Tahun Pelajaran', tahunAjaran]].forEach(([l, v]) => {
     doc.text(l, 165, iy); doc.text(':', 207, iy); doc.text(String(v), 210, iy); iy += 5.5;
   });
@@ -316,11 +336,15 @@ function gambarBarisLegger(doc, { s, no, y, rows, g, rank }) {
 
 function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjaran }) {
   const g = geometriLegger(rows);
-  const topY = 51;
+  // Posisi judul/info/tabel mengikuti tinggi kop (kop digambar tiap halaman sama)
+  const kopBottom = kopLayout(profil).bottom + 1.4;
+  const titleY = kopBottom + 7;
+  const infoY = kopBottom + 13.5;
+  const topY = kopBottom + 27;
   const bottomLimit = 199;
   const rankMap = hitungRank(kelas.siswaList);
   const list = kelas.siswaList;
-  // h2 bervariasi tiap halaman, hitung dulu untuk kapasitas
+  // h2 bervariasi, hitung dulu untuk kapasitas halaman
   const codes = rows.map(r => ({ kode: kodeLegger(r), rotate: kodeLegger(r).length * 1.15 > g.colW - 1.5 }));
   const h2 = Math.max(7, ...codes.map(c => (c.rotate ? c.kode.length * 1.15 + 2.5 : 7)), 7);
   const perPage = Math.max(1, Math.floor((bottomLimit - (topY + LG.h1 + h2)) / LG.rowH));
@@ -328,7 +352,7 @@ function gambarKelasLegger(doc, { profil, kelas, rows, semesterLabel, tahunAjara
   let hal = 0, rowIdx = 0;
   while (rowIdx < list.length || hal === 0) {
     if (hal > 0) doc.addPage();
-    gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan: hal > 0 });
+    gambarHeaderLegger(doc, { profil, kelas, semesterLabel, tahunAjaran, lanjutan: hal > 0, titleY, infoY });
     const { headerBottom } = gambarTabelHeaderLegger(doc, { rows, g, topY });
     let y = headerBottom;
     let halCount = 0;

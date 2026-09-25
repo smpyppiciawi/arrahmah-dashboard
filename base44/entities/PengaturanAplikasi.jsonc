@@ -28,6 +28,11 @@
       "type": "boolean",
       "default": false,
       "description": "ON = Nilai TKA tampil pada Beranda Akun Siswa; OFF = tidak tampil. Diatur dari Tab TKA pada Menu Nilai."
+    },
+    "kkm_pts": {
+      "type": "number",
+      "default": 75,
+      "description": "KKM PTS untuk seluruh mapel (diatur pada Tab KKM di Pengaturan PTS, Menu Nilai > PTS). Dipakai untuk kolom KKM Rapor LHBS, status Tuntas/Belum Tuntas, dan perhitungan Predikat PTS."
     }
   },
   "required": [
