@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
@@ -14,6 +14,7 @@ import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
 import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
 import SiswaFotoGrid from "@/components/siswa/SiswaFotoGrid";
+import SiswaDapoView from "@/components/siswa/SiswaDapoView";
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 
 export default function Siswa() {
@@ -211,6 +212,9 @@ export default function Siswa() {
             <Button size="sm" variant={viewMode === 'foto' ? 'default' : 'ghost'} onClick={() => setViewMode('foto')}>
               <Images className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Foto</span>
             </Button>
+            <Button size="sm" variant={viewMode === 'dapo' ? 'default' : 'ghost'} onClick={() => setViewMode('dapo')} title="Ceklis penyamaan data Dapodik">
+              <ClipboardCheck className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Dapo</span>
+            </Button>
           </div>
 
           {canEdit && (
@@ -245,6 +249,8 @@ export default function Siswa() {
                 kelasList={kelasList}
                 onSelect={setDetailSiswa}
               />
+            ) : viewMode === 'dapo' ? (
+              <SiswaDapoView siswaList={siswaList} />
             ) : (
               <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
             )}
