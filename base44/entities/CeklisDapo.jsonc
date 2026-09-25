@@ -1,0 +1,34 @@
+{
+  "name": "CeklisDapo",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa yang diceklis"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS siswa"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama siswa"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Kelas siswa saat diceklis"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "description": "Jenis kelamin siswa (L/P)"
+    },
+    "diceklis": {
+      "type": "boolean",
+      "default": true,
+      "description": "True = siswa sudah diceklis pada tampilan Dapo (penanda penyamaan data Dapodik). Tidak memengaruhi data siswa lainnya."
+    }
+  },
+  "required": [
+    "siswa_id"
+  ]
+}

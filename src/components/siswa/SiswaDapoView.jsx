@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,13 +9,45 @@ import { Check, Eraser, ClipboardCheck, Users, CheckCircle2, CircleDashed } from
 /**
  * Tampilan Dapo — alat bantu penyamaan jumlah siswa Dapodik (aplikasi berbeda)
  * dengan data real aplikasi ini. Kolom: NIS, Nama, Kelas, JK, dan ceklisan.
- * Ceklisan HANYA keadaan lokal (tidak disimpan / tidak berpengaruh pada data apa pun),
- * dipakai sebagai penanda saat mengecek satu-per-siswa terhadap Dapodik.
+ * Ceklisan TERSIMPAN PERMANEN (entity CeklisDapo) sehingga tetap ada saat halaman
+ * ditutup/dibuka kembali — tetap tidak memengaruhi data siswa lainnya.
  * Rekap total data & total terceklis mengikuti filter kelas.
  */
 export default function SiswaDapoView({ siswaList }) {
   const [filterKelas, setFilterKelas] = useState('all');
-  const [checked, setChecked] = useState(() => new Set());
+  const queryClient = useQueryClient();
+
+  const { data: ceklisList = [], isLoading: isLoadingCeklis } = useQuery({
+    queryKey: ['ceklis-dapo'],
+    queryFn: () => base44.entities.CeklisDapo.list(),
+    staleTime: 30000,
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: async (s) => {
+      const rec = ceklisList.find(c => c.siswa_id === s.id);
+      if (rec) return base44.entities.CeklisDapo.update(rec.id, { diceklis: !rec.diceklis });
+      return base44.entities.CeklisDapo.create({
+        siswa_id: s.id,
+        nis: s.nis || '',
+        nama: s.nama || '',
+        nama_kelas: s.nama_kelas || '',
+        jenis_kelamin: s.jenis_kelamin || '',
+        diceklis: true,
+      });
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ceklis-dapo'] }),
+  });
+
+  const resetMutation = useMutation({
+    mutationFn: () => base44.entities.CeklisDapo.updateMany({ diceklis: true }, { $set: { diceklis: false } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ceklis-dapo'] }),
+  });
+
+  const checked = useMemo(
+    () => new Set(ceklisList.filter(c => c.diceklis).map(c => c.siswa_id)),
+    [ceklisList]
+  );
 
   const kelasOptions = useMemo(
     () => [...new Set(siswaList.map(s => s.nama_kelas).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'id', { numeric: true })),
@@ -31,19 +65,15 @@ export default function SiswaDapoView({ siswaList }) {
   }, [siswaList, filterKelas]);
 
   const diceklis = rows.filter(s => checked.has(s.id)).length;
+  const adaCeklis = ceklisList.some(c => c.diceklis);
 
-  const toggle = (id) => setChecked(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
+  const toggle = (s) => toggleMutation.mutate(s);
 
   return (
     <div>
       <p className="text-xs text-slate-400 mb-3">
         Tampilan Dapo: ceklis siswa satu per satu untuk menyamakan jumlah data dengan Dapodik.
-        Ceklisan hanya penanda lokal — tidak tersimpan dan tidak memengaruhi data siswa.
+        Ceklisan tersimpan permanen (tetap ada saat halaman dibuka kembali) dan tidak memengaruhi data siswa lainnya.
       </p>
 
       {/* Filter kelas + rekap */}
@@ -66,11 +96,12 @@ export default function SiswaDapoView({ siswaList }) {
             <CircleDashed className="w-3 h-3" /> Belum Diceklis: {rows.length - diceklis}
           </Badge>
         </div>
-        {checked.size > 0 && (
+        {adaCeklis && (
           <Button
             variant="ghost" size="sm"
             className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 ml-auto"
-            onClick={() => setChecked(new Set())}
+            onClick={() => resetMutation.mutate()}
+            disabled={resetMutation.isPending}
           >
             <Eraser className="w-3.5 h-3.5" /> Hapus Semua Ceklis
           </Button>
@@ -101,7 +132,7 @@ export default function SiswaDapoView({ siswaList }) {
                   <tr
                     key={s.id}
                     className={`cursor-pointer transition-colors ${on ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}
-                    onClick={() => toggle(s.id)}
+                    onClick={() => toggle(s)}
                   >
                     <td className="px-3 py-2 text-xs text-slate-400">{i + 1}</td>
                     <td className="px-3 py-2 font-mono text-xs text-slate-600">{s.nis || '-'}</td>
@@ -125,7 +156,7 @@ export default function SiswaDapoView({ siswaList }) {
                     <td className="px-3 py-2 text-center">
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); toggle(s.id); }}
+                        onClick={(e) => { e.stopPropagation(); toggle(s); }}
                         aria-label={`Ceklis ${s.nama}`}
                         className={`w-5 h-5 rounded-md border inline-flex items-center justify-center transition-colors ${
                           on ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300 hover:border-emerald-400'
@@ -144,7 +175,7 @@ export default function SiswaDapoView({ siswaList }) {
 
       <p className="text-[11px] text-slate-400 mt-2 flex items-center gap-1">
         <ClipboardCheck className="w-3.5 h-3.5" />
-        Klik baris atau ceklis untuk menandai siswa yang sudah sesuai data Dapodik.
+        Klik baris atau ceklis untuk menandai siswa yang sudah sesuai data Dapodik. {isLoadingCeklis ? 'Memuat ceklis tersimpan...' : 'Ceklis tersimpan otomatis.'}
       </p>
     </div>
   );
