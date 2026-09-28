@@ -154,11 +154,23 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     setOpenKodeSearch(false); setSearchKode('');
   };
 
+  // Bebas mengetik tanpa peringatan — validasi rentang hanya muncul saat keluar dari kolom (blur)
   const handlePoinChange = (val) => {
-    const p = Number(val) || 0;
-    if (formData.poin_min && p < formData.poin_min) { toast({ title: `Poin tidak boleh di bawah minimum (${formData.poin_min})`, variant: "destructive" }); return; }
-    if (formData.poin_max && p > formData.poin_max) { toast({ title: `Poin tidak boleh di atas maksimum (${formData.poin_max})`, variant: "destructive" }); return; }
-    setFormData({ ...formData, poin: p });
+    setFormData(f => ({ ...f, poin: val === '' ? '' : (Number(val) || 0) }));
+  };
+
+  const validasiPoin = () => {
+    const p = formData.poin === '' ? null : Number(formData.poin);
+    if (p === null) return true;
+    if (formData.poin_min && p < formData.poin_min) {
+      toast({ title: `Poin di bawah minimum (${formData.poin_min})`, description: 'Nilai dipertahankan agar bisa langsung dikoreksi.', variant: "destructive" });
+      return false;
+    }
+    if (formData.poin_max && p > formData.poin_max) {
+      toast({ title: `Poin di atas maksimum (${formData.poin_max})`, description: 'Nilai dipertahankan agar bisa langsung dikoreksi.', variant: "destructive" });
+      return false;
+    }
+    return true;
   };
 
   const handlePencatatChange = (gid) => {
@@ -218,6 +230,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
     if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
     if (!formData.pelapor_id) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
+    if (!validasiPoin()) return;
     const payload = buildPayload();
     if (editing) { updateMutation.mutate({ id: editing.id, data: payload }); return; }
     if (isDuplicate()) { setPendingPayload(payload); setShowDupConfirm(true); return; }
@@ -393,7 +406,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Poin <span className="text-xs text-slate-400">(default min, rentang {formData.poin_min}–{formData.poin_max})</span></Label>
-              <Input type="number" min={formData.poin_min} max={formData.poin_max} value={formData.poin} onChange={(e) => handlePoinChange(e.target.value)} required />
+              <Input type="number" inputMode="numeric" value={formData.poin} onChange={(e) => handlePoinChange(e.target.value)} onBlur={validasiPoin} required />
               <p className="text-xs text-slate-500 mt-1">Min: {formData.poin_min} · Max: {formData.poin_max}</p>
             </div>
             <div>

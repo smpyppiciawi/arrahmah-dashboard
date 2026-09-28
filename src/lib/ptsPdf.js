@@ -232,7 +232,10 @@ function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, ta
       doc.setFontSize(namaMapel.length > 30 ? 7 : 8.5);
       doc.text(namaMapel, xMapel + 2, cy2);
       doc.setFontSize(8.5);
+      const diBawahKkm = d.nilai !== null && d.nilai !== undefined && d.nilai !== '' && Number(d.nilai) < Number(d.kkm);
+      if (diBawahKkm) doc.setTextColor(220, 38, 38);
       doc.text(nilaiTeks(d.nilai) || '-', xAngka + wAngka / 2, cy2, { align: 'center' });
+      if (diBawahKkm) doc.setTextColor(30, 41, 59);
       doc.text(nilaiHuruf(d.nilai), xHuruf + 2, cy2);
       doc.setFontSize(7.5);
       doc.text(d.keterangan || '-', xKet + wKet / 2, cy2, { align: 'center' });
@@ -413,7 +416,7 @@ function gambarTabelHeaderLegger(doc, { rows, g, topY }) {
   return { headerBottom, h2 };
 }
 
-function gambarBarisLegger(doc, { s, no, y, rows, g, rank }) {
+function gambarBarisLegger(doc, { s, no, y, rows, g, rank, kkm }) {
   const cy = y + LG.rowH / 2 + 1;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
@@ -422,14 +425,17 @@ function gambarBarisLegger(doc, { s, no, y, rows, g, rank }) {
   doc.text(String(s.nama || '').slice(0, 30), LG.m + LG.noW + LG.nisW + 1.5, cy);
   rows.forEach((r, i) => {
     const v = s.nilaiByRow?.[r.label];
+    const diBawahKkm = v !== null && v !== undefined && v !== '' && Number(v) < Number(kkm);
+    if (diBawahKkm) doc.setTextColor(220, 38, 38);
     doc.text(nilaiTeks(v), g.areaX + i * g.colW + g.colW / 2, cy, { align: 'center' });
+    if (diBawahKkm) doc.setTextColor(30, 41, 59);
   });
   doc.text(s.jumlah != null ? String(s.jumlah) : '', g.jmlX + LG.jmlW / 2, cy, { align: 'center' });
   doc.text(s.rata != null ? String(s.rata) : '', g.rataX + LG.rataW / 2, cy, { align: 'center' });
   doc.text(rank != null ? String(rank) : '', g.rankX + LG.rankW / 2, cy, { align: 'center' });
 }
 
-function gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran }) {
+function gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran, kkm }) {
   const g = geometriLegger(rows);
   // Posisi judul/info/tabel mengikuti tinggi kop (kop digambar tiap halaman sama)
   const kopBottom = aset ? 297 * (aset.kop.tinggi / aset.lebar) + 2 : kopLayout(profil).bottom + 1.4;
@@ -456,7 +462,7 @@ function gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahu
         doc.setFillColor(248, 250, 252);
         doc.rect(LG.m, y, g.right - LG.m, LG.rowH, 'F');
       }
-      gambarBarisLegger(doc, { s: list[rowIdx], no: rowIdx + 1, y, rows, g, rank: rankMap.get(list[rowIdx]) });
+      gambarBarisLegger(doc, { s: list[rowIdx], no: rowIdx + 1, y, rows, g, rank: rankMap.get(list[rowIdx]), kkm });
       y += LG.rowH;
       rowIdx++; halCount++;
     }
@@ -485,12 +491,12 @@ function gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahu
   }
 }
 
-export async function buatLeggerPtsPdf({ profil, kelasList, rows, semesterLabel, tahunAjaran }) {
+export async function buatLeggerPtsPdf({ profil, kelasList, rows, semesterLabel, tahunAjaran, kkm }) {
   const aset = await muatAsetKop();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   kelasList.forEach((kelas, idx) => {
     if (idx > 0) doc.addPage();
-    gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran });
+    gambarKelasLegger(doc, { profil, aset, kelas, rows, semesterLabel, tahunAjaran, kkm });
   });
   const total = doc.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
