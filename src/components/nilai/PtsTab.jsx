@@ -14,6 +14,7 @@ import { normalisasiNama } from '@/lib/mapelTemplate';
 import PtsPreviewDialog from '@/components/nilai/PtsPreviewDialog';
 import PemetaanMapelDialog from '@/components/nilai/PemetaanMapelDialog';
 import PtsStatusMapelView from '@/components/nilai/PtsStatusMapelView';
+import PtsStatusGuruView from '@/components/nilai/PtsStatusGuruView';
 import PtsProgressDetailDialog from '@/components/nilai/PtsProgressDetailDialog';
 import PaginationBar from '@/components/appui/PaginationBar';
 import PillTabs from '@/components/appui/PillTabs';
@@ -45,6 +46,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   const [sortSiswa, setSortSiswa] = useState('nama');
   const [sortStatus, setSortStatus] = useState('mapel');
   const [subView, setSubView] = useState('siswa');
+  const [statusMode, setStatusMode] = useState('mapel'); // 'mapel' | 'guru'
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -73,6 +75,12 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   const { data: guruList = [] } = useQuery({
     queryKey: ['guru-list-pts'],
     queryFn: () => base44.entities.Guru.list(),
+    staleTime: 300000,
+  });
+
+  const { data: pembelajaranList = [] } = useQuery({
+    queryKey: ['pembelajaran-list-pts'],
+    queryFn: () => base44.entities.Pembelajaran.list(),
     staleTime: 300000,
   });
 
@@ -258,6 +266,15 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
     [mapelList]
   );
 
+  // Guru pengampu per mapel per kelas — dari data Pembelajaran
+  const guruAmpuIdx = useMemo(() => {
+    const idx = new Map();
+    pembelajaranList.forEach(p => {
+      if (p.kelas_id && p.mapel) idx.set(`${p.kelas_id}__${normalisasiNama(p.mapel)}`, p.nama_guru || '');
+    });
+    return idx;
+  }, [pembelajaranList]);
+
   const statusAll = useMemo(() => {
     const kelasIds = filterKelas === 'all' ? availableKelas.map(k => k.id) : [filterKelas];
     const rows = [];
@@ -269,18 +286,53 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
         const dinilai = siswaKelas.filter(s => m?.has(s.id)).length;
         rows.push({
           mapel, kelas_id: kid, nama_kelas: kelas?.nama_kelas || '',
+          guru: guruAmpuIdx.get(`${kid}__${normalisasiNama(mapel)}`) || '',
           total: siswaKelas.length, dinilai,
           persen: siswaKelas.length ? Math.round(dinilai / siswaKelas.length * 100) : 0,
         });
       });
     });
     return rows;
-  }, [mapelDbNames, filterKelas, availableKelas, kelasList, siswaList, nilaiIdx]);
+  }, [mapelDbNames, filterKelas, availableKelas, kelasList, siswaList, nilaiIdx, guruAmpuIdx]);
 
   const statusSearched = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return statusAll.filter(r => !q || r.mapel?.toLowerCase().includes(q) || r.nama_kelas?.toLowerCase().includes(q));
+    return statusAll.filter(r => !q || r.mapel?.toLowerCase().includes(q) || r.nama_kelas?.toLowerCase().includes(q) || r.guru?.toLowerCase().includes(q));
   }, [statusAll, searchQuery]);
+
+  /* ===== Status Penilaian Per Guru: tugas ngajar (dari Pembelajaran) + progres input nilai ===== */
+  const guruStatusAll = useMemo(() => {
+    const kelasIds = filterKelas === 'all' ? availableKelas.map(k => k.id) : [filterKelas];
+    const byGuru = new Map();
+    pembelajaranList.forEach(p => {
+      if (!p.guru_id || !p.mapel || !kelasIds.includes(p.kelas_id)) return;
+      const kelas = kelasList.find(k => k.id === p.kelas_id);
+      const siswaKelas = siswaList.filter(s => s.kelas_id === p.kelas_id && (s.status || 'Aktif') === 'Aktif');
+      const m = nilaiIdx.get(`${p.kelas_id}__${p.mapel}`);
+      const dinilai = siswaKelas.filter(s => m?.has(s.id)).length;
+      const total = siswaKelas.length;
+      if (!byGuru.has(p.guru_id)) byGuru.set(p.guru_id, { guru_id: p.guru_id, nama_guru: p.nama_guru || '-', tugas: [] });
+      byGuru.get(p.guru_id).tugas.push({
+        mapel: p.mapel, kelas_id: p.kelas_id, nama_kelas: kelas?.nama_kelas || p.nama_kelas || '',
+        total, dinilai, persen: total ? Math.round(dinilai / total * 100) : 0,
+      });
+    });
+    return [...byGuru.values()]
+      .map(g => {
+        const total = g.tugas.reduce((a, t) => a + t.total, 0);
+        const dinilai = g.tugas.reduce((a, t) => a + t.dinilai, 0);
+        return { ...g, total, dinilai, persen: total ? Math.round(dinilai / total * 100) : 0 };
+      })
+      .sort((a, b) => a.nama_guru.localeCompare(b.nama_guru));
+  }, [pembelajaranList, filterKelas, availableKelas, kelasList, siswaList, nilaiIdx]);
+
+  const guruSearched = useMemo(() => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return guruStatusAll;
+    return guruStatusAll.filter(g =>
+      g.nama_guru?.toLowerCase().includes(q) ||
+      g.tugas.some(t => t.mapel?.toLowerCase().includes(q) || t.nama_kelas?.toLowerCase().includes(q)));
+  }, [guruStatusAll, searchQuery]);
   const statusSorted = useMemo(() => {
     const arr = [...statusSearched];
     switch (sortStatus) {
@@ -295,7 +347,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   const pagedStatus = statusSorted.slice((effPageStatus - 1) * pageSize, effPageStatus * pageSize);
 
   // Reset halaman saat filter/beralih view berubah
-  useEffect(() => { setPage(1); }, [filterKelas, semester, tahun, searchQuery, subView, pageSize]);
+  useEffect(() => { setPage(1); }, [filterKelas, semester, tahun, searchQuery, subView, statusMode, pageSize]);
 
   const bukaStatusDetail = (row) => {
     const m = nilaiIdx.get(`${row.kelas_id}__${row.mapel}`) || new Map();
@@ -345,7 +397,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
         })),
       };
     });
-    const doc = await buatLeggerPtsPdf({ profil, kelasList: kelasData, rows: rowsDef, semesterLabel: labelSemester, tahunAjaran });
+    const doc = await buatLeggerPtsPdf({ profil, kelasList: kelasData, rows: rowsDef, semesterLabel: labelSemester, tahunAjaran, kkm: kkmPts });
     const nama = kelasId ? (kelasList.find(k => k.id === kelasId)?.nama_kelas || 'Kelas') : 'Semua_Kelas';
     setPreview({ doc, url: doc.output('bloburl'), filename: `Legger_PTS_${String(nama).replace(/\s+/g, '_')}.pdf` });
   };
@@ -470,7 +522,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
-              placeholder={isViewSiswa ? 'Cari siswa atau NIS...' : 'Cari mapel atau kelas...'}
+              placeholder={isViewSiswa ? 'Cari siswa atau NIS...' : 'Cari mapel, kelas, atau guru...'}
               value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2.5 h-auto rounded-xl bg-white border-slate-300"
             />
@@ -480,12 +532,12 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
               <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-700 shadow-sm w-auto"><SelectValue /></SelectTrigger>
               <SelectContent>{SORT_SISWA.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
-          ) : (
+          ) : statusMode === 'mapel' ? (
             <Select value={sortStatus} onValueChange={setSortStatus}>
               <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-medium text-slate-700 shadow-sm w-auto"><SelectValue /></SelectTrigger>
               <SelectContent>{SORT_STATUS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
-          )}
+          ) : null}
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <Select value={filterKelas} onValueChange={setFilterKelas}>
@@ -507,12 +559,14 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
             <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm w-auto"><SelectValue placeholder="Tahun Ajaran" /></SelectTrigger>
             <SelectContent>{tahunOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
           </Select>
-          <div className="ml-auto">
-            <PaginationBar
-              page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
-              total={isViewSiswa ? siswaSorted.length : statusSorted.length}
-            />
-          </div>
+          {isViewSiswa && (
+            <div className="ml-auto">
+              <PaginationBar
+                page={page} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize}
+                total={siswaSorted.length}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -573,7 +627,23 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
           </div>
         )
       ) : (
-        <PtsStatusMapelView rows={pagedStatus} onDetail={bukaStatusDetail} />
+        <div>
+          <PillTabs
+            tabs={[
+              { key: 'mapel', label: 'Per Mapel', icon: ListChecks },
+              { key: 'guru', label: 'Per Guru', icon: Users },
+            ]}
+            activeKey={statusMode}
+            onChange={setStatusMode}
+            tint="amber"
+            className="mb-4"
+          />
+          {statusMode === 'mapel' ? (
+            <PtsStatusMapelView rows={statusSorted} groupByKelas={filterKelas === 'all'} onDetail={bukaStatusDetail} />
+          ) : (
+            <PtsStatusGuruView rows={guruSearched} onDetail={bukaStatusDetail} />
+          )}
+        </div>
       )}
 
       {/* Dialog pilih siswa untuk rapor */}
