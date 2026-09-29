@@ -15,12 +15,13 @@ export const namaIntiGuru = (g) => {
 // Nama lengkap dengan gelar — aman untuk data lama yang belum tergabung
 export const namaPegawaiLengkap = (g) => {
   if (!g) return '';
-  const n = (g.nama || '').trim();
   const gd = (g.gelar_depan || '').trim();
   const gb = (g.gelar_belakang || '').trim();
-  if (!gd && !gb) return n;
-  if (gd && n.startsWith(gd + ' ') && (!gb || n.endsWith(' ' + gb))) return n;
-  return [gd, n, gb].filter(Boolean).join(' ');
+  if (!gd && !gb) return (g.nama || '').trim();
+  // Buang gelar yang sudah tergabung di nama, lalu rangkai ulang sekali saja
+  // (aman untuk data baru yang nama lengkapnya sudah menyertakan gelar)
+  const inti = namaIntiGuru(g);
+  return [gd, inti, gb].filter(Boolean).join(' ');
 };
 
 // Cari guru berdasar nama tersimpan (mendukung nama lama tanpa gelar)
