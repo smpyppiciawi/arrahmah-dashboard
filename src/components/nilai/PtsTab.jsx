@@ -11,6 +11,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/lib/AuthContext';
 import { buatRaporPtsPdf, buatLeggerPtsPdf, formatTanggalIndo, muatAsetKop } from '@/lib/ptsPdf';
 import { normalisasiNama } from '@/lib/mapelTemplate';
+import { cariGuruByNama, namaPegawaiLengkap } from '@/lib/guruUtils';
 import PtsPreviewDialog from '@/components/nilai/PtsPreviewDialog';
 import PemetaanMapelDialog from '@/components/nilai/PemetaanMapelDialog';
 import PtsStatusMapelView from '@/components/nilai/PtsStatusMapelView';
@@ -164,8 +165,10 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
     bySiswa.forEach((rec, siswaId) => {
       const siswa = siswaList.find(s => s.id === siswaId);
       const kelas = kelasList.find(k => k.id === (siswa?.kelas_id || rec.kelas_id));
-      const waliNama = kelas?.wali_kelas || '';
-      const guru = guruList.find(g => g.nama && waliNama && g.nama.toLowerCase() === waliNama.toLowerCase());
+      const waliNamaTersimpan = kelas?.wali_kelas || '';
+      // Wali Kelas diambil dari Data Pegawai — Gelar Depan & Belakang tampil jika terinput di Menu Pegawai
+      const guru = cariGuruByNama(guruList, waliNamaTersimpan);
+      const waliNama = guru ? namaPegawaiLengkap(guru) : waliNamaTersimpan;
 
       const rowsNilai = rowsDef.map(r => {
         const agg = rec.byRow.get(r.label);
@@ -389,9 +392,10 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
     }
     const kelasData = kelasIds.map(kid => {
       const kelas = kelasList.find(k => k.id === kid);
+      const guruWali = cariGuruByNama(guruList, kelas?.wali_kelas);
       return {
         nama_kelas: kelas?.nama_kelas || '-',
-        wali_kelas: kelas?.wali_kelas || '',
+        wali_kelas: guruWali ? namaPegawaiLengkap(guruWali) : (kelas?.wali_kelas || ''),
         siswaList: dataPerSiswa.filter(s => s.kelas_id === kid).map(s => ({
           nis: s.nis, nama: s.nama, nilaiByRow: s.nilaiByRow, jumlah: s.jumlah, rata: s.rata,
         })),
