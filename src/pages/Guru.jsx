@@ -47,6 +47,8 @@ export default function Guru() {
   const [formData, setFormData] = useState({
     nip: '',
     nama: '',
+    gelar_depan: '',
+    gelar_belakang: '',
     jenis_kelamin: 'Laki-laki',
     jabatan: 'Guru Mata Pelajaran',
     tugas_tambahan: '',
@@ -143,6 +145,8 @@ export default function Guru() {
     setFormData({
       nip: '',
       nama: '',
+      gelar_depan: '',
+      gelar_belakang: '',
       jenis_kelamin: 'Laki-laki',
       jabatan: 'Guru Mata Pelajaran',
       tugas_tambahan: '',
@@ -158,7 +162,9 @@ export default function Guru() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const dataToSubmit = { ...formData, mapel: selectedMapel };
+    // Nama & gelar disatukan menjadi 1 kalimat Nama Lengkap — dipakai seluruh sistem (Rapor, Legger, dll.)
+    const namaLengkap = [formData.gelar_depan?.trim(), formData.nama?.trim(), formData.gelar_belakang?.trim()].filter(Boolean).join(' ');
+    const dataToSubmit = { ...formData, nama: namaLengkap, mapel: selectedMapel };
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: dataToSubmit });
     } else {
@@ -168,7 +174,13 @@ export default function Guru() {
 
   const handleEdit = (guru) => {
     setEditingData(guru);
-    setFormData(guru);
+    // Pisahkan gelar yang sudah tergabung di Nama Lengkap agar bisa diedit terpisah
+    let namaInti = guru.nama || '';
+    const gd = guru.gelar_depan || '';
+    const gb = guru.gelar_belakang || '';
+    if (gd && namaInti.startsWith(gd + ' ')) namaInti = namaInti.slice(gd.length + 1);
+    if (gb && namaInti.endsWith(' ' + gb)) namaInti = namaInti.slice(0, namaInti.length - gb.length - 1);
+    setFormData({ ...guru, nama: namaInti, gelar_depan: gd, gelar_belakang: gb });
     setSelectedMapel(guru.mapel || []);
     setIsOpen(true);
   };
@@ -336,7 +348,20 @@ export default function Guru() {
                   <Label>Nama Lengkap</Label>
                   <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />
                 </div>
+                <div>
+                  <Label>Gelar Depan</Label>
+                  <Input value={formData.gelar_depan || ''} onChange={(e) => setFormData({...formData, gelar_depan: e.target.value})} placeholder="cth: H., Hj., Dr." />
+                </div>
+                <div>
+                  <Label>Gelar Belakang</Label>
+                  <Input value={formData.gelar_belakang || ''} onChange={(e) => setFormData({...formData, gelar_belakang: e.target.value})} placeholder="cth: S.Pd., M.Pd." />
+                </div>
               </div>
+              {[formData.gelar_depan?.trim(), formData.nama?.trim(), formData.gelar_belakang?.trim()].filter(Boolean).length > 1 && (
+                <p className="text-xs text-violet-600 bg-violet-50 border border-violet-100 rounded-lg px-3 py-2">
+                  Nama Lengkap gabungan yang tersimpan: <span className="font-semibold">{[formData.gelar_depan?.trim(), formData.nama?.trim(), formData.gelar_belakang?.trim()].filter(Boolean).join(' ')}</span>
+                </p>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label>Jenis Kelamin</Label>

@@ -8,7 +8,15 @@
     },
     "nama": {
       "type": "string",
-      "description": "Nama lengkap guru/pegawai"
+      "description": "Nama lengkap guru/pegawai (hasil gabungan Gelar Depan + Nama + Gelar Belakang \u2014 dipakai seluruh sistem termasuk Rapor & Legger)"
+    },
+    "gelar_depan": {
+      "type": "string",
+      "description": "Gelar depan (contoh: H., Hj., Dr.) \u2014 digabung otomatis ke Nama Lengkap saat disimpan"
+    },
+    "gelar_belakang": {
+      "type": "string",
+      "description": "Gelar belakang (contoh: S.Pd., M.Pd.) \u2014 digabung otomatis ke Nama Lengkap saat disimpan"
     },
     "jenis_kelamin": {
       "type": "string",
