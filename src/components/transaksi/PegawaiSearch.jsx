@@ -46,7 +46,7 @@ export default function PegawaiSearch({ guruList, selectedGuru, onSelect, kasbon
                 {sortedGuru.map(guru => (
                   <CommandItem
                     key={guru.id}
-                    value={`${guru.nama} ${guru.nip || ''} ${guru.jabatan || ''}`}
+                    value={`${guru.nama} ${guru.nuptk || ''} ${guru.jabatan || ''}`}
                     onSelect={() => {
                       onSelect(guru);
                       setOpen(false);
@@ -58,7 +58,7 @@ export default function PegawaiSearch({ guruList, selectedGuru, onSelect, kasbon
                     <div className="flex flex-col">
                       <span>{guru.nama}</span>
                       <span className="text-xs text-slate-400">
-                        {guru.nip || '-'} · {guru.jabatan || '-'}
+                        {guru.nuptk || '-'} · {guru.jabatan || '-'}
                       </span>
                     </div>
                   </CommandItem>

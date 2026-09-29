@@ -92,11 +92,11 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   });
   const kkmPts = Number(pengaturanList[0]?.kkm_pts) || 75;
 
-  // Kepala Sekolah dari Data Pegawai — nama tergabung Gelar Depan & Belakang, NRKS dari NIP pegawai
+  // Kepala Sekolah dari Data Pegawai — nama tergabung Gelar Depan & Belakang, NRKS dari isian NRKS pegawai
   const kepsekPts = useMemo(() => {
     const g = guruList.find(x => x.jabatan === 'Kepala Sekolah' && (x.status || 'Aktif') === 'Aktif')
       || guruList.find(x => x.jabatan === 'Kepala Sekolah');
-    return g ? { nama: namaPegawaiLengkap(g), nip: g.nip || '' } : null;
+    return g ? { nama: namaPegawaiLengkap(g), nrks: g.nrks || '' } : null;
   }, [guruList]);
 
   const simpanKkmPts = async (v) => {
@@ -199,7 +199,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
         kelas_id: siswa?.kelas_id || rec.kelas_id,
         nama_kelas: kelas?.nama_kelas || siswa?.nama_kelas || rec.nama_kelas,
         wali_kelas: waliNama,
-        nuptk_wali: guru?.nip || '',
+        nuptk_wali: guru?.nuptk || '',
         rowsNilai,
         rowValues: Object.fromEntries(rowsNilai.map(r => [r.label, { nilai: r.nilai, kkm: r.kkm, keterangan: r.keterangan }])),
         nilaiByRow: Object.fromEntries(rowsNilai.map(r => [r.label, r.nilai])),

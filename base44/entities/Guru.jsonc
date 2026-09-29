@@ -2,9 +2,13 @@
   "name": "Guru",
   "type": "object",
   "properties": {
-    "nip": {
+    "nuptk": {
       "type": "string",
-      "description": "Nomor Induk Pegawai / NUPTK / NIK"
+      "description": "NUPTK / NIP / NIK pegawai (nomor sama dengan NIP sebelumnya, hanya nama isian yang berubah)"
+    },
+    "nrks": {
+      "type": "string",
+      "description": "NRKS (Nomor Register Kepala Sekolah) \u2014 khusus jabatan Kepala Sekolah. Otomatis dipakai sebagai nomor Kepala Sekolah pada tanda tangan Surat, Rapor & Legger."
     },
     "nama": {
       "type": "string",

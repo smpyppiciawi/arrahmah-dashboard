@@ -76,7 +76,7 @@ export default function JadwalPiketPegawai() {
       toast({ title: 'Pegawai sudah terdaftar di hari ini' });
       return;
     }
-    const newPetugas = [...existing.petugas, { guru_id: guru.id, nama_pegawai: guru.nama, nip: guru.nip || '' }];
+    const newPetugas = [...existing.petugas, { guru_id: guru.id, nama_pegawai: guru.nama, nip: guru.nuptk || '' }];
     try {
       if (existing.id) {
         await base44.entities.JadwalPiket.update(existing.id, { petugas: newPetugas });
@@ -218,7 +218,7 @@ export default function JadwalPiketPegawai() {
                             <Users className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-slate-800 truncate">{p.nama_pegawai}</p>
-                              {p.nip && <p className="text-[11px] text-slate-400">NIP: {p.nip}</p>}
+                              {p.nip && <p className="text-[11px] text-slate-400">NUPTK: {p.nip}</p>}
                             </div>
                             {!isReadOnly && (
                               <button

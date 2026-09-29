@@ -82,7 +82,7 @@ export default function PengajuanIzin() {
       await base44.entities.IzinPegawai.create({
         tanggal: form.tanggal,
         guru_id: guru.id,
-        nip: guru.nip || '',
+        nip: guru.nuptk || '',
         nama_pegawai: guru.nama,
         jabatan: guru.jabatan || '',
         jenis: form.jenis,

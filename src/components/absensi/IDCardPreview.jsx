@@ -31,8 +31,8 @@ export default function IDCardPreview({ personType = 'Pegawai' }) {
 
   const handlePrint = () => {
     const isPegawai = personType === 'Pegawai';
-    const nipNisLabel = isPegawai ? 'NIP' : 'NIS';
-    const nipNisValue = isPegawai ? (selected.nip || '-') : (selected.nis || '-');
+    const nipNisLabel = isPegawai ? 'NUPTK' : 'NIS';
+    const nipNisValue = isPegawai ? (selected.nuptk || '-') : (selected.nis || '-');
     const infoLabel = isPegawai ? 'Jabatan' : 'Kelas';
     const infoValue = isPegawai ? (selected.jabatan || '-') : (selected.nama_kelas || '-');
     const qrUrl = qrCard
@@ -163,8 +163,8 @@ export default function IDCardPreview({ personType = 'Pegawai' }) {
               <div className="flex-1 min-w-0">
                 <p className="text-[8px] text-slate-400 font-medium">Nama</p>
                 <p className="text-xs font-bold text-slate-800 leading-tight truncate">{selected.nama}</p>
-                <p className="text-[8px] text-slate-400 font-medium mt-1">{personType === 'Pegawai' ? 'NIP' : 'NIS'}</p>
-                <p className="text-[10px] font-mono text-slate-700">{personType === 'Pegawai' ? (selected.nip || '-') : (selected.nis || '-')}</p>
+                <p className="text-[8px] text-slate-400 font-medium mt-1">{personType === 'Pegawai' ? 'NUPTK' : 'NIS'}</p>
+                <p className="text-[10px] font-mono text-slate-700">{personType === 'Pegawai' ? (selected.nuptk || '-') : (selected.nis || '-')}</p>
                 <p className="text-[8px] text-slate-400 font-medium mt-1">{personType === 'Pegawai' ? 'Jabatan' : 'Kelas'}</p>
                 <p className="text-[10px] text-slate-700">{personType === 'Pegawai' ? (selected.jabatan || '-') : (selected.nama_kelas || '-')}</p>
               </div>

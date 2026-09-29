@@ -25,7 +25,7 @@ export default function PersonSearch({ personType, personList, selectedPerson, o
       if (searchText.trim()) {
         const text = searchText.toLowerCase();
         const nama = (p.nama || '').toLowerCase();
-        const nipNis = ((isPegawai ? p.nip : p.nis) || '').toLowerCase();
+        const nipNis = ((isPegawai ? p.nuptk : p.nis) || '').toLowerCase();
         return nama.includes(text) || nipNis.includes(text);
       }
       return true;
@@ -42,7 +42,7 @@ export default function PersonSearch({ personType, personList, selectedPerson, o
           <Input
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
-            placeholder={`Cari nama atau ${isPegawai ? 'NIP' : 'NIS'}...`}
+            placeholder={`Cari nama atau ${isPegawai ? 'NUPTK' : 'NIS'}...`}
             className="pl-9 h-9"
           />
         </div>
@@ -83,7 +83,7 @@ export default function PersonSearch({ personType, personList, selectedPerson, o
                 <div>
                   <p className="text-sm font-medium text-slate-700">{p.nama}</p>
                   <p className="text-[10px] text-slate-400 font-mono">
-                    {isPegawai ? (p.nip || 'No NIP') : (p.nis || 'No NIS')}
+                    {isPegawai ? (p.nuptk || 'No NUPTK') : (p.nis || 'No NIS')}
                   </p>
                 </div>
               </div>

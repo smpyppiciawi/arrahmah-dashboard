@@ -298,7 +298,7 @@ function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, ta
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (siswa.nuptk_wali) doc.text(`NUPTK. ${siswa.nuptk_wali}`, 105, nameY + 5.5, { align: 'center' });
-  const nrks = kepsek?.nip || profil?.nip_kepala_sekolah || '';
+  const nrks = kepsek?.nrks || profil?.nip_kepala_sekolah || '';
   if (nrks) doc.text(`NRKS. ${nrks}`, 160, nameY + 5.5, { align: 'center' });
 }
 

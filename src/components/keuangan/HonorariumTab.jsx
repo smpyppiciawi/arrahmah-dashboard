@@ -149,7 +149,7 @@ export default function HonorariumTab() {
         jumlah: total,
         bulan: selectedBulan,
         guru_id: detailGuru.id,
-        nip_pegawai: detailGuru.nip || '',
+        nip_pegawai: detailGuru.nuptk || '',
         nama_pegawai: detailGuru.nama,
         jabatan_pegawai: detailGuru.jabatan || '',
         rincian_gaji: pegawaiRincian,
@@ -180,7 +180,7 @@ export default function HonorariumTab() {
         </button>
       )
     },
-    { key: 'nip', label: 'NIP', render: (row) => row.nip || '-' },
+    { key: 'nuptk', label: 'NUPTK', render: (row) => row.nuptk || '-' },
     { key: 'jabatan', label: 'Jabatan', render: (row) => <Badge variant="outline">{row.jabatan}</Badge> },
     {
       key: 'nama_golongan', label: 'Golongan',
@@ -308,7 +308,7 @@ export default function HonorariumTab() {
             <div className="space-y-4">
               <div className="p-4 bg-slate-50 rounded-lg">
                 <p className="font-semibold text-slate-800">{detailGuru.nama}</p>
-                <p className="text-sm text-slate-500">NIP: {detailGuru.nip || '-'}</p>
+                <p className="text-sm text-slate-500">NUPTK: {detailGuru.nuptk || '-'}</p>
                 <p className="text-sm text-slate-500">Jabatan: {detailGuru.jabatan}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">

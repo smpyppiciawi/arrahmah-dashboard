@@ -103,7 +103,7 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
       person_type: personType,
       person_id: p.id,
       nama: p.nama,
-      nip_nis: personType === 'Pegawai' ? p.nip : p.nis,
+      nip_nis: personType === 'Pegawai' ? p.nuptk : p.nis,
       info: personType === 'Pegawai' ? p.jabatan : p.nama_kelas,
       no_telp: personType === 'Pegawai' ? p.no_telp : (p.kontak_list?.[0]?.no_telp || p.no_telp_ortu || ''),
       status: 'Aktif',
@@ -113,7 +113,7 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
   const handleGenerateQR = () => {
     if (!selectedPersonData) return;
     const p = selectedPersonData;
-    const qrId = `QR-${personType === 'Pegawai' ? (p.nip || p.id) : (p.nis || p.id)}`;
+    const qrId = `QR-${personType === 'Pegawai' ? (p.nuptk || p.id) : (p.nis || p.id)}`;
     setNewCardId(qrId);
     setNewJenis('QRCode');
     toast({ title: 'QR Code di-generate', description: qrId });
@@ -152,14 +152,14 @@ export default function PendaftaranKartu({ personType = 'Pegawai' }) {
       } catch (e) { /* photo upload optional */ }
       await base44.entities.DataWajah.create({
         person_type: personType, person_id: p.id, nama: p.nama,
-        nip_nis: personType === 'Pegawai' ? p.nip : p.nis,
+        nip_nis: personType === 'Pegawai' ? p.nuptk : p.nis,
         info: personType === 'Pegawai' ? p.jabatan : p.nama_kelas,
         descriptor, card_id_virtual: cardId, foto_url: fotoUrl, status: 'Aktif',
       });
       await base44.entities.KartuAbsensi.create({
         card_id: cardId, jenis: 'FaceRecognition', person_type: personType,
         person_id: p.id, nama: p.nama,
-        nip_nis: personType === 'Pegawai' ? p.nip : p.nis,
+        nip_nis: personType === 'Pegawai' ? p.nuptk : p.nis,
         info: personType === 'Pegawai' ? p.jabatan : p.nama_kelas,
         no_telp: personType === 'Pegawai' ? p.no_telp : (p.kontak_list?.[0]?.no_telp || p.no_telp_ortu || ''),
         status: 'Aktif',

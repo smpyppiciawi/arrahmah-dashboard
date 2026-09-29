@@ -23,7 +23,7 @@ const SECTION_IDENTITY = [
   { field: 'tahun_berdiri', label: 'Tahun Berdiri' },
   { field: 'kurikulum', label: 'Kurikulum' },
   { field: 'nama_kepala_sekolah', label: 'Nama Kepala Sekolah' },
-  { field: 'nip_kepala_sekolah', label: 'NIP Kepala Sekolah' },
+  { field: 'nip_kepala_sekolah', label: 'NRKS Kepala Sekolah' },
   { field: 'nama_yayasan', label: 'Nama Yayasan' },
   { field: 'nama_komite', label: 'Nama Komite Sekolah' },
 ];

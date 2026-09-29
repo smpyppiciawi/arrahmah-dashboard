@@ -294,7 +294,7 @@ export default function TransaksiForm({
     setFormData(prev => ({
       ...prev,
       guru_id: guru.id,
-      nip_pegawai: guru.nip,
+      nip_pegawai: guru.nuptk,
       nama_pegawai: guru.nama,
       jabatan_pegawai: guru.jabatan,
       siswa_id: '', nis: '', nama_siswa: '', kelas: '',

@@ -88,7 +88,7 @@ export default function TugasMateriDialog({ open, onClose, izin, currentGuru }) 
           hari,
           guru_id: guruId,
           nama_guru: selectedGuru?.nama || izin?.nama_pegawai || '',
-          nip: selectedGuru?.nip || izin?.nip || '',
+          nip: selectedGuru?.nuptk || izin?.nip || '',
           jabatan: selectedGuru?.jabatan || izin?.jabatan || '',
           keterangan_izin: izin?.keterangan || '',
           jenis_izin: izin?.jenis || '',

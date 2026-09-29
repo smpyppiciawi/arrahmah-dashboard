@@ -173,7 +173,7 @@ function buildKuitansiInnerHtml(transaksi, fontSize) {
     bodyRows =
       buildRow('JENIS', transaksi.jenis === 'Pemasukan' ? 'MASUK' : 'KELUAR', fs) +
       buildRow('TELAH TERIMA DARI', transaksi.nama_pegawai || '-', fs) +
-      buildRow('NIP/JABATAN', `${transaksi.nip_pegawai || '-'} / ${transaksi.jabatan_pegawai || '-'}`, fs) +
+      buildRow('NUPTK/JABATAN', `${transaksi.nip_pegawai || '-'} / ${transaksi.jabatan_pegawai || '-'}`, fs) +
       buildSpacer() +
       buildRow('URAIAN TRANSAKSI', uraian, fs) +
       buildSpacer() +

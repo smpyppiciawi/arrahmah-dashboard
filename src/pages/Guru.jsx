@@ -45,7 +45,8 @@ export default function Guru() {
   const canEdit = ['admin', 'tu'].includes(userRole);
 
   const [formData, setFormData] = useState({
-    nip: '',
+    nuptk: '',
+    nrks: '',
     nama: '',
     gelar_depan: '',
     gelar_belakang: '',
@@ -109,7 +110,7 @@ export default function Guru() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ['NIP', 'Nama', 'Jenis Kelamin', 'Jabatan', 'Mata Pelajaran', 'No Telp', 'Email'];
+    const headers = ['NUPTK', 'Nama', 'Jenis Kelamin', 'Jabatan', 'Mata Pelajaran', 'No Telp', 'Email'];
     const csvContent = headers.join(',') + '\n' + '123456,Contoh Guru,Laki-laki,Guru Mata Pelajaran,Matematika;IPA,08123456789,guru@email.com';
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -128,9 +129,9 @@ export default function Guru() {
     const rows = text.split('\n').slice(1).filter(row => row.trim());
 
     for (const row of rows) {
-      const [nip, nama, jenis_kelamin, jabatan, mapel, no_telp, email] = row.split(',').map(s => s.trim());
+      const [nuptk, nama, jenis_kelamin, jabatan, mapel, no_telp, email] = row.split(',').map(s => s.trim());
       await createMutation.mutateAsync({
-        nip, nama, jenis_kelamin, jabatan: jabatan || 'Guru Mata Pelajaran',
+        nuptk, nama, jenis_kelamin, jabatan: jabatan || 'Guru Mata Pelajaran',
         mapel: mapel ? mapel.split(';') : [],
         no_telp, email,
         status: 'Aktif'
@@ -207,7 +208,7 @@ export default function Guru() {
   };
 
   const guruColumns = [
-    { key: 'nip', label: 'NIP', render: (row) => row.nip || '-' },
+    { key: 'nuptk', label: 'NUPTK', render: (row) => row.nuptk || '-' },
     { key: 'nama', label: 'Nama' },
     { key: 'jenis_kelamin', label: 'JK' },
     { 
@@ -341,9 +342,15 @@ export default function Guru() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <Label>NIP</Label>
-                  <Input value={formData.nip} onChange={(e) => setFormData({...formData, nip: e.target.value})} />
+                  <Label>NUPTK</Label>
+                  <Input value={formData.nuptk} onChange={(e) => setFormData({...formData, nuptk: e.target.value})} />
                 </div>
+                {formData.jabatan === 'Kepala Sekolah' && (
+                  <div>
+                    <Label>NRKS</Label>
+                    <Input value={formData.nrks || ''} onChange={(e) => setFormData({...formData, nrks: e.target.value})} placeholder="Nomor Register Kepala Sekolah" />
+                  </div>
+                )}
                 <div>
                   <Label>Nama Lengkap</Label>
                   <Input value={formData.nama} onChange={(e) => setFormData({...formData, nama: e.target.value})} required />

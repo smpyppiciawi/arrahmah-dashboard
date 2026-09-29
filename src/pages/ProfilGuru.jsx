@@ -133,12 +133,12 @@ export default function ProfilGuru() {
                 )}
               </div>
               <div className="mt-5 space-y-2">
-                {guruData.nip && (
+                {guruData.nuptk && (
                   <div className="flex items-center gap-2 bg-white/10 rounded-xl px-3 py-2">
                     <Building className="w-4 h-4 text-violet-200 shrink-0" />
                     <div>
-                      <p className="text-violet-300 text-[10px]">NIP/NUPTK</p>
-                      <p className="text-white text-xs font-semibold">{guruData.nip}</p>
+                      <p className="text-violet-300 text-[10px]">NUPTK</p>
+                      <p className="text-white text-xs font-semibold">{guruData.nuptk}</p>
                     </div>
                   </div>
                 )}
@@ -204,8 +204,8 @@ export default function ProfilGuru() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <WebField label="Nama Lengkap" editMode={editMode} value={formData.nama || ''} displayValue={guruData.nama}
                   onChange={v => setFormData({...formData, nama: v})} />
-                <WebField label="NIP / NUPTK / NIK" editMode={editMode} value={formData.nip || ''} displayValue={guruData.nip}
-                  onChange={v => setFormData({...formData, nip: v})} placeholder="NIP/NUPTK/NIK" />
+                <WebField label="NUPTK / NIP / NIK" editMode={editMode} value={formData.nuptk || ''} displayValue={guruData.nuptk}
+                  onChange={v => setFormData({...formData, nuptk: v})} placeholder="NUPTK/NIP/NIK" />
                 <div>
                   <Label className="text-xs text-slate-500 font-medium">Jenis Kelamin</Label>
                   {editMode ? (
@@ -350,14 +350,14 @@ export default function ProfilGuru() {
                   <span className="font-bold text-slate-800 text-sm">Informasi Kontak</span>
                 </div>
                 <div className="divide-y divide-slate-50">
-                  {guruData.nip && (
+                  {guruData.nuptk && (
                     <div className="flex items-center gap-3 px-5 py-3.5">
                       <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center shrink-0">
                         <Building className="w-4 h-4 text-violet-500" />
                       </div>
                       <div>
-                        <p className="text-[10px] text-slate-400 font-medium">NIP / NUPTK</p>
-                        <p className="text-slate-800 text-sm font-semibold">{guruData.nip}</p>
+                        <p className="text-[10px] text-slate-400 font-medium">NUPTK</p>
+                        <p className="text-slate-800 text-sm font-semibold">{guruData.nuptk}</p>
                       </div>
                     </div>
                   )}
@@ -453,7 +453,7 @@ export default function ProfilGuru() {
                 </div>
                 <div className="divide-y divide-slate-50">
                   <MobileField label="Nama Lengkap" value={formData.nama} displayValue={guruData.nama} editMode={editMode} onChange={v => setFormData({...formData, nama: v})} />
-                  <MobileField label="NIP / NUPTK / NIK" value={formData.nip} displayValue={guruData.nip} editMode={editMode} onChange={v => setFormData({...formData, nip: v})} placeholder="Masukkan NIP" />
+                  <MobileField label="NUPTK / NIP / NIK" value={formData.nuptk} displayValue={guruData.nuptk} editMode={editMode} onChange={v => setFormData({...formData, nuptk: v})} placeholder="Masukkan NUPTK" />
                   <MobileField label="Email" value={formData.email} displayValue={guruData.email} editMode={editMode} onChange={v => setFormData({...formData, email: v})} type="email" />
                   <MobileField label="No. Telepon" value={formData.no_telp} displayValue={guruData.no_telp} editMode={editMode} onChange={v => setFormData({...formData, no_telp: v})} placeholder="08xx-xxxx-xxxx" />
                   <MobileField label="Tugas Tambahan" value={formData.tugas_tambahan} displayValue={guruData.tugas_tambahan} editMode={editMode} onChange={v => setFormData({...formData, tugas_tambahan: v})} placeholder="Wali Kelas, dll" />

@@ -115,7 +115,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
           await base44.entities.AbsensiPegawai.update(existingToday[0].id, { jam_keluar: now, status: 'Pulang' });
         } else {
           await base44.entities.AbsensiPegawai.create({
-            tanggal: today, guru_id: myGuru.id, nip: myGuru.nip,
+            tanggal: today, guru_id: myGuru.id, nip: myGuru.nuptk,
             nama_pegawai: myGuru.nama, jabatan: myGuru.jabatan,
             jam_keluar: now, status: 'Pulang', metode: 'FaceRecognition',
           });
@@ -130,7 +130,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
         const isLate = isToleransiAktif() ? now > lateThreshold : false;
         const status = isLate ? 'Terlambat' : 'Hadir';
         await base44.entities.AbsensiPegawai.create({
-          tanggal: today, guru_id: myGuru.id, nip: myGuru.nip,
+          tanggal: today, guru_id: myGuru.id, nip: myGuru.nuptk,
           nama_pegawai: myGuru.nama, jabatan: myGuru.jabatan,
           jam_masuk: now, status, metode: 'FaceRecognition',
         });
@@ -186,7 +186,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-slate-800 truncate">{myGuru.nama}</p>
-                <p className="text-xs text-slate-500">{myGuru.jabatan} · NIP: {myGuru.nip || '-'}</p>
+                <p className="text-xs text-slate-500">{myGuru.jabatan} · NUPTK: {myGuru.nuptk || '-'}</p>
               </div>
               {existingToday.length > 0 && (
                 <Badge className={existingToday[0].status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}>
