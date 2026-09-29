@@ -26,12 +26,15 @@ export default function RealtimeSyncProvider({ children }) {
 
   useEffect(() => {
     let timer = null;
+    // Throttle: perubahan apapun (dari 40+ entitas) hanya memicu refresh data
+    // maksimal 1x per 2 detik — mencegah badai permintaan API (rate limit) saat
+    // banyak event realtime datang beruntun (mis. bulk input nilai/absensi).
     const triggerSync = () => {
       if (timer) return;
       timer = setTimeout(() => {
         timer = null;
         queryClient.invalidateQueries();
-      }, 350);
+      }, 2000);
     };
 
     const unsubs = SYNCED_ENTITIES.map((name) => {

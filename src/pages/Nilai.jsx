@@ -99,7 +99,7 @@ export default function Nilai() {
   const tabs = [...TABS, ...(canAccessTKA ? [{ key: 'tka', label: 'TKA', icon: Award }] : [])];
 
   // Fetch Pembelajaran assignments for guru
-  const { data: pembelajaranGuru = [] } = useQuery({
+  const { data: pembelajaranGuru = [], isSuccess: pembelajaranGuruLoaded } = useQuery({
     queryKey: ['pembelajaran-guru', guruData?.id],
     queryFn: () => base44.entities.Pembelajaran.filter({ guru_id: guruData?.id }),
     enabled: isGuruRole && !!guruData?.id,
@@ -125,7 +125,9 @@ export default function Nilai() {
       }
       return all;
     },
-    enabled: !isGuruRole || (!!currentUser && !!guruData),
+    // Tunggu data penugasan selesai termuat agar daftar nilai tidak di-fetch dua kali (rate limit)
+    enabled: !isGuruRole || (!!currentUser && !!guruData && pembelajaranGuruLoaded),
+    staleTime: 60000,
   });
 
   const createMutation = useMutation({
