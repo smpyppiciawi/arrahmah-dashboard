@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import NilaiCardList from "@/components/nilai/NilaiCardList";
 import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
 import PtsTab from "@/components/nilai/PtsTab";
 import PtsGuruView from "@/components/nilai/PtsGuruView";
+import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 
 // Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
@@ -51,10 +52,11 @@ export default function Nilai() {
   const [inputChoiceOpen, setInputChoiceOpen] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
     kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '',
-    semester: semesterAktif, tahun_ajaran: '', kkm: 75, nama_guru: ''
+    semester: semesterAktif, tahun_ajaran: '', nama_guru: ''
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { activeAcademicYear } = useActiveAcademicYear();
   const { data: pengaturanList = [] } = useQuery({ queryKey: ['pengaturan-aplikasi'], queryFn: () => base44.entities.PengaturanAplikasi.list(), staleTime: 300000 });
   const kkmPts = Number(pengaturanList[0]?.kkm_pts) || 75;
@@ -78,7 +80,7 @@ export default function Nilai() {
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
     mapel: '', semester: semesterAktif, tahun_ajaran: '', jenis_penilaian: '',
-    kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: ''
+    kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '', nama_guru: ''
   });
 
   const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
@@ -116,6 +118,28 @@ export default function Nilai() {
   }, [mapelList]);
   const availableMapel = isGuruRole ? assignedMapel : daftarMapel;
 
+  // Data Pembelajaran seluruh kelas (untuk auto Nama Guru pada akun non-Guru)
+  const { data: pembelajaranAll = [] } = useQuery({
+    queryKey: ['pembelajaran-list-pts'],
+    queryFn: () => base44.entities.Pembelajaran.list(),
+    enabled: !isGuruRole,
+    staleTime: 300000,
+  });
+
+  // Nama guru pengampu dari pasangan tugas Pembelajaran (kelas + mapel)
+  const namaGuruPengampu = (kelasId, mapel) => {
+    if (isGuruRole) return guruData?.nama || '';
+    const p = pembelajaranAll.find(x => x.kelas_id === kelasId && x.mapel === mapel);
+    return p?.nama_guru || '';
+  };
+
+  // Mapel yang diampu pada kelas terpilih (akun Guru: hanya pasangan dari Pembelajaran)
+  const mapelUntukKelas = (kelasId) => {
+    if (!isGuruRole) return daftarMapel;
+    if (!kelasId) return assignedMapel;
+    return [...new Set(pembelajaranGuru.filter(p => p.kelas_id === kelasId).map(p => p.mapel))];
+  };
+
   const { data: nilaiList = [], isLoading } = useQuery({
     queryKey: ['nilai', currentUser?.email, userRole, assignedKelasIds, assignedMapel],
     queryFn: async () => {
@@ -146,31 +170,50 @@ export default function Nilai() {
   });
 
   const resetForm = () => {
-    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '' });
+    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '', nama_guru: '' });
     setEditingData(null);
     setIsOpen(false);
   };
 
   const handleSiswaChange = (siswaId) => {
     const siswa = siswaList.find(s => s.id === siswaId);
-    if (siswa) setFormData({ ...formData, siswa_id: siswaId, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas });
+    if (!siswa) return;
+    // Mapel yang bisa dipilih mengikuti penugasan Pembelajaran di kelas siswa tersebut
+    const mapelBoleh = mapelUntukKelas(siswa.kelas_id);
+    const mapelDipakai = formData.mapel && mapelBoleh.includes(formData.mapel) ? formData.mapel : '';
+    setFormData({
+      ...formData, siswa_id: siswaId, nis: siswa.nis, nama_siswa: siswa.nama,
+      kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas,
+      mapel: mapelDipakai, nama_guru: namaGuruPengampu(siswa.kelas_id, mapelDipakai),
+    });
+  };
+
+  // Pilihan mapel menentukan Nama Guru otomatis (dari data Pembelajaran)
+  const handleMapelChangeSiswa = (mapel) => {
+    setFormData(prev => ({ ...prev, mapel, nama_guru: namaGuruPengampu(prev.kelas_id, mapel) }));
   };
 
   const handleNilaiChange = (nilai) => {
     const numNilai = Number(nilai);
-    const kkmDipakai = formData.jenis_penilaian === 'PTS' ? kkmPts : (formData.kkm || 75);
-    setFormData({ ...formData, nilai: numNilai, status_ketuntasan: numNilai >= kkmDipakai ? 'Tuntas' : 'Belum Tuntas' });
+    setFormData({ ...formData, nilai: numNilai, status_ketuntasan: numNilai >= kkmPts ? 'Tuntas' : 'Belum Tuntas' });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const kkmDipakai = formData.jenis_penilaian === 'PTS' ? kkmPts : Number(formData.kkm);
-    const payload = { ...formData, nilai: Number(formData.nilai), kkm: kkmDipakai, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
+    if (!formData.siswa_id || !formData.mapel) {
+      toast({ title: 'Lengkapi data', description: 'Siswa dan Mata Pelajaran wajib dipilih.', variant: 'destructive' });
+      return;
+    }
+    if (!formData.jenis_penilaian) {
+      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis penilaian sebelum menyimpan.', variant: 'destructive' });
+      return;
+    }
+    const payload = { ...formData, nilai: Number(formData.nilai), kkm: kkmPts, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
     if (editingData) updateMutation.mutate({ id: editingData.id, data: payload });
     else createMutation.mutate(payload);
   };
 
-  const handleEdit = (data) => { setEditingData(data); setFormData(data); setIsOpen(true); };
+  const handleEdit = (data) => { setEditingData(data); setFormData({ ...data, nama_guru: data.nama_guru || '' }); setIsOpen(true); };
 
   // Simpan dari Bottom Sheet (edit cepat nilai)
   const handleSheetSave = (nilai) => {
@@ -178,41 +221,90 @@ export default function Nilai() {
     const numNilai = Number(nilai);
     updateMutation.mutate({
       id: sheetRow.id,
-      data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= (sheetRow.jenis_penilaian === 'PTS' ? kkmPts : (sheetRow.kkm || 75)) ? 'Tuntas' : 'Belum Tuntas' }
+      data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= kkmPts ? 'Tuntas' : 'Belum Tuntas' }
     });
     setSheetRow(null);
   };
 
-  const handleKelasChange = (kelasId) => {
+  /* ===== Input Per Kelas: nilai tersimpan otomatis terisi kembali saat kombinasi sama dibuka ===== */
+  const comboKey = [kelasFormData.kelas_id, kelasFormData.mapel, kelasFormData.jenis_penilaian, kelasFormData.semester, kelasFormData.tahun_ajaran || activeAcademicYear || ''].join('|');
+  const lastComboRef = useRef('');
+
+  useEffect(() => {
+    const kelasId = kelasFormData.kelas_id;
+    if (!kelasId) { setKelasNilaiData([]); return; }
+    const samaCombo = comboKey === lastComboRef.current;
+    lastComboRef.current = comboKey;
     const kelas = kelasList.find(k => k.id === kelasId);
-    const siswaInKelas = siswaList.filter(s => s.kelas_id === kelasId).sort((a, b) => a.nama.localeCompare(b.nama));
-    setKelasFormData(prev => ({ ...prev, kelas_id: kelasId, tahun_ajaran: kelas?.tahun_ajaran || '' }));
-    setKelasNilaiData(siswaInKelas.map(s => ({ siswa_id: s.id, nis: s.nis, nama_siswa: s.nama, nama_kelas: kelas?.nama_kelas || '', nilai: 0 })));
+    const existing = (kelasFormData.mapel && kelasFormData.jenis_penilaian)
+      ? nilaiList.filter(n =>
+          n.kelas_id === kelasId && n.mapel === kelasFormData.mapel &&
+          n.jenis_penilaian === kelasFormData.jenis_penilaian &&
+          n.semester === kelasFormData.semester &&
+          (n.tahun_ajaran || '') === (kelasFormData.tahun_ajaran || activeAcademicYear || ''))
+      : [];
+    const bySiswa = new Map(existing.map(n => [n.siswa_id, n]));
+    const roster = siswaList.filter(s => s.kelas_id === kelasId).sort((a, b) => a.nama.localeCompare(b.nama));
+    setKelasNilaiData(prev => roster.map(s => {
+      const ex = bySiswa.get(s.id);
+      const base = { siswa_id: s.id, nis: s.nis, nama_siswa: s.nama, nama_kelas: kelas?.nama_kelas || '', existingId: ex?.id || null };
+      // Pertahankan nilai yang sedang diedit (belum disimpan) bila kombinasi tidak berubah
+      if (samaCombo) {
+        const lama = prev.find(x => x.siswa_id === s.id);
+        if (lama && lama.dirty) return { ...base, nilai: lama.nilai, dirty: true };
+      }
+      return { ...base, nilai: ex ? ex.nilai : '' };
+    }));
+  }, [comboKey, nilaiList, siswaList, kelasList, activeAcademicYear, kelasFormData.kelas_id, kelasFormData.mapel, kelasFormData.jenis_penilaian, kelasFormData.semester, kelasFormData.tahun_ajaran]);
+
+  const handleKelasChange = (kelasId) => {
+    setKelasFormData(prev => ({ ...prev, kelas_id: kelasId, mapel: '', nama_guru: '' }));
   };
 
   const handleMapelChange = (mapel) => {
-    const guru = isGuruRole ? guruData : guruList.find(g => g.mapel && g.mapel.includes(mapel));
-    setKelasFormData(prev => ({ ...prev, mapel, nama_guru: guru?.nama || prev.nama_guru }));
+    setKelasFormData(prev => ({ ...prev, mapel, nama_guru: namaGuruPengampu(prev.kelas_id, mapel) }));
   };
 
   const handleKelasNilaiChange = (siswaId, nilai) => {
-    setKelasNilaiData(prev => prev.map(item => item.siswa_id === siswaId ? { ...item, nilai: Number(nilai) } : item));
+    setKelasNilaiData(prev => prev.map(item => item.siswa_id === siswaId ? { ...item, nilai, dirty: true } : item));
   };
 
   const handleKelasSubmit = async (e) => {
     e.preventDefault();
+    if (!kelasFormData.kelas_id || !kelasFormData.mapel) {
+      toast({ title: 'Lengkapi data', description: 'Kelas dan Mata Pelajaran wajib dipilih.', variant: 'destructive' });
+      return;
+    }
+    if (!kelasFormData.jenis_penilaian) {
+      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis penilaian sebelum menyimpan.', variant: 'destructive' });
+      return;
+    }
     const finalTahunAjaran = kelasFormData.tahun_ajaran || activeAcademicYear || '';
-    const kkmKelas = kelasFormData.jenis_penilaian === 'PTS' ? kkmPts : Number(kelasFormData.kkm);
-    const records = kelasNilaiData.map(item => ({
-      ...item, ...kelasFormData, kelas_id: kelasFormData.kelas_id,
-      tahun_ajaran: finalTahunAjaran,
-      kkm: kkmKelas,
-      status_ketuntasan: item.nilai >= kkmKelas ? 'Tuntas' : 'Belum Tuntas'
+    const filled = kelasNilaiData.filter(item => item.nilai !== '' && item.nilai !== null && item.nilai !== undefined);
+    if (!filled.length) {
+      toast({ title: 'Tidak ada nilai terisi', description: 'Isi nilai siswa yang ingin disimpan — baris kosong dilewati.', variant: 'destructive' });
+      return;
+    }
+    const dasar = {
+      kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
+      jenis_penilaian: kelasFormData.jenis_penilaian, kompetensi_bab: kelasFormData.kompetensi_bab || '',
+      semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran, kkm: kkmPts,
+      nama_guru: kelasFormData.nama_guru || namaGuruPengampu(kelasFormData.kelas_id, kelasFormData.mapel),
+    };
+    const toCreate = filled.filter(it => !it.existingId).map(it => ({
+      ...dasar, siswa_id: it.siswa_id, nis: it.nis, nama_siswa: it.nama_siswa, nama_kelas: it.nama_kelas,
+      nilai: Number(it.nilai), status_ketuntasan: Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas',
     }));
-    await base44.entities.Nilai.bulkCreate(records);
+    const toUpdate = filled.filter(it => it.existingId).map(it => ({
+      id: it.existingId, nilai: Number(it.nilai), kkm: kkmPts,
+      status_ketuntasan: Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas',
+    }));
+    if (toCreate.length) await base44.entities.Nilai.bulkCreate(toCreate);
+    if (toUpdate.length) await base44.entities.Nilai.bulkUpdate(toUpdate);
     queryClient.invalidateQueries({ queryKey: ['nilai'] });
+    toast({ title: 'Nilai tersimpan', description: `${toCreate.length} nilai baru, ${toUpdate.length} nilai diperbarui.` });
     setKelasInputOpen(false);
-    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
+    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
     setKelasNilaiData([]);
   };
 
@@ -301,7 +393,7 @@ export default function Nilai() {
                           <Label className="text-xs text-slate-500">Mata Pelajaran</Label>
                           <Select value={kelasFormData.mapel} onValueChange={handleMapelChange}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
-                            <SelectContent>{availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                            <SelectContent>{mapelUntukKelas(kelasFormData.kelas_id).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                       </div>
@@ -317,22 +409,20 @@ export default function Nilai() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Semester (Otomatis)</Label>
-                          <Select value={kelasFormData.semester} onValueChange={(v) => setKelasFormData({...kelasFormData, semester: v})} disabled>
+                          <Select value={kelasFormData.semester} onValueChange={(v) => setKelasFormData({...kelasFormData, semester: v})}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent><SelectItem value="Ganjil">Ganjil</SelectItem><SelectItem value="Genap">Genap</SelectItem></SelectContent>
                           </Select>
                         </div>
-                        {kelasFormData.jenis_penilaian !== 'PTS' && (
-                          <div>
-                            <Label className="text-xs text-slate-500">KKM</Label>
-                            <Input type="number" value={kelasFormData.kkm} onChange={(e) => setKelasFormData({...kelasFormData, kkm: e.target.value})} className="mt-1" />
-                          </div>
-                        )}
+                        <div>
+                          <Label className="text-xs text-slate-500">KKM (Global)</Label>
+                          <Input type="number" value={kkmPts} disabled className="mt-1 text-center bg-slate-50 font-semibold" />
+                        </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Nama Guru</Label>
-                          <Input value={kelasFormData.nama_guru} onChange={(e) => setKelasFormData({...kelasFormData, nama_guru: e.target.value})} placeholder="Otomatis dari Mapel" className="mt-1" />
+                          <Input value={kelasFormData.nama_guru} disabled placeholder="Otomatis dari Pembelajaran" className="mt-1 bg-slate-50" />
                         </div>
                         {!['PTS','PAS'].includes(kelasFormData.jenis_penilaian) && (
                           <div>
@@ -350,28 +440,40 @@ export default function Nilai() {
                       </div>
                       {kelasNilaiData.length > 0 && (
                         <div className="border border-slate-200 rounded-xl overflow-hidden">
-                          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                             <p className="text-sm font-semibold text-slate-700">Daftar Siswa ({kelasNilaiData.length})</p>
+                            <p className="text-[11px] text-slate-500">
+                              Terisi {kelasNilaiData.filter(i => i.nilai !== '' && i.nilai != null).length} • Tersimpan {kelasNilaiData.filter(i => i.existingId).length}
+                            </p>
                           </div>
                           <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                            {kelasNilaiData.map((item) => (
-                              <div key={item.siswa_id} className="flex items-center gap-3 px-4 py-2.5">
-                                <span className="flex-1 text-sm text-slate-700">{item.nama_siswa}</span>
-                                <Input
-                                  type="number" min="0" max="100"
-                                  className={`w-20 text-center h-8 text-sm font-medium ${item.nilai >= Number(kelasFormData.jenis_penilaian === 'PTS' ? kkmPts : kelasFormData.kkm) ? 'border-emerald-300 text-emerald-700' : item.nilai > 0 ? 'border-red-300 text-red-700' : ''}`}
-                                  value={item.nilai}
-                                  onChange={(e) => handleKelasNilaiChange(item.siswa_id, e.target.value)}
-                                />
-                              </div>
-                            ))}
+                            {kelasNilaiData.map((item) => {
+                              const terisi = item.nilai !== '' && item.nilai !== null && item.nilai !== undefined;
+                              return (
+                                <div key={item.siswa_id} className="flex items-center gap-3 px-4 py-2.5">
+                                  <span className="flex-1 text-sm text-slate-700 truncate">{item.nama_siswa}</span>
+                                  {item.existingId && (
+                                    <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 flex-shrink-0">
+                                      <CheckCircle className="w-4 h-4 text-emerald-500" /> Tersimpan
+                                    </span>
+                                  )}
+                                  <Input
+                                    type="number" min="0" max="100" placeholder="0"
+                                    className={`w-20 text-center h-8 text-sm font-medium ${terisi ? (Number(item.nilai) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`}
+                                    value={item.nilai ?? ''}
+                                    onChange={(e) => handleKelasNilaiChange(item.siswa_id, e.target.value)}
+                                  />
+                                </div>
+                              );
+                            })}
                           </div>
+                          <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100">Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
                         </div>
                       )}
                       <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
                         <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={kelasNilaiData.length === 0}>
-                          Simpan Semua Nilai
+                          Simpan Nilai Terisi ({kelasNilaiData.filter(i => i.nilai !== '' && i.nilai != null).length})
                         </Button>
                       </div>
                     </form>
@@ -403,9 +505,9 @@ export default function Nilai() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Mata Pelajaran</Label>
-                          <Select value={formData.mapel} onValueChange={(v) => setFormData({...formData, mapel: v})}>
+                          <Select value={formData.mapel} onValueChange={handleMapelChangeSiswa}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
-                            <SelectContent>{availableMapel.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
+                            <SelectContent>{mapelUntukKelas(formData.kelas_id).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
                         <div>
@@ -419,7 +521,7 @@ export default function Nilai() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Semester (Otomatis)</Label>
-                          <Select value={formData.semester} onValueChange={(v) => setFormData({...formData, semester: v})} disabled>
+                          <Select value={formData.semester} onValueChange={(v) => setFormData({...formData, semester: v})}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent><SelectItem value="Ganjil">Ganjil</SelectItem><SelectItem value="Genap">Genap</SelectItem></SelectContent>
                           </Select>
@@ -432,23 +534,25 @@ export default function Nilai() {
                           </Select>
                         </div>
                       </div>
+                      <div>
+                        <Label className="text-xs text-slate-500">Nama Guru (Otomatis dari Pembelajaran)</Label>
+                        <Input value={formData.nama_guru || ''} disabled placeholder="Otomatis" className="mt-1 bg-slate-50" />
+                      </div>
                       {!['PTS','PAS'].includes(formData.jenis_penilaian) && (
                         <div>
                           <Label className="text-xs text-slate-500">Kompetensi / Bab</Label>
                           <Input className="mt-1" value={formData.kompetensi_bab} onChange={(e) => setFormData({...formData, kompetensi_bab: e.target.value})} placeholder="Contoh: Bab 1 - Teks Narasi" />
                         </div>
                       )}
-                      <div className={`grid gap-4 ${formData.jenis_penilaian === 'PTS' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                      <div className="grid gap-4 grid-cols-3">
                         <div>
                           <Label className="text-xs text-slate-500">Nilai</Label>
                           <Input type="number" min="0" max="100" value={formData.nilai} onChange={(e) => handleNilaiChange(e.target.value)} required className="mt-1 text-center font-bold text-lg" />
                         </div>
-                        {formData.jenis_penilaian !== 'PTS' && (
-                          <div>
-                            <Label className="text-xs text-slate-500">KKM</Label>
-                            <Input type="number" value={formData.kkm} onChange={(e) => setFormData({...formData, kkm: Number(e.target.value)})} className="mt-1 text-center" />
-                          </div>
-                        )}
+                        <div>
+                          <Label className="text-xs text-slate-500">KKM (Global)</Label>
+                          <Input type="number" value={kkmPts} disabled className="mt-1 text-center bg-slate-50 font-semibold" />
+                        </div>
                         <div>
                           <Label className="text-xs text-slate-500">Status</Label>
                           <div className={`mt-1 h-9 rounded-lg flex items-center justify-center gap-1.5 text-xs font-semibold ${
@@ -586,7 +690,7 @@ export default function Nilai() {
                     className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-left"
                     onClick={() => {
                       setInputChoiceOpen(false);
-                      setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', kkm: 75, nama_guru: '' });
+                      setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
                       setKelasNilaiData([]);
                       setKelasInputOpen(true);
                     }}

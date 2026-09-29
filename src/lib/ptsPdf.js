@@ -152,7 +152,7 @@ function kopSekolah(doc, profil, lebar) {
 /* ================= RAPOR / LHBS (A4 portrait, 1 halaman per siswa) ================= */
 /* Format mengikuti template: LAPORAN HASIL BELAJAR SISWA (LHBS) */
 
-function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
+function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm }) {
   const W = 210;
   const kopBottom = aset ? gambarKopGambar(doc, aset, W) + 4 : kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
@@ -232,6 +232,7 @@ function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, ta
       doc.setFontSize(namaMapel.length > 30 ? 7 : 8.5);
       doc.text(namaMapel, xMapel + 2, cy2);
       doc.setFontSize(8.5);
+      doc.text(nilaiTeks(d.kkm != null ? d.kkm : kkm) || '-', xKkm + wKkm / 2, cy2, { align: 'center' });
       const diBawahKkm = d.nilai !== null && d.nilai !== undefined && d.nilai !== '' && Number(d.nilai) < Number(d.kkm);
       if (diBawahKkm) doc.setTextColor(220, 38, 38);
       doc.text(nilaiTeks(d.nilai) || '-', xAngka + wAngka / 2, cy2, { align: 'center' });
@@ -299,7 +300,7 @@ function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, ta
   doc.text('NRKS. 19023L0720205231096408', 160, nameY + 5.5, { align: 'center' });
 }
 
-export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows }) {
+export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm }) {
   const aset = await muatAsetKop();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
@@ -309,7 +310,7 @@ export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunA
       doc.addPage();
       if (aset) gambarFooterGambar(doc, aset, W, 297);
     }
-    halamanRapor(doc, { profil, aset, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows });
+    halamanRapor(doc, { profil, aset, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm });
   });
   const total = doc.getNumberOfPages();
   const pageNumY = aset ? 297 - footerH - 3 : 291;

@@ -373,7 +373,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
       toast({ title: 'Belum ada data', description: 'Tidak ada data nilai PTS sesuai filter yang dipilih.', variant: 'destructive' });
       return;
     }
-    const doc = await buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef });
+    const doc = await buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef, kkm: kkmPts });
     setPreview({ doc, url: doc.output('bloburl'), filename });
   };
 

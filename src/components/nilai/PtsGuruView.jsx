@@ -2,28 +2,35 @@ import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Trophy } from 'lucide-react';
+import { Search, Trophy, Table2, User, Users, ListChecks } from 'lucide-react';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
 import PaginationBar from '@/components/appui/PaginationBar';
+import PillTabs from '@/components/appui/PillTabs';
+import PtsStatusGuruView from '@/components/nilai/PtsStatusGuruView';
+import PtsStatusMapelView from '@/components/nilai/PtsStatusMapelView';
+import PtsProgressDetailDialog from '@/components/nilai/PtsProgressDetailDialog';
 
 const semesterAktifFn = () => (new Date().getMonth() + 1 >= 7 ? 'Ganjil' : 'Genap');
 
 /**
- * Tab PTS untuk Akun Guru/Wali Kelas — daftar nilai siswa kelas yang diwalikan:
- * NAMA, NIS, Kelas, Jumlah Nilai, Rata-Rata, Peringkat. Dilengkapi cari, filter, sortir, paginasi.
+ * Tab PTS untuk Akun Guru — dua tampilan:
+ * 1. Data Nilai Siswa (Wali Kelas): NAMA, NIS, Kelas, Jumlah, Rata-Rata, Peringkat.
+ * 2. Status Penilaian: Per Guru (tugas ngajar akun ini) & Per Kelas (kelas yang diwalikan).
  */
 export default function PtsGuruView({ activeAcademicYear }) {
-  const { waliKelasIds, kelasList, siswaAktif, isWaliKelas } = useWaliKelas();
+  const { waliKelasIds, kelasList, siswaAktif, isWaliKelas, guruData } = useWaliKelas();
+  const [topView, setTopView] = useState('nilai'); // 'nilai' | 'status'
+  const [statusMode, setStatusMode] = useState('guru'); // 'guru' | 'kelas'
   const [filterKelas, setFilterKelas] = useState('all');
   const [semester, setSemester] = useState(semesterAktifFn);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortKey, setSortKey] = useState('nama');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [statusDetail, setStatusDetail] = useState(null);
 
   const { data: nilaiPts = [], isLoading } = useQuery({
     queryKey: ['nilai-pts-wali'],
@@ -31,14 +38,99 @@ export default function PtsGuruView({ activeAcademicYear }) {
     staleTime: 60000,
   });
 
-  const records = useMemo(
+  // Seluruh tugas Pembelajaran (dipakai untuk progres & daftar mapel per kelas)
+  const { data: pembelajaranList = [] } = useQuery({
+    queryKey: ['pembelajaran-list-pts'],
+    queryFn: () => base44.entities.Pembelajaran.list(),
+    staleTime: 300000,
+  });
+
+  // Nilai PTS tahun ajaran aktif & semester terpilih (semua kelas — untuk status penilaian)
+  const recordsSemua = useMemo(
     () => nilaiPts.filter(n =>
-      waliKelasIds.includes(n.kelas_id) &&
       (!activeAcademicYear || n.tahun_ajaran === activeAcademicYear) &&
       (semester === 'all' || n.semester === semester)
     ),
-    [nilaiPts, waliKelasIds, activeAcademicYear, semester]
+    [nilaiPts, activeAcademicYear, semester]
   );
+
+  // Nilai kelas yang diwalikan (untuk Data Nilai Siswa)
+  const records = useMemo(
+    () => recordsSemua.filter(n => waliKelasIds.includes(n.kelas_id)),
+    [recordsSemua, waliKelasIds]
+  );
+
+  // Indeks nilai per kelas+mapel → siswa (progres status penilaian)
+  const nilaiIdx = useMemo(() => {
+    const idx = new Map();
+    recordsSemua.forEach(n => {
+      if (!n.kelas_id || !n.mapel || !n.siswa_id) return;
+      const key = `${n.kelas_id}__${n.mapel}`;
+      if (!idx.has(key)) idx.set(key, new Map());
+      const m = idx.get(key);
+      if (n.nilai === null || n.nilai === undefined || n.nilai === '') return;
+      m.set(n.siswa_id, [...(m.get(n.siswa_id) || []), Number(n.nilai)]);
+    });
+    return idx;
+  }, [recordsSemua]);
+
+  const hitung = (kelasId, mapel) => {
+    const siswaKelas = siswaAktif.filter(s => s.kelas_id === kelasId);
+    const m = nilaiIdx.get(`${kelasId}__${mapel}`);
+    const dinilai = siswaKelas.filter(s => m?.has(s.id)).length;
+    return { total: siswaKelas.length, dinilai, persen: siswaKelas.length ? Math.round(dinilai / siswaKelas.length * 100) : 0 };
+  };
+
+  // Per Guru: seluruh tugas ngajar akun ini (dari Pembelajaran) + progres input nilai PTS
+  const statusGuruRows = useMemo(() => {
+    if (!guruData?.id) return [];
+    const tugas = pembelajaranList
+      .filter(p => p.guru_id === guruData.id && p.kelas_id && p.mapel)
+      .map(p => ({
+        mapel: p.mapel, kelas_id: p.kelas_id,
+        nama_kelas: kelasList.find(k => k.id === p.kelas_id)?.nama_kelas || p.nama_kelas || '',
+        ...hitung(p.kelas_id, p.mapel),
+      }));
+    const total = tugas.reduce((a, t) => a + t.total, 0);
+    const dinilai = tugas.reduce((a, t) => a + t.dinilai, 0);
+    return [{
+      guru_id: guruData.id, nama_guru: guruData.nama || 'Saya', tugas,
+      total, dinilai, persen: total ? Math.round(dinilai / total * 100) : 0,
+    }];
+  }, [pembelajaranList, guruData, kelasList, siswaAktif, nilaiIdx]);
+
+  // Per Kelas (Wali Kelas): seluruh mapel di kelas yang diwalikan + progres input
+  const statusKelasRows = useMemo(() => {
+    const byKey = new Map();
+    pembelajaranList.forEach(p => {
+      if (!p.kelas_id || !p.mapel || !waliKelasIds.includes(p.kelas_id)) return;
+      const key = `${p.kelas_id}__${p.mapel}`;
+      if (byKey.has(key)) return;
+      byKey.set(key, {
+        mapel: p.mapel, kelas_id: p.kelas_id,
+        nama_kelas: kelasList.find(k => k.id === p.kelas_id)?.nama_kelas || p.nama_kelas || '',
+        guru: p.nama_guru || '',
+        ...hitung(p.kelas_id, p.mapel),
+      });
+    });
+    return [...byKey.values()].sort((a, b) =>
+      (a.nama_kelas || '').localeCompare(b.nama_kelas || '') || a.mapel.localeCompare(b.mapel));
+  }, [pembelajaranList, waliKelasIds, kelasList, siswaAktif, nilaiIdx]);
+
+  const bukaStatusDetail = (row) => {
+    const m = nilaiIdx.get(`${row.kelas_id}__${row.mapel}`) || new Map();
+    const siswaKelas = siswaAktif
+      .filter(s => s.kelas_id === row.kelas_id)
+      .sort((a, b) => a.nama.localeCompare(b.nama))
+      .map(s => {
+        const arr = m.get(s.id);
+        return {
+          siswa_id: s.id, nama: s.nama, nis: s.nis,
+          nilai: arr ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length * 10) / 10 : null,
+        };
+      });
+    setStatusDetail({ ...row, siswa: siswaKelas });
+  };
 
   const dataSiswa = useMemo(() => {
     const bySiswa = new Map();
@@ -106,16 +198,53 @@ export default function PtsGuruView({ activeAcademicYear }) {
     v == null ? <span className="text-slate-300">-</span> : <span className={`font-bold tabular-nums ${cls}`}>{v}</span>
   );
 
-  const namaKelasById = (kid) => kelasList.find(k => k.id === kid)?.nama_kelas || '-';
-
   return (
     <div className="pb-24">
-      {!isWaliKelas ? (
+      {/* Toggle tampilan utama: Data Nilai Siswa ↔ Status Penilaian */}
+      <PillTabs
+        tabs={[
+          { key: 'nilai', label: 'Data Nilai Siswa', icon: Table2 },
+          { key: 'status', label: 'Status Penilaian PTS', icon: ListChecks },
+        ]}
+        activeKey={topView}
+        onChange={(v) => { setTopView(v); setPage(1); }}
+        tint="amber"
+        className="mb-4"
+      />
+
+      {topView === 'status' ? (
+        <div>
+          <div className="flex flex-wrap items-center gap-3 mb-4">
+            <PillTabs
+              tabs={[
+                { key: 'guru', label: 'Per Guru (Tugas Saya)', icon: User },
+                ...(isWaliKelas ? [{ key: 'kelas', label: 'Per Kelas (Wali Kelas)', icon: Users }] : []),
+              ]}
+              activeKey={statusMode}
+              onChange={setStatusMode}
+              tint="amber"
+            />
+            <Select value={semester} onValueChange={setSemester}>
+              <SelectTrigger className="flex-none h-auto rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 shadow-sm w-auto"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Ganjil">Semester Ganjil</SelectItem>
+                <SelectItem value="Genap">Semester Genap</SelectItem>
+                <SelectItem value="all">Semua Semester</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {statusMode === 'guru' ? (
+            <PtsStatusGuruView rows={statusGuruRows} onDetail={bukaStatusDetail} isLoading={isLoading} />
+          ) : (
+            <PtsStatusMapelView rows={statusKelasRows} groupByKelas={waliKelasIds.length > 1} onDetail={bukaStatusDetail} isLoading={isLoading} />
+          )}
+        </div>
+      ) : !isWaliKelas ? (
         <Card className="border-0 shadow-sm">
           <CardContent className="p-8 text-center">
             <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <p className="text-slate-700 font-medium">Anda bukan Wali Kelas</p>
-            <p className="text-slate-400 text-sm mt-1">Tab PTS menampilkan daftar nilai siswa untuk Wali Kelas.</p>
+            <p className="text-slate-400 text-sm mt-1">Data Nilai Siswa menampilkan nilai untuk Wali Kelas. Gunakan Status Penilaian PTS untuk memantau progres nilai tugas mengajar Anda.</p>
           </CardContent>
         </Card>
       ) : (
@@ -239,6 +368,8 @@ export default function PtsGuruView({ activeAcademicYear }) {
           </div>
         </>
       )}
+
+      <PtsProgressDetailDialog open={!!statusDetail} onOpenChange={(v) => !v && setStatusDetail(null)} detail={statusDetail} />
     </div>
   );
 }
