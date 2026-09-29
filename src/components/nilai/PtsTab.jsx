@@ -92,6 +92,13 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
   });
   const kkmPts = Number(pengaturanList[0]?.kkm_pts) || 75;
 
+  // Kepala Sekolah dari Data Pegawai — nama tergabung Gelar Depan & Belakang, NRKS dari NIP pegawai
+  const kepsekPts = useMemo(() => {
+    const g = guruList.find(x => x.jabatan === 'Kepala Sekolah' && (x.status || 'Aktif') === 'Aktif')
+      || guruList.find(x => x.jabatan === 'Kepala Sekolah');
+    return g ? { nama: namaPegawaiLengkap(g), nip: g.nip || '' } : null;
+  }, [guruList]);
+
   const simpanKkmPts = async (v) => {
     const list = await base44.entities.PengaturanAplikasi.list();
     if (list[0]) await base44.entities.PengaturanAplikasi.update(list[0].id, { kkm_pts: v });
@@ -376,7 +383,7 @@ export default function PtsTab({ nilaiList, siswaList, kelasList, availableKelas
       toast({ title: 'Belum ada data', description: 'Tidak ada data nilai PTS sesuai filter yang dipilih.', variant: 'destructive' });
       return;
     }
-    const doc = await buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef, kkm: kkmPts });
+    const doc = await buatRaporPtsPdf({ profil, siswaList: list, semesterLabel: labelSemester, tahunAjaran, tanggalRapor: tanggalRaporTeks, rows: rowsDef, kkm: kkmPts, kepsek: kepsekPts });
     setPreview({ doc, url: doc.output('bloburl'), filename });
   };
 

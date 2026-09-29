@@ -152,7 +152,7 @@ function kopSekolah(doc, profil, lebar) {
 /* ================= RAPOR / LHBS (A4 portrait, 1 halaman per siswa) ================= */
 /* Format mengikuti template: LAPORAN HASIL BELAJAR SISWA (LHBS) */
 
-function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm }) {
+function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm, kepsek }) {
   const W = 210;
   const kopBottom = aset ? gambarKopGambar(doc, aset, W) + 4 : kopSekolah(doc, profil, W);
   doc.setTextColor(30, 41, 59);
@@ -293,14 +293,16 @@ function halamanRapor(doc, { profil, aset, siswa, semesterLabel, tahunAjaran, ta
   doc.text('( __________________ )', 55, nameY, { align: 'center' });
   doc.setFont('helvetica', 'bold');
   doc.text(siswa.wali_kelas || '( ______________ )', 105, nameY, { align: 'center' });
-  doc.text('Hadi Teguh Raharjo, S.Pd.', 160, nameY, { align: 'center' });
+  // Kepala Sekolah: nama dari Data Pegawai (tergabung gelarnya), fallback Profil Sekolah
+  doc.text(kepsek?.nama || profil?.nama_kepala_sekolah || '( ______________ )', 160, nameY, { align: 'center' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (siswa.nuptk_wali) doc.text(`NUPTK. ${siswa.nuptk_wali}`, 105, nameY + 5.5, { align: 'center' });
-  doc.text('NRKS. 19023L0720205231096408', 160, nameY + 5.5, { align: 'center' });
+  const nrks = kepsek?.nip || profil?.nip_kepala_sekolah || '';
+  if (nrks) doc.text(`NRKS. ${nrks}`, 160, nameY + 5.5, { align: 'center' });
 }
 
-export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm }) {
+export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm, kepsek }) {
   const aset = await muatAsetKop();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const W = 210;
@@ -310,7 +312,7 @@ export async function buatRaporPtsPdf({ profil, siswaList, semesterLabel, tahunA
       doc.addPage();
       if (aset) gambarFooterGambar(doc, aset, W, 297);
     }
-    halamanRapor(doc, { profil, aset, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm });
+    halamanRapor(doc, { profil, aset, siswa: s, semesterLabel, tahunAjaran, tanggalRapor, rows, kkm, kepsek });
   });
   const total = doc.getNumberOfPages();
   const pageNumY = aset ? 297 - footerH - 3 : 291;
