@@ -1,0 +1,219 @@
+{
+  "name": "SiswaSPMB",
+  "type": "object",
+  "properties": {
+    "reg_number": {
+      "type": "string",
+      "description": "Nomor pendaftaran SPMB (kunci idempoten sinkronisasi)"
+    },
+    "spmb_student_id": {
+      "type": "string",
+      "description": "ID record Student di aplikasi SPMB"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap pendaftar"
+    },
+    "nickname": {
+      "type": "string"
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "Laki-laki",
+        "Perempuan"
+      ],
+      "description": "Jenis kelamin"
+    },
+    "nisn": {
+      "type": "string"
+    },
+    "nik": {
+      "type": "string"
+    },
+    "birth_place": {
+      "type": "string"
+    },
+    "birth_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "religion": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "rt": {
+      "type": "string"
+    },
+    "rw": {
+      "type": "string"
+    },
+    "village": {
+      "type": "string",
+      "description": "Kelurahan/Desa"
+    },
+    "district": {
+      "type": "string",
+      "description": "Kecamatan"
+    },
+    "city": {
+      "type": "string",
+      "description": "Kota/Kabupaten"
+    },
+    "province": {
+      "type": "string"
+    },
+    "postal_code": {
+      "type": "string"
+    },
+    "wave": {
+      "type": "string",
+      "description": "Gelombang pendaftaran (Gelombang 1 / Gelombang 2)"
+    },
+    "registration_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "verified",
+        "accepted",
+        "tarik_berkas",
+        "undur_diri"
+      ],
+      "description": "Status pendaftaran dari SPMB"
+    },
+    "payment_status": {
+      "type": "string",
+      "description": "Status pembayaran di SPMB"
+    },
+    "interview_status": {
+      "type": "string",
+      "description": "Status wawancara dari SPMB (belum/selesai/dll)"
+    },
+    "interview_date": {
+      "type": "string",
+      "description": "Tanggal wawancara"
+    },
+    "interview_officer": {
+      "type": "string",
+      "description": "Petugas penguji wawancara"
+    },
+    "interview_notes": {
+      "type": "string",
+      "description": "Catatan hasil wawancara"
+    },
+    "interview_answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "no": {
+            "type": "string",
+            "description": "Kode pertanyaan (q1, q2, ...)"
+          },
+          "jawaban": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Jawaban kuesioner wawancara SPMB"
+    },
+    "father_name": {
+      "type": "string"
+    },
+    "father_phone": {
+      "type": "string"
+    },
+    "father_job": {
+      "type": "string"
+    },
+    "mother_name": {
+      "type": "string"
+    },
+    "mother_phone": {
+      "type": "string"
+    },
+    "mother_job": {
+      "type": "string"
+    },
+    "guardian_name": {
+      "type": "string"
+    },
+    "guardian_phone": {
+      "type": "string"
+    },
+    "previous_school": {
+      "type": "string",
+      "description": "Sekolah asal"
+    },
+    "photo_url": {
+      "type": "string",
+      "description": "URL foto pendaftar di SPMB"
+    },
+    "pembayaran": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "payment_id": {
+            "type": "string",
+            "description": "ID Payment di SPMB (anti-dobel)"
+          },
+          "tanggal": {
+            "type": "string"
+          },
+          "nominal": {
+            "type": "number"
+          },
+          "catatan": {
+            "type": "string"
+          },
+          "keuangan_id": {
+            "type": "string",
+            "description": "ID transaksi Keuangan hasil sinkron"
+          }
+        }
+      },
+      "description": "Riwayat pembayaran SPMB pendaftar ini + tautan transaksi buku kas"
+    },
+    "total_dibayar": {
+      "type": "number",
+      "default": 0,
+      "description": "Total pembayaran SPMB tercatat"
+    },
+    "siswa_id": {
+      "type": "string",
+      "description": "ID Siswa aktif hasil finalisasi"
+    },
+    "finalized": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = pendaftar sudah difinalisasi menjadi Siswa aktif"
+    },
+    "finalized_at": {
+      "type": "string",
+      "description": "Timestamp finalisasi (ISO)"
+    },
+    "homevisit_id": {
+      "type": "string",
+      "description": "ID draf HomeVisit hasil data wawancara"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran pendaftaran"
+    },
+    "spmb_updated_at": {
+      "type": "string",
+      "description": "updated_date terakhir dari record SPMB"
+    }
+  },
+  "required": [
+    "reg_number",
+    "nama"
+  ]
+}

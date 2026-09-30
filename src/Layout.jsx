@@ -6,7 +6,8 @@ import {
   BookOpen, FolderOpen, GraduationCap, Menu, X,
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
-  PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText, Camera
+  PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText, Camera,
+  UserPlus, MessagesSquare, CreditCard, UserCheck
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -67,6 +68,16 @@ const FULL_ACCESS_MENU = {
         { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
       ],
       separated: true
+    },
+    {
+      id: 'spmb', name: 'SPMB', icon: ClipboardList, color: '#f43f5e',
+      items: [
+        { name: 'Pendaftar', icon: UserPlus, page: 'PendaftarSPMB', color: '#3b82f6' },
+        { name: 'Wawancara', icon: MessagesSquare, page: 'WawancaraSPMB', color: '#8b5cf6' },
+        { name: 'Pembayaran SPMB', icon: CreditCard, page: 'PembayaranSPMB', color: '#14b8a6' },
+        { name: 'Finalisasi', icon: UserCheck, page: 'FinalisasiSPMB', color: '#10b981' },
+      ],
+      separated: true
     }
   ]
 };
@@ -117,9 +128,18 @@ const ROLE_MENU = {
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
         { name: 'Foto Siswa', icon: Camera, page: 'FotoSiswa', color: '#0ea5e9' },
         ]
-      }
-    ]
-  },
+        },
+        {
+        id: 'spmb', name: 'SPMB', icon: ClipboardList, color: '#f43f5e',
+        items: [
+        { name: 'Pendaftar', icon: UserPlus, page: 'PendaftarSPMB', color: '#3b82f6' },
+        { name: 'Wawancara', icon: MessagesSquare, page: 'WawancaraSPMB', color: '#8b5cf6' },
+        { name: 'Pembayaran SPMB', icon: CreditCard, page: 'PembayaranSPMB', color: '#14b8a6' },
+        { name: 'Finalisasi', icon: UserCheck, page: 'FinalisasiSPMB', color: '#10b981' },
+        ]
+        }
+        ]
+        },
   piket: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
@@ -168,6 +188,15 @@ const ROLE_MENU = {
           { name: 'Laporan', icon: ClipboardList, page: 'LaporanKeuangan', color: '#3b82f6' },
           { name: 'Kelola Data', icon: FolderOpen, page: 'KelolaDataKeuangan', color: '#8b5cf6' },
         ]
+      },
+      {
+        id: 'spmb', name: 'SPMB', icon: ClipboardList, color: '#f43f5e',
+        items: [
+          { name: 'Pendaftar', icon: UserPlus, page: 'PendaftarSPMB', color: '#3b82f6' },
+          { name: 'Wawancara', icon: MessagesSquare, page: 'WawancaraSPMB', color: '#8b5cf6' },
+          { name: 'Pembayaran SPMB', icon: CreditCard, page: 'PembayaranSPMB', color: '#14b8a6' },
+          { name: 'Finalisasi', icon: UserCheck, page: 'FinalisasiSPMB', color: '#10b981' },
+        ]
       }
     ]
   },
@@ -196,12 +225,21 @@ const ROLE_MENU = {
           { name: 'Siswa Mutasi', icon: LogOut, page: 'SiswaKeluar', color: '#f97316' },
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
-          { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+        { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
         ],
         separated: true
-      }
-    ]
-  },
+        },
+        {
+        id: 'spmb', name: 'SPMB', icon: ClipboardList, color: '#f43f5e',
+        items: [
+        { name: 'Pendaftar', icon: UserPlus, page: 'PendaftarSPMB', color: '#3b82f6' },
+        { name: 'Wawancara', icon: MessagesSquare, page: 'WawancaraSPMB', color: '#8b5cf6' },
+        { name: 'Pembayaran SPMB', icon: CreditCard, page: 'PembayaranSPMB', color: '#14b8a6' },
+        { name: 'Finalisasi', icon: UserCheck, page: 'FinalisasiSPMB', color: '#10b981' },
+        ]
+        }
+        ]
+        },
   guru: {
     topItems: [
       { name: 'Profil Saya', icon: UserCircle, page: 'ProfilGuru', color: '#7c3aed' },
