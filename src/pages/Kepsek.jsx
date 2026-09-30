@@ -207,7 +207,7 @@ export default function Kepsek() {
     const hadirHariIni = absensiHariIni.filter(a => a.status === 'Hadir' || a.status === 'Terlambat').length;
     const persenHadir = absensiHariIni.length > 0 ? Math.round((hadirHariIni / absensiHariIni.length) * 100) : 0;
     const filteredKeuangan = keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo);
-    const totalPemasukan = filteredKeuangan.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
+    const totalPemasukan = filteredKeuangan.filter(k => k.jenis === 'Pemasukan' && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
     const totalPengeluaran = filteredKeuangan.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
     // Siswa absen 3+ hari kini dihitung oleh hook useAbsen3Hari (query khusus Alfa/Sakit
     // + persistensi "tampil hingga ada perubahan") — bebas dari jendela 1000 record dashboard.
@@ -232,7 +232,7 @@ export default function Kepsek() {
     const visitedSiswa = aktiveSiswa.filter(s => visitedIds.has(s.id));
     const notVisitedSiswa = aktiveSiswa.filter(s => !visitedIds.has(s.id));
     // Saldo all-time gabungan semua sumber dana
-    const allPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
+    const allPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
     const allPengeluaran = keuanganList.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
     const allSaldo = allPemasukan - allPengeluaran;
     const sumberKeys = new Set();
@@ -240,7 +240,7 @@ export default function Kepsek() {
     keuanganList.forEach(k => { if (k.sumber_rekening) sumberKeys.add(k.sumber_rekening); });
     sumberKeys.add('Umum');
     const sumberDanaBreakdown = [...sumberKeys].map(key => {
-      const rows = keuanganList.filter(k => (k.sumber_rekening || 'Umum') === key);
+      const rows = keuanganList.filter(k => (k.sumber_rekening || 'Umum') === key && !k.is_saldo_awal);
       const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
       const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
       return { sumber_dana: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
@@ -249,7 +249,7 @@ export default function Kepsek() {
     const kategoriKeys = new Set();
     keuanganList.forEach(k => { if (k.kategori) kategoriKeys.add(k.kategori); });
     const kategoriBreakdown = [...kategoriKeys].map(key => {
-      const rows = keuanganList.filter(k => (k.kategori || 'Lainnya') === key);
+      const rows = keuanganList.filter(k => (k.kategori || 'Lainnya') === key && !k.is_saldo_awal);
       const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
       const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
       return { kategori: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
@@ -342,7 +342,7 @@ export default function Kepsek() {
   const keuanganTrend = useMemo(() => {
     const filtered = keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo);
     const byDate = {};
-    filtered.forEach(k => { if (!byDate[k.tanggal]) byDate[k.tanggal] = { tanggal: k.tanggal, masuk: 0, keluar: 0 }; if (k.jenis === 'Pemasukan') byDate[k.tanggal].masuk += k.jumlah || 0; else byDate[k.tanggal].keluar += k.jumlah || 0; });
+    filtered.forEach(k => { if (!byDate[k.tanggal]) byDate[k.tanggal] = { tanggal: k.tanggal, masuk: 0, keluar: 0 }; if (k.jenis === 'Pemasukan' && !k.is_saldo_awal) byDate[k.tanggal].masuk += k.jumlah || 0; else if (k.jenis === 'Pengeluaran') byDate[k.tanggal].keluar += k.jumlah || 0; });
     return Object.values(byDate).sort((a, b) => a.tanggal.localeCompare(b.tanggal)).map(d => ({ ...d, tanggal: format(parseISO(d.tanggal), 'd/MM', { locale: idLocale }) }));
   }, [keuanganList, dateFrom, dateTo]);
 

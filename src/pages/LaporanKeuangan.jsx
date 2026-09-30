@@ -92,7 +92,7 @@ export default function LaporanKeuangan() {
     sumberDanaList.forEach(s => { map[s.nama] = 0; });
     keuanganList.forEach(k => {
       // Penerapan Iuran Muka netral terhadap kas — uang masuk saat setoran
-      if (!k.sumber_rekening || k.aplikasi_iuran_muka) return;
+      if (!k.sumber_rekening || k.aplikasi_iuran_muka || k.is_saldo_awal) return;
       if (!map[k.sumber_rekening]) map[k.sumber_rekening] = 0;
       map[k.sumber_rekening] += k.jenis === 'Pemasukan' ? (k.jumlah || 0) : -(k.jumlah || 0);
     });
@@ -125,7 +125,7 @@ export default function LaporanKeuangan() {
   // Filter data for Laporan Pemasukan & Pengeluaran tab (kategori + donatur)
   const laporanFilteredData = useMemo(() => {
     // Penerapan Iuran Muka netral terhadap kas — tidak masuk laporan pemasukan/pengeluaran
-    let data = [...filteredData].filter(k => !k.aplikasi_iuran_muka);
+    let data = [...filteredData].filter(k => !k.aplikasi_iuran_muka && !k.is_saldo_awal);
     if (filterKategori) data = data.filter(k => k.kategori === filterKategori);
     if (filterDonatur) data = data.filter(k => k.nama_donatur === filterDonatur);
     return data;
@@ -163,7 +163,7 @@ export default function LaporanKeuangan() {
     const sorted = [...allEntries].sort((a, b) => new Date(a.tanggal) - new Date(b.tanggal));
     let balance = 0;
     return sorted.map(t => {
-      if (!t.is_transfer && !t.aplikasi_iuran_muka) {
+      if (!t.is_transfer && !t.aplikasi_iuran_muka && !t.is_saldo_awal) {
         balance += t.jenis === 'Pemasukan' ? (t.jumlah || 0) : -(t.jumlah || 0);
       }
       return { ...t, saldo: balance };
@@ -402,7 +402,12 @@ export default function LaporanKeuangan() {
   const rekeningKoranColumns = [
     { key: 'tanggal', label: 'Tanggal', render: (row) => format(new Date(row.tanggal), 'd MMM yyyy', { locale: idLocale }) },
     { key: 'uraian', label: 'Uraian', render: (row) => row.is_transfer ? <span className="text-teal-600 font-medium">{row.uraian}</span> : (row.uraian || row.kategori || '-') },
-    { key: 'kategori', label: 'Kategori', render: (row) => row.is_transfer ? <Badge className="text-xs bg-teal-100 text-teal-700">Transfer</Badge> : <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge> },
+    { key: 'kategori', label: 'Kategori', render: (row) => row.is_transfer
+      ? <Badge className="text-xs bg-teal-100 text-teal-700">Transfer</Badge>
+      : (<span className="inline-flex items-center gap-1">
+          <Badge variant="outline" className="text-xs">{row.kategori || '-'}</Badge>
+          {row.is_saldo_awal && <Badge className="text-xs bg-slate-200 text-slate-600">Saldo Awal</Badge>}
+        </span>) },
     { key: 'sumber_rekening', label: 'Sumber Dana', render: (row) => <span className="text-xs text-slate-500">{row.sumber_rekening || '-'}</span> },
     { key: 'nama', label: 'Nama', render: (row) => row.nama_siswa || row.nama_pegawai || row.nama_donatur || '-' },
     { key: 'debit', label: 'Debit (Masuk)', render: (row) => row.jenis === 'Pemasukan' ? <span className="text-emerald-600 font-medium">{formatRupiah(row.jumlah)}</span> : '-' },

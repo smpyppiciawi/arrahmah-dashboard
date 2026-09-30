@@ -129,7 +129,7 @@ export default function Transaksi() {
     });
   }, [keuanganList, activeTab, filterDateFrom, filterDateTo]);
 
-  const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.aplikasi_iuran_muka).reduce((s, k) => s + (k.jumlah || 0), 0);
+  const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.aplikasi_iuran_muka && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
   const totalPengeluaran = keuanganList.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
   const saldo = totalPemasukan - totalPengeluaran;
 
@@ -197,6 +197,7 @@ export default function Transaksi() {
       render: (row) => (
         <div className="max-w-[200px]">
           <span className="text-sm block truncate">{row.uraian || '-'}</span>
+          {row.is_saldo_awal && <Badge className="bg-slate-200 text-slate-600 mr-1">Saldo Awal</Badge>}
           {row.bulan_dibayar?.length > 0 && (
             <span className="text-xs text-blue-500">{row.bulan_dibayar.join(', ')}</span>
           )}

@@ -100,7 +100,7 @@
     },
     "jabatan_pegawai": {
       "type": "string",
-      "description": "Jabatan pegawai"
+      "description": "Jabatan penerima transaksi"
     },
     "nama_donatur": {
       "type": "string",
@@ -210,6 +210,11 @@
       "type": "boolean",
       "default": false,
       "description": "True = transaksi hasil penerapan Saldo Iuran Muka. Mengurangi tagihan iuran tahun ajaran tujuan, tetapi NETRAL terhadap kas (saldo kas sudah masuk saat setoran Iuran Muka)."
+    },
+    "is_saldo_awal": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = pengakuan pembayaran iuran yang uangnya sudah masuk lewat Saldo Awal (kas sebelum sistem dipakai). Dihitung sebagai pembayaran siswa (ceklis SPP & tunggakan lunas), tetapi NETRAL terhadap kas \u2014 tidak mengubah saldo kas, laporan Pemasukan & Pengeluaran, maupun Saldo Sumber Dana."
     }
   },
   "required": [

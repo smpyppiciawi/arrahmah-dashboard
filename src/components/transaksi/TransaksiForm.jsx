@@ -67,6 +67,7 @@ const DEFAULT_FORM = {
   sumber_rekening: '',
   bukti_file: '',
   status_bayar: 'Lunas',
+  is_saldo_awal: false,
   tahun_ajaran: '',
   penerima: '',
   penerima_jabatan: '',
@@ -87,6 +88,7 @@ export default function TransaksiForm({
   const [submitting, setSubmitting] = useState(false);
   const [isMuka, setIsMuka] = useState(false);
   const [mukaRows, setMukaRows] = useState([]);
+  const [isSaldoAwal, setIsSaldoAwal] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -110,6 +112,7 @@ export default function TransaksiForm({
       setSelectedTarifId('');
       setIsMuka(false);
       setMukaRows([]);
+      setIsSaldoAwal(!!editingData?.is_saldo_awal);
     }
   }, [isOpen, editingData, activeAcademicYear]);
 
@@ -336,9 +339,18 @@ export default function TransaksiForm({
 
   const taTujuanOptions = useMemo(() => buildTaOptions(activeAcademicYear), [activeAcademicYear]);
 
+  const toggleSaldoAwal = (checked) => {
+    setIsSaldoAwal(checked);
+    if (checked) {
+      setIsMuka(false);
+      setMukaRows([]);
+    }
+  };
+
   const toggleMuka = (checked) => {
     setIsMuka(checked);
     if (checked) {
+      setIsSaldoAwal(false);
       setSelectedMonths([]);
       setFormData(prev => ({ ...prev, bulan_dibayar: [] }));
       setMukaRows(prev => (prev.length > 0 ? prev : [{
@@ -439,6 +451,8 @@ export default function TransaksiForm({
       return;
     }
 
+    const saldoAwalActive = isSaldoAwal && jenisTransaksi === 'siswa' && !mukaActive;
+
     setSubmitting(true);
     const payload = {
       ...formData,
@@ -451,10 +465,16 @@ export default function TransaksiForm({
       tahun_ajaran: activeAcademicYear || '',
       ...(jenisTransaksi === 'donatur' ? { kategori: 'Donatur', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
       is_iuran_muka: mukaActive,
+      is_saldo_awal: saldoAwalActive,
       ...(mukaActive ? {
         tipe_transaksi: mukaValidRows[0]?.iuran || formData.tipe_transaksi,
         uraian: formData.uraian || `Iuran Muka — ${[...new Set(mukaValidRows.map(r => `${r.iuran} TP ${r.ta}`))].join('; ')}`,
         bulan_dibayar: [],
+      } : {}),
+      ...(saldoAwalActive ? {
+        uraian: formData.uraian && !formData.uraian.includes('(Saldo Awal)')
+          ? `${formData.uraian} (Saldo Awal)`
+          : (formData.uraian || `Pembayaran dari Saldo Awal${formData.nama_siswa ? ` — ${formData.nama_siswa}` : ''} (Saldo Awal)`),
       } : {}),
     };
 
@@ -674,6 +694,23 @@ export default function TransaksiForm({
                         <span className="block text-xs text-slate-500 mt-0.5">Untuk iuran tahun ajaran mendatang atau pelunasan sampai lulus. Uang masuk kas hari ini dan tersimpan sebagai Saldo Iuran Muka — tidak mengurangi tunggakan tahun aktif.</span>
                       </span>
                   </button>
+                  {!isMuka && (
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={isSaldoAwal}
+                      onClick={() => toggleSaldoAwal(!isSaldoAwal)}
+                      className="w-full flex items-start gap-3 p-3 rounded-xl bg-violet-50 border border-violet-100 cursor-pointer text-left transition-colors hover:bg-violet-100/60"
+                    >
+                      <span className={`mt-0.5 w-4 h-4 shrink-0 rounded flex items-center justify-center transition-colors ${isSaldoAwal ? 'bg-violet-600 border border-violet-600' : 'bg-white border border-slate-300'}`}>
+                        {isSaldoAwal && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-700">Pembayaran dari Saldo Awal (Sebelum Sistem)</span>
+                        <span className="block text-xs text-slate-500 mt-0.5">Uang sudah masuk kas lewat Saldo Awal sebelum aplikasi dipakai. Dihitung sebagai pembayaran (ceklis &amp; tunggakan lunas), tetapi TIDAK menambah saldo kas dan dikecualikan dari laporan pemasukan.</span>
+                      </span>
+                    </button>
+                  )}
                   {isMuka && (
                     <MukaAllocationEditor
                       value={mukaRows}
