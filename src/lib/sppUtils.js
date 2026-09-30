@@ -5,7 +5,7 @@ export const BULAN_SPP = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'
 ];
 
-export const SPP_JULI_THRESHOLD = 150000;
+export const PPDB_GEL2_JULI_THRESHOLD = 650000;
 
 /**
  * Get tingkat from a siswa object using kelasList or nama_kelas fallback
@@ -28,24 +28,25 @@ export function tarifMatchesTingkat(tarif, tingkat) {
 }
 
 /**
- * Get gratis SPP months for a student based on BiayaKhusus records:
- * - PPDB Gel 1: spp_gratis_bulan_pertama → Juli free
- * - PPDB Gel 2: sudah_bayar > 150,000 → Juli free
+ * Get gratis SPP months for a student:
+ * - PPDB Gel 1: spp_gratis_bulan_pertama → Juli gratis jika ada catatan BiayaKhusus ATAU transaksi pembayaran PPDB Gel 1 (berapapun nominal)
+ * - PPDB Gel 2: total pembayaran (transaksi tercatat + isian manual Sudah Bayar) DI ATAS ambang tarif
+ *   (spp_juli_threshold; 0 = default 650.000) → Juli gratis
  * - Prestasi: manual gratis_bulan_spp array
+ * Berbasis transaksi — transaksi PPDB lama/new otomatis dihitung tanpa perlu catatan BiayaKhusus.
  */
-export function getGratisBulanSPP(siswaId, biayaKhususList = [], tarifIuranList = []) {
+export function getGratisBulanSPP(siswaId, biayaKhususList = [], tarifIuranList = [], keuanganList = []) {
   const gratis = new Set();
+  const trans = keuanganList.filter(k =>
+    k.siswa_id === siswaId && k.jenis !== 'Pengeluaran' && !k.is_iuran_muka
+  );
   biayaKhususList
     .filter(b => b.siswa_id === siswaId)
     .forEach(b => {
       const tarif = tarifIuranList.find(t => t.id === b.tarif_iuran_id);
       if (!tarif) return;
-      // PPDB Gel 1: spp_gratis_bulan_pertama
+      // PPDB Gel 1: spp_gratis_bulan_pertama (ada catatan khusus)
       if (tarif.jenis_iuran === 'PPDB Gel 1' && tarif.spp_gratis_bulan_pertama) {
-        gratis.add('Juli');
-      }
-      // PPDB Gel 2: sudah_bayar > 150,000
-      if (tarif.jenis_iuran === 'PPDB Gel 2' && (b.sudah_bayar || 0) > SPP_JULI_THRESHOLD) {
         gratis.add('Juli');
       }
       // Prestasi: manual gratis_bulan_spp
@@ -53,6 +54,23 @@ export function getGratisBulanSPP(siswaId, biayaKhususList = [], tarifIuranList 
         b.gratis_bulan_spp.forEach(m => gratis.add(m));
       }
     });
+  // PPDB: gratis Juli berbasis pembayaran tercatat (transaksi / isian manual Kelola Data)
+  tarifIuranList.forEach(tarif => {
+    const transSum = matchIuranItemTransactions(tarif, trans, tarifIuranList)
+      .reduce((s, k) => s + (k.jumlah || 0), 0);
+    if (tarif.jenis_iuran === 'PPDB Gel 1' && tarif.spp_gratis_bulan_pertama && transSum > 0) {
+      gratis.add('Juli');
+    }
+    if (tarif.jenis_iuran === 'PPDB Gel 2') {
+      const threshold = tarif.spp_juli_threshold > 0 ? tarif.spp_juli_threshold : PPDB_GEL2_JULI_THRESHOLD;
+      const manualMax = Math.max(0, ...biayaKhususList
+        .filter(b => b.siswa_id === siswaId && b.tarif_iuran_id === tarif.id)
+        .map(b => b.sudah_bayar || 0));
+      if (Math.max(transSum, manualMax) > threshold) {
+        gratis.add('Juli');
+      }
+    }
+  });
   return [...gratis];
 }
 
@@ -123,6 +141,10 @@ export function matchIuranItemTransactions(tarif, keuanganList = [], allTarifs =
     return !!n && !!t && (t === n || t.includes(n));
   };
   return keuanganList.filter(k => {
+    // (0) penanda eksplisit tarif_iuran_id (di-stamp saat input transaksi siswa)
+    if (k.tarif_iuran_id) {
+      return k.tarif_iuran_id === tarif.id;
+    }
     // (a) nama persis setelah normalisasi
     if (target && (normalizeIuranName(k.uraian) === target || normalizeIuranName(k.tipe_transaksi) === target)) return true;
     // transaksi teridentifikasi ke item lain sejenis → bukan untuk item ini
@@ -151,7 +173,7 @@ export function computeTunggakan(siswa, keuanganList = [], tarifList = [], biaya
   const tingkat = siswa?.nama_kelas?.charAt(0) || '';
   // Setoran Iuran Muka bukan pembayaran iuran tahun ini — kecualikan dari hitungan
   const keuanganNonMuka = keuanganList.filter(k => !k.is_iuran_muka);
-  const gratisMonths = getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList);
+  const gratisMonths = getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList, keuanganNonMuka);
   const gratisSet = new Set(gratisMonths);
   const sppTarif = getSppTarif(tarifList, tingkat);
 
@@ -267,7 +289,7 @@ export function computeStatusKeuangan({
     b.siswa_id === siswa?.id && taCocok(b.tahun_ajaran)
   );
 
-  const gratisSet = new Set(getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList));
+  const gratisSet = new Set(getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList, payments));
 
   const relevantTarifs = tarifList.filter(t =>
     t.status !== 'Tidak Aktif' &&
@@ -371,6 +393,26 @@ export function computeStatusKeuangan({
       status: statusDariSisa(tagihan, dibayar, sisa), detail: 'Sekali Bayar',
       dibayar_transaksi: dibayarTrans,
       dibayar_manual: dibayarManual,
+    });
+  });
+
+  // --- Iuran per siswa (Mutasi / PPDB) TANPA catatan BiayaKhusus: tetap tampil bila ada transaksi tercatat ---
+  relevantTarifs.forEach(t => {
+    if (!PER_SISWA_JENIS.includes(t.jenis_iuran)) return;
+    if (bkSiswa.some(b => b.tarif_iuran_id === t.id)) return;
+    const trans = matchIuranItemTransactions(t, payments, tarifList);
+    const dibayar = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+    if (dibayar <= 0) return;
+    const tagihan = t.nominal || 0;
+    const sisa = Math.max(0, tagihan - dibayar);
+    items.push({
+      key: t.id, jenis: t.jenis_iuran, nama: t.nama, periode: t.periode,
+      gratis: false, khusus: null,
+      tagihan, tagihan_jatuh_tempo: tagihan, dibayar,
+      sisa_jatuh_tempo: sisa, sisa_setahun: sisa,
+      status: statusDariSisa(tagihan, dibayar, sisa), detail: 'Sekali Bayar',
+      dibayar_transaksi: dibayar,
+      dibayar_manual: 0,
     });
   });
 

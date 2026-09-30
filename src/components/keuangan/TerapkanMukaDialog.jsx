@@ -66,7 +66,7 @@ export default function TerapkanMukaDialog({ isOpen, onClose, record, tarifIuran
       if (ta && k.tahun_ajaran !== ta) return;
       (k.bulan_dibayar || []).forEach(m => paid.add(m));
     });
-    const gratis = new Set(getGratisBulanSPP(record.siswa_id, biayaKhususList, tarifIuranList));
+    const gratis = new Set(getGratisBulanSPP(record.siswa_id, biayaKhususList, tarifIuranList, siswaKeu));
     return BULAN_SPP.filter(m => !paid.has(m) && !gratis.has(m));
   }, [record, siswaKeu, ta, biayaKhususList, tarifIuranList]);
 

@@ -9,10 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/use-toast";
-import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight, Check } from "lucide-react";
+import { Users, UserCheck, Heart, Building2, Loader2, Calendar, ArrowUpRight, ArrowDownRight, Check, AlertTriangle } from "lucide-react";
 import SiswaSearch from './SiswaSearch';
 import DonaturSearch from './DonaturSearch';
-import { getGratisBulanSPP, getTingkat as getTingkatSiswa, tarifMatchesTingkat, getSppTarif } from '@/lib/sppUtils';
+import { getGratisBulanSPP, getTingkat as getTingkatSiswa, tarifMatchesTingkat, getSppTarif, computeStatusKeuangan, matchIuranItemTransactions, formatDateID } from '@/lib/sppUtils';
 import SiswaRiwayat from './SiswaRiwayat';
 import SppChecklist from './SppChecklist';
 import PegawaiSearch from './PegawaiSearch';
@@ -89,6 +89,8 @@ export default function TransaksiForm({
   const [isMuka, setIsMuka] = useState(false);
   const [mukaRows, setMukaRows] = useState([]);
   const [isSaldoAwal, setIsSaldoAwal] = useState(false);
+  const [confirmLunasOpen, setConfirmLunasOpen] = useState(false);
+  const skipLunasConfirm = React.useRef(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -113,6 +115,8 @@ export default function TransaksiForm({
       setIsMuka(false);
       setMukaRows([]);
       setIsSaldoAwal(!!editingData?.is_saldo_awal);
+      setConfirmLunasOpen(false);
+      skipLunasConfirm.current = false;
     }
   }, [isOpen, editingData, activeAcademicYear]);
 
@@ -120,7 +124,8 @@ export default function TransaksiForm({
   // Daftar tarif bisa dimuat asinkron, jadi coba lagi setiap daftar tarif berubah.
   useEffect(() => {
     if (isOpen && editingData && !selectedTarifId && formData.tipe_transaksi) {
-      const matched = tarifIuranList.find(t => t.nama === formData.tipe_transaksi);
+      const matched = tarifIuranList.find(t => t.id === editingData.tarif_iuran_id)
+        || tarifIuranList.find(t => t.nama === formData.tipe_transaksi);
       if (matched) setSelectedTarifId(matched.id);
     }
   }, [isOpen, editingData, tarifIuranList, selectedTarifId, formData.tipe_transaksi]);
@@ -179,8 +184,8 @@ export default function TransaksiForm({
   // Gratis SPP months from BiayaKhusus (PPDB Gel 1/2, Prestasi)
   const gratisMonths = useMemo(() => {
     if (!formData.siswa_id) return [];
-    return getGratisBulanSPP(formData.siswa_id, biayaKhususList || [], tarifIuranList);
-  }, [formData.siswa_id, biayaKhususList, tarifIuranList]);
+    return getGratisBulanSPP(formData.siswa_id, biayaKhususList || [], tarifIuranList, keuanganList);
+  }, [formData.siswa_id, biayaKhususList, tarifIuranList, keuanganList]);
 
   const sppTarifNominal = useMemo(() => {
     if (selectedTarifId) {
@@ -209,6 +214,35 @@ export default function TransaksiForm({
     return (selectedTarif?.jenis_iuran === 'SPP') ||
       (formData.tipe_transaksi?.toLowerCase().includes('spp') && !selectedTarifId);
   }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList, isMuka]);
+
+  // Peringatan anti transaksi ganda: tarif yang dipilih sudah LUNAS untuk siswa & TA aktif
+  const tarifLunasInfo = useMemo(() => {
+    if (jenisTransaksi !== 'siswa' || !formData.siswa_id || !selectedTarifId || isMuka) return null;
+    const tarif = tarifIuranList.find(t => t.id === selectedTarifId);
+    const siswa = siswaList.find(s => s.id === formData.siswa_id);
+    if (!tarif || !siswa) return null;
+    const status = computeStatusKeuangan({
+      siswa,
+      keuanganList: keuanganList.filter(k => k.id !== editingData?.id),
+      tarifList: tarifIuranList,
+      biayaKhususList: biayaKhususList || [],
+      kelasList,
+      tahunAjaran: activeAcademicYear,
+      iuranNama: tarif.nama,
+    });
+    const item = status.items.find(i => i.nama === tarif.nama);
+    if (!item || item.tagihan <= 0 || item.sisa_setahun > 0) return null;
+    const payments = keuanganList.filter(k =>
+      k.id !== editingData?.id &&
+      k.jenis !== 'Pengeluaran' && !k.is_iuran_muka &&
+      (!activeAcademicYear || !k.tahun_ajaran || k.tahun_ajaran === activeAcademicYear)
+    );
+    const trans = matchIuranItemTransactions(tarif, payments, tarifIuranList);
+    const terakhir = trans.length > 0
+      ? formatDateID([...trans].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0].tanggal)
+      : '';
+    return { tarif, dibayar: item.dibayar, jumlahTrans: trans.length, terakhir };
+  }, [jenisTransaksi, formData.siswa_id, selectedTarifId, isMuka, tarifIuranList, siswaList, keuanganList, biayaKhususList, kelasList, activeAcademicYear, editingData]);
 
   const siswaRiwayat = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -406,6 +440,15 @@ export default function TransaksiForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Peringatan transaksi ganda: tarif sudah lunas → minta konfirmasi dulu
+    if (tarifLunasInfo && !skipLunasConfirm.current) {
+      setConfirmLunasOpen(true);
+      return;
+    }
+    await doSubmit();
+  };
+
+  const doSubmit = async () => {
     if (showSppChecklist && selectedMonths.length === 0 && formData.jenis === 'Pemasukan') {
       toast({ title: "Pilih minimal 1 bulan SPP", variant: "destructive" });
       return;
@@ -466,6 +509,8 @@ export default function TransaksiForm({
       ...(jenisTransaksi === 'donatur' ? { kategori: 'Donatur', jenis: 'Pemasukan', tipe_transaksi: 'Lainnya' } : {}),
       is_iuran_muka: mukaActive,
       is_saldo_awal: saldoAwalActive,
+      // Stamp tarif iuran terpilih — penanda eksplisit item iuran (anti dobel & SPP Juli PPDB)
+      ...(selectedTarifId && !mukaActive ? { tarif_iuran_id: selectedTarifId } : {}),
       ...(mukaActive ? {
         tipe_transaksi: mukaValidRows[0]?.iuran || formData.tipe_transaksi,
         uraian: formData.uraian || `Iuran Muka — ${[...new Set(mukaValidRows.map(r => `${r.iuran} TP ${r.ta}`))].join('; ')}`,
@@ -679,6 +724,21 @@ export default function TransaksiForm({
                       </SelectContent>
                     </Select>
                   </div>
+                  {tarifLunasInfo && (
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                      <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+                      <div className="text-xs">
+                        <p className="font-semibold text-amber-800">
+                          {tarifLunasInfo.tarif.nama} sudah LUNAS untuk {formData.nama_siswa} TP {activeAcademicYear || '-'}
+                        </p>
+                        <p className="text-amber-700 mt-0.5">
+                          Sudah tercatat dibayar Rp {new Intl.NumberFormat('id-ID').format(tarifLunasInfo.dibayar)}
+                          {tarifLunasInfo.jumlahTrans > 0 ? ` melalui ${tarifLunasInfo.jumlahTrans} transaksi${tarifLunasInfo.terakhir ? ` (terakhir ${tarifLunasInfo.terakhir})` : ''}` : ''}
+                          . Periksa kembali — potensi transaksi ganda.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     role="checkbox"
@@ -989,6 +1049,28 @@ export default function TransaksiForm({
             </Button>
           </div>
         </form>
+
+        {/* Konfirmasi tetap simpan saat tarif sudah lunas */}
+        <Dialog open={confirmLunasOpen} onOpenChange={setConfirmLunasOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-800">Potensi Transaksi Ganda</DialogTitle>
+            </DialogHeader>
+            {tarifLunasInfo && (
+              <p className="text-sm text-slate-600">
+                {tarifLunasInfo.tarif.nama} untuk {formData.nama_siswa} pada TP {activeAcademicYear || '-'} sudah tercatat lunas
+                (total dibayar Rp {new Intl.NumberFormat('id-ID').format(tarifLunasInfo.dibayar)}).
+                Yakin ingin tetap menyimpan transaksi ini?
+              </p>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setConfirmLunasOpen(false)}>Batal</Button>
+              <Button className="bg-amber-600 hover:bg-amber-700" onClick={() => { skipLunasConfirm.current = true; setConfirmLunasOpen(false); doSubmit(); }}>
+                Tetap Simpan
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

@@ -69,6 +69,11 @@
       "default": false,
       "description": "Khusus PPDB Gel 1: SPP bulan pertama (Juli) digratiskan"
     },
+    "spp_juli_threshold": {
+      "type": "number",
+      "default": 0,
+      "description": "Khusus PPDB Gel 2: ambang total pembayaran tarif ini yang membuat SPP Juli otomatis gratis (di atas ambang). 0 = pakai default 650.000."
+    },
     "tipe_transaksi_id": {
       "type": "string",
       "description": "ID TipeTransaksi yang dipetakan resmi (pemetaan tarif iuran \u2192 tipe transaksi siswa). Dipakai form transaksi untuk auto-fill Tipe Transaksi."

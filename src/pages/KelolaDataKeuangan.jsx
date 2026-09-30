@@ -73,7 +73,7 @@ export default function KelolaDataKeuangan() {
   const [kategoriForm, setKategoriForm] = useState({ nama: '', jenis: 'Semua' });
   const [tipeForm, setTipeForm] = useState({ nama: '', jenis: 'Umum' });
   const [sumberForm, setSumberForm] = useState({ nama: '', keterangan: '' });
-  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, tipe_transaksi_id: '' });
+  const [tarifForm, setTarifForm] = useState({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, spp_juli_threshold: '', tipe_transaksi_id: '' });
   const [biayaKhususFormOpen, setBiayaKhususFormOpen] = useState(false);
   const [pilihSiswaOpen, setPilihSiswaOpen] = useState(false);
   const [pilihSiswaTarif, setPilihSiswaTarif] = useState(null);
@@ -130,12 +130,12 @@ export default function KelolaDataKeuangan() {
   });
 
   const createTarifMutation = useMutation({
-    mutationFn: (data) => base44.entities.TarifIuran.create({ ...data, nominal: Number(data.nominal) }),
+    mutationFn: (data) => base44.entities.TarifIuran.create({ ...data, nominal: Number(data.nominal), spp_juli_threshold: Number(data.spp_juli_threshold || 0) }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tarif-iuran'] }); resetForm(); },
   });
 
   const updateTarifMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.TarifIuran.update(id, { ...data, nominal: Number(data.nominal) }),
+    mutationFn: ({ id, data }) => base44.entities.TarifIuran.update(id, { ...data, nominal: Number(data.nominal), spp_juli_threshold: Number(data.spp_juli_threshold || 0) }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['tarif-iuran'] }); resetForm(); },
   });
 
@@ -163,7 +163,7 @@ export default function KelolaDataKeuangan() {
     setKategoriForm({ nama: '', jenis: 'Semua' });
     setTipeForm({ nama: '', jenis: 'Umum' });
     setSumberForm({ nama: '', keterangan: '' });
-    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, tipe_transaksi_id: '' });
+    setTarifForm({ nama: '', jenis_iuran: 'SPP', nominal: '', tingkat: ['Semua'], periode: 'Bulanan', tahun_ajaran: '', status: 'Aktif', spp_gratis_bulan_pertama: false, spp_juli_threshold: '', tipe_transaksi_id: '' });
     setBiayaKhususForm({ siswa_id: '', nama_siswa: '', nama_kelas: '', tarif_iuran_id: '', nama_iuran: '', nominal_khusus: '', kategori: 'Yatim', keterangan: '' });
     setEditingData(null);
     setIsOpen(false);
@@ -626,6 +626,13 @@ export default function KelolaDataKeuangan() {
                         <p className="text-sm font-medium text-slate-700">SPP Bulan Pertama (Juli) Digratiskan</p>
                         <p className="text-xs text-slate-500">Siswa iuran ini SPP Juli dianggap sudah bayar tanpa riwayat pembayaran</p>
                       </div>
+                    </div>
+                  )}
+                  {tarifForm.jenis_iuran === 'PPDB Gel 2' && (
+                    <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                      <Label>Ambang SPP Juli Gratis (Rp)</Label>
+                      <RupiahInput value={tarifForm.spp_juli_threshold || ''} onChange={(val) => setTarifForm({...tarifForm, spp_juli_threshold: val})} placeholder="650000" />
+                      <p className="text-xs text-slate-500 mt-1">Total pembayaran tarif ini DI ATAS ambang ini membuat SPP Juli otomatis gratis (terhubung fitur Sudah Bayar). Kosong = 650.000.</p>
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-4">

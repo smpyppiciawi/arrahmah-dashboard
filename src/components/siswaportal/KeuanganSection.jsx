@@ -70,7 +70,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
         r.bulan_dibayar.forEach(m => paidMonths.add(m));
       }
     });
-    const gratisSet = new Set(getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList));
+    const gratisSet = new Set(getGratisBulanSPP(siswa?.id, biayaKhususList, tarifList, keuanganList));
     return BULAN_SPP.map(month => ({ month, lunas: paidMonths.has(month), gratis: gratisSet.has(month) }));
   }, [keuanganList, biayaKhususList, tarifList, siswa?.id, activeAcademicYear]);
 

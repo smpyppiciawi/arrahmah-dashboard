@@ -86,6 +86,10 @@
       "type": "string",
       "description": "Kelas siswa"
     },
+    "tarif_iuran_id": {
+      "type": "string",
+      "description": "ID TarifIuran yang dipilih saat input transaksi siswa (penanda eksplisit item iuran \u2014 dipakai pencocokan transaksi, peringatan transaksi ganda, dan fitur SPP Juli gratis PPDB)"
+    },
     "guru_id": {
       "type": "string",
       "description": "ID pegawai (untuk transaksi pegawai)"
