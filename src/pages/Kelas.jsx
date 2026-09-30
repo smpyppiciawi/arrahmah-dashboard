@@ -47,7 +47,7 @@ export default function Kelas() {
   const canEdit = ['admin', 'tu'].includes(userRole);
 
   const [formData, setFormData] = useState({
-    wali_kelas: '', tahun_ajaran: ''
+    wali_kelas: '', wali_kelas_id: '', tahun_ajaran: ''
   });
 
   const { data: kelasList = [], isLoading } = useQuery({
@@ -108,7 +108,7 @@ export default function Kelas() {
   };
 
   const resetForm = () => {
-    setFormData({ wali_kelas: '', tahun_ajaran: '' });
+    setFormData({ wali_kelas: '', wali_kelas_id: '', tahun_ajaran: '' });
     setEditingKelas(null);
     setIsOpen(false);
   };
@@ -124,7 +124,7 @@ export default function Kelas() {
 
   const handleEdit = (kelas) => {
     setEditingKelas(kelas);
-    setFormData({ wali_kelas: kelas.wali_kelas || '', tahun_ajaran: kelas.tahun_ajaran || '' });
+    setFormData({ wali_kelas: kelas.wali_kelas || '', wali_kelas_id: kelas.wali_kelas_id || '', tahun_ajaran: kelas.tahun_ajaran || '' });
     setIsOpen(true);
   };
 
@@ -331,10 +331,13 @@ export default function Kelas() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <Label>Wali Kelas</Label>
-                  <Select value={formData.wali_kelas} onValueChange={(v) => setFormData({...formData, wali_kelas: v})}>
+                  <Select value={formData.wali_kelas} onValueChange={(v) => {
+                    const guru = guruList.find(g => g.nama === v);
+                    setFormData({ ...formData, wali_kelas: v, wali_kelas_id: guru?.id || '' });
+                  }}>
                     <SelectTrigger><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
                     <SelectContent>
-                      {guruList.map(guru => (
+                      {guruList.filter(g => g.status !== 'Keluar').map(guru => (
                         <SelectItem key={guru.id} value={guru.nama}>{guru.nama}</SelectItem>
                       ))}
                     </SelectContent>

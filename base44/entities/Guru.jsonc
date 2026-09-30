@@ -69,9 +69,19 @@
       "enum": [
         "Aktif",
         "Cuti",
-        "Pensiun"
+        "Keluar"
       ],
-      "default": "Aktif"
+      "default": "Aktif",
+      "description": "Status kepegawaian. Keluar = tidak lagi bekerja (resign/mutasi/pensiun/meninggal dunia \u2014 lihat alasan_keluar). Pegawai Keluar dipisah ke Tab Pegawai Keluar."
+    },
+    "alasan_keluar": {
+      "type": "string",
+      "description": "Alasan keluar pegawai (Resign, Mutasi, Pensiun, Meninggal Dunia, atau teks bebas untuk Lainnya). Diisi saat status diubah menjadi Keluar."
+    },
+    "tanggal_keluar": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal pegawai keluar (tanggal efektif berhenti)"
     },
     "golongan_id": {
       "type": "string",

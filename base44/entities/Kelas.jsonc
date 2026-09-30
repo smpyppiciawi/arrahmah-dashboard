@@ -17,7 +17,11 @@
     },
     "wali_kelas": {
       "type": "string",
-      "description": "Nama wali kelas"
+      "description": "Nama wali kelas (snapshot display \u2014 kunci relasi sebenarnya di wali_kelas_id)"
+    },
+    "wali_kelas_id": {
+      "type": "string",
+      "description": "ID record Guru/pegawai yang menjadi wali kelas (kunci relasi utama \u2014 tidak berubah walau gelar/nama pegawai diperbarui)"
     },
     "tahun_ajaran": {
       "type": "string",

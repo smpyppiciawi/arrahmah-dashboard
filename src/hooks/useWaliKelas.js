@@ -4,8 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 
 /**
  * Mendeteksi apakah user Guru adalah Wali Kelas.
- * Dicocokkan via nama Guru (entitas Guru) terhadap field `wali_kelas` pada Data Kelas,
- * karena `wali_kelas` menyimpan nama Guru, bukan full_name akun User.
+ * Kunci utama: Kelas.wali_kelas_id === ID record Guru (relasi ber-ID, tahan perubahan gelar/nama).
+ * Fallback sementara: pencocokan nama toleran gelar (untuk data lama yang belum ter-backfill).
  */
 export function useWaliKelas() {
   const { user } = useAuth();
@@ -31,7 +31,7 @@ export function useWaliKelas() {
   const guruNama = guruData?.nama || '';
   const userFullName = user?.full_name || '';
 
-  // Cocokkan wali_kelas terhadap nama Guru maupun full_name (toleransi kedua format)
+  // Cocokkan wali_kelas terhadap nama Guru maupun full_name (fallback nama saja)
   // + toleransi gelar: "Henofefa S.Ag., Gr." dikenali sama dengan "Henofefa"
   const normNama = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
   const tanpaGelar = (s) => normNama(
@@ -46,14 +46,20 @@ export function useWaliKelas() {
       .join(' ')
   );
 
+  const cocokNama = (w) => {
+    const nama = String(w || '').trim();
+    if (!nama) return false;
+    const kandidatUser = [guruNama, userFullName].filter(Boolean);
+    return kandidatUser.some(n =>
+      nama === n || tanpaGelar(nama) === tanpaGelar(n)
+    );
+  };
+
+  // Prioritas relasi ber-ID; hanya jika wali_kelas_id kosong (data lama) pakai pencocokan nama
   const waliKelasIds = isGuru
     ? kelasList.filter(k => {
-        const w = String(k.wali_kelas || '').trim();
-        if (!w) return false;
-        const kandidatUser = [guruNama, userFullName].filter(Boolean);
-        return kandidatUser.some(nama =>
-          w === nama || tanpaGelar(w) === tanpaGelar(nama)
-        );
+        if (k.wali_kelas_id) return !!guruData && k.wali_kelas_id === guruData.id;
+        return cocokNama(k.wali_kelas);
       }).map(k => k.id)
     : [];
   const isWaliKelas = isGuru ? waliKelasIds.length > 0 : false;

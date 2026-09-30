@@ -245,8 +245,7 @@ export default function ProfilGuru() {
                       <SelectContent>
                         <SelectItem value="Aktif">Aktif</SelectItem>
                         <SelectItem value="Cuti">Cuti</SelectItem>
-                        <SelectItem value="Pensiun">Pensiun</SelectItem>
-                      </SelectContent>
+                                              </SelectContent>
                     </Select>
                   ) : <p className="font-semibold text-slate-800 mt-1 text-sm">{guruData.status || 'Aktif'}</p>}
                 </div>
@@ -490,8 +489,7 @@ export default function ProfilGuru() {
                         <SelectContent>
                           <SelectItem value="Aktif">Aktif</SelectItem>
                           <SelectItem value="Cuti">Cuti</SelectItem>
-                          <SelectItem value="Pensiun">Pensiun</SelectItem>
-                        </SelectContent>
+                                                  </SelectContent>
                       </Select>
                     ) : <Badge className={guruData.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-slate-100 text-slate-600 border-0'}>{guruData.status || 'Aktif'}</Badge>}
                   </div>

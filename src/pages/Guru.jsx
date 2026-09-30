@@ -7,13 +7,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { GraduationCap, Plus, Edit2, Trash2, Download, Upload } from "lucide-react";
+import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
+import AlasanKeluarDialog from "@/components/guru/AlasanKeluarDialog";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import { useToast } from "@/components/ui/use-toast";
 
-// Default Mapel list - akan diambil dari database
+const fmtTanggal = (d) => {
+  if (!d) return '-';
+  const [y, m, day] = String(d).slice(0, 10).split('-');
+  return y && m && day ? `${day}/${m}/${y}` : d;
+};
 
 export default function Guru() {
   const [isOpen, setIsOpen] = useState(false);
@@ -27,6 +34,13 @@ export default function Guru() {
   const [csvImporting, setCsvImporting] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [activeTab, setActiveTab] = useState('aktif');
+  const [pendingSubmit, setPendingSubmit] = useState(null);
+  const [keluarDialogOpen, setKeluarDialogOpen] = useState(false);
+  const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
+  const [reactivateId, setReactivateId] = useState(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const { toast } = useToast();
   const queryClient = useQueryClient();
 
   useEffect(() => {
@@ -43,6 +57,7 @@ export default function Guru() {
 
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'tu'].includes(userRole);
+  const isAdmin = userRole === 'admin';
 
   const [formData, setFormData] = useState({
     nuptk: '',
@@ -72,6 +87,10 @@ export default function Guru() {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+
+  // Pegawai Aktif vs Pegawai Keluar dipisah berdasarkan status
+  const aktifList = guruList.filter(g => g.status !== 'Keluar');
+  const keluarList = guruList.filter(g => g.status === 'Keluar');
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Guru.create(data),
@@ -109,6 +128,25 @@ export default function Guru() {
     }
   };
 
+  const handleBackfill = async () => {
+    setBackfilling(true);
+    try {
+      const res = await base44.functions.invoke('backfillGuruId', {});
+      const summary = res.data?.summary;
+      toast({
+        title: 'Backfill Relasi Pegawai Selesai',
+        description: `Kelas disinkronkan: ${summary?.entities?.Kelas || 0} record. Detail lengkap di log.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Backfill Gagal',
+        description: error.message || 'Terjadi kesalahan saat backfill.',
+        variant: 'destructive',
+      });
+    }
+    setBackfilling(false);
+  };
+
   const handleDownloadTemplate = () => {
     const headers = ['NUPTK', 'Nama', 'Jenis Kelamin', 'Jabatan', 'Mata Pelajaran', 'No Telp', 'Email'];
     const csvContent = headers.join(',') + '\n' + '123456,Contoh Guru,Laki-laki,Guru Mata Pelajaran,Matematika;IPA,08123456789,guru@email.com';
@@ -144,7 +182,8 @@ export default function Guru() {
 
   const resetForm = () => {
     setFormData({
-      nip: '',
+      nuptk: '',
+      nrks: '',
       nama: '',
       gelar_depan: '',
       gelar_belakang: '',
@@ -161,16 +200,41 @@ export default function Guru() {
     setSelectedMapel([]);
   };
 
+  // Simpan form: jika status berubah menjadi Keluar -> tampilkan popup Alasan Keluar dulu
   const handleSubmit = (e) => {
     e.preventDefault();
     // Nama & gelar disatukan menjadi 1 kalimat Nama Lengkap — dipakai seluruh sistem (Rapor, Legger, dll.)
     const namaLengkap = [formData.gelar_depan?.trim(), formData.nama?.trim(), formData.gelar_belakang?.trim()].filter(Boolean).join(' ');
     const dataToSubmit = { ...formData, nama: namaLengkap, mapel: selectedMapel };
+    if (editingData?.status === 'Keluar' && dataToSubmit.status !== 'Keluar') {
+      // Kembali dari Keluar ke aktif: bersihkan data keluar
+      dataToSubmit.alasan_keluar = '';
+      dataToSubmit.tanggal_keluar = '';
+    }
+    if (dataToSubmit.status === 'Keluar' && editingData?.status !== 'Keluar') {
+      setPendingSubmit(dataToSubmit);
+      setKeluarDialogOpen(true);
+      setIsOpen(false);
+      return;
+    }
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: dataToSubmit });
     } else {
       createMutation.mutate(dataToSubmit);
     }
+  };
+
+  // Konfirmasi popup Alasan Keluar -> simpan dengan alasan & tanggal keluar
+  const handleKeluarConfirm = (keluarData) => {
+    if (!pendingSubmit) return;
+    const finalData = { ...pendingSubmit, ...keluarData };
+    if (editingData) {
+      updateMutation.mutate({ id: editingData.id, data: finalData });
+    } else {
+      createMutation.mutate(finalData);
+    }
+    setPendingSubmit(null);
+    setKeluarDialogOpen(false);
   };
 
   const handleEdit = (guru) => {
@@ -184,6 +248,20 @@ export default function Guru() {
     setFormData({ ...guru, nama: namaInti, gelar_depan: gd, gelar_belakang: gb });
     setSelectedMapel(guru.mapel || []);
     setIsOpen(true);
+  };
+
+  const handleReactivateClick = (id) => {
+    setReactivateId(id);
+    setReactivateConfirmOpen(true);
+  };
+
+  const confirmReactivate = () => {
+    if (reactivateId) {
+      updateMutation.mutate({
+        id: reactivateId,
+        data: { status: 'Aktif', alasan_keluar: '', tanggal_keluar: '' }
+      });
+    }
   };
 
   const handleMapelToggle = (mapel) => {
@@ -201,7 +279,7 @@ export default function Guru() {
         await base44.entities.Mapel.create({ nama: mapelName, is_default: false });
         queryClient.invalidateQueries({ queryKey: ['mapel'] });
       }
-      
+
       setSelectedMapel(prev => [...prev, mapelName]);
       setNewMapel('');
     }
@@ -211,8 +289,8 @@ export default function Guru() {
     { key: 'nuptk', label: 'NUPTK', render: (row) => row.nuptk || '-' },
     { key: 'nama', label: 'Nama' },
     { key: 'jenis_kelamin', label: 'JK' },
-    { 
-      key: 'jabatan', 
+    {
+      key: 'jabatan',
       label: 'Jabatan',
       render: (row) => (
         <Badge className={
@@ -224,15 +302,15 @@ export default function Guru() {
         </Badge>
       )
     },
-    { 
-      key: 'tugas_tambahan', 
+    {
+      key: 'tugas_tambahan',
       label: 'Tugas Tambahan',
       render: (row) => row.tugas_tambahan ? (
         <Badge className="bg-indigo-100 text-indigo-700">{row.tugas_tambahan}</Badge>
       ) : <span className="text-slate-400 text-xs">-</span>
     },
-    { 
-      key: 'mapel', 
+    {
+      key: 'mapel',
       label: 'Mata Pelajaran',
       render: (row) => (
         <div className="flex flex-wrap gap-1">
@@ -250,14 +328,14 @@ export default function Guru() {
       )
     },
     { key: 'no_telp', label: 'No. Telp', render: (row) => row.no_telp || '-' },
-    { 
-      key: 'status', 
+    {
+      key: 'status',
       label: 'Status',
       render: (row) => (
         <Badge className={
           row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' :
           row.status === 'Cuti' ? 'bg-amber-100 text-amber-700' :
-          'bg-slate-100 text-slate-700'
+          'bg-slate-200 text-slate-600'
         }>
           {row.status}
         </Badge>
@@ -283,6 +361,42 @@ export default function Guru() {
     }
   ];
 
+  const keluarColumns = [
+    { key: 'nuptk', label: 'NUPTK', render: (row) => row.nuptk || '-' },
+    { key: 'nama', label: 'Nama' },
+    {
+      key: 'jabatan',
+      label: 'Jabatan',
+      render: (row) => row.jabatan || 'Guru Mata Pelajaran'
+    },
+    { key: 'tanggal_keluar', label: 'Tanggal Keluar', render: (row) => fmtTanggal(row.tanggal_keluar) },
+    {
+      key: 'alasan_keluar',
+      label: 'Alasan Keluar',
+      render: (row) => row.alasan_keluar ? (
+        <Badge className="bg-rose-100 text-rose-700">{row.alasan_keluar}</Badge>
+      ) : <span className="text-slate-400 text-xs">-</span>
+    },
+    {
+      key: 'aksi',
+      label: 'Aksi',
+      sortable: false,
+      filterable: false,
+      render: (row) => canEdit ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+          onClick={() => handleReactivateClick(row.id)}
+        >
+          <Undo2 className="w-3.5 h-3.5 mr-1" /> Kembali Aktif
+        </Button>
+      ) : (
+        <span className="text-xs text-slate-400">-</span>
+      )
+    }
+  ];
+
   return (
     <>
       <ConfirmDialog
@@ -292,7 +406,21 @@ export default function Guru() {
         title="Hapus Data Guru/Pegawai"
         description="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
       />
-      
+      <ConfirmDialog
+        open={reactivateConfirmOpen}
+        onOpenChange={setReactivateConfirmOpen}
+        onConfirm={confirmReactivate}
+        title="Kembalikan Pegawai Menjadi Aktif"
+        description="Pegawai ini akan dikembalikan ke daftar Pegawai Aktif. Lanjutkan?"
+      />
+      <AlasanKeluarDialog
+        open={keluarDialogOpen}
+        onOpenChange={setKeluarDialogOpen}
+        namaPegawai={pendingSubmit?.nama}
+        onConfirm={handleKeluarConfirm}
+        saving={createMutation.isPending || updateMutation.isPending}
+      />
+
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
@@ -303,9 +431,15 @@ export default function Guru() {
             </h1>
             <p className="text-slate-500 mt-1">Kelola data guru dan pegawai</p>
           </div>
-          
+
           {canEdit && (
             <div className="flex flex-wrap gap-2">
+              {isAdmin && (
+                <Button onClick={handleBackfill} variant="outline" size="sm" disabled={backfilling}>
+                  <DatabaseZap className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{backfilling ? 'Menyinkronkan...' : 'Sinkron Relasi'}</span>
+                </Button>
+              )}
               <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
                 <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>
@@ -323,13 +457,38 @@ export default function Guru() {
           )}
         </div>
 
-        {/* Table with DataTable */}
         <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Data Guru & Pegawai</CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <CardTitle>Data Guru & Pegawai</CardTitle>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  <TabsTrigger value="aktif" className="gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Pegawai Aktif
+                    <Badge variant="secondary" className="ml-1">{aktifList.length}</Badge>
+                  </TabsTrigger>
+                  <TabsTrigger value="keluar" className="gap-2">
+                    <LogOut className="w-4 h-4" />
+                    Pegawai Keluar
+                    <Badge variant="secondary" className="ml-1">{keluarList.length}</Badge>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </CardHeader>
           <CardContent>
-            <DataTable columns={guruColumns} data={guruList} pageSize={5} />
+            {activeTab === 'aktif' ? (
+              <DataTable columns={guruColumns} data={aktifList} pageSize={5} />
+            ) : (
+              keluarList.length > 0 ? (
+                <DataTable columns={keluarColumns} data={keluarList} pageSize={5} />
+              ) : (
+                <div className="text-center py-12 text-slate-400 text-sm">
+                  Belum ada pegawai keluar.
+                </div>
+              )
+            )}
           </CardContent>
         </Card>
 
@@ -387,9 +546,14 @@ export default function Guru() {
                     <SelectContent>
                       <SelectItem value="Aktif">Aktif</SelectItem>
                       <SelectItem value="Cuti">Cuti</SelectItem>
-                      <SelectItem value="Pensiun">Pensiun</SelectItem>
+                      <SelectItem value="Keluar">Keluar</SelectItem>
                     </SelectContent>
                   </Select>
+                  {formData.status === 'Keluar' && editingData?.status !== 'Keluar' && (
+                    <p className="text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2 mt-2">
+                      Saat disimpan, popup Alasan Keluar akan muncul untuk melengkapi data.
+                    </p>
+                  )}
                 </div>
               </div>
 

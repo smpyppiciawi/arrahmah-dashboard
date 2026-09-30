@@ -124,7 +124,7 @@ export default function PembelajaranDialog({ open, onOpenChange, kelas }) {
                 <Select value={formData.guru_id} onValueChange={handleGuruChange}>
                   <SelectTrigger><SelectValue placeholder="Pilih Guru" /></SelectTrigger>
                   <SelectContent>
-                    {guruList.filter(g => g.jabatan === 'Guru Mata Pelajaran').map(g => (
+                    {guruList.filter(g => g.status !== 'Keluar' && g.jabatan === 'Guru Mata Pelajaran').map(g => (
                       <SelectItem key={g.id} value={g.id}>{g.nama}</SelectItem>
                     ))}
                   </SelectContent>

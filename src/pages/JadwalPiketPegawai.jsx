@@ -51,7 +51,7 @@ export default function JadwalPiketPegawai() {
   const tampilkanStatus = settingRecord?.tampilkan_status_kehadiran_piket !== false;
 
   const sortedGuru = useMemo(() =>
-    [...guruList].filter(g => g.status !== 'Pensiun').sort((a, b) => (a.nama || '').localeCompare(b.nama || '')),
+    [...guruList].filter(g => g.status !== 'Keluar').sort((a, b) => (a.nama || '').localeCompare(b.nama || '')),
     [guruList]);
 
   const piketByHari = useMemo(() => {

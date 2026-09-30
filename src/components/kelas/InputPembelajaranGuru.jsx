@@ -163,7 +163,7 @@ export default function InputPembelajaranGuru({ open, onOpenChange }) {
           <Select value={selectedGuruId} onValueChange={(v) => { setSelectedGuruId(v); setRows([{ mapel: '', selectedKelas: [] }]); setResult(null); }}>
             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih Guru..." /></SelectTrigger>
             <SelectContent>
-              {guruList.filter(g => g.jabatan === 'Guru Mata Pelajaran' || g.mapel?.length > 0).map(g => (
+              {guruList.filter(g => g.status !== 'Keluar' && (g.jabatan === 'Guru Mata Pelajaran' || g.mapel?.length > 0)).map(g => (
                 <SelectItem key={g.id} value={g.id}>
                   {g.nama} {g.mapel?.length > 0 && `(${g.mapel.length} mapel)`}
                 </SelectItem>
