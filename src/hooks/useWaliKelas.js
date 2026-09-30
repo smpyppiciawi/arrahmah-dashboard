@@ -32,8 +32,29 @@ export function useWaliKelas() {
   const userFullName = user?.full_name || '';
 
   // Cocokkan wali_kelas terhadap nama Guru maupun full_name (toleransi kedua format)
+  // + toleransi gelar: "Henofefa S.Ag., Gr." dikenali sama dengan "Henofefa"
+  const normNama = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const tanpaGelar = (s) => normNama(
+    String(s || '')
+      .split(',')
+      .filter(seg => {
+        const t = seg.trim();
+        if (!t) return false;
+        if (t.includes('.')) return false; // gelar belakang berformat S.Ag., Gr., M.Pd. dst
+        return !['h', 'hj', 'dr', 'prof', 'ir'].includes(t.toLowerCase()); // gelar depan tanpa titik
+      })
+      .join(' ')
+  );
+
   const waliKelasIds = isGuru
-    ? kelasList.filter(k => (guruNama && k.wali_kelas === guruNama) || k.wali_kelas === userFullName).map(k => k.id)
+    ? kelasList.filter(k => {
+        const w = String(k.wali_kelas || '').trim();
+        if (!w) return false;
+        const kandidatUser = [guruNama, userFullName].filter(Boolean);
+        return kandidatUser.some(nama =>
+          w === nama || tanpaGelar(w) === tanpaGelar(nama)
+        );
+      }).map(k => k.id)
     : [];
   const isWaliKelas = isGuru ? waliKelasIds.length > 0 : false;
   const hasSiswa = isGuru ? siswaAktif.some(s => waliKelasIds.includes(s.kelas_id)) : false;
