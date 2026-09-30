@@ -28,6 +28,10 @@ import BukuTamu from './pages/BukuTamu';
 import TugasGuru from './pages/TugasGuru';
 import BukuInduk from './pages/BukuInduk';
 import FotoSiswa from './pages/FotoSiswa';
+import PendaftarSPMB from './pages/PendaftarSPMB';
+import WawancaraSPMB from './pages/WawancaraSPMB';
+import PembayaranSPMB from './pages/PembayaranSPMB';
+import FinalisasiSPMB from './pages/FinalisasiSPMB';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -150,6 +154,26 @@ const AuthenticatedApp = () => {
       <Route path="/FotoSiswa" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="FotoSiswa"><FotoSiswa /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/PendaftarSPMB" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="PendaftarSPMB"><PendaftarSPMB /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/WawancaraSPMB" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="WawancaraSPMB"><WawancaraSPMB /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/PembayaranSPMB" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="PembayaranSPMB"><PembayaranSPMB /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/FinalisasiSPMB" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="FinalisasiSPMB"><FinalisasiSPMB /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 
