@@ -33,7 +33,7 @@ const KATEGORI_COLOR = {
   "Lainnya": "bg-slate-100 text-slate-700"
 };
 
-export default function ImprovementTab() {
+export default function ImprovementTab({ readOnly = false }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { activeAcademicYear: tahunAjaran } = useActiveAcademicYear();
@@ -162,7 +162,7 @@ export default function ImprovementTab() {
     { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
       <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => handleEditImprovement(r)}><Edit2 className="w-4 h-4" /></Button>
+        {!readOnly && <Button size="sm" variant="ghost" onClick={() => handleEditImprovement(r)}><Edit2 className="w-4 h-4" /></Button>}
         {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('improvement'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
     ) }
@@ -195,7 +195,7 @@ export default function ImprovementTab() {
     { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
       <div className="flex gap-1">
-        <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>
+        {!readOnly && <Button size="sm" variant="ghost" onClick={() => handleEditPelanggaran(r)}><Edit2 className="w-4 h-4" /></Button>}
         {canDelete && <Button size="sm" variant="ghost" className="text-red-500" onClick={() => { setDeleteTarget(r); setDeleteType('pelanggaran'); }}><Trash2 className="w-4 h-4" /></Button>}
       </div>
     ) }
@@ -230,6 +230,7 @@ export default function ImprovementTab() {
         onTambahPelanggaran={handleTambahPelanggaran}
         onAturLimit={() => setPengaturanOpen(true)}
         canAnulir={['admin', 'kepsek'].includes(currentUser?.role)}
+        readOnly={readOnly}
       />
 
       {/* Kelola Data & Approval Poin — ADMIN/TU/KEPSEK (serta Guru WAKA untuk Approval) */}
@@ -282,9 +283,11 @@ export default function ImprovementTab() {
                   <AlertTriangle className="w-5 h-5" /> Pelanggaran Siswa (Sistem Improvement)
                 </CardTitle>
                 <div className="flex items-center gap-2">
-                  <Button onClick={handleTambahPelanggaran} className="bg-red-600 hover:bg-red-700">
-                    <Plus className="w-4 h-4 mr-1" /> Tambah Pelanggaran
-                  </Button>
+                  {!readOnly && (
+                    <Button onClick={handleTambahPelanggaran} className="bg-red-600 hover:bg-red-700">
+                      <Plus className="w-4 h-4 mr-1" /> Tambah Pelanggaran
+                    </Button>
+                  )}
                 </div>
               </div>
               <div className="mt-3"><FilterBar /></div>
@@ -302,9 +305,11 @@ export default function ImprovementTab() {
                 <CardTitle className="flex items-center gap-2 text-emerald-700">
                   <TrendingDown className="w-5 h-5" /> Data Improvement Siswa
                 </CardTitle>
-                <Button onClick={() => handleTambahImprovement(null)} className="bg-emerald-600 hover:bg-emerald-700">
-                  <Plus className="w-4 h-4 mr-1" /> Tambah Improvement
-                </Button>
+                {!readOnly && (
+                  <Button onClick={() => handleTambahImprovement(null)} className="bg-emerald-600 hover:bg-emerald-700">
+                    <Plus className="w-4 h-4 mr-1" /> Tambah Improvement
+                  </Button>
+                )}
               </div>
               <div className="mt-3"><FilterBar /></div>
             </CardHeader>

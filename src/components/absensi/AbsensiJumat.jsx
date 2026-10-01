@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Users, AlertTriangle, CheckCircle, UserX, Moon, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { useReadOnly } from "@/hooks/useReadOnly";
 
 function getNextFriday() {
   const d = new Date();
@@ -22,6 +23,7 @@ function getNextFriday() {
 }
 
 export default function AbsensiJumat() {
+  const readOnly = useReadOnly();
   const [selectedDate, setSelectedDate] = useState(format(getNextFriday(), 'yyyy-MM-dd'));
   const [popupOpen, setPopupOpen] = useState(false);
   const [popupKelas, setPopupKelas] = useState('');
@@ -110,9 +112,11 @@ export default function AbsensiJumat() {
             <Label className="text-xs text-slate-500 font-medium mb-1 block">Tanggal Jumat</Label>
             <Input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="h-9" />
           </div>
-          <Button onClick={() => setPopupOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
-            <Users className="w-4 h-4" /> Input Absen Jumat
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setPopupOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 gap-2">
+              <Users className="w-4 h-4" /> Input Absen Jumat
+            </Button>
+          )}
         </CardContent>
       </Card>
 
@@ -156,7 +160,7 @@ export default function AbsensiJumat() {
           <div className="mb-4">
             <Label className="text-xs">Pilih Kelas</Label>
             <Select value={popupKelas} onValueChange={setPopupKelas}><SelectTrigger><SelectValue placeholder="Pilih kelas..." /></SelectTrigger><SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent></Select>
-            {popupKelas && kehadiranAlfaIds.length > 0 && (
+            {popupKelas && !readOnly && kehadiranAlfaIds.length > 0 && (
               <Button size="sm" variant="outline" className="mt-2 gap-2 border-amber-300 text-amber-700 hover:bg-amber-50" onClick={syncFromKehadiran} disabled={createMutation.isPending}>
                 <RefreshCw className="w-3.5 h-3.5" /> Sinkron dari Absensi Siswa ({kehadiranAlfaIds.length} Alfa)
               </Button>
@@ -173,7 +177,7 @@ export default function AbsensiJumat() {
                     const isTidakHadir = !!getJumatRecord(siswa.id) || isAlfaKehadiran;
                     return (
                       <label key={siswa.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran} className="w-4 h-4 rounded" />
+                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran || readOnly} className="w-4 h-4 rounded" />
                         <span className={`text-sm ${isTidakHadir ? 'text-red-500 line-through' : 'text-slate-700'}`}>{siswa.nama}</span>
                         {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">{isAlfaKehadiran ? 'Alfa (Kehadiran)' : 'Tidak Hadir'}</Badge>}
                       </label>
@@ -189,7 +193,7 @@ export default function AbsensiJumat() {
                     const isTidakHadir = !!getJumatRecord(siswa.id) || isAlfaKehadiran;
                     return (
                       <label key={siswa.id} className="flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 cursor-pointer">
-                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran} className="w-4 h-4 rounded" />
+                        <input type="checkbox" checked={!isTidakHadir} onChange={() => handleToggle(siswa)} disabled={isAlfaKehadiran || readOnly} className="w-4 h-4 rounded" />
                         <span className={`text-sm ${isTidakHadir ? 'text-red-500 line-through' : 'text-slate-700'}`}>{siswa.nama}</span>
                         {isTidakHadir && <Badge className="text-xs bg-red-100 text-red-600">{isAlfaKehadiran ? 'Alfa (Kehadiran)' : 'Tidak Hadir'}</Badge>}
                       </label>

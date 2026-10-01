@@ -10,7 +10,7 @@ import { TrendingDown, Minus, Scale, CalendarClock, Plus, Settings, Search, Ban,
 import { getMingguKey } from '@/lib/dapodikConstants';
 import { recomputeRaporStatus, anulirRaporStatus, getRaporStatus, RAPOR_CARD_CLASS, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
 
-export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onTambahPelanggaran, onAturLimit, canAnulir }) {
+export default function ImprovementSummaryCard({ pelanggaranImprovementList, improvementList, siswaList, onTambahImprovement, onTambahPelanggaran, onAturLimit, canAnulir, readOnly = false }) {
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
   const [selectedSiswaId, setSelectedSiswaId] = useState(null);
@@ -99,9 +99,11 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
                 <Ban className="w-4 h-4 mr-1" /> Anulir Status Rapor
               </Button>
             )}
-            <Button size="sm" variant="outline" onClick={onAturLimit} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
-              <Settings className="w-4 h-4 mr-1" /> Atur Limit
-            </Button>
+            {!readOnly && (
+              <Button size="sm" variant="outline" onClick={onAturLimit} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50">
+                <Settings className="w-4 h-4 mr-1" /> Atur Limit
+              </Button>
+            )}
           </div>
         </div>
 
@@ -142,20 +144,24 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
               <StatTile icon={TrendingDown} label="Total Pengurangan" value={stats.poinImprovement} color="text-emerald-600 bg-emerald-50" />
               <StatTile icon={Scale} label="Poin Bersih" value={stats.poinBersih} color={stats.poinBersih > 0 ? "text-amber-600 bg-amber-50" : "text-slate-600 bg-slate-100"} />
               <StatTile icon={CalendarClock} label="Sisa Limit Minggu Ini" value={`${stats.limitMingguan - stats.usedMingguan}/${stats.limitMingguan}`} color="text-blue-600 bg-blue-50" />
-              <button
-                onClick={() => onTambahPelanggaran(selectedSiswa)}
-                className="rounded-xl p-3 bg-red-600 text-white hover:bg-red-700 transition-all flex flex-col items-center justify-center gap-1 group"
-              >
-                <AlertTriangle className="w-5 h-5" />
-                <span className="text-xs font-medium">Tambah Pelanggaran</span>
-              </button>
-              <button
-                onClick={() => onTambahImprovement(selectedSiswa)}
-                className="rounded-xl p-3 bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex flex-col items-center justify-center gap-1 group"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="text-xs font-medium">Tambah Improvement</span>
-              </button>
+              {!readOnly && (
+                <button
+                  onClick={() => onTambahPelanggaran(selectedSiswa)}
+                  className="rounded-xl p-3 bg-red-600 text-white hover:bg-red-700 transition-all flex flex-col items-center justify-center gap-1 group"
+                >
+                  <AlertTriangle className="w-5 h-5" />
+                  <span className="text-xs font-medium">Tambah Pelanggaran</span>
+                </button>
+              )}
+              {!readOnly && (
+                <button
+                  onClick={() => onTambahImprovement(selectedSiswa)}
+                  className="rounded-xl p-3 bg-emerald-600 text-white hover:bg-emerald-700 transition-all flex flex-col items-center justify-center gap-1 group"
+                >
+                  <Plus className="w-5 h-5" />
+                  <span className="text-xs font-medium">Tambah Improvement</span>
+                </button>
+              )}
             </div>
             {pengaturan && (
               <p className="text-xs text-slate-500 mt-3">

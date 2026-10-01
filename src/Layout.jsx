@@ -152,6 +152,28 @@ const ROLE_MENU = {
     ],
     groups: []
   },
+  yayasan: {
+    topItems: [
+      { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
+      { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
+      { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
+      { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
+      { name: 'Buku Induk', icon: BookText, page: 'BukuInduk', color: '#7c3aed' },
+      { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
+      { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
+    ],
+    groups: [
+      {
+        id: 'yayasan-monitoring', name: 'MONITORING', icon: TrendingUp, color: '#06b6d4',
+        items: [
+          { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
+          { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
+          { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+        ]
+      }
+    ]
+  },
   kepsek: {
     topItems: [
       { name: 'Dashboard Kepsek', icon: TrendingUp, page: 'Kepsek', color: '#06b6d4' },
@@ -259,7 +281,8 @@ const ROLE_MENU = {
 
 const ROLE_LABELS = {
   admin: 'Admin', operator: 'Operator', kepsek: 'Kepala Sekolah',
-  bendahara: 'Bendahara', guru: 'Guru', tu: 'Tata Usaha', piket: 'Piket'
+  bendahara: 'Bendahara', guru: 'Guru', tu: 'Tata Usaha', piket: 'Piket',
+  yayasan: 'Yayasan'
 };
 
 const ROLE_COLORS = {
@@ -270,6 +293,7 @@ const ROLE_COLORS = {
   guru: { bg: 'bg-blue-500/20', text: 'text-blue-300', dot: 'bg-blue-400' },
   tu: { bg: 'bg-amber-500/20', text: 'text-amber-300', dot: 'bg-amber-400' },
   piket: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', dot: 'bg-cyan-400' },
+  yayasan: { bg: 'bg-fuchsia-500/20', text: 'text-fuchsia-300', dot: 'bg-fuchsia-400' },
 };
 
 export default function Layout({ children, currentPageName }) {
