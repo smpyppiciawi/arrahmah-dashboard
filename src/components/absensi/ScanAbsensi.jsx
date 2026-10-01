@@ -153,6 +153,22 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     }
   };
 
+  const sendEmailNotif = async (k, status, now) => {
+    try {
+      const guru = await base44.entities.Guru.get(k.person_id);
+      const email = guru?.email;
+      if (!email) return;
+      const res = await base44.functions.invoke('sendAbsensiEmail', {
+        email, nama: k.nama, jabatan: k.info, tanggal: today, jam: now, status, metode: k.jenis,
+      });
+      if (res.data?.sent) {
+        toast({ title: '📧 Email Terkirim', description: `Konfirmasi absensi terkirim ke ${k.nama}` });
+      }
+    } catch (err) {
+      // Email gagal tidak mengganggu proses absensi
+    }
+  };
+
   const processScan = async (cardIdValue) => {
     const cardId = String(cardIdValue || '').trim();
     if (!cardId || processing) return;
@@ -195,6 +211,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           }
           notify({ status: 'success', message: `${k.nama} — Pulang — ${now}`, cardId, person: k, type: 'pulang', nama: k.nama, jamAbsen: now, statusAbsen: 'Pulang' });
           sendWANotif(k, 'Pulang', now);
+          sendEmailNotif(k, 'Pulang', now);
           queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
           return;
         }
@@ -212,6 +229,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
         });
         notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
         sendWANotif(k, status, now);
+        sendEmailNotif(k, status, now);
       } else {
         const existing = await base44.entities.Absensi.filter({ siswa_id: k.person_id, tanggal: today, jenis_absensi: 'Kehadiran' });
         if (existing.length > 0) {
