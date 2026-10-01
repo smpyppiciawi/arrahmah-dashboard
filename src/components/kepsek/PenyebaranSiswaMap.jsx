@@ -78,7 +78,7 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
 
   if (markers.length === 0) {
     return (
-      <div className="rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">
+      <div className="xp-map-card rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">
         <h3 className="text-slate-100 font-bold text-sm flex items-center gap-2 mb-3">
           <MapPin className="w-4 h-4 text-blue-400" /> Penyebaran Rumah Siswa
         </h3>
@@ -95,7 +95,7 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
   const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
 
   return (
-    <div className="rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">
+    <div className="xp-map-card rounded-2xl bg-slate-800/50 backdrop-blur border border-slate-700 p-4">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="text-slate-100 font-bold text-sm flex items-center gap-2">
           <MapPin className="w-4 h-4 text-blue-400" /> Penyebaran Rumah Siswa
@@ -111,7 +111,7 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
           ))}
         </div>
       </div>
-      <div className="h-72 md:h-[480px] rounded-lg overflow-hidden border border-slate-600 z-0">
+      <div className="h-72 md:h-[420px] rounded-lg overflow-hidden border border-slate-600 z-0">
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://mt{s}.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}"

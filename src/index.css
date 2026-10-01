@@ -219,3 +219,98 @@ button:focus-visible {
     break-after: auto;
   }
 }
+
+/* ===== Dashboard Kepsek: Layout Retro (Windows XP) ===== */
+.xp-skin {
+  background: #ece9d8 !important;
+  color: #000;
+}
+.xp-skin, .xp-skin * {
+  font-family: Tahoma, 'Segoe UI', Verdana, sans-serif !important;
+}
+.xp-header {
+  background: linear-gradient(to right, #0058e6 0%, #3a93ff 10%, #3a93ff 90%, #0058e6 100%) !important;
+  border-bottom-color: #003cb3;
+  backdrop-filter: none;
+}
+.xp-header h1, .xp-header p, .xp-header span { color: #fff !important; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
+.xp-header button { background: rgba(255,255,255,0.18); }
+.xp-header button:hover { background: rgba(255,255,255,0.32); }
+.xp-card {
+  background: #ece9d8 !important;
+  border: 1px solid #d4d0c8 !important;
+  border-radius: 3px !important;
+  box-shadow: inset 1px 1px 0 #fff;
+  padding-top: 18px !important;
+  position: relative;
+  margin-top: 10px;
+}
+.xp-card > h3:first-child {
+  color: #004ecc;
+  position: absolute;
+  top: -8px;
+  left: 8px;
+  background: #ece9d8;
+  padding: 0 4px;
+  font-size: 11px;
+}
+.xp-btn {
+  background: #ece9d8 !important;
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-bottom: 1px solid #716f64;
+  border-right: 1px solid #716f64;
+  border-radius: 0 !important;
+  color: #000 !important;
+}
+.xp-btn:active {
+  border-top: 1px solid #716f64;
+  border-left: 1px solid #716f64;
+  border-bottom: 1px solid #fff;
+  border-right: 1px solid #fff;
+  background: #e0dcd3 !important;
+}
+.xp-active { background: #e0dcd3 !important; }
+.xp-btn-danger { background: #e14e30 !important; color: #fff !important; }
+.xp-inset {
+  background: #fff;
+  border-top: 1px solid #aca899;
+  border-left: 1px solid #aca899;
+  border-bottom: 1px solid #fff;
+  border-right: 1px solid #fff;
+}
+.xp-skin .rounded-3xl, .xp-skin .rounded-2xl, .xp-skin .rounded-xl, .xp-skin .rounded-lg { border-radius: 3px !important; }
+.xp-skin .xp-stat {
+  background: #ece9d8 !important;
+  color: #000 !important;
+  border-top: 1px solid #fff;
+  border-left: 1px solid #fff;
+  border-bottom: 1px solid #716f64;
+  border-right: 1px solid #716f64;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+.xp-skin .xp-stat p { color: #000 !important; opacity: 1 !important; }
+.xp-skin .xp-stat svg { color: #333 !important; opacity: 1 !important; }
+.xp-skin .xp-stat .xp-stat-decor { display: none !important; }
+.xp-skin .xp-stat .bg-white\/25 {
+  background: #ece9d8 !important;
+  border: 1px solid #716f64;
+  color: #000 !important;
+  backdrop-filter: none;
+}
+.xp-skin .xp-map-card {
+  background: #ece9d8 !important;
+  border: 1px solid #d4d0c8 !important;
+  box-shadow: inset 1px 1px 0 #fff;
+  backdrop-filter: none;
+}
+.xp-skin .xp-map-card h3 { color: #004ecc !important; }
+.xp-skin .xp-map-card h3 .text-slate-100 { color: #004ecc !important; }
+.xp-skin .xp-map-card .text-slate-400, .xp-skin .xp-map-card .text-slate-500, .xp-skin .xp-map-card .text-slate-600 { color: #555 !important; }
+.xp-statusbar {
+  background: #ece9d8;
+  border-top: 1px solid #aca899;
+  box-shadow: inset 0 1px 0 #fff;
+  font-family: Tahoma, 'Segoe UI', Verdana, sans-serif;
+}

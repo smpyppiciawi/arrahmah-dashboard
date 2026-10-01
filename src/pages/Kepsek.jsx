@@ -10,7 +10,7 @@ import {
   School, Calendar, Users, Wallet, AlertTriangle, Award,
   TrendingUp, TrendingDown, MessageCircle, Mail, Settings,
   LogOut, RefreshCw, Clock, CalendarDays, Heart,
-  FileText, Sun, Moon, Home as HomeIcon, Building, UserCheck, BookOpen,
+  FileText, Sun, Moon, Home as HomeIcon, Building, UserCheck, BookOpen, Paintbrush,
   BookMarked, CheckCircle2, XCircle, ClipboardList
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -56,6 +56,7 @@ export default function Kepsek() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDark, setIsDark] = useState(() => localStorage.getItem('kepsek-theme') !== 'light');
+  const [retro, setRetro] = useState(() => localStorage.getItem('kepsek-layout') === 'retro');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
   const [preset, setPreset] = useState('today');
@@ -68,6 +69,7 @@ export default function Kepsek() {
 
   useEffect(() => { const timer = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { localStorage.setItem('kepsek-theme', isDark ? 'dark' : 'light'); }, [isDark]);
+  useEffect(() => { localStorage.setItem('kepsek-layout', retro ? 'retro' : 'modern'); }, [retro]);
   useEffect(() => {
     const today = new Date();
     if (preset === 'today') { setDateFrom(format(today, 'yyyy-MM-dd')); setDateTo(format(today, 'yyyy-MM-dd')); }
@@ -138,7 +140,20 @@ export default function Kepsek() {
   };
   const { weekStart: curWeekStart, weekEnd: curWeekEnd } = getSchoolWeek(todayStr);
 
-  const t = isDark ? {
+  const effIsDark = retro ? false : isDark;
+  const retroT = {
+    page: 'bg-[#ece9d8] text-black',
+    header: 'xp-header',
+    card: 'xp-card',
+    dialog: 'xp-card',
+    text: 'text-black', textMuted: 'text-neutral-600', textSubtle: 'text-neutral-500',
+    btn: 'xp-btn', btnDanger: 'xp-btn xp-btn-danger',
+    input: 'xp-inset bg-white text-black',
+    presetActive: 'xp-btn xp-active font-bold', presetInactive: 'xp-btn',
+    chartBg: '#ffffff', chartBorder: '#d4d0c8', chartText: '#3a3a3a', chartGrid: '#d4d0c8',
+    item: 'bg-white', iconBg: 'xp-inset bg-white',
+  };
+  const themeBase = isDark ? {
     page: 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100',
     header: 'bg-slate-900/80 backdrop-blur-lg border-slate-700',
     card: 'bg-slate-800/50 border border-slate-700 shadow-lg shadow-black/30',
@@ -161,6 +176,7 @@ export default function Kepsek() {
     chartBg: '#ffffff', chartBorder: '#e2e8f0', chartText: '#64748b', chartGrid: '#e2e8f0',
     item: 'bg-slate-50 hover:bg-slate-100', iconBg: 'bg-slate-100',
   };
+  const t = retro ? retroT : themeBase;
 
   const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num || 0);
   const handleWhatsApp = (phone, message) => {
@@ -444,11 +460,11 @@ export default function Kepsek() {
   ];
 
   return (
-    <div className={`min-h-screen ${t.page} font-inter transition-colors duration-300`}>
-      <header className={`sticky top-0 z-40 ${t.header} border-b`}>
+    <div className={`min-h-screen ${t.page} font-inter transition-colors duration-300 ${retro ? 'xp-skin pb-10' : ''}`}>
+      <header className={`sticky top-0 z-40 ${retro ? 'xp-header' : t.header} border-b`}>
         <div className="max-w-[1800px] mx-auto px-4 md:px-6 h-16 flex items-center justify-between gap-3 md:gap-4">
           <div className="flex items-center gap-3">
-            <KepsekMenuDrawer isDark={isDark} />
+            <KepsekMenuDrawer isDark={effIsDark} />
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <School className="w-5 h-5 text-white" />
             </div>
@@ -464,6 +480,9 @@ export default function Kepsek() {
               <span className={t.textSubtle}>|</span>
               <span className={`text-xs ${t.textMuted}`}>{format(now, 'EEEE, d MMMM yyyy', { locale: idLocale })}</span>
             </div>
+            <button onClick={() => setRetro(r => !r)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${retro ? 'xp-btn xp-active' : t.btn} flex items-center justify-center transition-colors`} title={retro ? 'Kembali ke Layout Modern' : 'Ganti Layout Retro (Windows XP)'}>
+              <Paintbrush className="w-4 h-4" />
+            </button>
             <button onClick={() => setIsDark(!isDark)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`} title="Ganti Tema">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -486,23 +505,23 @@ export default function Kepsek() {
           </div>
         </div>
 
-        <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onDirectWA={handleDirectWA} onEmail={handleEmail} onApproveIzin={handleApproveIzin} isDark={isDark} />
+        <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onDirectWA={handleDirectWA} onEmail={handleEmail} onApproveIzin={handleApproveIzin} isDark={effIsDark} />
 
         {/* Kalender & Pegawai Hadir Hari Ini — dipindah ke atas widget/panel */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
           <div className="lg:col-span-2">
-            <AktivitasHariIni absensiPegawaiList={absensiPegawaiList} jadwalPelajaranList={jadwalPelajaranList} guruList={guruList} isDark={isDark} />
+            <AktivitasHariIni absensiPegawaiList={absensiPegawaiList} jadwalPelajaranList={jadwalPelajaranList} guruList={guruList} isDark={effIsDark} />
           </div>
-          <KepsekKalender events={kalenderList} onEmail={handleEmail} today={new Date()} isDark={isDark} />
+          <KepsekKalender events={kalenderList} onEmail={handleEmail} today={new Date()} isDark={effIsDark} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
-          <ApprovalPoinWidget count={pelanggaranImpList.filter(p => p.status === 'Pending').length} isDark={isDark} onClick={() => setApproveOpen(true)} />
+          <ApprovalPoinWidget count={pelanggaranImpList.filter(p => p.status === 'Pending').length} isDark={effIsDark} onClick={() => setApproveOpen(true)} />
           <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
             <h3 className={`${t.text} font-bold text-sm mb-3`}>Status Rapor Siswa</h3>
-            <RaporStatusWidget siswaList={siswaList} pelanggaranImpList={pelanggaranImpList} isDark={isDark} />
+            <RaporStatusWidget siswaList={siswaList} pelanggaranImpList={pelanggaranImpList} isDark={effIsDark} />
           </div>
-          <BukuTamuKepsekWidget tamuList={bukuTamuList} currentUser={currentUser} guruList={guruList} isDark={isDark} t={t} />
+          <BukuTamuKepsekWidget tamuList={bukuTamuList} currentUser={currentUser} guruList={guruList} isDark={effIsDark} t={t} />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 md:gap-3 auto-rows-fr">
@@ -561,7 +580,10 @@ export default function Kepsek() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
-          <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={isDark} t={t} />
+          <div className="space-y-3 md:space-y-4">
+            <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} />
+            <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} />
+          </div>
           <div className="space-y-3 md:space-y-4">
             <LaporanJenisIuranWidget
               siswaList={siswaList}
@@ -570,22 +592,30 @@ export default function Kepsek() {
               tarifList={tarifList}
               biayaKhususList={biayaKhususList}
               tahunAjaran={currentSettings.tahun_ajaran_aktif || ''}
-              isDark={isDark}
+              isDark={effIsDark}
               t={t}
             />
-            <BeasiswaDibantuWidget biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={isDark} t={t} />
+            <BeasiswaDibantuWidget biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={effIsDark} t={t} />
           </div>
         </div>
 
-        <KehadiranPegawaiSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapPegawai} isLoading={rekapPegawaiLoading} isDark={isDark} t={t} />
-
-        <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} />
+        <KehadiranPegawaiSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapPegawai} isLoading={rekapPegawaiLoading} isDark={effIsDark} t={t} />
       </div>
 
+      {retro && (
+        <div className="xp-statusbar fixed bottom-0 left-0 right-0 z-40 flex justify-between items-center px-2 py-1 text-[10px] text-black">
+          <span className="pl-1">Done</span>
+          <div className="flex gap-2">
+            <span className="border-l border-[#aca899] pl-2 pr-2">Connected</span>
+            <span className="border-l border-[#aca899] pl-2 pr-1">Internet</span>
+          </div>
+        </div>
+      )}
+
       <AgentChat />
-      <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={isDark} />
-      <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={isDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
-      <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={isDark} />
+      <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={effIsDark} />
+      <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
+      <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
       <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} sumberDanaBreakdown={stats.sumberDanaBreakdown} kategoriBreakdown={stats.kategoriBreakdown} formatRupiah={formatRupiah} />
 
