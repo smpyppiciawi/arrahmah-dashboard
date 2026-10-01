@@ -23,6 +23,7 @@ export default function CatatanSiswa() {
     queryKey: ['pengaturan-improvement'],
     queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; }
   });
+  const isYayasan = userRole === 'yayasan'; // Role Yayasan: read-only (hanya melihat data)
   const pelanggaranModuleAktif = pengaturanImprovement?.pelanggaran_module_aktif ?? true;
   // Tab Pelanggaran (modul lama) hanya tampil untuk ADMIN/TU, meski modul aktif di pengaturan
   const showPelanggaranTab = pelanggaranModuleAktif && (userRole === 'admin' || userRole === 'tu');
@@ -96,12 +97,12 @@ export default function CatatanSiswa() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="prestasi"><PrestasiTab /></TabsContent>
-          {showPelanggaranTab && <TabsContent value="pelanggaran"><PelanggaranTab /></TabsContent>}
-          <TabsContent value="improvement"><ImprovementTab /></TabsContent>
-          <TabsContent value="uks"><UKSTab /></TabsContent>
-          <TabsContent value="menstruasi"><MenstruasiTab /></TabsContent>
-          <TabsContent value="izin"><IzinTab /></TabsContent>
+          <TabsContent value="prestasi"><PrestasiTab readOnly={isYayasan} /></TabsContent>
+          {showPelanggaranTab && <TabsContent value="pelanggaran"><PelanggaranTab readOnly={isYayasan} /></TabsContent>}
+          <TabsContent value="improvement"><ImprovementTab readOnly={isYayasan} /></TabsContent>
+          <TabsContent value="uks"><UKSTab readOnly={isYayasan} /></TabsContent>
+          <TabsContent value="menstruasi"><MenstruasiTab readOnly={isYayasan} /></TabsContent>
+          <TabsContent value="izin"><IzinTab readOnly={isYayasan} /></TabsContent>
         </Tabs>
       </div>
     </div>

@@ -10,7 +10,8 @@
         "kepsek",
         "bendahara",
         "guru",
-        "tu"
+        "tu",
+        "yayasan"
       ],
       "default": "guru",
       "description": "Peran pengguna dalam sistem"

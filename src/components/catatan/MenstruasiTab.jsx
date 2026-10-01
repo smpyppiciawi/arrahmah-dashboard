@@ -15,7 +15,7 @@ import { id as idLocale } from "date-fns/locale";
 import MenstruasiDetail from "./MenstruasiDetail";
 import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
 
-export default function MenstruasiTab() {
+export default function MenstruasiTab({ readOnly = false }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -196,9 +196,11 @@ export default function MenstruasiTab() {
             <CardTitle className="text-base flex items-center gap-2">
               <Heart className="w-5 h-5 text-pink-500" /> Pendataan Harian Menstruasi
             </CardTitle>
-            <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
-              <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

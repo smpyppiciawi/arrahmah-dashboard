@@ -18,7 +18,7 @@ import WaSendDialog, { buildWaTargets } from './WaSendDialog';
 import { format } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
-export default function IzinTab() {
+export default function IzinTab({ readOnly = false }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { activeAcademicYear } = useActiveAcademicYear();
@@ -184,12 +184,16 @@ export default function IzinTab() {
               <FileText className="w-5 h-5 text-amber-500" /> Daftar Izin Siswa
             </CardTitle>
             <div className="flex gap-2">
-              <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
-                <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
-              </Button>
-              <Button size="sm" className="bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => setIsOpen(true)}>
-                <Plus className="w-4 h-4" /> Catat Izin
-              </Button>
+              {!readOnly && (
+                <Button onClick={() => setLulusOpen(true)} variant="outline" size="sm" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                  <GraduationCap className="w-4 h-4 mr-1" /> Siswa Lulus/Keluar
+                </Button>
+              )}
+              {!readOnly && (
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 gap-1.5" onClick={() => setIsOpen(true)}>
+                  <Plus className="w-4 h-4" /> Catat Izin
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -250,9 +254,11 @@ export default function IzinTab() {
                           <button onClick={() => handleSendWa(item)} className="p-1 text-green-500 hover:bg-green-50 rounded" title="Kirim WA Gateway">
                             <Send className="w-3.5 h-3.5" />
                           </button>
-                          <button onClick={() => deleteMutation.mutate(item.id)} className="p-1 text-slate-400 hover:text-red-500 rounded">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!readOnly && (
+                            <button onClick={() => deleteMutation.mutate(item.id)} className="p-1 text-slate-400 hover:text-red-500 rounded">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

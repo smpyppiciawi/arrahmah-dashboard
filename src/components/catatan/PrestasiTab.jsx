@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DataTable } from "@/components/ui/data-table";
 import SiswaLulusRecordsDialog from './SiswaLulusRecordsDialog';
 
-export default function PrestasiTab() {
+export default function PrestasiTab({ readOnly = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [selectedKelas, setSelectedKelas] = useState('');
@@ -181,14 +181,16 @@ export default function PrestasiTab() {
       sortable: false,
       filterable: false,
       render: (row) => (
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
-            <Edit2 className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+        !readOnly ? (
+          <div className="flex gap-2">
+            <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
+              <Edit2 className="w-4 h-4" />
+            </Button>
+            <Button size="sm" variant="ghost" className="text-red-500" onClick={() => deleteMutation.mutate(row.id)}>
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+        ) : null
       )
     }
   ];
@@ -206,12 +208,16 @@ export default function PrestasiTab() {
               </CardTitle>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => setLulusOpen(true)} variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
-                <GraduationCap className="w-4 h-4 mr-2" /> Siswa Lulus/Keluar
-              </Button>
-              <Button onClick={() => setIsOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
-                <Plus className="w-4 h-4 mr-2" /> Tambah Prestasi
-              </Button>
+              {!readOnly && (
+                <Button onClick={() => setLulusOpen(true)} variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50">
+                  <GraduationCap className="w-4 h-4 mr-2" /> Siswa Lulus/Keluar
+                </Button>
+              )}
+              {!readOnly && (
+                <Button onClick={() => setIsOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                  <Plus className="w-4 h-4 mr-2" /> Tambah Prestasi
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
