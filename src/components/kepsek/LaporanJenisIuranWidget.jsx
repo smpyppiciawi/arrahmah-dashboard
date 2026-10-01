@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Wallet, CheckCircle2, XCircle, TrendingUp } from 'lucide-react';
@@ -21,11 +21,24 @@ export default function LaporanJenisIuranWidget({ siswaList, kelasList, keuangan
   const isSpp = jenis === 'SPP';
   const [bulan, setBulan] = useState(format(new Date(), 'MMMM', { locale: idLocale }));
 
+  // Rentang tanggal (default: awal tahun ajaran s/d hari ini)
+  const defaultRange = useMemo(() => {
+    const y = parseInt((tahunAjaran || '').split('/')[0], 10);
+    return { from: !isNaN(y) ? `${y}-07-01` : '', to: format(new Date(), 'yyyy-MM-dd') };
+  }, [tahunAjaran]);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  useEffect(() => {
+    if (!dateFrom && defaultRange.from) setDateFrom(defaultRange.from);
+    if (!dateTo) setDateTo(defaultRange.to);
+  }, [defaultRange]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const summary = useMemo(() => {
     const aktif = (siswaList || []).filter(s => s.status === 'Aktif');
+    const inRange = (k) => (!dateFrom || (k.tanggal || '') >= dateFrom) && (!dateTo || (k.tanggal || '') <= dateTo);
     const payments = (keuanganList || []).filter(k =>
       k.jenis !== 'Pengeluaran' && !k.is_iuran_muka &&
-      (!tahunAjaran || !k.tahun_ajaran || k.tahun_ajaran === tahunAjaran)
+      (!tahunAjaran || !k.tahun_ajaran || k.tahun_ajaran === tahunAjaran) && inRange(k)
     );
 
     if (isSpp) {
@@ -73,7 +86,7 @@ export default function LaporanJenisIuranWidget({ siswaList, kelasList, keuangan
     });
     const totalTagihan = masuk + piutang;
     return { lunas, belum, masuk, piutang, belumSiswa, totalTagihan, pct: totalTagihan > 0 ? Math.round((masuk / totalTagihan) * 100) : 0 };
-  }, [siswaList, kelasList, keuanganList, tarifList, biayaKhususList, jenis, bulan, tahunAjaran, isSpp]);
+  }, [siswaList, kelasList, keuanganList, tarifList, biayaKhususList, jenis, bulan, tahunAjaran, isSpp, dateFrom, dateTo]);
 
   return (
     <div className={`rounded-2xl ${t.card} p-3 md:p-4`}>
@@ -92,6 +105,11 @@ export default function LaporanJenisIuranWidget({ siswaList, kelasList, keuangan
               {BULAN_SPP.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-1">
+            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} aria-label="Tanggal Mulai" className={`h-8 text-xs rounded-lg border px-2 ${isDark ? 'bg-slate-700/40 border-slate-600 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`} />
+            <span className={`text-xs ${t.textMuted}`}>–</span>
+            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} aria-label="Tanggal Akhir" className={`h-8 text-xs rounded-lg border px-2 ${isDark ? 'bg-slate-700/40 border-slate-600 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`} />
+          </div>
         </div>
       </div>
 
