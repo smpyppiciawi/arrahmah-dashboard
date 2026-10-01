@@ -11,7 +11,7 @@ import {
   TrendingUp, TrendingDown, MessageCircle, Mail, Settings,
   LogOut, RefreshCw, Clock, CalendarDays, Heart,
   FileText, Sun, Moon, Home as HomeIcon, Building, UserCheck, BookOpen, Paintbrush,
-  BookMarked, CheckCircle2, XCircle, ClipboardList
+  BookMarked, CheckCircle2, XCircle, ClipboardList, Eye, EyeOff
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -56,6 +56,7 @@ export default function Kepsek() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDark, setIsDark] = useState(() => localStorage.getItem('kepsek-theme') !== 'light');
+  const [fabsShown, setFabsShown] = useState(false);
   const [retro, setRetro] = useState(() => localStorage.getItem('kepsek-layout') === 'retro');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -612,8 +613,15 @@ export default function Kepsek() {
         </div>
       )}
 
-      <AgentChat />
-      <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={effIsDark} />
+      {fabsShown && <AgentChat />}
+      {fabsShown && <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={effIsDark} />}
+      <button
+        onClick={() => setFabsShown(s => !s)}
+        className={`fixed bottom-6 z-[60] w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${retro ? 'xp-btn' : 'bg-slate-600/80 hover:bg-slate-500/90 text-white backdrop-blur'} ${fabsShown ? 'right-24' : 'right-6'}`}
+        title={fabsShown ? 'Sembunyikan Tombol Melayang' : 'Tampilkan Tombol Melayang'}
+      >
+        {fabsShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
       <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
       <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
