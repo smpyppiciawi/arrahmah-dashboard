@@ -560,19 +560,21 @@ export default function Kepsek() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
           <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={isDark} t={t} />
-          <LaporanJenisIuranWidget
-            siswaList={siswaList}
-            kelasList={kelasList}
-            keuanganList={keuanganList}
-            tarifList={tarifList}
-            biayaKhususList={biayaKhususList}
-            tahunAjaran={currentSettings.tahun_ajaran_aktif || ''}
-            isDark={isDark}
-            t={t}
-          />
-          <BeasiswaDibantuWidget biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={isDark} t={t} />
+          <div className="space-y-3 md:space-y-4">
+            <LaporanJenisIuranWidget
+              siswaList={siswaList}
+              kelasList={kelasList}
+              keuanganList={keuanganList}
+              tarifList={tarifList}
+              biayaKhususList={biayaKhususList}
+              tahunAjaran={currentSettings.tahun_ajaran_aktif || ''}
+              isDark={isDark}
+              t={t}
+            />
+            <BeasiswaDibantuWidget biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={isDark} t={t} />
+          </div>
         </div>
 
         <KehadiranPegawaiSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapPegawai} isLoading={rekapPegawaiLoading} isDark={isDark} t={t} />

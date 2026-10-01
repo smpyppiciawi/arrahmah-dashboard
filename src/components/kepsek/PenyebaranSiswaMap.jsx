@@ -111,7 +111,7 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
           ))}
         </div>
       </div>
-      <div style={{ height: '320px' }} className="rounded-lg overflow-hidden border border-slate-600 z-0">
+      <div className="h-72 md:h-[480px] rounded-lg overflow-hidden border border-slate-600 z-0">
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
           <TileLayer
             url="https://mt{s}.google.com/vt/lyrs=m&hl=id&x={x}&y={y}&z={z}"
