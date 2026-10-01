@@ -27,9 +27,10 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
     kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
     rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-    pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
+    pelapor_id: '', pelapor_nama: '', pencatat_id: '', pencatat_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
   });
   const [openSiswaSearch, setOpenSiswaSearch] = useState(false);
+  const [pelaporFocused, setPelaporFocused] = useState(false);
   const [searchSiswa, setSearchSiswa] = useState('');
   const [openKodeSearch, setOpenKodeSearch] = useState(false);
   const [searchKode, setSearchKode] = useState('');
@@ -48,18 +49,22 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const piketHari = useMemo(() => (jadwalPiketList || []).find(j => j.hari === hariForm && j.aktif !== false), [jadwalPiketList, hariForm]);
   const piketOptions = useMemo(() => piketHari?.petugas || [], [piketHari]);
 
-  // Default pencatat otomatis ke user login bila dia termasuk petugas piket hari itu
+  // Default PENCATAT otomatis ke user login bila dia termasuk petugas piket hari itu
   useEffect(() => {
     if (!open || editing || !piketOptions.length) return;
-    if (formData.pelapor_id && piketOptions.some(p => p.guru_id === formData.pelapor_id)) return;
+    if (formData.pencatat_id && piketOptions.some(p => p.guru_id === formData.pencatat_id)) return;
     const match = piketOptions.find(p => p.guru_id === myGuru?.id) || piketOptions.find(p => p.nama_pegawai === currentUser?.full_name);
-    if (match) setFormData(f => ({ ...f, pelapor_id: match.guru_id, pelapor_nama: match.nama_pegawai }));
+    if (match) setFormData(f => ({ ...f, pencatat_id: match.guru_id, pencatat_nama: match.nama_pegawai }));
   }, [open, editing, piketOptions, myGuru, currentUser]);
 
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setFormData({ ...formData, ...editing, foto_urls: editing.foto_urls || [] });
+      // Record lama (sebelum ada field pencatat): nilai pelapor_nama lama = pencatat piket
+      const pencatat = editing.pencatat_nama
+        ? { pencatat_id: editing.pencatat_id || '', pencatat_nama: editing.pencatat_nama }
+        : { pencatat_id: editing.pelapor_id || '', pencatat_nama: editing.pelapor_nama || '' };
+      setFormData({ ...formData, ...editing, ...pencatat, pelapor_id: editing.pencatat_nama ? (editing.pelapor_id || '') : '', pelapor_nama: editing.pencatat_nama ? (editing.pelapor_nama || '') : '', foto_urls: editing.foto_urls || [] });
       setRincianHint(editing.rincian || '');
     } else {
       const f = {
@@ -67,7 +72,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
         siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
         kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
         rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-        pelapor_id: '', pelapor_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
+        pelapor_id: '', pelapor_nama: '', pencatat_id: '', pencatat_nama: '', tahun_ajaran: tahunAjaran || '', status: 'Proses', foto_urls: []
       };
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setRincianHint('');
@@ -112,7 +117,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
       kode_pelanggaran_id: '', kategori_utama: '', kode: '', uraian_pelanggaran: '',
       rincian: '', tindak_lanjut: '', poin_min: 0, poin_max: 0, poin: 0,
-      pelapor_id: '', pelapor_nama: '', tahun_ajaran: '', status: 'Proses', foto_urls: []
+      pelapor_id: '', pelapor_nama: '', pencatat_id: '', pencatat_nama: '', tahun_ajaran: '', status: 'Proses', foto_urls: []
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKodeSearch(false); setSearchKode('');
     setRincianHint('');
@@ -175,10 +180,20 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
   const handlePencatatChange = (gid) => {
     const p = piketOptions.find(x => x.guru_id === gid);
-    if (p) { setFormData({ ...formData, pelapor_id: p.guru_id, pelapor_nama: p.nama_pegawai }); return; }
+    if (p) { setFormData({ ...formData, pencatat_id: p.guru_id, pencatat_nama: p.nama_pegawai }); return; }
     const g = guruList.find(x => x.id === gid);
-    if (g) setFormData({ ...formData, pelapor_id: g.id, pelapor_nama: g.nama });
+    if (g) setFormData({ ...formData, pencatat_id: g.id, pencatat_nama: g.nama });
   };
+
+  // Saran nama pegawai untuk isian Pelapor (diketik manual, dropdown muncul saat fokus)
+  const pelaporSuggestions = useMemo(() => {
+    const q = (formData.pelapor_nama || '').toLowerCase().trim();
+    if (!q) return (guruList || []).filter(g => g.status !== 'Keluar').slice(0, 8);
+    return (guruList || [])
+      .filter(g => g.nama?.toLowerCase().includes(q))
+      .sort((a, b) => a.nama.toLowerCase().indexOf(q) - b.nama.toLowerCase().indexOf(q))
+      .slice(0, 8);
+  }, [guruList, formData.pelapor_nama]);
 
   const buildPayload = () => {
     const finalStatus = isPendingPoin(formData.poin) ? 'Pending' : (formData.status || 'Proses');
@@ -229,7 +244,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     e?.preventDefault();
     if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
     if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
-    if (!formData.pelapor_id) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
+    if (!formData.pencatat_id && !formData.pencatat_nama) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
     if (!validasiPoin()) return;
     const payload = buildPayload();
     if (editing) { updateMutation.mutate({ id: editing.id, data: payload }); return; }
@@ -262,9 +277,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
                 const newHari = getHariFromTanggal(newTanggal);
                 const newPiket = (jadwalPiketList || []).find(j => j.hari === newHari && j.aktif !== false)?.petugas || [];
                 setFormData(f => {
-                  if (newPiket.length && !newPiket.some(p => p.guru_id === f.pelapor_id)) {
+                  if (newPiket.length && !newPiket.some(p => p.guru_id === f.pencatat_id)) {
                     const match = newPiket.find(p => p.guru_id === myGuru?.id) || newPiket.find(p => p.nama_pegawai === currentUser?.full_name);
-                    return { ...f, tanggal: newTanggal, pelapor_id: match?.guru_id || '', pelapor_nama: match?.nama_pegawai || '' };
+                    return { ...f, tanggal: newTanggal, pencatat_id: match?.guru_id || '', pencatat_nama: match?.nama_pegawai || '' };
                   }
                   return { ...f, tanggal: newTanggal };
                 });
@@ -432,13 +447,41 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
             </div>
           )}
 
+          {/* Pelapor — ketik manual, dropdown saran nama pegawai muncul saat kolom diklik */}
+          <div className="relative">
+            <Label>Pelapor <span className="text-xs text-slate-400">(ketik manual — klik kolom untuk saran nama pegawai)</span></Label>
+            <Input
+              value={formData.pelapor_nama}
+              onChange={(e) => setFormData({ ...formData, pelapor_nama: e.target.value, pelapor_id: '' })}
+              onFocus={() => setPelaporFocused(true)}
+              onBlur={() => setTimeout(() => setPelaporFocused(false), 150)}
+              placeholder="Ketik nama pelapor..."
+              autoComplete="off"
+            />
+            {pelaporFocused && pelaporSuggestions.length > 0 && (
+              <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {pelaporSuggestions.map(g => (
+                  <button
+                    type="button"
+                    key={g.id}
+                    onMouseDown={() => { setFormData(f => ({ ...f, pelapor_nama: g.nama, pelapor_id: g.id })); setPelaporFocused(false); }}
+                    className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                  >
+                    {g.nama}
+                  </button>
+                ))}
+              </div>
+            )}
+            {formData.pelapor_id && <p className="text-xs text-slate-500 mt-1">Pelapor terdata sebagai pegawai ✓</p>}
+          </div>
+
           {/* Pencatat (Petugas Piket hari itu) */}
           <div>
             <Label>Pencatat {piketOptions.length > 0 ? <span className="text-xs text-slate-400">(Petugas Piket {hariForm})</span> : <span className="text-xs text-amber-600">(Belum ada Jadwal Piket)</span>}</Label>
             {isGuru && currentUser && piketOptions.length > 0 && piketOptions.some(p => p.guru_id === myGuru?.id) ? (
               <Input value={currentUser.full_name} readOnly className="bg-slate-100" />
             ) : (
-              <Select value={formData.pelapor_id} onValueChange={handlePencatatChange}>
+              <Select value={formData.pencatat_id} onValueChange={handlePencatatChange}>
                 <SelectTrigger><SelectValue placeholder={piketOptions.length ? "Pilih Pencatat (Petugas Piket)" : "Pilih Guru/Pegawai"} /></SelectTrigger>
                 <SelectContent>
                   {piketOptions.length > 0

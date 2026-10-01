@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Search, User, Trophy, AlertCircle, Stethoscope, Calendar, Award, Plus, MessageSquare, CheckCircle, TrendingDown, Ban } from "lucide-react";
 import { recomputeRaporStatus, anulirRaporStatus, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { format } from 'date-fns';
@@ -430,7 +431,7 @@ export default function CariRecordSiswa({ open, onOpenChange }) {
                               <p className="text-sm font-medium text-slate-800">{item.uraian_pelanggaran}</p>
                               {item.rincian && <p className="text-xs text-slate-500 mt-0.5">{item.rincian}</p>}
                               {item.tindak_lanjut && <p className="text-xs text-amber-600 mt-1">📋 {item.tindak_lanjut}</p>}
-                              <p className="text-xs text-slate-400 mt-1">{format(new Date(item.tanggal), 'dd MMM yyyy', { locale: idLocale })} · {item.pelapor_nama || '-'}</p>
+                              <p className="text-xs text-slate-400 mt-1">{format(new Date(item.tanggal), 'dd MMM yyyy', { locale: idLocale })} · Pelapor: {getNamaPelapor(item)} · Pencatat: {getNamaPencatat(item)}</p>
                             </div>
                             <div className="text-right ml-2 shrink-0">
                               <Badge className="bg-red-100 text-red-700">{item.poin} poin</Badge>

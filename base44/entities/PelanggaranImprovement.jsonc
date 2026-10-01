@@ -61,11 +61,19 @@
     },
     "pelapor_id": {
       "type": "string",
-      "description": "ID guru/pegawai pelapor"
+      "description": "ID guru/pegawai pelapor (kosong jika pelapor diketik manual bukan pegawai)"
     },
     "pelapor_nama": {
       "type": "string",
-      "description": "Nama pelapor"
+      "description": "Nama pelapor (bisa diketik manual, tidak harus pegawai)"
+    },
+    "pencatat_id": {
+      "type": "string",
+      "description": "ID guru/pegawai pencatat (petugas piket/pengguna yang mencatat)"
+    },
+    "pencatat_nama": {
+      "type": "string",
+      "description": "Nama pencatat record pelanggaran"
     },
     "tahun_ajaran": {
       "type": "string"

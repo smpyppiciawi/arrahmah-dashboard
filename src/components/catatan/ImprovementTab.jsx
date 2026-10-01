@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock, BarChart3, Camera } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import CatatanCompactTable from "./CatatanCompactTable";
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import ImprovementFormDialog from "./ImprovementFormDialog";
@@ -192,6 +193,8 @@ export default function ImprovementTab({ readOnly = false }) {
       </div>
     ) },
     { key: 'poin', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
+    { key: 'pelapor', label: 'Pelapor', headClassName: 'w-32', className: 'text-slate-600 truncate', render: (r) => getNamaPelapor(r) },
+    { key: 'pencatat', label: 'Pencatat', headClassName: 'w-32', className: 'text-slate-600 truncate', render: (r) => getNamaPencatat(r) },
     { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
       <div className="flex gap-1">

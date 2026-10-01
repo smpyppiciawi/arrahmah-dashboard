@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { Search, X, ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
@@ -45,7 +46,8 @@ export default function PelanggaranDrillDownDialog({ open, onOpenChange, pelangg
     { key: 'uraian_pelanggaran', label: 'Pelanggaran' },
     { key: 'poin', label: 'Poin', render: r => <Badge className="bg-red-100 text-red-700">{r.poin}</Badge> },
     { key: 'status', label: 'Status', render: r => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Proses' ? 'bg-blue-100 text-blue-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}>{r.status}</Badge> },
-    { key: 'pelapor_nama', label: 'Pencatat' },
+    { key: 'pelapor', label: 'Pelapor', render: (r) => getNamaPelapor(r) },
+    { key: 'pencatat', label: 'Pencatat', render: (r) => getNamaPencatat(r) },
   ];
   const impCols = [
     { key: 'tanggal', label: 'Tanggal', render: r => r.tanggal ? format(parseISO(r.tanggal), 'd MMM yy', { locale: idLocale }) : '-' },

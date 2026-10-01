@@ -40,7 +40,8 @@ import KehadiranKepsekSection from '@/components/kepsek/KehadiranKepsekSection';
 import KehadiranPegawaiSection from '@/components/kepsek/KehadiranPegawaiSection';
 import { useAbsen3Hari } from '@/hooks/useAbsen3Hari';
 import { getRaporStatus } from '@/lib/raporStatus';
-import SppTunggakanWidget from '@/components/kepsek/SppTunggakanWidget';
+import LaporanJenisIuranWidget from '@/components/kepsek/LaporanJenisIuranWidget';
+import BeasiswaDibantuWidget from '@/components/kepsek/BeasiswaDibantuWidget';
 
 const DATE_PRESETS = [
   { key: 'today', label: 'Hari Ini' },
@@ -97,6 +98,8 @@ export default function Kepsek() {
   const { data: izinPegawaiList = [] } = useQuery({ queryKey: ['izinPegawai-kepsek'], queryFn: () => base44.entities.IzinPegawai.filter({ status_approval: 'Pending' }) });
   const { data: sumberDanaList = [] } = useQuery({ queryKey: ['sumberDana-kepsek'], queryFn: () => base44.entities.SumberDana.list() });
   const { data: bukuTamuList = [] } = useQuery({ queryKey: ['bukuTamu-kepsek'], queryFn: () => base44.entities.BukuTamu.list('-tanggal') });
+  const { data: tarifList = [] } = useQuery({ queryKey: ['tarifIuran'], queryFn: () => base44.entities.TarifIuran.list(), staleTime: 300000 });
+  const { data: biayaKhususList = [] } = useQuery({ queryKey: ['biayaKhusus-kepsek'], queryFn: () => base44.entities.BiayaKhusus.list(), staleTime: 300000 });
   // Alert 3 hari: query khusus + persistensi "tampil hingga ada perubahan"
   const { data: absen3Hari = [], isLoading: loadingAbsen3Hari } = useAbsen3Hari(siswaList, kalenderList);
   // Rekap kehadiran teragregasi server-side (akurat untuk 7 hari / bulan / tahun / kustom)
@@ -559,12 +562,22 @@ export default function Kepsek() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
           <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={isDark} t={t} />
-          <SppTunggakanWidget siswaList={siswaList} isDark={isDark} t={t} />
+          <LaporanJenisIuranWidget
+            siswaList={siswaList}
+            kelasList={kelasList}
+            keuanganList={keuanganList}
+            tarifList={tarifList}
+            biayaKhususList={biayaKhususList}
+            tahunAjaran={currentSettings.tahun_ajaran_aktif || ''}
+            isDark={isDark}
+            t={t}
+          />
+          <BeasiswaDibantuWidget biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={isDark} t={t} />
         </div>
 
         <KehadiranPegawaiSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapPegawai} isLoading={rekapPegawaiLoading} isDark={isDark} t={t} />
 
-        <PenyebaranSiswaMap homeVisitList={homeVisitList} />
+        <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} />
       </div>
 
       <AgentChat />

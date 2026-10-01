@@ -1,5 +1,6 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 
 // Popup detail daftar catatan per kategori — dipanggil dari CatatanSection
 export default function CatatanDetailDialog({ section, open, onOpenChange }) {
@@ -46,7 +47,7 @@ function RecordItem({ record: r, sectionKey }) {
               </div>
               <p className="font-semibold text-slate-800 text-sm">{r.uraian_pelanggaran}</p>
               {r.rincian && <p className="text-slate-400 text-xs mt-0.5">{r.rincian}</p>}
-              <p className="text-slate-400 text-xs mt-1">{r.tanggal} · {r.pelapor_nama || '-'}</p>
+              <p className="text-slate-400 text-xs mt-1">{r.tanggal} · Pelapor: {getNamaPelapor(r)} · Pencatat: {getNamaPencatat(r)}</p>
               {r.tindak_lanjut && <p className="text-amber-500 text-xs mt-1">📋 {r.tindak_lanjut}</p>}
             </div>
             <div className="flex flex-col items-end gap-1 shrink-0">

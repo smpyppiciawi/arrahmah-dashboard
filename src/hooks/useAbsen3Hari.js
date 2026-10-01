@@ -169,5 +169,6 @@ export function useAbsen3Hari(siswaList, kalenderList) {
       return out.sort((a, b) => b._lastAbsenDate.localeCompare(a._lastAbsenDate));
     },
     staleTime: 60 * 1000,
+    refetchInterval: 60 * 1000, // realtime: perbarui data tiap 1 menit
   });
 }

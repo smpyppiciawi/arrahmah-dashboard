@@ -7,6 +7,7 @@ import { Check, X, Clock, Search } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { base44 } from '@/api/base44Client';
 import { recomputeRaporForSiswa } from '@/lib/raporStatus';
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
@@ -145,7 +146,7 @@ export default function ApprovalPoinDialog({ open, onOpenChange, pelanggaranList
                             <Badge className="bg-amber-100 text-amber-700 text-[10px]">{p.poin} poin</Badge>
                           </div>
                           <p className="text-xs text-slate-600 mt-1 line-clamp-2">{p.uraian_pelanggaran}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">Pelapor: {p.pelapor_nama || '-'}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">Pelapor: {getNamaPelapor(p)} · Pencatat: {getNamaPencatat(p)}</p>
                         </div>
                         <div className="flex flex-col sm:flex-row gap-1.5 shrink-0">
                           <button

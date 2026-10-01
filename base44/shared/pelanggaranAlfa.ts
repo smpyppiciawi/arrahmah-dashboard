@@ -54,6 +54,8 @@ export function buildPelanggaranRecord(kodeData, absensi, tahunAjaran, pelaporId
     poin: kodeData.poin_min || 0,
     pelapor_id: pelaporId,
     pelapor_nama: pelaporNama,
+    pencatat_id: SISTEM_PELAPOR_ID,
+    pencatat_nama: pelaporNama,
     tahun_ajaran: tahunAjaran,
     // Poin >= 100 otomatis Pending (belum terakumulasi sebelum approval)
     status: (kodeData.poin_min || 0) >= 100 ? "Pending" : "Proses",

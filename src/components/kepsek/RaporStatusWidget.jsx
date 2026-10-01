@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getRaporStatus } from '@/lib/raporStatus';
+import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { ShieldAlert, AlertTriangle, ChevronRight, ArrowLeft, ClipboardList } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
@@ -129,6 +130,7 @@ export default function RaporStatusWidget({ siswaList, pelanggaranImpList = [], 
                         </div>
                         <p className="text-xs text-slate-600 mt-1">{p.uraian_pelanggaran}</p>
                         {p.rincian && <p className="text-[10px] text-slate-400 mt-0.5">{p.rincian}</p>}
+                        <p className="text-[10px] text-slate-400 mt-0.5">Pelapor: {getNamaPelapor(p)} · Pencatat: {getNamaPencatat(p)}</p>
                       </div>
                     ))}
                   </div>
