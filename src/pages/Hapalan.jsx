@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { JUZ30_SURAHS } from '@/lib/juz30Surahs';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
+import { useReadOnly } from '@/hooks/useReadOnly';
 
 const TINGKAT_OPTIONS = ['7', '8', '9'];
 
@@ -229,7 +230,7 @@ function DataHapalanTab() {
 }
 
 // =================== SETOR HAPALAN PAGE ===================
-function SetorHapalanTab({ currentUser }) {
+function SetorHapalanTab({ currentUser, readOnly = false }) {
   const queryClient = useQueryClient();
   const { activeAcademicYear } = useActiveAcademicYear();
   const { waliKelasIds } = useWaliKelas();
@@ -368,6 +369,7 @@ function SetorHapalanTab({ currentUser }) {
           hapalanItems={hapalanItems}
           hapalanSiswaAll={hapalanSiswaAll}
           currentUser={currentUser}
+          readOnly={readOnly}
           activeAcademicYear={activeAcademicYear}
           onClose={() => setSelectedSiswa(null)}
           onUpdated={() => queryClient.invalidateQueries({ queryKey: ['hapalan-siswa'] })}
@@ -377,7 +379,7 @@ function SetorHapalanTab({ currentUser }) {
   );
 }
 
-function HapalanSiswaDialog({ siswa, hapalanItems, hapalanSiswaAll, currentUser, activeAcademicYear, onClose, onUpdated }) {
+function HapalanSiswaDialog({ siswa, hapalanItems, hapalanSiswaAll, currentUser, readOnly = false, activeAcademicYear, onClose, onUpdated }) {
   const tingkat = siswa.nama_kelas?.charAt(0) || '7';
   const items = hapalanItems.filter(h => h.tingkat === tingkat);
   const surahItems = items.filter(h => h.jenis === 'Surah');
@@ -448,7 +450,7 @@ function HapalanSiswaDialog({ siswa, hapalanItems, hapalanSiswaAll, currentUser,
                   const rec = hapalanMap[item.id];
                   const sudah = rec?.sudah_hapal;
                   return (
-                    <button key={item.id} type="button" onClick={() => handleToggle(item)} disabled={saving[item.id]}
+                    <button key={item.id} type="button" onClick={() => handleToggle(item)} disabled={saving[item.id] || readOnly}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition ${sudah ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200 hover:border-green-300'}`}>
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition ${sudah ? 'bg-green-500 border-green-500' : 'border-slate-300'}`}>
                         {sudah && <Check className="w-3.5 h-3.5 text-white" />}
@@ -469,7 +471,7 @@ function HapalanSiswaDialog({ siswa, hapalanItems, hapalanSiswaAll, currentUser,
                   const rec = hapalanMap[item.id];
                   const sudah = rec?.sudah_hapal;
                   return (
-                    <button key={item.id} type="button" onClick={() => handleToggle(item)} disabled={saving[item.id]}
+                    <button key={item.id} type="button" onClick={() => handleToggle(item)} disabled={saving[item.id] || readOnly}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition ${sudah ? 'bg-purple-50 border-purple-200' : 'bg-white border-slate-200 hover:border-purple-300'}`}>
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition ${sudah ? 'bg-purple-500 border-purple-500' : 'border-slate-300'}`}>
                         {sudah && <Check className="w-3.5 h-3.5 text-white" />}
@@ -508,6 +510,7 @@ function isPaiGuru(currentUser, pembelajaranList) {
 export default function Hapalan() {
   const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('setor');
+  const readOnly = useReadOnly();
 
   const { data: pembelajaranList = [] } = useQuery({
     queryKey: ['pembelajaran'],
@@ -530,14 +533,14 @@ export default function Hapalan() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-4">
             <TabsTrigger value="setor">Setor Hapalan</TabsTrigger>
-            {canAccessDataHapalan && (
+            {canAccessDataHapalan && !readOnly && (
               <TabsTrigger value="data">Data Hapalan</TabsTrigger>
             )}
           </TabsList>
           <TabsContent value="setor">
-            <SetorHapalanTab currentUser={currentUser} />
+            <SetorHapalanTab currentUser={currentUser} readOnly={readOnly} />
           </TabsContent>
-          {canAccessDataHapalan && (
+          {canAccessDataHapalan && !readOnly && (
             <TabsContent value="data">
               <DataHapalanTab />
             </TabsContent>

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Edit2, Trash2, ExternalLink, Users, X, Check } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import { useReadOnly } from "@/hooks/useReadOnly";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, parseISO, isWithinInterval, addMonths, subMonths } from 'date-fns';
@@ -39,6 +40,7 @@ const TAHUN_AJARAN_OPTIONS = () => {
 const EMPTY_FORM = { judul: '', tanggal_mulai: '', tanggal_selesai: '', kategori: '', keterangan: '', tahun_ajaran: '', warna: '', tugas_untuk_aktif: false, pegawai_ids: [] };
 
 export default function KalenderAkademik() {
+  const readOnly = useReadOnly();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [isOpen, setIsOpen] = useState(false);
   const [editData, setEditData] = useState(null);
@@ -527,15 +529,19 @@ export default function KalenderAkademik() {
                                 )}
                               </div>
                               <div className="flex flex-col gap-1">
-                                <button onClick={() => handleEdit(ev)} className="p-1 rounded hover:bg-white/60 transition-all">
-                                  <Edit2 className="w-3.5 h-3.5 opacity-60" />
-                                </button>
+                                {!readOnly && (
+                                  <button onClick={() => handleEdit(ev)} className="p-1 rounded hover:bg-white/60 transition-all">
+                                    <Edit2 className="w-3.5 h-3.5 opacity-60" />
+                                  </button>
+                                )}
                                 <a href={getGoogleCalendarLink(ev)} target="_blank" rel="noopener noreferrer" title="Tambah ke Google Calendar" className="p-1 rounded hover:bg-white/60 transition-all">
                                   <ExternalLink className="w-3.5 h-3.5 text-blue-500 opacity-70" />
                                 </a>
-                                <button onClick={() => { setDeleteId(ev.id); setDeleteOpen(true); }} className="p-1 rounded hover:bg-red-100 transition-all">
-                                  <Trash2 className="w-3.5 h-3.5 text-red-500 opacity-60" />
-                                </button>
+                                {!readOnly && (
+                                  <button onClick={() => { setDeleteId(ev.id); setDeleteOpen(true); }} className="p-1 rounded hover:bg-red-100 transition-all">
+                                    <Trash2 className="w-3.5 h-3.5 text-red-500 opacity-60" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -642,12 +648,16 @@ export default function KalenderAkademik() {
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(ev)} className="h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600">
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => { setDeleteId(ev.id); setDeleteOpen(true); }} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {!readOnly && (
+                            <Button size="sm" variant="ghost" onClick={() => handleEdit(ev)} className="h-8 w-8 p-0 hover:bg-indigo-50 hover:text-indigo-600">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          {!readOnly && (
+                            <Button size="sm" variant="ghost" onClick={() => { setDeleteId(ev.id); setDeleteOpen(true); }} className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -665,7 +675,7 @@ export default function KalenderAkademik() {
           title="Hapus Kegiatan"
           description="Yakin ingin menghapus kegiatan ini?"
         />
-        <FloatingAddButton onClick={() => { setEditData(null); setFormData(EMPTY_FORM); setIsOpen(true); }} label="Tambah Kegiatan" color="indigo" icon={Plus} />
+        {!readOnly && <FloatingAddButton onClick={() => { setEditData(null); setFormData(EMPTY_FORM); setIsOpen(true); }} label="Tambah Kegiatan" color="indigo" icon={Plus} />}
       </div>
     </div>
   );
