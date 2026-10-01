@@ -9,11 +9,16 @@ const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.13/mode
 const MATCH_THRESHOLD = 0.5;
 const SCAN_INTERVAL = 1500;
 
+// Cache level modul: model AI & data wajah tidak dimuat ulang setiap kamera dibuka
+let modelsLoadPromise = null;
+const faceDataCache = {};
+
 export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', onRegister, onMatch, disabled }) {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanMode, setScanMode] = useState('auto'); // 'auto' = scan terus-menerus; 'klik' = potret sekali & verifikasi cepat
   const [result, setResult] = useState(null);
   const videoRef = useRef(null);
   const streamRef = useRef(null);
@@ -22,26 +27,31 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
   const cameraActiveRef = useRef(false);
   const { toast } = useToast();
 
+  const scanModeRef = useRef('auto');
+  useEffect(() => { scanModeRef.current = scanMode; }, [scanMode]);
   useEffect(() => { cameraActiveRef.current = cameraActive; }, [cameraActive]);
 
   const loadModels = useCallback(async () => {
-    if (modelsLoaded || loadingModels) return modelsLoaded;
-    setLoadingModels(true);
-    try {
-      await Promise.all([
+    if (modelsLoaded) return true;
+    if (!modelsLoadPromise) {
+      modelsLoadPromise = Promise.all([
         faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
         faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
         faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ]);
-      setModelsLoaded(true);
-      return true;
+      ]).then(() => true).catch((err) => { modelsLoadPromise = null; throw err; });
+    }
+    setLoadingModels(true);
+    try {
+      const ok = await modelsLoadPromise;
+      setModelsLoaded(ok);
+      return ok;
     } catch (err) {
       toast({ title: 'Gagal memuat model AI', description: 'Periksa koneksi internet.', variant: 'destructive' });
       return false;
     } finally {
       setLoadingModels(false);
     }
-  }, [modelsLoaded, loadingModels, toast]);
+  }, [modelsLoaded, toast]);
 
   const stopCamera = useCallback(() => {
     if (scanIntervalRef.current) {
@@ -111,7 +121,7 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
           setResult({ status: 'success', message: `Dikenali: ${matchedFace.nama}` });
           onMatch?.(matchedFace.card_id_virtual || `FACE-${matchedFace.person_id}`);
           setTimeout(() => {
-            if (cameraActiveRef.current) {
+            if (cameraActiveRef.current && scanModeRef.current === 'auto') {
               setResult(null);
               startScanLoop();
             }
@@ -125,6 +135,47 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
       isProcessing = false;
     }, SCAN_INTERVAL);
   }, [modelsLoaded, onMatch]);
+
+  // Mode Potret: klik sekali → sistem memotret 1 frame, membaca wajah, lalu mencocokkan ke data wajah terdaftar
+  const captureAndVerify = async () => {
+    if (!videoRef.current || !modelsLoaded || scanning) return;
+    setScanning(true);
+    setResult({ status: 'scanning', message: 'Memproses potret wajah...' });
+    try {
+      const detection = await faceapi
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      if (!detection) {
+        setResult({ status: 'error', message: 'Wajah tidak terdeteksi. Posisikan wajah di tengah lalu potret ulang.' });
+        return;
+      }
+
+      const matchedFace = findMatch(detection.descriptor);
+      if (matchedFace) {
+        setResult({ status: 'success', message: `Dikenali: ${matchedFace.nama}` });
+        onMatch?.(matchedFace.card_id_virtual || `FACE-${matchedFace.person_id}`);
+      } else {
+        setResult({ status: 'error', message: 'Wajah tidak sesuai data terdaftar. Potret ulang dengan pencahayaan lebih baik.' });
+      }
+    } catch (err) {
+      setResult({ status: 'error', message: 'Gagal memproses wajah. Coba potret ulang.' });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const switchScanMode = (m) => {
+    if (scanIntervalRef.current) {
+      clearInterval(scanIntervalRef.current);
+      scanIntervalRef.current = null;
+    }
+    setScanning(false);
+    setResult(null);
+    setScanMode(m);
+    if (m === 'auto' && modelsLoaded) startScanLoop();
+  };
 
   const startCamera = async () => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -142,8 +193,13 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
       setResult(null);
 
       if (mode === 'scan') {
-        const allFaces = await base44.entities.DataWajah.filter({ person_type: personType, status: 'Aktif' });
-        faceDataRef.current = allFaces;
+        if (faceDataCache[personType]) {
+          faceDataRef.current = faceDataCache[personType];
+        } else {
+          const allFaces = await base44.entities.DataWajah.filter({ person_type: personType, status: 'Aktif' });
+          faceDataCache[personType] = allFaces;
+          faceDataRef.current = allFaces;
+        }
       }
 
       // Wait for React to mount the video element after setCameraActive(true)
@@ -154,7 +210,7 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
         await videoRef.current.play().catch(() => {});
       }
 
-      if (mode === 'scan') {
+      if (mode === 'scan' && scanModeRef.current === 'auto') {
         startScanLoop();
       }
     } catch (err) {
@@ -231,15 +287,33 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
             )}
           </div>
           <div className="flex gap-2">
+            {mode === 'scan' && (
+              <div className="flex rounded-lg border border-slate-200 overflow-hidden flex-shrink-0 self-center">
+                <button type="button" onClick={() => switchScanMode('auto')}
+                  className={`px-3 text-xs font-medium transition-colors ${scanMode === 'auto' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:text-slate-700'}`}>
+                  Otomatis
+                </button>
+                <button type="button" onClick={() => switchScanMode('klik')}
+                  className={`px-3 text-xs font-medium transition-colors border-l border-slate-200 ${scanMode === 'klik' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-500 hover:text-slate-700'}`}>
+                  Potret
+                </button>
+              </div>
+            )}
             {mode === 'register' && (
               <Button type="button" className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700" disabled={scanning} onClick={registerFace}>
                 {scanning ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ScanFace className="w-5 h-5 mr-2" />}
                 {scanning ? 'Memproses...' : 'Daftarkan Wajah'}
               </Button>
             )}
-            {mode === 'scan' && !scanning && (
+            {mode === 'scan' && scanMode === 'auto' && !scanning && (
               <Button type="button" variant="outline" className="flex-1 h-12" onClick={startScanLoop}>
                 <RefreshCw className="w-4 h-4 mr-2" /> Scan Ulang
+              </Button>
+            )}
+            {mode === 'scan' && scanMode === 'klik' && (
+              <Button type="button" className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700" disabled={scanning} onClick={captureAndVerify}>
+                {scanning ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <Camera className="w-5 h-5 mr-2" />}
+                {scanning ? 'Memproses...' : 'Potret & Verifikasi'}
               </Button>
             )}
             <Button type="button" variant="destructive" className="h-12 px-4" onClick={stopCamera}>
