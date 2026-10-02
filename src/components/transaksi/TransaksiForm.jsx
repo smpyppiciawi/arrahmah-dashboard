@@ -215,6 +215,13 @@ export default function TransaksiForm({
       (formData.tipe_transaksi?.toLowerCase().includes('spp') && !selectedTarifId);
   }, [jenisTransaksi, formData.siswa_id, formData.tipe_transaksi, selectedTarifId, tarifIuranList, isMuka]);
 
+  // Transaksi milik siswa yang dipilih SAJA — peringatan lunas/ganda tidak boleh
+  // memakai transaksi seluruh sekolah (penyebab peringatan salah hitung Rp 100 juta / 611 transaksi).
+  const keuanganSiswaList = useMemo(() => {
+    if (!formData.siswa_id) return [];
+    return keuanganList.filter(k => k.siswa_id === formData.siswa_id);
+  }, [keuanganList, formData.siswa_id]);
+
   // Peringatan anti transaksi ganda: tarif yang dipilih sudah LUNAS untuk siswa & TA aktif
   const tarifLunasInfo = useMemo(() => {
     if (jenisTransaksi !== 'siswa' || !formData.siswa_id || !selectedTarifId || isMuka) return null;
@@ -223,7 +230,7 @@ export default function TransaksiForm({
     if (!tarif || !siswa) return null;
     const status = computeStatusKeuangan({
       siswa,
-      keuanganList: keuanganList.filter(k => k.id !== editingData?.id),
+      keuanganList: keuanganSiswaList.filter(k => k.id !== editingData?.id),
       tarifList: tarifIuranList,
       biayaKhususList: biayaKhususList || [],
       kelasList,
@@ -232,7 +239,7 @@ export default function TransaksiForm({
     });
     const item = status.items.find(i => i.nama === tarif.nama);
     if (!item || item.tagihan <= 0 || item.sisa_setahun > 0) return null;
-    const payments = keuanganList.filter(k =>
+    const payments = keuanganSiswaList.filter(k =>
       k.id !== editingData?.id &&
       k.jenis !== 'Pengeluaran' && !k.is_iuran_muka &&
       (!activeAcademicYear || !k.tahun_ajaran || k.tahun_ajaran === activeAcademicYear)
@@ -242,7 +249,23 @@ export default function TransaksiForm({
       ? formatDateID([...trans].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal))[0].tanggal)
       : '';
     return { tarif, dibayar: item.dibayar, jumlahTrans: trans.length, terakhir };
-  }, [jenisTransaksi, formData.siswa_id, selectedTarifId, isMuka, tarifIuranList, siswaList, keuanganList, biayaKhususList, kelasList, activeAcademicYear, editingData]);
+  }, [jenisTransaksi, formData.siswa_id, selectedTarifId, isMuka, tarifIuranList, siswaList, keuanganSiswaList, biayaKhususList, kelasList, activeAcademicYear, editingData]);
+
+  // Peringatan duplikat persis: transaksi kembar dengan tanggal + siswa + tarif + nominal
+  // yang sama pada tahun ajaran sama (setoran Iuran Muka tidak ikut dicek).
+  const duplikatPersisInfo = useMemo(() => {
+    if (jenisTransaksi !== 'siswa' || !formData.siswa_id || !selectedTarifId || isMuka) return null;
+    const jumlah = Number(formData.jumlah || 0);
+    if (!jumlah || !formData.tanggal) return null;
+    const kembar = keuanganSiswaList.filter(k =>
+      k.id !== editingData?.id &&
+      k.jenis !== 'Pengeluaran' && !k.is_iuran_muka &&
+      k.tanggal === formData.tanggal &&
+      Number(k.jumlah) === jumlah &&
+      (k.tarif_iuran_id ? k.tarif_iuran_id === selectedTarifId : k.tipe_transaksi === formData.tipe_transaksi)
+    );
+    return kembar.length > 0 ? kembar : null;
+  }, [jenisTransaksi, formData.siswa_id, selectedTarifId, isMuka, keuanganSiswaList, formData.tanggal, formData.tipe_transaksi, formData.jumlah, editingData]);
 
   const siswaRiwayat = useMemo(() => {
     if (!formData.siswa_id) return [];
@@ -440,8 +463,8 @@ export default function TransaksiForm({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Peringatan transaksi ganda: tarif sudah lunas → minta konfirmasi dulu
-    if (tarifLunasInfo && !skipLunasConfirm.current) {
+    // Peringatan transaksi ganda: tarif sudah lunas ATAU transaksi kembar persis → konfirmasi dulu
+    if ((tarifLunasInfo || duplikatPersisInfo) && !skipLunasConfirm.current) {
       setConfirmLunasOpen(true);
       return;
     }
@@ -1062,6 +1085,25 @@ export default function TransaksiForm({
                 (total dibayar Rp {new Intl.NumberFormat('id-ID').format(tarifLunasInfo.dibayar)}).
                 Yakin ingin tetap menyimpan transaksi ini?
               </p>
+            )}
+            {duplikatPersisInfo && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-600">
+                  Ada {duplikatPersisInfo.length} transaksi kembar persis (tanggal, tarif, dan nominal sama) untuk {formData.nama_siswa}:
+                </p>
+                <ul className="mt-1.5 space-y-1 max-h-40 overflow-y-auto">
+                  {duplikatPersisInfo.map(t => (
+                    <li key={t.id} className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 flex items-center justify-between gap-2">
+                      <span className="truncate">
+                        {formatDateID(t.tanggal)} • {t.tipe_transaksi || t.uraian || '-'}
+                      </span>
+                      <span className="font-semibold text-slate-700 flex-shrink-0">
+                        Rp {new Intl.NumberFormat('id-ID').format(t.jumlah)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setConfirmLunasOpen(false)}>Batal</Button>

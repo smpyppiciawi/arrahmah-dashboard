@@ -18,6 +18,7 @@ import PtsTab from "@/components/nilai/PtsTab";
 import PtsGuruView from "@/components/nilai/PtsGuruView";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
+import { fetchAllNilai } from '@/lib/nilaiLoad';
 
 // Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
 const MAPEL_FALLBACK = [
@@ -143,7 +144,7 @@ export default function Nilai() {
   const { data: nilaiList = [], isLoading } = useQuery({
     queryKey: ['nilai', currentUser?.email, userRole, assignedKelasIds, assignedMapel],
     queryFn: async () => {
-      const all = await base44.entities.Nilai.list('-created_date');
+      const all = await fetchAllNilai();
       if (isGuruRole) {
         return all.filter(n => assignedKelasIds.includes(n.kelas_id) && assignedMapel.includes(n.mapel));
       }
@@ -291,14 +292,27 @@ export default function Nilai() {
       semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran, kkm: kkmPts,
       nama_guru: kelasFormData.nama_guru || namaGuruPengampu(kelasFormData.kelas_id, kelasFormData.mapel),
     };
-    const toCreate = filled.filter(it => !it.existingId).map(it => ({
-      ...dasar, siswa_id: it.siswa_id, nis: it.nis, nama_siswa: it.nama_siswa, nama_kelas: it.nama_kelas,
-      nilai: Number(it.nilai), status_ketuntasan: Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas',
-    }));
-    const toUpdate = filled.filter(it => it.existingId).map(it => ({
-      id: it.existingId, nilai: Number(it.nilai), kkm: kkmPts,
-      status_ketuntasan: Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas',
-    }));
+    // Guard anti simpan ganda: cek ulang keberadaan record kombinasi sama di server
+    // (record bisa muncul baru saat data lokal belum termuat) sebelum bulkCreate.
+    const existingServer = await base44.entities.Nilai.filter({
+      kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
+      jenis_penilaian: kelasFormData.jenis_penilaian, semester: kelasFormData.semester,
+      tahun_ajaran: finalTahunAjaran,
+    });
+    const bySiswaServer = new Map(existingServer.map(n => [n.siswa_id, n]));
+    const toCreate = [], toUpdate = [];
+    for (const it of filled) {
+      const status = Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas';
+      const server = bySiswaServer.get(it.siswa_id);
+      if (server || it.existingId) {
+        toUpdate.push({ id: server?.id || it.existingId, nilai: Number(it.nilai), kkm: kkmPts, status_ketuntasan: status });
+      } else {
+        toCreate.push({
+          ...dasar, siswa_id: it.siswa_id, nis: it.nis, nama_siswa: it.nama_siswa, nama_kelas: it.nama_kelas,
+          nilai: Number(it.nilai), status_ketuntasan: status,
+        });
+      }
+    }
     if (toCreate.length) await base44.entities.Nilai.bulkCreate(toCreate);
     if (toUpdate.length) await base44.entities.Nilai.bulkUpdate(toUpdate);
     queryClient.invalidateQueries({ queryKey: ['nilai'] });

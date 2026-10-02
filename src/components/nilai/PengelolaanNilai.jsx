@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calculator, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { fetchAllNilai } from '@/lib/nilaiLoad';
 
 export default function PengelolaanNilai() {
   const [filterKelas, setFilterKelas] = useState('');
@@ -17,7 +18,7 @@ export default function PengelolaanNilai() {
 
   const { data: nilaiList = [] } = useQuery({
     queryKey: ['nilai-all'],
-    queryFn: () => base44.entities.Nilai.list('-created_date'),
+    queryFn: () => fetchAllNilai(),
   });
 
   const { data: kelasList = [] } = useQuery({

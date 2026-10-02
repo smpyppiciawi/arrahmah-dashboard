@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TrendingUp, TrendingDown, Minus, Search } from "lucide-react";
+import { fetchAllNilai } from '@/lib/nilaiLoad';
 
 const SEMESTER_ORDER = [
   { semester: 'Ganjil', tahun: null, label: 'Sem 1' },
@@ -23,7 +24,7 @@ export default function AnalisisNilai() {
 
   const { data: nilaiList = [] } = useQuery({
     queryKey: ['nilai-all'],
-    queryFn: () => base44.entities.Nilai.list('-created_date'),
+    queryFn: () => fetchAllNilai(),
   });
 
   const { data: kelasList = [] } = useQuery({

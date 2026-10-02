@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Trophy, Table2, User, Users, ListChecks } from 'lucide-react';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
+import { fetchAllNilai } from '@/lib/nilaiLoad';
 import PaginationBar from '@/components/appui/PaginationBar';
 import PillTabs from '@/components/appui/PillTabs';
 import PtsStatusGuruView from '@/components/nilai/PtsStatusGuruView';
@@ -34,7 +35,7 @@ export default function PtsGuruView({ activeAcademicYear }) {
 
   const { data: nilaiPts = [], isLoading } = useQuery({
     queryKey: ['nilai-pts-wali'],
-    queryFn: () => base44.entities.Nilai.filter({ jenis_penilaian: 'PTS' }),
+    queryFn: async () => (await fetchAllNilai()).filter(n => n.jenis_penilaian === 'PTS'),
     staleTime: 60000,
   });
 
