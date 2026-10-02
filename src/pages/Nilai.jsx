@@ -253,35 +253,44 @@ export default function Nilai() {
   };
 
   /* ===== Input Per Kelas: nilai tersimpan otomatis terisi kembali saat kombinasi sama dibuka ===== */
-  const comboKey = [kelasFormData.kelas_id, kelasFormData.mapel, kelasFormData.jenis_penilaian, kelasFormData.semester, kelasFormData.tahun_ajaran || activeAcademicYear || ''].join('|');
+  const comboKey = [kelasFormData.kategori, kelasFormData.jenis_penilaian, kelasFormData.kelas_id, kelasFormData.mapel, kelasFormData.semester, kelasFormData.tahun_ajaran || activeAcademicYear || ''].join('|');
   const lastComboRef = useRef('');
+  const isHarianKategori = kelasFormData.kategori === 'Nilai Harian';
+
+  const existingForCombo = useMemo(() => {
+    if (!kelasFormData.kategori) return [];
+    const jenisList = isHarianKategori ? ['Harian', 'Ulangan Harian', 'Tugas', 'Praktik'] : [kelasFormData.jenis_penilaian];
+    if (!jenisList[0]) return [];
+    return nilaiList.filter(n =>
+      n.kelas_id === kelasFormData.kelas_id && n.mapel === kelasFormData.mapel &&
+      jenisList.includes(n.jenis_penilaian) && n.semester === kelasFormData.semester &&
+      (n.tahun_ajaran || '') === (kelasFormData.tahun_ajaran || activeAcademicYear || ''));
+  }, [nilaiList, isHarianKategori, kelasFormData]);
 
   useEffect(() => {
-    const kelasId = kelasFormData.kelas_id;
-    if (!kelasId) { setKelasNilaiData([]); return; }
+    if (!kelasFormData.kelas_id || !kelasFormData.kategori) { setKelasLabels([]); setKelasNilaiData([]); return; }
     const samaCombo = comboKey === lastComboRef.current;
-    lastComboRef.current = comboKey;
-    const kelas = kelasList.find(k => k.id === kelasId);
-    const existing = (kelasFormData.mapel && kelasFormData.jenis_penilaian)
-      ? nilaiList.filter(n =>
-          n.kelas_id === kelasId && n.mapel === kelasFormData.mapel &&
-          n.jenis_penilaian === kelasFormData.jenis_penilaian &&
-          n.semester === kelasFormData.semester &&
-          (n.tahun_ajaran || '') === (kelasFormData.tahun_ajaran || activeAcademicYear || ''))
-      : [];
-    const bySiswa = new Map(existing.map(n => [n.siswa_id, n]));
-    const roster = siswaList.filter(s => s.kelas_id === kelasId).sort((a, b) => a.nama.localeCompare(b.nama));
+    if (!samaCombo) {
+      lastComboRef.current = comboKey;
+      const labelServer = [...new Set(existingForCombo.map(n => (n.kompetensi_bab || n.label || 'Nilai Harian')))];
+      setKelasLabels(isHarianKategori ? labelServer.map(t => ({ id: t, text: t })) : []);
+    }
+    const kelas = kelasList.find(k => k.id === kelasFormData.kelas_id);
+    const roster = siswaList.filter(s => s.kelas_id === kelasFormData.kelas_id).sort((a, b) => a.nama.localeCompare(b.nama));
     setKelasNilaiData(prev => roster.map(s => {
-      const ex = bySiswa.get(s.id);
-      const base = { siswa_id: s.id, nis: s.nis, nama_siswa: s.nama, nama_kelas: kelas?.nama_kelas || '', existingId: ex?.id || null };
       // Pertahankan nilai yang sedang diedit (belum disimpan) bila kombinasi tidak berubah
       if (samaCombo) {
         const lama = prev.find(x => x.siswa_id === s.id);
-        if (lama && lama.dirty) return { ...base, nilai: lama.nilai, dirty: true };
+        if (lama) return lama;
       }
-      return { ...base, nilai: ex ? ex.nilai : '' };
+      const existing = {};
+      existingForCombo.filter(n => n.siswa_id === s.id).forEach(n => {
+        const lid = isHarianKategori ? (n.kompetensi_bab || n.label || 'Nilai Harian') : 'ujian';
+        existing[lid] = { id: n.id, nilai: n.nilai };
+      });
+      return { siswa_id: s.id, nis: s.nis, nama_siswa: s.nama, nama_kelas: kelas?.nama_kelas || '', values: {}, existing };
     }));
-  }, [comboKey, nilaiList, siswaList, kelasList, activeAcademicYear, kelasFormData.kelas_id, kelasFormData.mapel, kelasFormData.jenis_penilaian, kelasFormData.semester, kelasFormData.tahun_ajaran]);
+  }, [comboKey, existingForCombo, siswaList, kelasList, kelasFormData.kelas_id, kelasFormData.kategori, isHarianKategori]);
 
   const handleKelasChange = (kelasId) => {
     setKelasFormData(prev => ({ ...prev, kelas_id: kelasId, mapel: '', nama_guru: '' }));
@@ -291,59 +300,91 @@ export default function Nilai() {
     setKelasFormData(prev => ({ ...prev, mapel, nama_guru: namaGuruPengampu(prev.kelas_id, mapel) }));
   };
 
-  const handleKelasNilaiChange = (siswaId, nilai) => {
-    setKelasNilaiData(prev => prev.map(item => item.siswa_id === siswaId ? { ...item, nilai, dirty: true } : item));
+  // Fitur Tambah Nilai: menambah kolom label Nilai Harian (teks bebas per BAB/materi)
+  const tambahLabel = () => {
+    labelCounterRef.current += 1;
+    setKelasLabels(prev => [...prev, { id: `baru${labelCounterRef.current}`, text: `Nilai BAB ${prev.length + 1}` }]);
   };
+  const ubahLabel = (id, text) => setKelasLabels(prev => prev.map(l => l.id === id ? { ...l, text } : l));
+  const hapusLabel = (id) => {
+    if (kelasNilaiData.some(r => r.existing[id])) {
+      toast({ title: 'Kolom tidak bisa dihapus', description: 'Kolom ini sudah punya nilai tersimpan. Hapus lewat daftar nilai terlebih dahulu.', variant: 'destructive' });
+      return;
+    }
+    setKelasLabels(prev => prev.filter(l => l.id !== id));
+    setKelasNilaiData(prev => prev.map(r => { const v = { ...r.values }; delete v[id]; return { ...r, values: v }; }));
+  };
+  const setNilaiCell = (siswaId, labelId, nilai) => setKelasNilaiData(prev => prev.map(r => r.siswa_id === siswaId ? { ...r, values: { ...r.values, [labelId]: nilai } } : r));
 
   const handleKelasSubmit = async (e) => {
     e.preventDefault();
-    if (!kelasFormData.kelas_id || !kelasFormData.mapel) {
-      toast({ title: 'Lengkapi data', description: 'Kelas dan Mata Pelajaran wajib dipilih.', variant: 'destructive' });
+    if (!kelasFormData.kelas_id || !kelasFormData.mapel || !kelasFormData.kategori) {
+      toast({ title: 'Lengkapi data', description: 'Kelas, Mata Pelajaran & Kategori Nilai wajib dipilih.', variant: 'destructive' });
       return;
     }
-    if (!kelasFormData.jenis_penilaian) {
-      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis penilaian sebelum menyimpan.', variant: 'destructive' });
+    if (!isHarianKategori && !kelasFormData.jenis_penilaian) {
+      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis Nilai Ujian (PTS/PAS/US/UP) sebelum menyimpan.', variant: 'destructive' });
       return;
     }
     const finalTahunAjaran = kelasFormData.tahun_ajaran || activeAcademicYear || '';
-    const filled = kelasNilaiData.filter(item => item.nilai !== '' && item.nilai !== null && item.nilai !== undefined);
-    if (!filled.length) {
-      toast({ title: 'Tidak ada nilai terisi', description: 'Isi nilai siswa yang ingin disimpan — baris kosong dilewati.', variant: 'destructive' });
+    const namaGuruFinal = kelasFormData.nama_guru || namaGuruPengampu(kelasFormData.kelas_id, kelasFormData.mapel);
+    // Kolom Nilai Harian = label bebas per BAB/materi; Nilai Ujian = satu kolom saja (1 kali pelaksanaan)
+    const kolom = (isHarianKategori ? kelasLabels : [{ id: 'ujian', label: '' }])
+      .map(k => ({ id: k.id, label: isHarianKategori ? String(k.text || '').trim() : '' }));
+    if (isHarianKategori && (kolom.length === 0 || kolom.some(k => !k.label))) {
+      toast({ title: 'Label belum lengkap', description: 'Isi label setiap kolom Nilai Harian (contoh: Nilai BAB 1) atau hapus kolom yang kosong.', variant: 'destructive' });
       return;
     }
-    const dasar = {
-      kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
-      jenis_penilaian: kelasFormData.jenis_penilaian, kompetensi_bab: kelasFormData.kompetensi_bab || '',
-      semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran, kkm: kkmPts,
-      nama_guru: kelasFormData.nama_guru || namaGuruPengampu(kelasFormData.kelas_id, kelasFormData.mapel),
-    };
+    const cells = [];
+    for (const k of kolom) {
+      for (const row of kelasNilaiData) {
+        const v = row.values[k.id];
+        if (v === '' || v === null || v === undefined) continue;
+        cells.push({ row, k, nilai: Number(v) });
+      }
+    }
+    if (!cells.length) {
+      toast({ title: 'Tidak ada nilai terisi', description: 'Isi nilai siswa yang ingin disimpan — sel kosong dilewati.', variant: 'destructive' });
+      return;
+    }
     // Guard anti simpan ganda: cek ulang keberadaan record kombinasi sama di server
-    // (record bisa muncul baru saat data lokal belum termuat) sebelum bulkCreate.
     const existingServer = await base44.entities.Nilai.filter({
       kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
-      jenis_penilaian: kelasFormData.jenis_penilaian, semester: kelasFormData.semester,
-      tahun_ajaran: finalTahunAjaran,
+      jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
+      semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
     });
-    const bySiswaServer = new Map(existingServer.map(n => [n.siswa_id, n]));
+    const byKeyServer = new Map(existingServer.map(n => [`${n.siswa_id}|${n.kompetensi_bab || ''}`, n]));
     const toCreate = [], toUpdate = [];
-    for (const it of filled) {
-      const status = Number(it.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas';
-      const server = bySiswaServer.get(it.siswa_id);
-      if (server || it.existingId) {
-        toUpdate.push({ id: server?.id || it.existingId, nilai: Number(it.nilai), kkm: kkmPts, status_ketuntasan: status });
-      } else {
-        toCreate.push({
-          ...dasar, siswa_id: it.siswa_id, nis: it.nis, nama_siswa: it.nama_siswa, nama_kelas: it.nama_kelas,
-          nilai: Number(it.nilai), status_ketuntasan: status,
-        });
-      }
+    const usedTarget = new Set();
+    for (const c of cells) {
+      const key = `${c.row.siswa_id}|${c.k.label}`;
+      const server = byKeyServer.get(key);
+      const existingRec = c.row.existing[c.k.id];
+      const targetId = server?.id || existingRec?.id || null;
+      if (targetId && usedTarget.has(targetId)) continue;
+      if (targetId) usedTarget.add(targetId);
+      const status = Number(c.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas';
+      const payload = {
+        kategori: kelasFormData.kategori,
+        jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
+        kompetensi_bab: c.k.label, label: c.k.label,
+        semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
+        kkm: kkmPts, nama_guru: namaGuruFinal,
+        nilai: Number(c.nilai), status_ketuntasan: status,
+      };
+      if (targetId) toUpdate.push({ id: targetId, ...payload });
+      else toCreate.push({
+        ...payload, siswa_id: c.row.siswa_id, nis: c.row.nis,
+        nama_siswa: c.row.nama_siswa, nama_kelas: c.row.nama_kelas,
+      });
     }
     if (toCreate.length) await base44.entities.Nilai.bulkCreate(toCreate);
     if (toUpdate.length) await base44.entities.Nilai.bulkUpdate(toUpdate);
     queryClient.invalidateQueries({ queryKey: ['nilai'] });
     toast({ title: 'Nilai tersimpan', description: `${toCreate.length} nilai baru, ${toUpdate.length} nilai diperbarui.` });
     setKelasInputOpen(false);
-    setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
+    setKelasFormData({ kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
+    setKelasLabels([]);
     setKelasNilaiData([]);
   };
 
@@ -359,6 +400,9 @@ export default function Nilai() {
   const totalTuntas = filteredData.filter(n => n.status_ketuntasan === 'Tuntas').length;
   const totalBelumTuntas = filteredData.filter(n => n.status_ketuntasan === 'Belum Tuntas').length;
   const persentaseTuntas = totalSiswa > 0 ? ((totalTuntas / totalSiswa) * 100).toFixed(1) : 0;
+
+  const kolomAktif = isHarianKategori ? kelasLabels : [{ id: 'ujian', label: '' }];
+  const totalTerisi = kelasNilaiData.reduce((s, r) => s + kolomAktif.filter(k => r.values[k.id] !== '' && r.values[k.id] != null).length, 0);
 
   const filteredSiswaForInput = (filterKelasInput
     ? siswaList.filter(s => s.kelas_id === filterKelasInput)
@@ -438,11 +482,12 @@ export default function Nilai() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
-                          <Label className="text-xs text-slate-500">Jenis Penilaian</Label>
-                          <Select value={kelasFormData.jenis_penilaian} onValueChange={(v) => setKelasFormData({...kelasFormData, jenis_penilaian: v})}>
+                          <Label className="text-xs text-slate-500">Kategori Nilai</Label>
+                          <Select value={kelasFormData.kategori} onValueChange={(v) => setKelasFormData({...kelasFormData, kategori: v, jenis_penilaian: v === 'Nilai Harian' ? 'Harian' : ''})}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
                             <SelectContent>
-                              {['Ulangan Harian','Tugas','PTS','PAS','Praktik'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                              <SelectItem value="Nilai Harian">Nilai Harian</SelectItem>
+                              <SelectItem value="Nilai Ujian">Nilai Ujian</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -463,12 +508,19 @@ export default function Nilai() {
                           <Label className="text-xs text-slate-500">Nama Guru</Label>
                           <Input value={kelasFormData.nama_guru} disabled placeholder="Otomatis dari Pembelajaran" className="mt-1 bg-slate-50" />
                         </div>
-                        {!['PTS','PAS'].includes(kelasFormData.jenis_penilaian) && (
-                          <div>
-                            <Label className="text-xs text-slate-500">Kompetensi/Bab</Label>
-                            <Input value={kelasFormData.kompetensi_bab} onChange={(e) => setKelasFormData({...kelasFormData, kompetensi_bab: e.target.value})} className="mt-1" />
-                          </div>
-                        )}
+                        <div>
+                          <Label className="text-xs text-slate-500">{isHarianKategori ? 'Jenis (Otomatis)' : 'Jenis Penilaian Ujian'}</Label>
+                          {isHarianKategori ? (
+                            <Input value="Harian (per BAB/Materi)" disabled className="mt-1 text-center bg-slate-50" />
+                          ) : (
+                            <Select value={kelasFormData.jenis_penilaian} onValueChange={(v) => setKelasFormData({...kelasFormData, jenis_penilaian: v})}>
+                              <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                              <SelectContent>
+                                {['PTS','PAS','US','UP'].map(j => <SelectItem key={j} value={j}>{j === 'US' ? 'US (Ujian Sekolah)' : j === 'UP' ? 'UP (Ujian Praktik)' : j}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
                         <div>
                           <Label className="text-xs text-slate-500">Tahun Ajaran</Label>
                           <Select value={kelasFormData.tahun_ajaran} onValueChange={(v) => setKelasFormData({...kelasFormData, tahun_ajaran: v})}>
@@ -482,37 +534,70 @@ export default function Nilai() {
                           <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
                             <p className="text-sm font-semibold text-slate-700">Daftar Siswa ({kelasNilaiData.length})</p>
                             <p className="text-[11px] text-slate-500">
-                              Terisi {kelasNilaiData.filter(i => i.nilai !== '' && i.nilai != null).length} • Tersimpan {kelasNilaiData.filter(i => i.existingId).length}
+                              Terisi {totalTerisi} • Tersimpan {kelasNilaiData.filter(i => Object.keys(i.existing).length > 0).length}
                             </p>
                           </div>
-                          <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                            {kelasNilaiData.map((item) => {
-                              const terisi = item.nilai !== '' && item.nilai !== null && item.nilai !== undefined;
-                              return (
-                                <div key={item.siswa_id} className="flex items-center gap-3 px-4 py-2.5">
-                                  <span className="flex-1 text-sm text-slate-700 truncate">{item.nama_siswa}</span>
-                                  {item.existingId && (
-                                    <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-600 flex-shrink-0">
-                                      <CheckCircle className="w-4 h-4 text-emerald-500" /> Tersimpan
-                                    </span>
-                                  )}
-                                  <Input
-                                    type="number" min="0" max="100" placeholder="0"
-                                    className={`w-20 text-center h-8 text-sm font-medium ${terisi ? (Number(item.nilai) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`}
-                                    value={item.nilai ?? ''}
-                                    onChange={(e) => handleKelasNilaiChange(item.siswa_id, e.target.value)}
-                                  />
-                                </div>
-                              );
-                            })}
+                          {isHarianKategori && (
+                            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                              <p className="text-[11px] text-slate-500">Label Nilai Harian ({kelasLabels.length}) — teks bebas per BAB/materi</p>
+                              <Button type="button" size="sm" variant="outline" onClick={tambahLabel}>
+                                <Plus className="w-4 h-4 mr-1" /> Tambah Nilai
+                              </Button>
+                            </div>
+                          )}
+                          <div className="max-h-72 overflow-y-auto">
+                            <table className="w-full text-sm">
+                              <thead className="sticky top-0 z-10">
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                  <th className="text-left px-4 py-2 font-semibold text-slate-600 bg-slate-50">Siswa</th>
+                                  {kolomAktif.map(k => (
+                                    <th key={k.id} className="px-2 py-1.5 min-w-[140px] bg-slate-50">
+                                      {isHarianKategori ? (
+                                        <div className="flex items-center gap-1">
+                                          <Input value={k.text || ''} onChange={(e) => ubahLabel(k.id, e.target.value)} placeholder="Label Nilai" className="h-7 text-xs px-2" />
+                                          <button type="button" onClick={() => hapusLabel(k.id)} className="text-slate-300 hover:text-red-500 flex-shrink-0" title="Hapus kolom">
+                                            <X className="w-3.5 h-3.5" />
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <span className="text-xs font-semibold text-slate-600">Nilai {kelasFormData.jenis_penilaian || 'Ujian'}</span>
+                                      )}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {kelasNilaiData.map((item) => (
+                                  <tr key={item.siswa_id}>
+                                    <td className="px-4 py-2 text-sm text-slate-700 truncate max-w-[180px] sticky left-0 bg-white">
+                                      {item.nama_siswa}
+                                      {Object.keys(item.existing).length > 0 && <CheckCircle className="inline w-3.5 h-3.5 text-emerald-500 ml-1 -mt-0.5" />}
+                                    </td>
+                                    {kolomAktif.map(k => {
+                                      const val = item.values[k.id] ?? item.existing[k.id]?.nilai ?? '';
+                                      return (
+                                        <td key={k.id} className="px-2 py-1.5">
+                                          <Input
+                                            type="number" min="0" max="100" placeholder="0"
+                                            className={`w-20 text-center h-8 text-sm font-medium ${val !== '' && val != null ? (Number(val) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`}
+                                            value={val}
+                                            onChange={(e) => setNilaiCell(item.siswa_id, k.id, e.target.value)}
+                                          />
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                           <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100">Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
                         </div>
                       )}
                       <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
-                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={kelasNilaiData.length === 0}>
-                          Simpan Nilai Terisi ({kelasNilaiData.filter(i => i.nilai !== '' && i.nilai != null).length})
+                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0}>
+                          Simpan Nilai Terisi ({totalTerisi})
                         </Button>
                       </div>
                     </form>
@@ -550,10 +635,13 @@ export default function Nilai() {
                           </Select>
                         </div>
                         <div>
-                          <Label className="text-xs text-slate-500">Jenis Penilaian</Label>
-                          <Select value={formData.jenis_penilaian} onValueChange={(v) => setFormData({...formData, jenis_penilaian: v})}>
+                          <Label className="text-xs text-slate-500">Kategori Nilai</Label>
+                          <Select value={formData.kategori} onValueChange={(v) => setFormData({...formData, kategori: v, jenis_penilaian: v === 'Nilai Harian' ? 'Harian' : ''})}>
                             <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
-                            <SelectContent>{['Ulangan Harian','Tugas','PTS','PAS','Praktik'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}</SelectContent>
+                            <SelectContent>
+                              <SelectItem value="Nilai Harian">Nilai Harian</SelectItem>
+                              <SelectItem value="Nilai Ujian">Nilai Ujian</SelectItem>
+                            </SelectContent>
                           </Select>
                         </div>
                       </div>
@@ -577,10 +665,21 @@ export default function Nilai() {
                         <Label className="text-xs text-slate-500">Nama Guru (Otomatis dari Pembelajaran)</Label>
                         <Input value={formData.nama_guru || ''} disabled placeholder="Otomatis" className="mt-1 bg-slate-50" />
                       </div>
-                      {!['PTS','PAS'].includes(formData.jenis_penilaian) && (
+                      {formData.kategori === 'Nilai Harian' && (
                         <div>
-                          <Label className="text-xs text-slate-500">Kompetensi / Bab</Label>
-                          <Input className="mt-1" value={formData.kompetensi_bab} onChange={(e) => setFormData({...formData, kompetensi_bab: e.target.value})} placeholder="Contoh: Bab 1 - Teks Narasi" />
+                          <Label className="text-xs text-slate-500">Label Nilai (Bebas — mis. Nilai BAB 1, Nilai BAB 2)</Label>
+                          <Input className="mt-1" value={formData.kompetensi_bab} onChange={(e) => setFormData({...formData, kompetensi_bab: e.target.value})} placeholder="Contoh: Nilai BAB 1" />
+                        </div>
+                      )}
+                      {formData.kategori === 'Nilai Ujian' && (
+                        <div>
+                          <Label className="text-xs text-slate-500">Jenis Penilaian Ujian</Label>
+                          <Select value={formData.jenis_penilaian} onValueChange={(v) => setFormData({...formData, jenis_penilaian: v})}>
+                            <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
+                            <SelectContent>
+                              {['PTS','PAS','US','UP'].map(j => <SelectItem key={j} value={j}>{j === 'US' ? 'US (Ujian Sekolah)' : j === 'UP' ? 'UP (Ujian Praktik)' : j}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
                       )}
                       <div className="grid gap-4 grid-cols-3">
@@ -676,7 +775,7 @@ export default function Nilai() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Semua Jenis</SelectItem>
-                    {['Ulangan Harian','Tugas','PTS','PAS','Praktik'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
+                    {['Harian','PTS','PAS','US','UP'].map(j => <SelectItem key={j} value={j}>{j}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -729,7 +828,8 @@ export default function Nilai() {
                     className="w-full flex items-center gap-3 p-4 rounded-2xl border border-slate-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-left"
                     onClick={() => {
                       setInputChoiceOpen(false);
-                      setKelasFormData({ kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
+                      setKelasFormData({ kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
+                      setKelasLabels([]);
                       setKelasNilaiData([]);
                       setKelasInputOpen(true);
                     }}

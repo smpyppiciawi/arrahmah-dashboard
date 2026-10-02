@@ -42,10 +42,10 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
 
   const setFormatMutation = useMutation({
     mutationFn: (format) => base44.entities.PengaturanAplikasi.update(pengaturanList[0].id, { format_nilai_akhir: format }),
-    onSuccess: () => {
+    onSuccess: (data, format) => {
       queryClient.invalidateQueries({ queryKey: ['pengaturan-aplikasi'] });
       queryClient.invalidateQueries({ queryKey: ['nilai-all'] });
-      toast({ title: 'Format Nilai Akhir diubah', description: `Sekarang aktif: ${FORMAT_NILAI_AKHIR[formatAktif === 1 ? 1 : formatAktif].label}` });
+      toast({ title: 'Format Nilai Akhir diubah', description: `Sekarang aktif: Format ${format} — ${FORMAT_NILAI_AKHIR[format].label}` });
     },
   });
 
@@ -109,7 +109,7 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
 
   const valCell = (v, kkm) => {
     if (v === null || v === undefined) return <span className="text-slate-300 text-xs">-</span>;
-    const color = v >= (kkm || 75) ? 'text-emerald-600 font-bold' : v >= 60 ? 'text-amber-600 font-semibold' : 'red-600';
+    const color = v >= (kkm || 75) ? 'text-emerald-600 font-bold' : v >= 60 ? 'text-amber-600 font-semibold' : 'text-red-600';
     return <span className={color}>{v}</span>;
   };
 
