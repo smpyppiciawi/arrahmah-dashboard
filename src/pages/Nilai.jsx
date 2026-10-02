@@ -450,7 +450,7 @@ export default function Nilai() {
         </div>
 
         {activeTab === 'analisis' && <AnalisisNilai />}
-        {activeTab === 'pengelolaan' && <PengelolaanNilai />}
+        {activeTab === 'pengelolaan' && <PengelolaanNilai userRole={userRole} />}
         {activeTab === 'tka' && <TkaTab userRole={userRole} guruData={guruData} kelasList={kelasList} siswaList={siswaList} currentUser={currentUser} />}
         {activeTab === 'pts' && (isGuruRole
           ? <PtsGuruView activeAcademicYear={activeAcademicYear} />
