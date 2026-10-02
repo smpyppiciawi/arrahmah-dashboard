@@ -12,7 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { fetchAllNilai } from '@/lib/nilaiLoad';
 import { FORMAT_NILAI_AKHIR, nilaiAkhirRapor, nilaiAkhirIjazah, rerataHarian, rerataUjian } from '@/lib/nilaiAkhir';
 
-const BISA_ATUR_FORMAT = ['admin', 'tu', 'kepsek'];
+const BISA_ATUR_FORMAT = ['admin'];
 
 export default function PengelolaanNilai({ userRole = 'guru' }) {
   const { toast } = useToast();
@@ -141,41 +141,39 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
 
   return (
     <div className="space-y-6">
-      {/* Pemilih Format Nilai Akhir — global, hanya 1 aktif */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-indigo-700">
-            <Percent className="w-5 h-5" /> Format Nilai Akhir
-          </CardTitle>
-          <p className="text-sm text-slate-500">Pilih rumus pembobotan Nilai Akhir — mengaktifkan satu format otomatis mematikan yang lain (berlaku global seluruh sekolah)</p>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[1, 2, 3].map(n => {
-              const aktif = formatAktif === n;
-              return (
-                <button
-                  key={n}
-                  type="button"
-                  disabled={!bisaAtur}
-                  onClick={() => bisaAtur && setFormatMutation.mutate(n)}
-                  className={`text-left p-4 rounded-2xl border transition-all ${aktif ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-indigo-300'} ${!bisaAtur ? 'opacity-70 cursor-not-allowed' : ''}`}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-bold text-slate-800">Format {n}</p>
-                    {aktif && <Badge className="bg-indigo-600 text-white border-0 text-[10px]">Aktif</Badge>}
-                  </div>
-                  <p className="text-xs text-slate-600">{FORMAT_NILAI_AKHIR[n].label}</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Nilai Akhir Rapor dibulatkan ke atas</p>
-                </button>
-              );
-            })}
-          </div>
-          {!bisaAtur && (
-            <p className="flex items-center gap-1.5 text-xs text-slate-400 mt-3"><Lock className="w-3.5 h-3.5" /> Pengubahan format hanya oleh Admin, Tata Usaha & Kepala Sekolah</p>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pemilih Format Nilai Akhir — pilihan bebas 1 format, hanya tampil untuk Admin */}
+      {bisaAtur && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-indigo-700">
+              <Percent className="w-5 h-5" /> Format Nilai Akhir
+            </CardTitle>
+            <p className="text-sm text-slate-500">Pilih 1 format sebagai rumus pembobotan Nilai Akhir — bisa diganti kapan saja dan nilai akhir otomatis menyesuaikan (berlaku global seluruh sekolah)</p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[1, 2, 3].map(n => {
+                const aktif = formatAktif === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setFormatMutation.mutate(n)}
+                    className={`text-left p-4 rounded-2xl border transition-all ${aktif ? 'border-indigo-500 bg-indigo-50 ring-2 ring-indigo-200' : 'border-slate-200 bg-white hover:border-indigo-300'}`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-bold text-slate-800">Format {n}</p>
+                      {aktif && <Badge className="bg-indigo-600 text-white border-0 text-[10px]">Aktif</Badge>}
+                    </div>
+                    <p className="text-xs text-slate-600">{FORMAT_NILAI_AKHIR[n].label}</p>
+                    <p className="text-[10px] text-slate-400 mt-1">Nilai Akhir Rapor dibulatkan ke atas</p>
+                  </button>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filter */}
       <Card className="border-0 shadow-sm">
