@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText, X } from "lucide-react";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
 import TkaTab from "@/components/nilai/TkaTab";
 import NilaiCardList from "@/components/nilai/NilaiCardList";
+import KelasNilaiInputArea from "@/components/nilai/KelasNilaiInputArea";
 import NilaiEditSheet from "@/components/nilai/NilaiEditSheet";
 import PtsTab from "@/components/nilai/PtsTab";
 import PtsGuruView from "@/components/nilai/PtsGuruView";
@@ -57,6 +58,7 @@ export default function Nilai() {
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
   const [kelasLabels, setKelasLabels] = useState([]);
+  const [activeLabelId, setActiveLabelId] = useState(null);
   const labelCounterRef = useRef(0);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -292,6 +294,13 @@ export default function Nilai() {
     }));
   }, [comboKey, existingForCombo, siswaList, kelasList, kelasFormData.kelas_id, kelasFormData.kategori, isHarianKategori]);
 
+  // Mode sheet per BAB: pastikan selalu ada label aktif yang valid
+  useEffect(() => {
+    if (isHarianKategori && !kelasLabels.some(l => l.id === activeLabelId)) {
+      setActiveLabelId(kelasLabels[0]?.id || null);
+    }
+  }, [kelasLabels, activeLabelId, isHarianKategori]);
+
   const handleKelasChange = (kelasId) => {
     setKelasFormData(prev => ({ ...prev, kelas_id: kelasId, mapel: '', nama_guru: '' }));
   };
@@ -461,7 +470,7 @@ export default function Nilai() {
             {canEdit && (
               <>
                 <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
-                  <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto max-md:w-full max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none">
                     <DialogHeader><DialogTitle>Input Nilai Per Kelas</DialogTitle></DialogHeader>
                     <form onSubmit={handleKelasSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -529,77 +538,28 @@ export default function Nilai() {
                           </Select>
                         </div>
                       </div>
-                      {kelasNilaiData.length > 0 && (
-                        <div className="border border-slate-200 rounded-xl overflow-hidden">
-                          <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
-                            <p className="text-sm font-semibold text-slate-700">Daftar Siswa ({kelasNilaiData.length})</p>
-                            <p className="text-[11px] text-slate-500">
-                              Terisi {totalTerisi} • Tersimpan {kelasNilaiData.filter(i => Object.keys(i.existing).length > 0).length}
-                            </p>
+                      <KelasNilaiInputArea
+                        isHarianKategori={isHarianKategori}
+                        jenisPenilaian={kelasFormData.jenis_penilaian}
+                        kelasLabels={kelasLabels}
+                        kelasNilaiData={kelasNilaiData}
+                        kkmPts={kkmPts}
+                        setNilaiCell={setNilaiCell}
+                        tambahLabel={tambahLabel}
+                        ubahLabel={ubahLabel}
+                        hapusLabel={hapusLabel}
+                        activeLabelId={activeLabelId}
+                        setActiveLabelId={setActiveLabelId}
+                        totalTerisi={totalTerisi}
+                        actions={
+                          <div className="flex gap-3 pt-2">
+                            <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
+                            <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0}>
+                              Simpan Nilai Terisi ({totalTerisi})
+                            </Button>
                           </div>
-                          {isHarianKategori && (
-                            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-                              <p className="text-[11px] text-slate-500">Label Nilai Harian ({kelasLabels.length}) — teks bebas per BAB/materi</p>
-                              <Button type="button" size="sm" variant="outline" onClick={tambahLabel}>
-                                <Plus className="w-4 h-4 mr-1" /> Tambah Nilai
-                              </Button>
-                            </div>
-                          )}
-                          <div className="max-h-72 overflow-y-auto">
-                            <table className="w-full text-sm">
-                              <thead className="sticky top-0 z-10">
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                  <th className="text-left px-4 py-2 font-semibold text-slate-600 bg-slate-50">Siswa</th>
-                                  {kolomAktif.map(k => (
-                                    <th key={k.id} className="px-2 py-1.5 min-w-[140px] bg-slate-50">
-                                      {isHarianKategori ? (
-                                        <div className="flex items-center gap-1">
-                                          <Input value={k.text || ''} onChange={(e) => ubahLabel(k.id, e.target.value)} placeholder="Label Nilai" className="h-7 text-xs px-2" />
-                                          <button type="button" onClick={() => hapusLabel(k.id)} className="text-slate-300 hover:text-red-500 flex-shrink-0" title="Hapus kolom">
-                                            <X className="w-3.5 h-3.5" />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <span className="text-xs font-semibold text-slate-600">Nilai {kelasFormData.jenis_penilaian || 'Ujian'}</span>
-                                      )}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {kelasNilaiData.map((item) => (
-                                  <tr key={item.siswa_id}>
-                                    <td className="px-4 py-2 text-sm text-slate-700 truncate max-w-[180px] sticky left-0 bg-white">
-                                      {item.nama_siswa}
-                                      {Object.keys(item.existing).length > 0 && <CheckCircle className="inline w-3.5 h-3.5 text-emerald-500 ml-1 -mt-0.5" />}
-                                    </td>
-                                    {kolomAktif.map(k => {
-                                      const val = item.values[k.id] ?? item.existing[k.id]?.nilai ?? '';
-                                      return (
-                                        <td key={k.id} className="px-2 py-1.5">
-                                          <Input
-                                            type="number" min="0" max="100" placeholder="0"
-                                            className={`w-20 text-center h-8 text-sm font-medium ${val !== '' && val != null ? (Number(val) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`}
-                                            value={val}
-                                            onChange={(e) => setNilaiCell(item.siswa_id, k.id, e.target.value)}
-                                          />
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                          <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100">Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
-                        </div>
-                      )}
-                      <div className="flex gap-3 pt-2">
-                        <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
-                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0}>
-                          Simpan Nilai Terisi ({totalTerisi})
-                        </Button>
-                      </div>
+                        }
+                      />
                     </form>
                   </DialogContent>
                 </Dialog>
