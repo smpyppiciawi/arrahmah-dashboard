@@ -33,6 +33,11 @@
       "type": "number",
       "default": 75,
       "description": "KKM PTS untuk seluruh mapel (diatur pada Tab KKM di Pengaturan PTS, Menu Nilai > PTS). Dipakai untuk kolom KKM Rapor LHBS, status Tuntas/Belum Tuntas, dan perhitungan Predikat PTS."
+    },
+    "format_nilai_akhir": {
+      "type": "number",
+      "default": 1,
+      "description": "Format Nilai Akhir yang aktif (GLOBAL seluruh sekolah, hanya 1 yang aktif): 1 = 70% Rerata Nilai Harian + 30% Rerata Nilai Ujian; 2 = 75% + 25%; 3 = 60% + 40%. Nilai Akhir Rapor dibulatkan ke atas."
     }
   },
   "required": [

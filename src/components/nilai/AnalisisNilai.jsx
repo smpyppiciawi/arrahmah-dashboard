@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TrendingUp, TrendingDown, Minus, Search } from "lucide-react";
 import { fetchAllNilai } from '@/lib/nilaiLoad';
+import { nilaiAkhirRapor } from '@/lib/nilaiAkhir';
 
 const SEMESTER_ORDER = [
   { semester: 'Ganjil', tahun: null, label: 'Sem 1' },
@@ -32,6 +33,13 @@ export default function AnalisisNilai() {
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
+  const { data: pengaturanList = [] } = useQuery({
+    queryKey: ['pengaturan-aplikasi'],
+    queryFn: () => base44.entities.PengaturanAplikasi.list(),
+    staleTime: 300000,
+  });
+  const formatNilaiAkhir = Number(pengaturanList[0]?.format_nilai_akhir) || 1;
+
   const { data: siswaList = [] } = useQuery({
     queryKey: ['siswa'],
     queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }),
@@ -46,32 +54,10 @@ export default function AnalisisNilai() {
     [nilaiList]
   );
 
-  // Hitung nilai akhir per siswa per semester per tahun ajaran per mapel
-  // Nilai akhir = rata-rata Ulangan Harian + Tugas + PTS + PAS (Ganjil)
-  //             = rata-rata Ulangan Harian + Tugas + PTS (Genap Kelas 7&8, atau Genap Kelas 9)
+  // Nilai akhir per periode = bobot format aktif (Rerata Nilai Harian + Rerata Nilai Ujian), dibulatkan ke atas
   const hitungNilaiAkhir = (nilaiArr, kelas, semester) => {
     const tingkat = kelas?.replace(/[^0-9]/g, '') || '';
-    const isKelas9GenAP = tingkat === '9' && semester === 'Genap';
-    
-    const harian = nilaiArr.filter(n => ['Ulangan Harian', 'Tugas'].includes(n.jenis_penilaian));
-    const pts = nilaiArr.filter(n => n.jenis_penilaian === 'PTS');
-    const pas = nilaiArr.filter(n => n.jenis_penilaian === 'PAS');
-    
-    const rataHarian = harian.length > 0 ? harian.reduce((s, n) => s + n.nilai, 0) / harian.length : null;
-    const rataPTS = pts.length > 0 ? pts.reduce((s, n) => s + n.nilai, 0) / pts.length : null;
-    const rataPAS = pas.length > 0 ? pas.reduce((s, n) => s + n.nilai, 0) / pas.length : null;
-
-    if (isKelas9GenAP) {
-      // Kelas 9 Genap: rata harian + PTS saja (untuk rapor)
-      const components = [rataHarian, rataPTS].filter(v => v !== null);
-      if (components.length === 0) return null;
-      return Math.round(components.reduce((s, v) => s + v, 0) / components.length);
-    } else {
-      // Ganjil semua kelas & Genap Kelas 7,8: harian + PTS + PAS
-      const components = [rataHarian, rataPTS, rataPAS].filter(v => v !== null);
-      if (components.length === 0) return null;
-      return Math.round(components.reduce((s, v) => s + v, 0) / components.length);
-    }
+    return nilaiAkhirRapor(nilaiArr, { semester, tingkat, format: formatNilaiAkhir });
   };
 
   // Kelompokkan nilai per siswa
@@ -138,7 +124,7 @@ export default function AnalisisNilai() {
       return s.nama_siswa?.toLowerCase().includes(searchQuery.toLowerCase()) ||
              s.nis?.toLowerCase().includes(searchQuery.toLowerCase());
     });
-  }, [nilaiList, filterKelas, filterMapel, searchQuery]);
+  }, [nilaiList, filterKelas, filterMapel, searchQuery, formatNilaiAkhir]);
 
   const trendColor = (trend) => ({
     naik: 'text-emerald-600',

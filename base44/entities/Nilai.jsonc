@@ -31,19 +31,35 @@
     "tahun_ajaran": {
       "type": "string"
     },
+    "kategori": {
+      "type": "string",
+      "enum": [
+        "Nilai Harian",
+        "Nilai Ujian"
+      ],
+      "description": "Kategori Nilai: pemisah antara Nilai Harian (bisa banyak entri per BAB/materi, label teks bebas) dan Nilai Ujian (PTS/PAS/US/UP, hanya 1 kali pelaksanaan)"
+    },
     "jenis_penilaian": {
       "type": "string",
       "enum": [
-        "Ulangan Harian",
-        "Tugas",
+        "Harian",
         "PTS",
         "PAS",
+        "US",
+        "UP",
+        "Ulangan Harian",
+        "Tugas",
         "Praktik"
-      ]
+      ],
+      "description": "Jenis penilaian. Harian = Nilai Harian (bisa lebih dari 1 nilai per BAB); PTS/PAS/US/UP = Nilai Ujian. Jenis lama (Ulangan Harian/Tugas/Praktik) telah dikonversi menjadi Harian lewat fungsi migrasi."
     },
     "kompetensi_bab": {
       "type": "string",
-      "description": "Kompetensi atau bab yang dinilai"
+      "description": "Label BAB/materi untuk Nilai Harian (teks bebas per guru, contoh: Nilai BAB 1); kosong untuk Nilai Ujian"
+    },
+    "label": {
+      "type": "string",
+      "description": "Label BAB/materi Nilai Harian (teks bebas per guru); kosong untuk Nilai Ujian"
     },
     "nilai": {
       "type": "number"

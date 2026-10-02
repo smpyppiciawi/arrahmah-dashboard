@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText } from "lucide-react";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
@@ -52,10 +52,12 @@ export default function Nilai() {
   const [kelasInputOpen, setKelasInputOpen] = useState(false);
   const [inputChoiceOpen, setInputChoiceOpen] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
-    kelas_id: '', mapel: '', jenis_penilaian: '', kompetensi_bab: '',
+    kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '',
     semester: semesterAktif, tahun_ajaran: '', nama_guru: ''
   });
   const [kelasNilaiData, setKelasNilaiData] = useState([]);
+  const [kelasLabels, setKelasLabels] = useState([]);
+  const labelCounterRef = useRef(0);
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { activeAcademicYear } = useActiveAcademicYear();
@@ -80,7 +82,7 @@ export default function Nilai() {
 
   const [formData, setFormData] = useState({
     siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '',
-    mapel: '', semester: semesterAktif, tahun_ajaran: '', jenis_penilaian: '',
+    mapel: '', semester: semesterAktif, tahun_ajaran: '', kategori: '', jenis_penilaian: '',
     kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '', nama_guru: ''
   });
 
@@ -171,7 +173,7 @@ export default function Nilai() {
   });
 
   const resetForm = () => {
-    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '', nama_guru: '' });
+    setFormData({ siswa_id: '', nis: '', nama_siswa: '', kelas_id: '', nama_kelas: '', mapel: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', kategori: '', jenis_penilaian: '', kompetensi_bab: '', nilai: '', kkm: 75, status_ketuntasan: '', nama_guru: '' });
     setEditingData(null);
     setIsOpen(false);
   };
@@ -205,16 +207,39 @@ export default function Nilai() {
       toast({ title: 'Lengkapi data', description: 'Siswa dan Mata Pelajaran wajib dipilih.', variant: 'destructive' });
       return;
     }
-    if (!formData.jenis_penilaian) {
-      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis penilaian sebelum menyimpan.', variant: 'destructive' });
+    if (!formData.kategori) {
+      toast({ title: 'Kategori Nilai wajib dipilih', description: 'Pilih kategori Nilai Harian atau Nilai Ujian sebelum menyimpan.', variant: 'destructive' });
       return;
     }
-    const payload = { ...formData, nilai: Number(formData.nilai), kkm: kkmPts, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '' };
+    const isHarian = formData.kategori === 'Nilai Harian';
+    if (isHarian && !String(formData.kompetensi_bab || '').trim()) {
+      toast({ title: 'Label Nilai wajib diisi', description: 'Isi label BAB/materi untuk Nilai Harian (contoh: Nilai BAB 1).', variant: 'destructive' });
+      return;
+    }
+    if (!isHarian && !formData.jenis_penilaian) {
+      toast({ title: 'Jenis Penilaian wajib dipilih', description: 'Pilih jenis Nilai Ujian (PTS/PAS/US/UP) sebelum menyimpan.', variant: 'destructive' });
+      return;
+    }
+    const labelHarian = isHarian ? String(formData.kompetensi_bab || '').trim() : '';
+    const payload = {
+      ...formData,
+      jenis_penilaian: isHarian ? 'Harian' : formData.jenis_penilaian,
+      kompetensi_bab: labelHarian,
+      label: labelHarian,
+      nilai: Number(formData.nilai), kkm: kkmPts, tahun_ajaran: formData.tahun_ajaran || activeAcademicYear || '',
+    };
     if (editingData) updateMutation.mutate({ id: editingData.id, data: payload });
     else createMutation.mutate(payload);
   };
 
-  const handleEdit = (data) => { setEditingData(data); setFormData({ ...data, nama_guru: data.nama_guru || '' }); setIsOpen(true); };
+  const handleEdit = (data) => {
+    setEditingData(data);
+    setFormData({
+      ...data, nama_guru: data.nama_guru || '',
+      kategori: data.kategori || (['Harian', 'Ulangan Harian', 'Tugas', 'Praktik'].includes(data.jenis_penilaian) ? 'Nilai Harian' : 'Nilai Ujian'),
+    });
+    setIsOpen(true);
+  };
 
   // Simpan dari Bottom Sheet (edit cepat nilai)
   const handleSheetSave = (nilai) => {
