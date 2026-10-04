@@ -56,7 +56,7 @@ export default function KelasNilaiInputArea({
 
             {/* Kartu judul BAB/label aktif */}
             <div className="mt-4 border border-slate-200 rounded-2xl p-4 flex items-start justify-between gap-3 bg-white shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 leading-snug">{judulKolom}</h3>
+              <h3 className="text-lg font-bold text-slate-900 leading-snug break-words min-w-0">{judulKolom}</h3>
               {isHarianKategori && (
                 <button
                   type="button"
@@ -77,7 +77,7 @@ export default function KelasNilaiInputArea({
                 const saved = !!item.existing[kolom.id];
                 return (
                   <div key={item.siswa_id} className="flex items-center gap-3 px-4 py-3">
-                    <span className="flex-1 min-w-0 text-[15px] text-slate-800 truncate">{item.nama_siswa}</span>
+                    <span className="flex-1 min-w-0 text-sm text-slate-800 break-words line-clamp-2 leading-snug">{item.nama_siswa}</span>
                     <Input
                       type="number" min="0" max="100" placeholder="0" inputMode="numeric"
                       className={`w-24 flex-shrink-0 ${cellClass(val)}`}

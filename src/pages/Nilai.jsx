@@ -491,7 +491,7 @@ export default function Nilai() {
             {canEdit && (
               <>
                 <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
-                  <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto max-md:w-full max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none">
+                  <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto max-md:w-full max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none max-md:overflow-x-hidden">
                     <DialogHeader><DialogTitle>Input Nilai Per Kelas</DialogTitle></DialogHeader>
                     <form onSubmit={handleKelasSubmit} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -590,7 +590,7 @@ export default function Nilai() {
                 </Dialog>
 
                 <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                  <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="w-[95vw] max-w-lg max-h-[90vh] overflow-y-auto max-md:overflow-x-hidden">
                     <DialogHeader><DialogTitle>{editingData ? 'Edit Nilai' : 'Input Nilai Baru'}</DialogTitle></DialogHeader>
                     <form onSubmit={handleSubmit} className="space-y-4">
                       <div>
