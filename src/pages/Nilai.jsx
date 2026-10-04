@@ -52,6 +52,7 @@ export default function Nilai() {
   const [sheetRow, setSheetRow] = useState(null);
   const [kelasInputOpen, setKelasInputOpen] = useState(false);
   const [inputChoiceOpen, setInputChoiceOpen] = useState(false);
+  const [menyimpanKelas, setMenyimpanKelas] = useState(false);
   const [kelasFormData, setKelasFormData] = useState({
     kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '',
     semester: semesterAktif, tahun_ajaran: '', nama_guru: ''
@@ -159,14 +160,18 @@ export default function Nilai() {
     staleTime: 60000,
   });
 
+  const pesanError = (err) => err?.response?.data?.detail || err?.message || 'Terjadi kesalahan pada server';
+
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.Nilai.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['nilai'] }); resetForm(); },
+    onError: (err) => { toast({ title: 'Gagal menyimpan nilai', description: pesanError(err), variant: 'destructive' }); },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Nilai.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['nilai'] }); resetForm(); },
+    onError: (err) => { toast({ title: 'Gagal menyimpan nilai', description: pesanError(err), variant: 'destructive' }); },
   });
 
   const deleteMutation = useMutation({
@@ -356,45 +361,60 @@ export default function Nilai() {
       toast({ title: 'Tidak ada nilai terisi', description: 'Isi nilai siswa yang ingin disimpan — sel kosong dilewati.', variant: 'destructive' });
       return;
     }
-    // Guard anti simpan ganda: cek ulang keberadaan record kombinasi sama di server
-    const existingServer = await base44.entities.Nilai.filter({
-      kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
-      jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
-      semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
-    });
-    const byKeyServer = new Map(existingServer.map(n => [`${n.siswa_id}|${n.kompetensi_bab || ''}`, n]));
-    const toCreate = [], toUpdate = [];
-    const usedTarget = new Set();
-    for (const c of cells) {
-      const key = `${c.row.siswa_id}|${c.k.label}`;
-      const server = byKeyServer.get(key);
-      const existingRec = c.row.existing[c.k.id];
-      const targetId = server?.id || existingRec?.id || null;
-      if (targetId && usedTarget.has(targetId)) continue;
-      if (targetId) usedTarget.add(targetId);
-      const status = Number(c.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas';
-      const payload = {
-        kategori: kelasFormData.kategori,
-        jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
-        kompetensi_bab: c.k.label, label: c.k.label,
-        semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
-        kkm: kkmPts, nama_guru: namaGuruFinal,
-        nilai: Number(c.nilai), status_ketuntasan: status,
-      };
-      if (targetId) toUpdate.push({ id: targetId, ...payload });
-      else toCreate.push({
-        ...payload, siswa_id: c.row.siswa_id, nis: c.row.nis,
-        nama_siswa: c.row.nama_siswa, nama_kelas: c.row.nama_kelas,
-      });
+    setMenyimpanKelas(true);
+    try {
+      // Guard anti simpan ganda: cek ulang keberadaan record kombinasi sama di server.
+      // Jika pemeriksaan server gagal, lanjutkan memakai data existing klien agar simpan tetap jalan.
+      let existingServer = [];
+      try {
+        existingServer = await base44.entities.Nilai.filter({
+          kelas_id: kelasFormData.kelas_id, mapel: kelasFormData.mapel,
+          jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
+          semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
+        });
+      } catch (guardErr) {
+        console.error('Pemeriksaan server gagal, lanjut dengan data klien:', guardErr);
+      }
+      const byKeyServer = new Map(existingServer.map(n => [`${n.siswa_id}|${n.kompetensi_bab || ''}`, n]));
+      const toCreate = [], toUpdate = [];
+      const usedTarget = new Set();
+      for (const c of cells) {
+        const key = `${c.row.siswa_id}|${c.k.label}`;
+        const server = byKeyServer.get(key);
+        const existingRec = c.row.existing[c.k.id];
+        const targetId = server?.id || existingRec?.id || null;
+        if (targetId && usedTarget.has(targetId)) continue;
+        if (targetId) usedTarget.add(targetId);
+        const status = Number(c.nilai) >= kkmPts ? 'Tuntas' : 'Belum Tuntas';
+        const payload = {
+          kategori: kelasFormData.kategori,
+          jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
+          kompetensi_bab: c.k.label, label: c.k.label,
+          kelas_id: kelasFormData.kelas_id, nama_kelas: c.row.nama_kelas,
+          semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
+          kkm: kkmPts, nama_guru: namaGuruFinal,
+          nilai: Number(c.nilai), status_ketuntasan: status,
+        };
+        if (targetId) toUpdate.push({ id: targetId, ...payload });
+        else toCreate.push({
+          ...payload, siswa_id: c.row.siswa_id, nis: c.row.nis,
+          nama_siswa: c.row.nama_siswa,
+        });
+      }
+      if (toCreate.length) await base44.entities.Nilai.bulkCreate(toCreate);
+      if (toUpdate.length) await base44.entities.Nilai.bulkUpdate(toUpdate);
+      queryClient.invalidateQueries({ queryKey: ['nilai'] });
+      toast({ title: 'Nilai tersimpan', description: `${toCreate.length} nilai baru, ${toUpdate.length} nilai diperbarui.` });
+      setKelasInputOpen(false);
+      setKelasFormData({ kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
+      setKelasLabels([]);
+      setKelasNilaiData([]);
+    } catch (err) {
+      console.error('Simpan nilai per kelas gagal:', err);
+      toast({ title: 'Gagal menyimpan nilai', description: `${pesanError(err)} — isian Anda tetap utuh, silakan klik Simpan lagi.`, variant: 'destructive' });
+    } finally {
+      setMenyimpanKelas(false);
     }
-    if (toCreate.length) await base44.entities.Nilai.bulkCreate(toCreate);
-    if (toUpdate.length) await base44.entities.Nilai.bulkUpdate(toUpdate);
-    queryClient.invalidateQueries({ queryKey: ['nilai'] });
-    toast({ title: 'Nilai tersimpan', description: `${toCreate.length} nilai baru, ${toUpdate.length} nilai diperbarui.` });
-    setKelasInputOpen(false);
-    setKelasFormData({ kelas_id: '', mapel: '', kategori: '', jenis_penilaian: '', semester: semesterAktif, tahun_ajaran: activeAcademicYear || '', nama_guru: '' });
-    setKelasLabels([]);
-    setKelasNilaiData([]);
   };
 
   const filteredData = nilaiList.filter(item => {
@@ -554,8 +574,12 @@ export default function Nilai() {
                         actions={
                           <div className="flex gap-3 pt-2">
                             <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
-                            <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0}>
-                              Simpan Nilai Terisi ({totalTerisi})
+                            <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
+                              {menyimpanKelas ? (
+                                <>
+                                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…
+                                </>
+                              ) : `Simpan Nilai Terisi (${totalTerisi})`}
                             </Button>
                           </div>
                         }
@@ -665,8 +689,12 @@ export default function Nilai() {
                       </div>
                       <div className="flex gap-3 pt-2">
                         <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
-                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white">
-                          {editingData ? 'Simpan' : 'Tambah'}
+                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={createMutation.isPending || updateMutation.isPending}>
+                          {(createMutation.isPending || updateMutation.isPending) ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…
+                            </>
+                          ) : (editingData ? 'Simpan' : 'Tambah')}
                         </Button>
                       </div>
                     </form>
