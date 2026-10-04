@@ -530,7 +530,7 @@ export default function Nilai() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">KKM (Global)</Label>
-                          <Input type="number" value={kkmPts} disabled className="mt-1 text-center bg-slate-50 font-semibold" />
+                          <Input type="number" value={kkmPts} disabled className="mt-1 bg-slate-50 font-semibold" />
                         </div>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -541,7 +541,7 @@ export default function Nilai() {
                         <div>
                           <Label className="text-xs text-slate-500">{isHarianKategori ? 'Jenis (Otomatis)' : 'Jenis Penilaian Ujian'}</Label>
                           {isHarianKategori ? (
-                            <Input value="Harian (per BAB/Materi)" disabled className="mt-1 text-center bg-slate-50" />
+                            <Input value="Harian (per BAB/Materi)" disabled className="mt-1 bg-slate-50" />
                           ) : (
                             <Select value={kelasFormData.jenis_penilaian} onValueChange={(v) => setKelasFormData({...kelasFormData, jenis_penilaian: v})}>
                               <SelectTrigger className="mt-1"><SelectValue placeholder="Pilih" /></SelectTrigger>
@@ -573,9 +573,9 @@ export default function Nilai() {
                         setActiveLabelId={setActiveLabelId}
                         totalTerisi={totalTerisi}
                         actions={
-                          <div className="flex gap-3 pt-2">
-                            <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="flex-1">Batal</Button>
-                            <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
+                          <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3">
+                            <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="w-full h-11 sm:flex-1">Batal</Button>
+                            <Button type="submit" className="w-full h-11 sm:flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
                               {menyimpanKelas ? (
                                 <>
                                   <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…
@@ -611,7 +611,7 @@ export default function Nilai() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Mata Pelajaran</Label>
                           <Select value={formData.mapel} onValueChange={handleMapelChangeSiswa}>
@@ -630,7 +630,7 @@ export default function Nilai() {
                           </Select>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <Label className="text-xs text-slate-500">Semester (Otomatis)</Label>
                           <Select value={formData.semester} onValueChange={(v) => setFormData({...formData, semester: v})}>
@@ -674,7 +674,7 @@ export default function Nilai() {
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">KKM (Global)</Label>
-                          <Input type="number" value={kkmPts} disabled className="mt-1 text-center bg-slate-50 font-semibold" />
+                          <Input type="number" value={kkmPts} disabled className="mt-1 bg-slate-50 font-semibold" />
                         </div>
                         <div>
                           <Label className="text-xs text-slate-500">Status</Label>
@@ -688,9 +688,9 @@ export default function Nilai() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-3 pt-2">
-                        <Button type="button" variant="outline" onClick={resetForm} className="flex-1">Batal</Button>
-                        <Button type="submit" className="flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={createMutation.isPending || updateMutation.isPending}>
+                      <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3 pt-2">
+                        <Button type="button" variant="outline" onClick={resetForm} className="w-full h-11 sm:flex-1">Batal</Button>
+                        <Button type="submit" className="w-full h-11 sm:flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={createMutation.isPending || updateMutation.isPending}>
                           {(createMutation.isPending || updateMutation.isPending) ? (
                             <>
                               <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…

@@ -161,11 +161,13 @@ export default function KelasNilaiInputArea({
         </>
       )}
 
-      {actions}
-
-      {/* Tab pill BAB — sticky bawah (mobile, hanya Nilai Harian) */}
-      {showTable && isHarianKategori && kelasLabels.length > 0 && (
-        <div className="md:hidden sticky bottom-0 z-30 -mx-6 mt-4 bg-white/95 backdrop-blur border-t border-slate-100 px-6 py-3">
+      {/* ===== MOBILE: footer sticky — tab BAB + tombol aksi selalu terlihat tanpa scroll ===== */}
+      <div className={
+        showTable
+          ? 'md:hidden sticky bottom-0 z-30 -mx-6 mt-4 px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-slate-100 space-y-2.5'
+          : 'md:hidden pt-1'
+      }>
+        {showTable && isHarianKategori && kelasLabels.length > 0 && (
           <div className="flex gap-2 overflow-x-auto no-scrollbar">
             {kelasLabels.map(l => (
               <button
@@ -182,8 +184,12 @@ export default function KelasNilaiInputArea({
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+        {actions}
+      </div>
+
+      {/* ===== DESKTOP: tombol aksi biasa di akhir form ===== */}
+      <div className="hidden md:block">{actions}</div>
 
       {/* Menu titik-tiga: Ubah / Hapus label */}
       <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
