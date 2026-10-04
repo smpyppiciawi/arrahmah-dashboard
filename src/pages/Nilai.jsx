@@ -389,6 +389,7 @@ export default function Nilai() {
         const payload = {
           kategori: kelasFormData.kategori,
           jenis_penilaian: isHarianKategori ? 'Harian' : kelasFormData.jenis_penilaian,
+          mapel: kelasFormData.mapel,
           kompetensi_bab: c.k.label, label: c.k.label,
           kelas_id: kelasFormData.kelas_id, nama_kelas: c.row.nama_kelas,
           semester: kelasFormData.semester, tahun_ajaran: finalTahunAjaran,
