@@ -229,6 +229,17 @@ export default function AbsensiKehadiran() {
       } catch (e) { /* pelanggaran otomatis gagal — absensi tetap tersimpan */ }
     }
 
+    // Notifikasi WA/Email terpusat untuk semua absensi yang tersimpan (fire-and-forget, tidak menahan simpan)
+    const savedPayloads = records
+      .filter(r => savedSids.includes(r.siswa_id))
+      .map(r => ({
+        person_type: 'Siswa', person_id: r.payload.siswa_id, tanggal: r.payload.tanggal,
+        jam: r.payload.jam_masuk || '', status: r.payload.status, metode: 'Manual', jenis_absensi: r.payload.jenis_absensi,
+      }));
+    if (savedPayloads.length > 0) {
+      base44.functions.invoke('notifyAbsensi', { batch: savedPayloads }).catch(() => { /* kegagalan notifikasi tidak memengaruhi absensi */ });
+    }
+
     // Perbarui snapshot ke kondisi tersimpan agar simpan berikutnya tetap akurat
     if (savedSids.length > 0) {
       setSavedSnapshot(prev => {

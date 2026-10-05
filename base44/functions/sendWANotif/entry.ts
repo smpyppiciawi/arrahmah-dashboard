@@ -1,6 +1,8 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { secrets } from 'base44:runtime';
+import { sendFonnteWA, normalizePhone } from '../../shared/waSender.ts';
 
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
@@ -13,32 +15,21 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'phone and message are required' }, { status: 400 });
     }
 
-    const token = Deno.env.get("WA_FONNTE_TOKEN");
+    const token = secrets.get('WA_FONNTE_TOKEN');
     if (!token) {
       return Response.json({ error: 'WA_FONNTE_TOKEN secret not set' }, { status: 500 });
     }
 
-    const cleanPhone = String(phone).replace(/\D/g, '').replace(/^0/, '62');
-
-    const formData = new FormData();
-    formData.append('target', cleanPhone);
-    formData.append('message', message);
-    formData.append('countryCode', '62');
-
-    const response = await fetch('https://api.fonnte.com/send', {
-      method: 'POST',
-      headers: { 'Authorization': token },
-      body: formData,
-    });
-
-    const result = await response.json();
-
-    if (result.status === false || result.status === 'false') {
-      return Response.json({ error: result.reason || result.message || 'Fonnte API error', detail: result }, { status: 502 });
+    const res = await sendFonnteWA(phone, message, token);
+    if (!res.sent) {
+      return Response.json(
+        { error: res.error || res.reason || 'Fonnte API error', detail: res.fonnte || null },
+        { status: 502 }
+      );
     }
 
-    return Response.json({ success: true, phone: cleanPhone, fonnte: result });
+    return Response.json({ success: true, phone: normalizePhone(phone), fonnte: res.fonnte });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

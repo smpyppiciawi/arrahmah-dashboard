@@ -81,6 +81,12 @@ export default function AbsensiJumat() {
         keterangan: 'Alfa di kehadiran sekolah',
       });
     }
+    base44.functions.invoke('notifyAbsensi', {
+      batch: alfaSiswa.map(s => ({
+        person_type: 'Siswa', person_id: s.id, tanggal: selectedDate, jam: '',
+        status: 'Alfa', metode: 'Manual', jenis_absensi: 'Jumat',
+      })),
+    }).catch(() => { /* kegagalan notifikasi tidak memengaruhi absensi */ });
     toast({ title: 'Sinkron selesai', description: `${alfaSiswa.length} siswa Alfa ditandai tidak hadir Jumat.` });
   };
 
@@ -98,6 +104,10 @@ export default function AbsensiJumat() {
         kelas_id: popupKelas, nama_kelas: kelas?.nama_kelas || '', status: 'Alfa', jenis_absensi: 'Jumat',
         keterangan: siswa.jenis_kelamin === 'Laki-laki' ? 'Tidak ikut Jumatan' : 'Tidak ikut Keputrian',
       });
+      base44.functions.invoke('notifyAbsensi', {
+        person_type: 'Siswa', person_id: siswa.id, tanggal: selectedDate, jam: '',
+        status: 'Alfa', metode: 'Manual', jenis_absensi: 'Jumat',
+      }).catch(() => { /* kegagalan notifikasi tidak memengaruhi absensi */ });
     }
   };
 

@@ -159,6 +159,21 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
     }
   };
 
+  // Notifikasi WA & Email terpusat (fire-and-forget — tidak menahan penyimpanan absensi)
+  const kirimNotif = (status, now) => {
+    base44.functions.invoke('notifyAbsensi', {
+      person_type: 'Pegawai', person_id: myGuru.id, tanggal: today, jam: now, status, metode: 'FaceRecognition',
+    }).then((res) => {
+      const d = (res.data?.results && res.data.results[0]) || {};
+      if (!d.wa?.sent) {
+        toast({ title: '📵 WA Tidak Terkirim', description: d.wa?.reason === 'no_contact' ? 'Nomor WA tidak terdata di Data Pegawai' : (d.wa?.error || 'Gagal mengirim WA'), variant: 'destructive' });
+      }
+      if (!d.email?.sent) {
+        toast({ title: '📧 Email Tidak Terkirim', description: d.email?.reason === 'no_contact' ? 'Email tidak terdata di Data Pegawai' : d.email?.reason === 'not_registered' ? 'Email belum terdaftar sebagai pengguna aplikasi' : (d.email?.error || 'Gagal mengirim email'), variant: 'destructive' });
+      }
+    }).catch(() => { /* kegagalan notifikasi tidak memengaruhi absensi */ });
+  };
+
   const handleMatch = async (cardId) => {
     // cardId dari FaceRecognition: FACE-<person_id>
     if (!myGuru) return;
@@ -186,6 +201,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
           });
         }
         toast({ title: 'Absensi pulang tercatat', description: `${myGuru.nama} — Pulang — ${now}` });
+        kirimNotif('Pulang', now);
       } else {
         if (existingToday.length > 0) {
           toast({ title: 'Sudah absen masuk hari ini', description: `Jam: ${existingToday[0].jam_masuk}` });
@@ -200,6 +216,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
           jam_masuk: now, status, metode: 'FaceRecognition',
         });
         toast({ title: 'Absensi masuk tercatat', description: `${myGuru.nama} — ${status} — ${now}` });
+        kirimNotif(status, now);
       }
       queryClient.invalidateQueries({ queryKey: ['absensi-pegawai-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['absensi-mandiri-today'] });

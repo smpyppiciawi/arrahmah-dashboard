@@ -38,6 +38,10 @@
       "type": "string",
       "description": "Nama kelas untuk tampilan"
     },
+    "email": {
+      "type": "string",
+      "description": "Email notifikasi absensi (harus terdaftar sebagai pengguna aplikasi agar bisa menerima email)"
+    },
     "tempat_lahir": {
       "type": "string",
       "description": "Tempat lahir siswa"

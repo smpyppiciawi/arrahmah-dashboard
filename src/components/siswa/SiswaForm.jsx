@@ -342,6 +342,10 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
                     <Button type="button" size="icon" variant="ghost" className="text-red-500" onClick={() => removeKontak(idx)}><X className="w-4 h-4" /></Button>
                   </div>
                 ))}
+                <div>
+                  <Label className="text-xs">Email Notifikasi (harus terdaftar sebagai pengguna aplikasi)</Label>
+                  <Input value={formData.email || ''} onChange={(e) => set('email', e.target.value)} placeholder="contoh@email.com" />
+                </div>
               </div>
 
               {/* Koordinat & Lainnya */}

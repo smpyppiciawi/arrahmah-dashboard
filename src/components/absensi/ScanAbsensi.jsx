@@ -199,67 +199,42 @@ export default function ScanAbsensi() {
     }
   };
 
-  // ====== NOTIFIKASI ======
-  // Pegawai: WA & Email SELALU dibaca dari Data Pegawai (Guru) terbaru, bukan snapshot kartu.
-  const sendPegawaiNotif = async (k, status, now) => {
-    let guru = null;
-    try { guru = await base44.entities.Guru.get(k.person_id); } catch (e) { guru = null; }
+  // ====== NOTIFIKASI (terpusat via notifyAbsensi) ======
+  // Kontak selalu dibaca backend dari data Siswa/Guru terbaru — WA & Email dikirim
+  // sekaligus, hasil tiap kanal independen, dan tidak menahan penyimpanan absensi.
+  const notifReasonText = (c) =>
+    c.reason === 'no_contact' ? 'Kontak tidak terdata di data utama (Siswa/Pegawai)'
+    : c.reason === 'not_registered' ? 'Email belum terdaftar sebagai pengguna aplikasi'
+    : c.reason === 'not_found' ? 'Data Siswa/Pegawai tidak ditemukan'
+    : c.reason === 'invalid_phone' ? 'Nomor WA tidak valid'
+    : c.reason === 'no_token' ? 'Token WA belum diatur di pengaturan aplikasi'
+    : (c.error || 'Gagal mengirim');
 
-    // WA — hanya dari no_telp Data Pegawai
-    const phone = guru?.no_telp;
-    if (!phone) {
-      toast({ title: '📵 WA Tidak Terkirim', description: `Nomor WA ${k.nama} tidak terdata di Data Pegawai`, variant: 'destructive' });
-    } else {
-      const cleanPhone = String(phone).replace(/\D/g, '').replace(/^0/, '62');
-      const msg = `*Notifikasi Absensi Pegawai*\n\nNama: ${k.nama}\nJabatan: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
-      try {
-        const res = await base44.functions.invoke('sendWANotif', { phone: cleanPhone, message: msg });
-        if (res.data?.success) {
-          toast({ title: '📲 WA Terkirim', description: `Notifikasi terkirim ke ${k.nama}` });
-        } else {
-          toast({ title: '⚠️ WA Gagal', description: res.data?.error || 'Gagal mengirim WA', variant: 'destructive' });
-        }
-      } catch (err) {
-        toast({ title: '⚠️ WA Error', description: err.message, variant: 'destructive' });
-      }
-    }
-
-    // Email — hanya dari email Data Pegawai
-    const email = guru?.email;
-    if (!email) {
-      toast({ title: '📧 Email Tidak Terkirim', description: `Email ${k.nama} tidak terdata di Data Pegawai`, variant: 'destructive' });
-      return;
-    }
+  const sendNotif = async (k, status, now, personType) => {
     try {
-      const res = await base44.functions.invoke('sendAbsensiEmail', {
-        email, nama: k.nama, jabatan: k.info, tanggal: today, jam: now, status, metode: k.jenis,
+      const res = await base44.functions.invoke('notifyAbsensi', {
+        person_type: personType,
+        person_id: k.person_id,
+        tanggal: today,
+        jam: now,
+        status,
+        metode: k.jenis,
       });
-      if (res.data?.sent) {
-        toast({ title: '📧 Email Terkirim', description: `Konfirmasi absensi terkirim ke ${k.nama}` });
-      } else {
-        toast({ title: '⚠️ Email Gagal', description: res.data?.reason === 'not_registered'
-          ? 'Email pegawai belum terdaftar sebagai pengguna aplikasi'
-          : (res.data?.error || 'Gagal mengirim email'), variant: 'destructive' });
-      }
-    } catch (err) {
-      toast({ title: '⚠️ Email Error', description: err.message, variant: 'destructive' });
-    }
-  };
-
-  // Siswa: WA dari nomor terdata pada kartu absensi siswa
-  const sendSiswaNotif = async (k, status, now) => {
-    if (!k.no_telp) return;
-    const cleanPhone = k.no_telp.replace(/\D/g, '').replace(/^0/, '62');
-    const msg = `*Notifikasi Absensi Siswa*\n\nNama: ${k.nama}\nKelas: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
-    try {
-      const res = await base44.functions.invoke('sendWANotif', { phone: cleanPhone, message: msg });
-      if (res.data?.success) {
+      const d = (res.data?.results && res.data.results[0]) || {};
+      const wa = d.wa || { sent: false, reason: 'no_contact' };
+      if (wa.sent) {
         toast({ title: '📲 WA Terkirim', description: `Notifikasi terkirim ke ${k.nama}` });
       } else {
-        toast({ title: '⚠️ WA Gagal', description: res.data?.error || 'Gagal mengirim WA', variant: 'destructive' });
+        toast({ title: '📵 WA Tidak Terkirim', description: notifReasonText(wa), variant: 'destructive' });
+      }
+      const em = d.email || { sent: false, reason: 'no_contact' };
+      if (em.sent) {
+        toast({ title: '📧 Email Terkirim', description: `Konfirmasi absensi terkirim ke ${k.nama}` });
+      } else {
+        toast({ title: '📧 Email Tidak Terkirim', description: notifReasonText(em), variant: 'destructive' });
       }
     } catch (err) {
-      toast({ title: '⚠️ WA Error', description: err.message, variant: 'destructive' });
+      toast({ title: '⚠️ Notifikasi Gagal', description: err.message, variant: 'destructive' });
     }
   };
 
@@ -270,13 +245,30 @@ export default function ScanAbsensi() {
     setProcessing(true);
 
     try {
+      let k = null;
       const kartuList = await base44.entities.KartuAbsensi.filter({ card_id: cardId, status: 'Aktif' });
-      if (!kartuList || kartuList.length === 0) {
+      if (kartuList && kartuList.length > 0) {
+        k = kartuList[0];
+      } else if (cardId.startsWith('FACE-')) {
+        // Scan wajah: kartu virtual mungkin belum terdaftar di Pendaftaran Kartu —
+        // cari pemilik wajah langsung dari DataWajah agar absensi & notifikasi tetap jalan.
+        const personId = cardId.replace(/^FACE-/, '');
+        let wajahList = await base44.entities.DataWajah.filter({ status: 'Aktif', card_id_virtual: cardId });
+        if (!wajahList || wajahList.length === 0) {
+          wajahList = await base44.entities.DataWajah.filter({ status: 'Aktif', person_id: personId });
+        }
+        if (wajahList && wajahList.length > 0) {
+          const w = wajahList[0];
+          k = {
+            card_id: cardId, jenis: 'FaceRecognition', person_type: w.person_type,
+            person_id: w.person_id, nama: w.nama, nip_nis: w.nip_nis, info: w.info,
+          };
+        }
+      }
+      if (!k) {
         notify({ status: 'error', message: `Kartu "${cardId}" tidak terdaftar`, cardId });
         return;
       }
-
-      const k = kartuList[0];
       const pt = k.person_type === 'Pegawai' ? 'Pegawai' : 'Siswa';
       const now = format(new Date(), 'HH:mm');
       const lateThreshold = getLateThreshold(pt);
@@ -301,7 +293,7 @@ export default function ScanAbsensi() {
             });
           }
           notify({ status: 'success', message: `${k.nama} — Pulang — ${now}`, cardId, person: k, type: 'pulang', nama: k.nama, jamAbsen: now, statusAbsen: 'Pulang' });
-          sendPegawaiNotif(k, 'Pulang', now);
+          sendNotif(k, 'Pulang', now, 'Pegawai');
           queryClient.invalidateQueries({ queryKey: ['scan-today-pegawai', today] });
           return;
         }
@@ -318,7 +310,7 @@ export default function ScanAbsensi() {
           jam_masuk: now, status, metode: k.jenis, card_id: cardId,
         });
         notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
-        sendPegawaiNotif(k, status, now);
+        sendNotif(k, status, now, 'Pegawai');
         queryClient.invalidateQueries({ queryKey: ['scan-today-pegawai', today] });
       } else {
         const existing = await base44.entities.Absensi.filter({ siswa_id: k.person_id, tanggal: today, jenis_absensi: 'Kehadiran' });
@@ -336,7 +328,7 @@ export default function ScanAbsensi() {
           metode: k.jenis, card_id: cardId,
         });
         notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
-        sendSiswaNotif(k, status, now);
+        sendNotif(k, status, now, 'Siswa');
         queryClient.invalidateQueries({ queryKey: ['scan-today-siswa', today] });
       }
     } catch (err) {
