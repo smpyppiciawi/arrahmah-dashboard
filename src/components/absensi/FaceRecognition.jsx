@@ -13,6 +13,11 @@ const SCAN_INTERVAL = 1500;
 let modelsLoadPromise = null;
 const faceDataCache = {};
 
+// Hapus cache data wajah (panggil setelah pendaftaran wajah baru agar scan memuat data terbaru)
+export function invalidateFaceDataCache() {
+  Object.keys(faceDataCache).forEach((k) => delete faceDataCache[k]);
+}
+
 export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', onRegister, onMatch, disabled }) {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loadingModels, setLoadingModels] = useState(false);
@@ -193,11 +198,14 @@ export default function FaceRecognition({ mode = 'scan', personType = 'Siswa', o
       setResult(null);
 
       if (mode === 'scan') {
-        if (faceDataCache[personType]) {
-          faceDataRef.current = faceDataCache[personType];
+        const cacheKey = personType === 'Semua' ? '__all__' : personType;
+        if (faceDataCache[cacheKey]) {
+          faceDataRef.current = faceDataCache[cacheKey];
         } else {
-          const allFaces = await base44.entities.DataWajah.filter({ person_type: personType, status: 'Aktif' });
-          faceDataCache[personType] = allFaces;
+          const allFaces = personType === 'Semua'
+            ? await base44.entities.DataWajah.filter({ status: 'Aktif' })
+            : await base44.entities.DataWajah.filter({ person_type: personType, status: 'Aktif' });
+          faceDataCache[cacheKey] = allFaces;
           faceDataRef.current = allFaces;
         }
       }

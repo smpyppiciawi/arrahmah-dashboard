@@ -225,6 +225,7 @@ const ROLE_MENU = {
   bendahara: {
     topItems: [
       { name: 'Dashboard', icon: LayoutDashboard, page: 'Dashboard', color: '#3b82f6' },
+      { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
     ],

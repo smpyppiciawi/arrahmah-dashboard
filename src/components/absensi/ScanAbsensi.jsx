@@ -8,14 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc, ScanFace } from "lucide-react";
+import { ScanLine, CheckCircle, XCircle, Clock, User, CreditCard, QrCode, Fingerprint, Camera, Loader2, Monitor, Wifi, Nfc, ScanFace, Users, UserCog } from "lucide-react";
 import QRCameraScanner from '@/components/absensi/QRCameraScanner';
 import NfcScanner from '@/components/absensi/NfcScanner';
 import FingerprintScanner from '@/components/absensi/FingerprintScanner';
 import FaceRecognition from '@/components/absensi/FaceRecognition';
-import { validateGeofence } from '@/lib/geoUtils';
 
-export default function ScanAbsensi({ personType = 'Siswa' }) {
+// Komponen Scan Terpadu: Siswa & Pegawai dalam satu halaman.
+// Tipe pemilik kartu dikenali otomatis dari record KartuAbsensi (person_type),
+// jadi tidak perlu memilih Siswa/Pegawai sebelum scan.
+
+export default function ScanAbsensi() {
   const [scanMode, setScanMode] = useState('kartu');
   const [qrSubMode, setQrSubMode] = useState('kamera');
   const [fpSubMode, setFpSubMode] = useState('reader');
@@ -25,16 +28,37 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   const [processing, setProcessing] = useState(false);
   const [scanLog, setScanLog] = useState([]);
   const inputRef = useRef(null);
+  const bufferRef = useRef('');
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const today = format(new Date(), 'yyyy-MM-dd');
-  const entityName = personType === 'Pegawai' ? 'AbsensiPegawai' : 'Absensi';
 
-  const { data: todayList = [] } = useQuery({
-    queryKey: ['scan-today', personType, today],
-    queryFn: () => base44.entities[entityName].filter({ tanggal: today }),
+  // Rekap terpisah Siswa & Pegawai
+  const { data: siswaToday = [] } = useQuery({
+    queryKey: ['scan-today-siswa', today],
+    queryFn: () => base44.entities.Absensi.filter({ tanggal: today, jenis_absensi: 'Kehadiran' }),
   });
+
+  const { data: pegawaiToday = [] } = useQuery({
+    queryKey: ['scan-today-pegawai', today],
+    queryFn: () => base44.entities.AbsensiPegawai.filter({ tanggal: today }),
+  });
+
+  // Multi-device real-time sync (kedua entitas)
+  useEffect(() => {
+    const unsubSiswa = base44.entities.Absensi.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['scan-today-siswa', today] });
+      }
+    });
+    const unsubPegawai = base44.entities.AbsensiPegawai.subscribe((event) => {
+      if (event.type === 'create' || event.type === 'update') {
+        queryClient.invalidateQueries({ queryKey: ['scan-today-pegawai', today] });
+      }
+    });
+    return () => { unsubSiswa(); unsubPegawai(); };
+  }, [today, queryClient]);
 
   // Jadwal Absensi dinamis (Jam Masuk + toleransi) untuk menentukan terlambat
   const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -56,26 +80,26 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
   };
 
-  const findJadwal = (list) => (list || []).find(j =>
-    (j.person_type === personType || j.person_type === 'Semua') &&
+  const findJadwal = (list, pt) => (list || []).find(j =>
+    (j.person_type === pt || j.person_type === 'Semua') &&
     Array.isArray(j.hari) && j.hari.includes(todayDay)
   );
 
-  const getLateThreshold = () => {
-    const match = findJadwal(jadwalMasuk);
+  const getLateThreshold = (pt) => {
+    const match = findJadwal(jadwalMasuk, pt);
     if (match && match.jam) return addMinutesToHHMM(match.jam, match.toleransi_menit);
-    return personType === 'Pegawai' ? '07:30' : '07:00';
+    return pt === 'Pegawai' ? '07:30' : '07:00';
   };
 
   // Jika toleransi nonaktif, jam berapapun = Masuk (tidak pernah Terlambat)
-  const isToleransiAktif = () => {
-    const match = findJadwal(jadwalMasuk);
+  const isToleransiAktif = (pt) => {
+    const match = findJadwal(jadwalMasuk, pt);
     return match ? match.toleransi_aktif !== false : true;
   };
 
   // Apakah waktu sekarang sudah melewati jam Pulang?
-  const getPulangJam = () => {
-    const match = findJadwal(jadwalPulang);
+  const getPulangJam = (pt) => {
+    const match = findJadwal(jadwalPulang, pt);
     return match && match.jam ? match.jam : null;
   };
 
@@ -85,16 +109,56 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     return () => clearTimeout(t);
   }, [popup]);
 
-  // Multi-device real-time sync
-  useEffect(() => {
-    const unsubscribe = base44.entities[entityName].subscribe((event) => {
-      if (event.type === 'create' || event.type === 'update') {
-        queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
-      }
-    });
-    return unsubscribe;
-  }, [entityName, personType, today]);
+  // ====== SCAN OTOMATIS: terima ketikan reader tanpa perlu klik kolom input ======
+  const scanModeRef = useRef(scanMode);
+  const qrSubModeRef = useRef(qrSubMode);
+  const fpSubModeRef = useRef(fpSubMode);
+  const processingRef = useRef(processing);
+  const processScanRef = useRef(null);
+  scanModeRef.current = scanMode;
+  qrSubModeRef.current = qrSubMode;
+  fpSubModeRef.current = fpSubMode;
+  processingRef.current = processing;
 
+  const isInputBasedMode = () =>
+    scanModeRef.current === 'kartu' ||
+    (scanModeRef.current === 'fingerprint' && fpSubModeRef.current === 'reader') ||
+    (scanModeRef.current === 'qrcode' && qrSubModeRef.current === 'pembaca');
+
+  useEffect(() => {
+    // Fokuskan input otomatis saat portal scan terbuka
+    inputRef.current?.focus();
+    const onKeyDown = (e) => {
+      if (processingRef.current || !isInputBasedMode()) return;
+      const input = inputRef.current;
+      const active = document.activeElement;
+      // Jika user sedang mengetik di kolom input scan, biarkan form yang menangani
+      if (input && active === input) return;
+      // Jangan ganggu elemen input lain (jika ada)
+      if (active && ['INPUT', 'TEXTAREA', 'SELECT'].includes(active.tagName) && active !== input) return;
+      if (e.key === 'Enter') {
+        if (bufferRef.current) {
+          const v = bufferRef.current;
+          bufferRef.current = '';
+          processScanRef.current?.(v);
+        }
+        e.preventDefault();
+        return;
+      }
+      if (e.key && e.key.length === 1) {
+        bufferRef.current += e.key;
+        if (input) {
+          input.focus();
+          setScanInput(bufferRef.current);
+        }
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Auto-refokus saat mode berubah
   useEffect(() => {
     if (scanMode === 'kartu' || (scanMode === 'fingerprint' && fpSubMode === 'reader') || (scanMode === 'qrcode' && qrSubMode === 'pembaca')) {
       setTimeout(() => inputRef.current?.focus(), 100);
@@ -135,12 +199,58 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     }
   };
 
-  const sendWANotif = async (k, status, now) => {
+  // ====== NOTIFIKASI ======
+  // Pegawai: WA & Email SELALU dibaca dari Data Pegawai (Guru) terbaru, bukan snapshot kartu.
+  const sendPegawaiNotif = async (k, status, now) => {
+    let guru = null;
+    try { guru = await base44.entities.Guru.get(k.person_id); } catch (e) { guru = null; }
+
+    // WA — hanya dari no_telp Data Pegawai
+    const phone = guru?.no_telp;
+    if (!phone) {
+      toast({ title: '📵 WA Tidak Terkirim', description: `Nomor WA ${k.nama} tidak terdata di Data Pegawai`, variant: 'destructive' });
+    } else {
+      const cleanPhone = String(phone).replace(/\D/g, '').replace(/^0/, '62');
+      const msg = `*Notifikasi Absensi Pegawai*\n\nNama: ${k.nama}\nJabatan: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
+      try {
+        const res = await base44.functions.invoke('sendWANotif', { phone: cleanPhone, message: msg });
+        if (res.data?.success) {
+          toast({ title: '📲 WA Terkirim', description: `Notifikasi terkirim ke ${k.nama}` });
+        } else {
+          toast({ title: '⚠️ WA Gagal', description: res.data?.error || 'Gagal mengirim WA', variant: 'destructive' });
+        }
+      } catch (err) {
+        toast({ title: '⚠️ WA Error', description: err.message, variant: 'destructive' });
+      }
+    }
+
+    // Email — hanya dari email Data Pegawai
+    const email = guru?.email;
+    if (!email) {
+      toast({ title: '📧 Email Tidak Terkirim', description: `Email ${k.nama} tidak terdata di Data Pegawai`, variant: 'destructive' });
+      return;
+    }
+    try {
+      const res = await base44.functions.invoke('sendAbsensiEmail', {
+        email, nama: k.nama, jabatan: k.info, tanggal: today, jam: now, status, metode: k.jenis,
+      });
+      if (res.data?.sent) {
+        toast({ title: '📧 Email Terkirim', description: `Konfirmasi absensi terkirim ke ${k.nama}` });
+      } else {
+        toast({ title: '⚠️ Email Gagal', description: res.data?.reason === 'not_registered'
+          ? 'Email pegawai belum terdaftar sebagai pengguna aplikasi'
+          : (res.data?.error || 'Gagal mengirim email'), variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: '⚠️ Email Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  // Siswa: WA dari nomor terdata pada kartu absensi siswa
+  const sendSiswaNotif = async (k, status, now) => {
     if (!k.no_telp) return;
     const cleanPhone = k.no_telp.replace(/\D/g, '').replace(/^0/, '62');
-    const msg = personType === 'Pegawai'
-      ? `*Notifikasi Absensi Pegawai*\n\nNama: ${k.nama}\nJabatan: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`
-      : `*Notifikasi Absensi Siswa*\n\nNama: ${k.nama}\nKelas: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
+    const msg = `*Notifikasi Absensi Siswa*\n\nNama: ${k.nama}\nKelas: ${k.info}\nTanggal: ${today}\nJam: ${now}\nStatus: *${status}*\nMetode: ${k.jenis}`;
     try {
       const res = await base44.functions.invoke('sendWANotif', { phone: cleanPhone, message: msg });
       if (res.data?.success) {
@@ -153,25 +263,10 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     }
   };
 
-  const sendEmailNotif = async (k, status, now) => {
-    try {
-      const guru = await base44.entities.Guru.get(k.person_id);
-      const email = guru?.email;
-      if (!email) return;
-      const res = await base44.functions.invoke('sendAbsensiEmail', {
-        email, nama: k.nama, jabatan: k.info, tanggal: today, jam: now, status, metode: k.jenis,
-      });
-      if (res.data?.sent) {
-        toast({ title: '📧 Email Terkirim', description: `Konfirmasi absensi terkirim ke ${k.nama}` });
-      }
-    } catch (err) {
-      // Email gagal tidak mengganggu proses absensi
-    }
-  };
-
+  // ====== PROSES SCAN TERPADU ======
   const processScan = async (cardIdValue) => {
     const cardId = String(cardIdValue || '').trim();
-    if (!cardId || processing) return;
+    if (!cardId || processingRef.current) return;
     setProcessing(true);
 
     try {
@@ -182,17 +277,13 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
       }
 
       const k = kartuList[0];
-      if (k.person_type !== personType) {
-        notify({ status: 'error', message: `Kartu ini untuk ${k.person_type}, bukan ${personType}`, cardId, person: k, nama: k.nama, statusAbsen: 'Salah Kartu' });
-        return;
-      }
-
+      const pt = k.person_type === 'Pegawai' ? 'Pegawai' : 'Siswa';
       const now = format(new Date(), 'HH:mm');
-      const lateThreshold = getLateThreshold();
-      const pulangJam = getPulangJam();
+      const lateThreshold = getLateThreshold(pt);
+      const pulangJam = getPulangJam(pt);
       const isPulangTime = pulangJam && now >= pulangJam;
 
-      if (personType === 'Pegawai') {
+      if (pt === 'Pegawai') {
         const existing = await base44.entities.AbsensiPegawai.filter({ guru_id: k.person_id, tanggal: today });
         // Scan setelah jam Pulang → catat jam keluar / status Pulang
         if (isPulangTime) {
@@ -210,9 +301,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             });
           }
           notify({ status: 'success', message: `${k.nama} — Pulang — ${now}`, cardId, person: k, type: 'pulang', nama: k.nama, jamAbsen: now, statusAbsen: 'Pulang' });
-          sendWANotif(k, 'Pulang', now);
-          sendEmailNotif(k, 'Pulang', now);
-          queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
+          sendPegawaiNotif(k, 'Pulang', now);
+          queryClient.invalidateQueries({ queryKey: ['scan-today-pegawai', today] });
           return;
         }
         if (existing.length > 0) {
@@ -220,7 +310,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           return;
         }
         // Jika toleransi nonaktif → selalu Hadir; jika aktif → cek terlambat
-        const isLate = isToleransiAktif() ? now > lateThreshold : false;
+        const isLate = isToleransiAktif(pt) ? now > lateThreshold : false;
         const status = isLate ? 'Terlambat' : 'Hadir';
         await base44.entities.AbsensiPegawai.create({
           tanggal: today, guru_id: k.person_id, nip: k.nip_nis,
@@ -228,8 +318,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           jam_masuk: now, status, metode: k.jenis, card_id: cardId,
         });
         notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
-        sendWANotif(k, status, now);
-        sendEmailNotif(k, status, now);
+        sendPegawaiNotif(k, status, now);
+        queryClient.invalidateQueries({ queryKey: ['scan-today-pegawai', today] });
       } else {
         const existing = await base44.entities.Absensi.filter({ siswa_id: k.person_id, tanggal: today, jenis_absensi: 'Kehadiran' });
         if (existing.length > 0) {
@@ -237,7 +327,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           return;
         }
         // Siswa: toleransi nonaktif → selalu Hadir; aktif → cek terlambat (kecuali sudah jam pulang)
-        const isLate = (isPulangTime || !isToleransiAktif()) ? false : now > lateThreshold;
+        const isLate = (isPulangTime || !isToleransiAktif(pt)) ? false : now > lateThreshold;
         const status = isPulangTime ? 'Hadir' : (isLate ? 'Terlambat' : 'Hadir');
         await base44.entities.Absensi.create({
           tanggal: today, siswa_id: k.person_id, nis: k.nip_nis,
@@ -246,10 +336,9 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
           metode: k.jenis, card_id: cardId,
         });
         notify({ status: 'success', message: `${k.nama} — ${status} — ${now}`, cardId, person: k, type: 'masuk', nama: k.nama, jamAbsen: now, statusAbsen: status });
-        sendWANotif(k, status, now);
+        sendSiswaNotif(k, status, now);
+        queryClient.invalidateQueries({ queryKey: ['scan-today-siswa', today] });
       }
-
-      queryClient.invalidateQueries({ queryKey: ['scan-today', personType, today] });
     } catch (err) {
       notify({ status: 'error', message: `Error: ${err.message}`, cardId });
     } finally {
@@ -261,8 +350,12 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
     }
   };
 
+  // Simpan referensi terbaru untuk handler keyboard global
+  processScanRef.current = processScan;
+
   const handleFormSubmit = (e) => {
     e.preventDefault();
+    bufferRef.current = '';
     processScan(scanInput);
   };
 
@@ -293,11 +386,38 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
   const isCameraMode = scanMode === 'qrcode' && qrSubMode === 'kamera';
   const isFingerprintHpMode = scanMode === 'fingerprint' && fpSubMode === 'hp';
 
+  const jenisBadgeClass = (jenis) =>
+    jenis === 'RFID' ? 'bg-purple-100 text-purple-700'
+    : jenis === 'QRCode' ? 'bg-blue-100 text-blue-700'
+    : jenis === 'FaceRecognition' ? 'bg-indigo-100 text-indigo-700'
+    : 'bg-orange-100 text-orange-700';
+
   const popupStatusColor = popup?.status === 'success'
     ? { bg: 'bg-emerald-50', ring: 'bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-700', border: 'border-emerald-200' }
     : popup?.status === 'info'
     ? { bg: 'bg-blue-50', ring: 'bg-blue-100', icon: 'text-blue-600', text: 'text-blue-700', border: 'border-blue-200' }
     : { bg: 'bg-red-50', ring: 'bg-red-100', icon: 'text-red-600', text: 'text-red-700', border: 'border-red-200' };
+
+  const renderRecapRow = (a, isPegawai) => (
+    <div key={a.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+      <div className="flex items-center gap-2.5">
+        <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+          <User className="w-4 h-4 text-emerald-600" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-slate-700">{isPegawai ? a.nama_pegawai : a.nama_siswa}</p>
+          <p className="text-xs text-slate-400">{isPegawai ? a.jabatan : a.nama_kelas}</p>
+        </div>
+      </div>
+      <div className="text-right">
+        <p className="text-sm font-mono text-slate-600">{a.jam_masuk}{a.jam_keluar ? ` → ${a.jam_keluar}` : ''}</p>
+        <div className="flex items-center gap-1 justify-end">
+          {a.metode && a.metode !== 'Manual' && <span className="text-[9px] text-slate-400">{a.metode}</span>}
+          <Badge className={`text-[9px] ${a.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'Terlambat' ? 'bg-orange-100 text-orange-700' : a.status === 'Pulang' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{a.status}</Badge>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -307,8 +427,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-100 rounded-2xl mb-3">
               <ScanLine className="w-8 h-8 text-emerald-600" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800">Scan Absensi {personType}</h3>
-            <p className="text-sm text-slate-500">Pilih metode absensi sesuai perangkat</p>
+            <h3 className="text-lg font-bold text-slate-800">Scan Absensi — Siswa &amp; Pegawai</h3>
+            <p className="text-sm text-slate-500">Tipe pemilik kartu dikenali otomatis dari Pendaftaran Kartu</p>
           </div>
 
           {/* Mode Selector */}
@@ -388,7 +508,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
 
           {/* Wajah Mode */}
           {isWajahMode ? (
-            <FaceRecognition mode="scan" personType={personType} onMatch={processScan} disabled={processing} />
+            <FaceRecognition mode="scan" personType="Semua" onMatch={processScan} disabled={processing} />
           ) : isNfcMode ? (
             <div className="flex flex-col items-center gap-3 py-6 border-2 border-dashed border-emerald-300 rounded-xl bg-emerald-50/50">
               <div className="inline-flex items-center justify-center w-14 h-14 bg-emerald-100 rounded-2xl">
@@ -439,6 +559,13 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             </div>
           )}
 
+          {/* Auto-scan indicator */}
+          {isInputBasedMode() && (
+            <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 text-center">
+              <p className="text-xs text-emerald-700"><b>Scan otomatis aktif</b> — cukup tempel/ketik ID, tanpa perlu klik kolom input.</p>
+            </div>
+          )}
+
           {/* Multi-device indicator */}
           <div className="mt-3 flex items-center justify-center gap-1.5 text-[10px] text-slate-400">
             <Wifi className="w-3 h-3 text-emerald-500" />
@@ -457,8 +584,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
               <p className={`font-bold ${lastResult.status === 'success' ? 'text-emerald-700' : 'text-red-700'}`}>{lastResult.message}</p>
               {lastResult.person && (
                 <div className="flex items-center gap-2 mt-1">
-                  <Badge className={lastResult.person.jenis === 'RFID' ? 'bg-purple-100 text-purple-700' : lastResult.person.jenis === 'QRCode' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}>
-                    {lastResult.person.jenis}
+                  <Badge className={jenisBadgeClass(lastResult.person.jenis)}>
+                    {lastResult.person.jenis} · {lastResult.person.person_type}
                   </Badge>
                   <span className="text-xs text-slate-500">ID: {lastResult.cardId}</span>
                 </div>
@@ -468,36 +595,30 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
         </Card>
       )}
 
+      {/* Rekap Pegawai Hari Ini */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2">
-              <Clock className="w-4 h-4 text-emerald-500" /> Absensi Hari Ini ({todayList.length})
-            </h4>
+          <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3">
+            <UserCog className="w-4 h-4 text-indigo-500" /> Rekap Pegawai Hari Ini ({pegawaiToday.length})
+          </h4>
+          <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+            {pegawaiToday.length === 0 ? (
+              <p className="text-center text-slate-400 text-sm py-4">Belum ada absensi pegawai hari ini</p>
+            ) : pegawaiToday.slice().sort((a, b) => (b.jam_masuk || '').localeCompare(a.jam_masuk || '')).map((a) => renderRecapRow(a, true))}
           </div>
-          <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-            {todayList.length === 0 ? (
-              <p className="text-center text-slate-400 text-sm py-4">Belum ada absensi hari ini</p>
-            ) : todayList.slice().sort((a, b) => (b.jam_masuk || '').localeCompare(a.jam_masuk || '')).map((a, i) => (
-              <div key={a.id || i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <User className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-700">{personType === 'Pegawai' ? a.nama_pegawai : a.nama_siswa}</p>
-                    <p className="text-xs text-slate-400">{personType === 'Pegawai' ? a.jabatan : a.nama_kelas}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm font-mono text-slate-600">{a.jam_masuk}{a.jam_keluar ? ` → ${a.jam_keluar}` : ''}</p>
-                  <div className="flex items-center gap-1 justify-end">
-                    {a.metode && a.metode !== 'Manual' && <span className="text-[9px] text-slate-400">{a.metode}</span>}
-                    <Badge className={`text-[9px] ${a.status === 'Hadir' ? 'bg-emerald-100 text-emerald-700' : a.status === 'Terlambat' ? 'bg-orange-100 text-orange-700' : a.status === 'Pulang' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{a.status}</Badge>
-                  </div>
-                </div>
-              </div>
-            ))}
+        </CardContent>
+      </Card>
+
+      {/* Rekap Siswa Hari Ini */}
+      <Card className="border-0 shadow-sm">
+        <CardContent className="p-4">
+          <h4 className="font-bold text-slate-700 text-sm flex items-center gap-2 mb-3">
+            <Users className="w-4 h-4 text-emerald-500" /> Rekap Siswa Hari Ini ({siswaToday.length})
+          </h4>
+          <div className="space-y-1.5 max-h-[280px] overflow-y-auto">
+            {siswaToday.length === 0 ? (
+              <p className="text-center text-slate-400 text-sm py-4">Belum ada absensi siswa hari ini</p>
+            ) : siswaToday.slice().sort((a, b) => (b.jam_masuk || '').localeCompare(a.jam_masuk || '')).map((a) => renderRecapRow(a, false))}
           </div>
         </CardContent>
       </Card>
@@ -508,7 +629,7 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
             <h4 className="font-bold text-slate-700 text-sm mb-2">Log Scan Terakhir</h4>
             <div className="space-y-1 max-h-[150px] overflow-y-auto">
               {scanLog.map((log, i) => (
-                <div key={i} className={`text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                <div key={i} className={`text-xs px-2 py-1.5 rounded-lg flex items-center gap-2 ${log.status === 'success' ? 'bg-emerald-50 text-emerald-600' : log.status === 'info' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
                   <span className="font-mono text-slate-400">{log.time}</span>
                   <span>{log.message}</span>
                 </div>
@@ -560,8 +681,8 @@ export default function ScanAbsensi({ personType = 'Siswa' }) {
 
               {popup.person && (
                 <div className="flex items-center justify-center gap-2 mt-3">
-                  <Badge className={popup.person.jenis === 'RFID' ? 'bg-purple-100 text-purple-700' : popup.person.jenis === 'QRCode' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}>
-                    {popup.person.jenis}
+                  <Badge className={jenisBadgeClass(popup.person.jenis)}>
+                    {popup.person.jenis} · {popup.person.person_type}
                   </Badge>
                   <span className="text-[10px] text-slate-400">ID: {popup.cardId}</span>
                 </div>

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Clock, Plus, Pencil, Trash2, LogIn, LogOut, Coffee, Timer, CalendarClock, Loader2 } from 'lucide-react';
+import RadiusWajahCard from '@/components/absensi/RadiusWajahCard';
 
 const HARI_OPTS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const JENIS_OPTS = [
@@ -37,7 +38,7 @@ const colorMap = {
   slate: 'bg-slate-100 text-slate-600',
 };
 
-export default function JadwalAbsensiTab() {
+export default function JadwalAbsensiTab({ isAdmin = true }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
@@ -141,9 +142,11 @@ export default function JadwalAbsensiTab() {
                 <p className="text-xs text-slate-500">Atur jam masuk, pulang, istirahat & penanda lainnya</p>
               </div>
             </div>
-            <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
-              <Plus className="w-4 h-4" /> Tambah
-            </Button>
+            {isAdmin && (
+              <Button onClick={openCreate} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="w-4 h-4" /> Tambah
+              </Button>
+            )}
           </div>
 
           <div className="flex gap-1.5 mb-4">
@@ -192,11 +195,13 @@ export default function JadwalAbsensiTab() {
                         <span className="truncate">{(r.hari || []).join(', ')}</span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Switch checked={r.aktif !== false} onCheckedChange={() => toggleAktif(r)} />
-                      <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => remove(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                    </div>
+                    {isAdmin && (
+                      <div className="flex items-center gap-1.5">
+                        <Switch checked={r.aktif !== false} onCheckedChange={() => toggleAktif(r)} />
+                        <button onClick={() => openEdit(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"><Pencil className="w-4 h-4" /></button>
+                        <button onClick={() => remove(r)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -283,6 +288,9 @@ export default function JadwalAbsensiTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Pengaturan Radius Scan Wajah — hanya Admin */}
+      {isAdmin && <RadiusWajahCard />}
     </div>
   );
 }

@@ -10,9 +10,10 @@ export default function ScanAbsensiPortal() {
   const { user } = useAuth();
   const userRole = user?.role || 'guru';
   const allowed = ['admin', 'tu', 'operator', 'kepsek'].includes(userRole);
-  // Fitur pengaturan (Jadwal, Pendaftaran Kartu, Kartu ID) hanya Admin/TU/Kepala Sekolah.
-  // Operator hanya melihat Scan.
+  // Fitur pengaturan (Pendaftaran Kartu, Kartu ID) hanya Admin/TU/Kepala Sekolah.
+  // Tab Jadwal & pengelolaannya HANYA Admin.
   const canManage = ['admin', 'tu', 'kepsek'].includes(userRole);
+  const isAdmin = userRole === 'admin';
   const [personType, setPersonType] = useState('Siswa');
   const [view, setView] = useState('scan');
 
@@ -30,12 +31,13 @@ export default function ScanAbsensiPortal() {
 
   const topTabs = [
     { id: 'scan', icon: ScanLine, label: 'Scan' },
-    ...(canManage ? [{ id: 'jadwal', icon: Clock, label: 'Jadwal' }] : []),
+    ...(isAdmin ? [{ id: 'jadwal', icon: Clock, label: 'Jadwal' }] : []),
     ...(canManage ? [{ id: 'kartu', icon: CreditCard, label: 'Pendaftaran Kartu' }] : []),
     ...(canManage ? [{ id: 'idcard', icon: QrCode, label: 'Kartu ID' }] : []),
   ];
 
-  const showPersonToggle = view === 'scan' || view === 'kartu' || view === 'idcard';
+  // Scan terpadu (tanpa pilih Siswa/Pegawai). Toggle hanya untuk Pendaftaran Kartu & Kartu ID.
+  const showPersonToggle = view === 'kartu' || view === 'idcard';
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
@@ -63,7 +65,7 @@ export default function ScanAbsensiPortal() {
           })}
         </div>
 
-        {/* Sub-tab Siswa / Pegawai (untuk Scan, Pendaftaran Kartu, Kartu ID) */}
+        {/* Sub-tab Siswa / Pegawai (untuk Pendaftaran Kartu & Kartu ID) */}
         {showPersonToggle && (
           <div className="flex gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-sm w-full sm:w-fit">
             {[{ id: 'Siswa', icon: Users }, { id: 'Pegawai', icon: User }].map(t => {
@@ -81,8 +83,8 @@ export default function ScanAbsensiPortal() {
           </div>
         )}
 
-        {view === 'scan' && <ScanAbsensi personType={personType} />}
-        {view === 'jadwal' && <JadwalAbsensiTab />}
+        {view === 'scan' && <ScanAbsensi />}
+        {view === 'jadwal' && <JadwalAbsensiTab isAdmin={isAdmin} />}
         {view === 'kartu' && <PendaftaranKartu personType={personType} />}
         {view === 'idcard' && <IDCardPreview personType={personType} />}
       </div>

@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ScanFace, MapPin, Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import FaceRecognition from '@/components/absensi/FaceRecognition';
+import { ScanFace, MapPin, Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw, UserCheck } from 'lucide-react';
+import FaceRecognition, { invalidateFaceDataCache } from '@/components/absensi/FaceRecognition';
 import { validateGeofence } from '@/lib/geoUtils';
 
 const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
@@ -34,6 +34,14 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
     return byName || null;
   }, [guruList, currentUser]);
 
+  // Status pendaftaran wajah pegawai ini (oleh diri sendiri maupun Admin)
+  const { data: wajahList = [], isLoading: wajahLoading } = useQuery({
+    queryKey: ['wajah-mandiri', myGuru?.id],
+    queryFn: () => base44.entities.DataWajah.filter({ person_type: 'Pegawai', person_id: myGuru.id, status: 'Aktif' }),
+    enabled: !!myGuru && open,
+  });
+  const isWajahTerdaftar = wajahList.length > 0;
+
   const { data: jadwalMasuk = [] } = useQuery({
     queryKey: ['jadwal-absensi-masuk-mandiri'],
     queryFn: () => base44.entities.JadwalAbsensi.filter({ jenis: 'Masuk', aktif: true }),
@@ -50,6 +58,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
 
   const [geoState, setGeoState] = useState(null); // null | 'checking' | {ok,distance,...}
   const [submitting, setSubmitting] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const [done, setDone] = useState(false);
 
   const findJadwal = (list) => (list || []).find((j) =>
@@ -93,6 +102,62 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
 
   const geoOk = geoState && geoState.ok;
   const geoBypassed = geoState && (geoState.reason === 'no_profile' || geoState.reason === 'invalid_coord');
+
+  // ====== PENDAFTARAN WAJAH MANDIRI ======
+  const dataURLtoFile = (dataUrl, filename) => {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) u8arr[n] = bstr.charCodeAt(n);
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  const handleSelfRegister = async (descriptor, fotoDataUrl) => {
+    if (!myGuru) return;
+    setRegistering(true);
+    try {
+      const cardId = `FACE-${myGuru.id}`;
+      // Hapus data wajah lama (re-register) agar tidak menumpuk duplikasi
+      for (const w of wajahList) {
+        try { await base44.entities.DataWajah.delete(w.id); } catch (e) { /* noop */ }
+        if (w.card_id_virtual) {
+          try {
+            const oldKartu = await base44.entities.KartuAbsensi.filter({ card_id: w.card_id_virtual });
+            if (oldKartu.length > 0) await base44.entities.KartuAbsensi.delete(oldKartu[0].id);
+          } catch (e) { /* noop */ }
+        }
+      }
+      let fotoUrl = '';
+      try {
+        const fotoFile = dataURLtoFile(fotoDataUrl, `wajah-${myGuru.nama}.jpg`);
+        const res = await base44.integrations.Core.UploadPublicFile({ file: fotoFile });
+        fotoUrl = res.file_url || '';
+      } catch (e) { /* photo upload optional */ }
+      await base44.entities.DataWajah.create({
+        person_type: 'Pegawai', person_id: myGuru.id, nama: myGuru.nama,
+        nip_nis: myGuru.nuptk, info: myGuru.jabatan,
+        descriptor, card_id_virtual: cardId, foto_url: fotoUrl, status: 'Aktif',
+      });
+      // Pastikan kartu virtual wajah terdaftar agar scan terpadu mengenalinya
+      const existingKartu = await base44.entities.KartuAbsensi.filter({ card_id: cardId });
+      if (existingKartu.length === 0) {
+        await base44.entities.KartuAbsensi.create({
+          card_id: cardId, jenis: 'FaceRecognition', person_type: 'Pegawai',
+          person_id: myGuru.id, nama: myGuru.nama, nip_nis: myGuru.nuptk,
+          info: myGuru.jabatan, no_telp: myGuru.no_telp || '', status: 'Aktif',
+        });
+      }
+      invalidateFaceDataCache();
+      queryClient.invalidateQueries({ queryKey: ['wajah-mandiri'] });
+      toast({ title: 'Wajah berhasil didaftarkan', description: 'Anda sekarang bisa scan wajah untuk absensi mandiri.' });
+    } catch (e) {
+      toast({ title: 'Gagal mendaftarkan wajah', description: e.message, variant: 'destructive' });
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   const handleMatch = async (cardId) => {
     // cardId dari FaceRecognition: FACE-<person_id>
@@ -149,6 +214,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
   const handleClose = () => {
     setGeoState(null);
     setSubmitting(false);
+    setRegistering(false);
     setDone(false);
     onClose();
   };
@@ -158,7 +224,7 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><ScanFace className="w-5 h-5 text-indigo-600" /> Absensi Mandiri Pegawai</DialogTitle>
-          <DialogDescription>Verifikasi wajah & geofence lokasi sekolah</DialogDescription>
+          <DialogDescription>Verifikasi wajah &amp; geofence lokasi sekolah</DialogDescription>
         </DialogHeader>
 
         {!myGuru ? (
@@ -225,10 +291,30 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
               )}
             </div>
 
-            {/* Step 2: Face Recognition */}
-            <div className={(!geoOk && !geoBypassed) ? 'opacity-50 pointer-events-none' : ''}>
-              <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5 mb-2"><ScanFace className="w-4 h-4 text-indigo-500" /> 2. Verifikasi Wajah</p>
-              <FaceRecognition mode="scan" personType="Pegawai" onMatch={handleMatch} disabled={submitting || (!geoOk && !geoBypassed)} />
+            {/* Step 2: Wajah — daftar dahulu jika belum, scan jika sudah */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5"><ScanFace className="w-4 h-4 text-indigo-500" /> 2. {isWajahTerdaftar ? 'Verifikasi Wajah' : 'Pendaftaran Wajah'}</p>
+                {isWajahTerdaftar && (
+                  <Badge className="bg-indigo-100 text-indigo-700 gap-1"><UserCheck className="w-3 h-3" /> Wajah sudah terdaftar</Badge>
+                )}
+              </div>
+              {wajahLoading ? (
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl text-sm text-slate-600">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Memuat status wajah...
+                </div>
+              ) : !isWajahTerdaftar ? (
+                <div className="space-y-2">
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-700">
+                    Wajah Anda belum terdaftar. Daftarkan wajah terlebih dahulu untuk bisa scan absensi mandiri.
+                  </div>
+                  <FaceRecognition mode="register" onRegister={handleSelfRegister} disabled={registering} />
+                </div>
+              ) : (
+                <div className={(!geoOk && !geoBypassed) ? 'opacity-50 pointer-events-none' : ''}>
+                  <FaceRecognition mode="scan" personType="Pegawai" onMatch={handleMatch} disabled={submitting || (!geoOk && !geoBypassed)} />
+                </div>
+              )}
             </div>
 
             <Button variant="ghost" className="w-full" onClick={handleClose}>Batal</Button>
