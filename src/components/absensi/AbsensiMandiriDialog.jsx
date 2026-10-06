@@ -166,10 +166,10 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
     }).then((res) => {
       const d = (res.data?.results && res.data.results[0]) || {};
       if (!d.wa?.sent) {
-        toast({ title: '📵 WA Tidak Terkirim', description: d.wa?.reason === 'no_contact' ? 'Nomor WA tidak terdata di Data Pegawai' : (d.wa?.error || 'Gagal mengirim WA'), variant: 'destructive' });
+        toast({ title: '📵 WA Tidak Terkirim', description: d.wa?.reason === 'no_contact' ? 'Nomor WA tidak terdata di Data Pegawai' : d.wa?.reason === 'off' ? 'Gateway WA dimatikan (OFF) di Pengaturan' : (d.wa?.error || 'Gagal mengirim WA'), variant: 'destructive' });
       }
       if (!d.email?.sent) {
-        toast({ title: '📧 Email Tidak Terkirim', description: d.email?.reason === 'no_contact' ? 'Email tidak terdata di Data Pegawai' : d.email?.reason === 'not_registered' ? 'Email belum terdaftar sebagai pengguna aplikasi' : (d.email?.error || 'Gagal mengirim email'), variant: 'destructive' });
+        toast({ title: '📧 Email Tidak Terkirim', description: d.email?.reason === 'no_contact' ? 'Email tidak terdata di Data Pegawai' : d.email?.reason === 'not_registered' ? 'Email belum terdaftar sebagai pengguna aplikasi' : d.email?.reason === 'off' ? 'Gateway Email dimatikan (OFF) di Pengaturan' : (d.email?.error || 'Gagal mengirim email'), variant: 'destructive' });
       }
     }).catch(() => { /* kegagalan notifikasi tidak memengaruhi absensi */ });
   };

@@ -203,7 +203,8 @@ export default function ScanAbsensi() {
   // Kontak selalu dibaca backend dari data Siswa/Guru terbaru — WA & Email dikirim
   // sekaligus, hasil tiap kanal independen, dan tidak menahan penyimpanan absensi.
   const notifReasonText = (c) =>
-    c.reason === 'no_contact' ? 'Kontak tidak terdata di data utama (Siswa/Pegawai)'
+    c.reason === 'off' ? 'Gateway notifikasi dimatikan (OFF) di Pengaturan'
+    : c.reason === 'no_contact' ? 'Kontak tidak terdata di data utama (Siswa/Pegawai)'
     : c.reason === 'not_registered' ? 'Email belum terdaftar sebagai pengguna aplikasi'
     : c.reason === 'not_found' ? 'Data Siswa/Pegawai tidak ditemukan'
     : c.reason === 'invalid_phone' ? 'Nomor WA tidak valid'

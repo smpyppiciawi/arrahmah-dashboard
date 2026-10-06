@@ -24,6 +24,19 @@ Deno.serve(async (req) => {
       return Response.json({ status: 'no_events', date: h1Str, message: 'Tidak ada kegiatan bertugas H-1' });
     }
 
+    // Hormati sakelar gateway: WA jenis Pegawai (Pengaturan) — pengingat dijeda,
+    // tugas_h1_notif_at BELUM ditandai agar terkirim saat gateway diaktifkan kembali.
+    const gatewayRows = await svc.entities.PengaturanAplikasi.list();
+    const gw = (gatewayRows || [])[0] || {};
+    if (gw.notif_wa_pegawai === false) {
+      return Response.json({
+        status: 'wa_off',
+        date: h1Str,
+        events: tugasEvents.length,
+        message: 'Gateway WA Pegawai dimatikan (OFF) di Pengaturan — pengingat H-1 dijeda',
+      });
+    }
+
     const guruList = await svc.entities.Guru.list();
     let waSent = 0;
     const notifiedEventIds = [];

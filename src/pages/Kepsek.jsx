@@ -38,7 +38,8 @@ import BukuTamuKepsekWidget from '@/components/kepsek/BukuTamuKepsekWidget';
 import SaldoBreakdownDialog from '@/components/kepsek/SaldoBreakdownDialog';
 import KehadiranKepsekSection from '@/components/kepsek/KehadiranKepsekSection';
 import KehadiranPegawaiSection from '@/components/kepsek/KehadiranPegawaiSection';
-import { useAbsen3Hari } from '@/hooks/useAbsen3Hari';
+import { useAbsen3Hari, getSchoolWeek } from '@/hooks/useAbsen3Hari';
+import { wibNow } from '@/lib/wib';
 import { getRaporStatus } from '@/lib/raporStatus';
 import LaporanJenisIuranWidget from '@/components/kepsek/LaporanJenisIuranWidget';
 import BeasiswaDibantuWidget from '@/components/kepsek/BeasiswaDibantuWidget';
@@ -59,20 +60,21 @@ export default function Kepsek() {
   const [fabsShown, setFabsShown] = useState(false);
   const [retro, setRetro] = useState(() => localStorage.getItem('kepsek-layout') === 'retro');
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [now, setNow] = useState(new Date());
+  const [now, setNow] = useState(wibNow());
   const [preset, setPreset] = useState('today');
-  const [dateFrom, setDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [dateTo, setDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [dateFrom, setDateFrom] = useState(format(wibNow(), 'yyyy-MM-dd'));
+  const [dateTo, setDateTo] = useState(format(wibNow(), 'yyyy-MM-dd'));
   const [drillDown, setDrillDown] = useState(null);
   const [pelanggaranDrill, setPelanggaranDrill] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
   const [saldoOpen, setSaldoOpen] = useState(false);
 
-  useEffect(() => { const timer = setInterval(() => setNow(new Date()), 1000); return () => clearInterval(timer); }, []);
+  // Jam & tanggal selalu WIB (waktu sekolah) — konsisten di semua perangkat
+  useEffect(() => { const timer = setInterval(() => setNow(wibNow()), 1000); return () => clearInterval(timer); }, []);
   useEffect(() => { localStorage.setItem('kepsek-theme', isDark ? 'dark' : 'light'); }, [isDark]);
   useEffect(() => { localStorage.setItem('kepsek-layout', retro ? 'retro' : 'modern'); }, [retro]);
   useEffect(() => {
-    const today = new Date();
+    const today = wibNow();
     if (preset === 'today') { setDateFrom(format(today, 'yyyy-MM-dd')); setDateTo(format(today, 'yyyy-MM-dd')); }
     else if (preset === 'yesterday') { const y = subDays(today, 1); setDateFrom(format(y, 'yyyy-MM-dd')); setDateTo(format(y, 'yyyy-MM-dd')); }
     else if (preset === '7days') { setDateFrom(format(subDays(today, 6), 'yyyy-MM-dd')); setDateTo(format(today, 'yyyy-MM-dd')); }
@@ -80,7 +82,7 @@ export default function Kepsek() {
     else if (preset === 'year') { setDateFrom(format(startOfYear(today), 'yyyy-MM-dd')); setDateTo(format(endOfYear(today), 'yyyy-MM-dd')); }
   }, [preset]);
 
-  const { data: siswaList = [], refetch } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.list() });
+  const { data: siswaList = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.list() });
   const { data: guruList = [] } = useQuery({ queryKey: ['guru'], queryFn: () => base44.entities.Guru.list() });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list() });
   const { data: absensiList = [] } = useQuery({ queryKey: ['absensi-kepsek'], queryFn: () => base44.entities.Absensi.list('-tanggal', 1000) });
@@ -120,25 +122,11 @@ export default function Kepsek() {
   });
   const myGuruId = useMemo(() => { const g = (guruList || []).find(g => (currentUser?.full_name && g.nama === currentUser.full_name) || (currentUser?.email && g.email === currentUser.email)); return g?.id; }, [guruList, currentUser]);
   const currentSettings = pengaturan?.[0] || {};
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const todayStr = format(wibNow(), 'yyyy-MM-dd');
   const activeDayStr = dateTo > todayStr ? todayStr : dateTo;
   const activeDayName = format(new Date(activeDayStr + 'T00:00:00'), 'EEEE', { locale: idLocale });
-  const getSchoolWeek = (dateStr) => {
-    const d = new Date(dateStr + 'T00:00:00');
-    const day = d.getDay();
-    const monday = new Date(d);
-    monday.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-    const fmt = (x) => x.toISOString().slice(0, 10);
-    const thu = new Date(monday); thu.setDate(monday.getDate() + 3);
-    const year = thu.getFullYear();
-    const jan1 = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((thu - jan1) / 86400000);
-    const jan1Day = (jan1.getDay() + 6) % 7;
-    const weekNum = Math.ceil((dayOfYear + jan1Day + 1) / 7);
-    return { weekKey: `${year}-${String(weekNum).padStart(2, '0')}`, weekStart: fmt(monday), weekEnd: fmt(friday) };
-  };
+  // Minggu sekolah memakai versi bersama (useAbsen3Hari) — tanpa toISOString
+  // agar hasil minggu (weekStart/weekEnd) identik di semua perangkat.
   const { weekStart: curWeekStart, weekEnd: curWeekEnd } = getSchoolWeek(todayStr);
 
   const effIsDark = retro ? false : isDark;
@@ -246,7 +234,7 @@ export default function Kepsek() {
     const prestasiPeriod = prestasiList.filter(p => p.tanggal >= dateFrom && p.tanggal <= dateTo);
     const pelanggaranImpPeriod = pelanggaranImpList.filter(p => p.tanggal >= dateFrom && p.tanggal <= dateTo && p.status !== 'Dibatalkan');
     const improvementPeriod = improvementList.filter(i => i.tanggal >= dateFrom && i.tanggal <= dateTo && i.status === 'Aktif');
-    const h2Date = new Date(); h2Date.setDate(h2Date.getDate() + 2);
+    const h2Date = wibNow(); h2Date.setDate(h2Date.getDate() + 2);
     const h2Events = kalenderList.filter(k => k.tanggal_mulai === format(h2Date, 'yyyy-MM-dd'));
     const visitedIds = new Set(homeVisitList.map(h => h.siswa_id));
     const visitedSiswa = aktiveSiswa.filter(s => visitedIds.has(s.id));
@@ -325,7 +313,7 @@ export default function Kepsek() {
     stats.pelanggaranBerat.forEach(p => { const siswa = siswaList.find(s => s.id === p.siswa_id); const info = getWaliKelasInfo(p.siswa_id); list.push({ id: `pel-${p.id}`, severity: 'warning', category: 'Pelanggaran', title: `Pelanggaran ${p.jenis_pelanggaran}`, person: p.nama_siswa, kelas: p.nama_kelas, poin: p.poin, durasi: p.durasi_sanksi ? `${p.durasi_sanksi} ${p.satuan_durasi || 'Hari'}` : '-', progress: p.progress_sanksi?.length ? `${p.progress_sanksi.filter(s => s.selesai).length}/${p.progress_sanksi.length}` : '-', status: p.status, waliName: info.waliName, waliPhone: info.waliPhone, ortuPhone: siswa?.kontak_list?.[0]?.no_telp || siswa?.no_telp_ortu }); });
     stats.h2Events.forEach(ev => { list.push({ id: `h2-${ev.id}`, severity: 'warning', category: 'Kalender', title: 'Kegiatan H-2', event: ev.judul, date: format(parseISO(ev.tanggal_mulai), 'd MMM yyyy', { locale: idLocale }) }); });
     stats.izinPegawaiPending.forEach(iz => { list.push({ id: `izinpg-${iz.id}`, severity: 'warning', category: 'Izin Pegawai', title: `Izin ${iz.jenis}`, person: iz.nama_pegawai, kelas: iz.jabatan || '', date: format(parseISO(iz.tanggal), 'd MMM yyyy', { locale: idLocale }), keterangan: iz.keterangan, izinId: iz.id }); });
-    const todayStrAlert = format(new Date(), 'yyyy-MM-dd');
+    const todayStrAlert = format(wibNow(), 'yyyy-MM-dd');
     bukuTamuList.filter(t => t.tanggal === todayStrAlert).forEach(t => {
       const forMe = (myGuruId && t.ingin_bertemu_pegawai_id === myGuruId) || (t.ingin_bertemu && currentUser?.full_name && t.ingin_bertemu.toLowerCase() === currentUser.full_name.toLowerCase());
       if (forMe) list.push({ id: `tamu-${t.id}`, severity: 'warning', category: 'Buku Tamu', title: 'Tamu Ingin Bertemu Anda', person: t.jenis_tamu === 'Tamu Orang Tua/Wali' ? t.nama_ortu_wali : t.nama_lengkap, kelas: t.jenis_tamu, keterangan: `Keperluan: ${t.keperluan || '-'}${t.no_hp_wa ? ` · ${t.no_hp_wa}` : ''}` });
@@ -487,7 +475,11 @@ export default function Kepsek() {
             <button onClick={() => setIsDark(!isDark)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`} title="Ganti Tema">
               {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
-            <button onClick={() => refetch()} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><RefreshCw className="w-4 h-4" /></button>
+            <button
+              onClick={() => { queryClient.invalidateQueries(); toast({ title: 'Data disegarkan', description: 'Semua data dashboard dimuat ulang terbaru.' }); }}
+              className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}
+              title="Muat Ulang Semua Data"
+            ><RefreshCw className="w-4 h-4" /></button>
             <button onClick={() => setSettingsOpen(true)} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btn} flex items-center justify-center transition-colors`}><Settings className="w-4 h-4" /></button>
             <button onClick={() => base44.auth.logout()} className={`w-8 h-8 md:w-9 md:h-9 rounded-lg ${t.btnDanger} flex items-center justify-center transition-colors`}><LogOut className="w-4 h-4" /></button>
           </div>
@@ -513,7 +505,7 @@ export default function Kepsek() {
           <div className="lg:col-span-2">
             <AktivitasHariIni absensiPegawaiList={absensiPegawaiList} jadwalPelajaranList={jadwalPelajaranList} guruList={guruList} isDark={effIsDark} />
           </div>
-          <KepsekKalender events={kalenderList} onEmail={handleEmail} today={new Date()} isDark={effIsDark} />
+          <KepsekKalender events={kalenderList} onEmail={handleEmail} today={wibNow()} isDark={effIsDark} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">

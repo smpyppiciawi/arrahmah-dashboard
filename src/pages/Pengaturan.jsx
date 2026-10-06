@@ -22,6 +22,7 @@ import { Settings, GraduationCap, Loader2, CheckCircle, CalendarDays, Save, Aler
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Link } from 'react-router-dom';
 import BackfillAlfaCard from '@/components/pengaturan/BackfillAlfaCard';
+import NotifikasiGatewayCard from '@/components/pengaturan/NotifikasiGatewayCard';
 import AntiDedupMonitorCard from '@/components/pengaturan/AntiDedupMonitorCard';
 import AbsensiDedupMonitorCard from '@/components/pengaturan/AbsensiDedupMonitorCard';
 
@@ -267,6 +268,8 @@ export default function Pengaturan() {
               )}
             </CardContent>
           </Card>
+
+          <NotifikasiGatewayCard pengaturan={pengaturan} isAdmin={currentUser?.role === 'admin'} />
 
           <BackfillAlfaCard pengaturan={pengaturan} />
 

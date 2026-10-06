@@ -38,6 +38,36 @@
       "type": "number",
       "default": 1,
       "description": "Format Nilai Akhir yang aktif (GLOBAL seluruh sekolah, hanya 1 yang aktif): 1 = 70% Rerata Nilai Harian + 30% Rerata Nilai Ujian; 2 = 75% + 25%; 3 = 60% + 40%. Nilai Akhir Rapor dibulatkan ke atas."
+    },
+    "notif_wa_siswa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway WA jenis Siswa (absensi siswa, peringatan absen 3 hari). OFF = pengiriman otomatis WA jenis Siswa dijeda."
+    },
+    "notif_wa_pegawai": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway WA jenis Pegawai (absensi pegawai, pengingat tugas H-1). OFF = pengiriman otomatis WA jenis Pegawai dijeda."
+    },
+    "notif_wa_lainnya": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway WA jenis Lainnya (notifikasi otomatis selain Siswa & Pegawai). OFF = pengiriman otomatis WA jenis Lainnya dijeda."
+    },
+    "notif_email_siswa": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway Email jenis Siswa (konfirmasi absensi siswa). OFF = pengiriman otomatis Email jenis Siswa dijeda."
+    },
+    "notif_email_pegawai": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway Email jenis Pegawai (konfirmasi absensi pegawai, notifikasi H-2 kalender). OFF = pengiriman otomatis Email jenis Pegawai dijeda."
+    },
+    "notif_email_lainnya": {
+      "type": "boolean",
+      "default": true,
+      "description": "Gateway Email jenis Lainnya (notifikasi otomatis selain Siswa & Pegawai). OFF = pengiriman otomatis Email jenis Lainnya dijeda."
     }
   },
   "required": [

@@ -34,6 +34,18 @@ Deno.serve(async (req) => {
     const subject = `Notifikasi H-2: ${events.length} Kegiatan Sekolah Lusa`;
     const body = `Pengingat: Lusa ada kegiatan sekolah:\n\n${eventDetails}\n\nMohon perhatian dan persiapan.\n\n- Sistem Informasi Sekolah YPPI ARRAHMAH`;
 
+    // Hormati sakelar gateway: Email jenis Pegawai (Pengaturan)
+    const gatewayRows = await base44.asServiceRole.entities.PengaturanAplikasi.list();
+    const gw = (gatewayRows || [])[0] || {};
+    if (gw.notif_email_pegawai === false) {
+      return Response.json({
+        status: 'email_off',
+        date: h2DateStr,
+        events: events.length,
+        message: 'Gateway Email Pegawai dimatikan (OFF) di Pengaturan — pengingat H-2 dijeda',
+      });
+    }
+
     let sentCount = 0;
     for (const email of emails) {
       try {

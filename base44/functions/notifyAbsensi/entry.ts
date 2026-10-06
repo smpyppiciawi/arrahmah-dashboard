@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { sendFonnteWA } from '../../shared/waSender.ts';
+import { sendFonnteWA, getNotifGateway } from '../../shared/waSender.ts';
 
 // Notifikasi absensi terpusat (WA + Email) untuk Siswa & Pegawai.
 // - Kontak SELALU dibaca dari data terbaru (Siswa / Guru), bukan snapshot kartu.
@@ -25,12 +25,14 @@ export default async function(req) {
 
     const svc = base44.asServiceRole;
     const token = secrets.get('WA_FONNTE_TOKEN');
+    // Sakelar gateway (per kanal & jenis) dari PengaturanAplikasi — dibaca sekali per panggilan
+    const gw = await getNotifGateway(svc);
 
     const results = [];
     // Proses per 5 paralel: cepat tapi tetap ramah batas rate Fonnte
     for (let i = 0; i < items.length; i += 5) {
       const chunk = items.slice(i, i + 5);
-      const chunkRes = await Promise.allSettled(chunk.map((it) => prosesSatu(svc, it, token)));
+      const chunkRes = await Promise.allSettled(chunk.map((it) => prosesSatu(svc, it, token, gw)));
       chunkRes.forEach((r) => {
         if (r.status === 'fulfilled') {
           results.push(r.value);
@@ -46,7 +48,7 @@ export default async function(req) {
   }
 }
 
-async function prosesSatu(svc, it, token) {
+async function prosesSatu(svc, it, token, gw) {
   const person_type = it && it.person_type;
   const person_id = it && it.person_id;
   if (!person_type || !person_id) {
@@ -55,28 +57,33 @@ async function prosesSatu(svc, it, token) {
   const { tanggal, jam, status, metode, jenis_absensi } = it;
 
   if (person_type === 'Pegawai') {
-    return pegawaiNotif(svc, person_id, tanggal, jam, status, metode, token);
+    return pegawaiNotif(svc, person_id, tanggal, jam, status, metode, token, gw);
   }
-  return siswaNotif(svc, person_id, tanggal, jam, status, metode, jenis_absensi, token);
+  return siswaNotif(svc, person_id, tanggal, jam, status, metode, jenis_absensi, token, gw);
 }
 
 // ===== PEGAWAI: WA & Email keduanya ke pegawai =====
-async function pegawaiNotif(svc, personId, tanggal, jam, status, metode, token) {
+async function pegawaiNotif(svc, personId, tanggal, jam, status, metode, token, gw) {
   let guru = null;
   try { guru = await svc.entities.Guru.get(personId); } catch (e) { guru = null; }
   if (!guru) {
     return { wa: { sent: false, reason: 'not_found' }, email: { sent: false, reason: 'not_found' } };
   }
 
-  const wa = guru.no_telp
-    ? await sendFonnteWA(
-        guru.no_telp,
-        `*Notifikasi Absensi Pegawai*\n\nNama: ${guru.nama}\nJabatan: ${guru.jabatan || '-'}\nTanggal: ${tanggal}\nJam: ${jam || '-'}\nStatus: *${status}*\nMetode: ${metode || '-'}`,
-        token
-      )
-    : { sent: false, reason: 'no_contact' };
+  // Hormati sakelar gateway: WA & Email jenis Pegawai (Pengaturan)
+  const wa = gw.wa_pegawai === false
+    ? { sent: false, reason: 'off' }
+    : guru.no_telp
+      ? await sendFonnteWA(
+          guru.no_telp,
+          `*Notifikasi Absensi Pegawai*\n\nNama: ${guru.nama}\nJabatan: ${guru.jabatan || '-'}\nTanggal: ${tanggal}\nJam: ${jam || '-'}\nStatus: *${status}*\nMetode: ${metode || '-'}`,
+          token
+        )
+      : { sent: false, reason: 'no_contact' };
 
-  const email = await emailTerkirim(
+  const email = gw.email_pegawai === false
+    ? { sent: false, reason: 'off' }
+    : await emailTerkirim(
     svc,
     guru.email,
     `Notifikasi Absensi Pegawai — ${status} (${tanggal} ${jam || '-'})`,
@@ -94,7 +101,7 @@ async function pegawaiNotif(svc, personId, tanggal, jam, status, metode, token) 
 }
 
 // ===== SISWA: WA (Ibu → Ayah → Wali) + Email yang terdaftar =====
-async function siswaNotif(svc, personId, tanggal, jam, status, metode, jenisAbsensi, token) {
+async function siswaNotif(svc, personId, tanggal, jam, status, metode, jenisAbsensi, token, gw) {
   let siswa = null;
   try { siswa = await svc.entities.Siswa.get(personId); } catch (e) { siswa = null; }
   if (!siswa) {
@@ -113,15 +120,20 @@ async function siswaNotif(svc, personId, tanggal, jam, status, metode, jenisAbse
     hubungan = 'Orang Tua/Wali';
   }
 
-  const wa = phone
-    ? await sendFonnteWA(
-        phone,
-        `*Notifikasi Absensi Siswa*\n\nNama: ${siswa.nama}\nKelas: ${siswa.nama_kelas || '-'}\nTanggal: ${tanggal}\nJam: ${jam || '-'}\nStatus: *${status}*\nMetode: ${metode || '-'}${hubungan ? `\n(Dikirim ke ${hubungan})` : ''}`,
-        token
-      )
-    : { sent: false, reason: 'no_contact' };
+  // Hormati sakelar gateway: WA & Email jenis Siswa (Pengaturan)
+  const wa = gw.wa_siswa === false
+    ? { sent: false, reason: 'off' }
+    : phone
+      ? await sendFonnteWA(
+          phone,
+          `*Notifikasi Absensi Siswa*\n\nNama: ${siswa.nama}\nKelas: ${siswa.nama_kelas || '-'}\nTanggal: ${tanggal}\nJam: ${jam || '-'}\nStatus: *${status}*\nMetode: ${metode || '-'}${hubungan ? `\n(Dikirim ke ${hubungan})` : ''}`,
+          token
+        )
+      : { sent: false, reason: 'no_contact' };
 
-  const email = await emailTerkirim(
+  const email = gw.email_siswa === false
+    ? { sent: false, reason: 'off' }
+    : await emailTerkirim(
     svc,
     siswa.email,
     `Notifikasi Absensi Siswa — ${status} (${tanggal} ${jam || '-'})`,

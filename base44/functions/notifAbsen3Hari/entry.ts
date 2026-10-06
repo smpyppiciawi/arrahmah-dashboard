@@ -109,6 +109,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Hormati sakelar gateway: WA jenis Siswa (Pengaturan)
+    const gatewayRows = await svc.entities.PengaturanAplikasi.list();
+    const gw = (gatewayRows || [])[0] || {};
+    if (gw.notif_wa_siswa === false) {
+      return Response.json({
+        status: 'wa_off',
+        weekKey,
+        weekStart,
+        weekEnd,
+        kandidat: siswaAbsen3Hari.length,
+        message: 'Gateway WA Siswa dimatikan (OFF) di Pengaturan — notifikasi dijeda, dedup mingguan tidak ditandai',
+      });
+    }
+
     // Kelompokkan per Wali Kelas (berdasarkan no_telp)
     const byWali = {};
     for (const s of siswaAbsen3Hari) {
