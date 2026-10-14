@@ -16,7 +16,6 @@ import { Label } from '@/components/ui/label';
 // Warna konsisten per status kehadiran (dipakai di semua grafik)
 const STATUS_COLORS = { Izin: '#f59e0b', Sakit: '#3b82f6', Alfa: '#ef4444' };
 const STATUSES = ['Izin', 'Sakit', 'Alfa'];
-const POIN_BAR_COLOR = '#8b5cf6';
 
 const PERIODE_LABEL = { harian: 'Harian', mingguan: 'Mingguan', bulanan: 'Bulanan' };
 
@@ -33,13 +32,24 @@ function bucketLabel(tanggal, periode) {
   if (periode === 'mingguan') return `W${format(d, 'II')}`;
   return format(d, 'dd MMM');
 }
+// Label bucket dari tanggal pertama bucket-nya
+function firstDateOfBucket(k, periode) {
+  if (periode === 'harian') return k;
+  if (periode === 'bulanan') return `${k}-01`;
+  // mingguan: bucket "2026-W41" → Senin minggu ISO tsb
+  const [y, w] = k.split('-W');
+  const jan4 = new Date(Date.UTC(Number(y), 0, 4)); // 4 Jan selalu di minggu ISO 1
+  const day = jan4.getUTCDay() || 7;
+  const mondayW1 = new Date(jan4); mondayW1.setUTCDate(jan4.getUTCDate() - (day - 1));
+  const monday = new Date(mondayW1); monday.setUTCDate(mondayW1.getUTCDate() + (Number(w) - 1) * 7);
+  return format(monday, 'yyyy-MM-dd');
+}
 // Semua bucket antara mulai–akhir supaya grafik tetap berurutan walau kosong
 function bucketAxis(mulai, akhir, periode) {
   const keys = new Set();
   let cur = mulai;
-  const end = akhir;
   let guard = 0;
-  while (cur <= end && guard < 2000) {
+  while (cur <= akhir && guard < 2000) {
     keys.add(bucketKey(cur, periode));
     const d = parseISO(cur);
     if (periode === 'bulanan') d.setMonth(d.getMonth() + 1);
@@ -48,11 +58,11 @@ function bucketAxis(mulai, akhir, periode) {
     cur = format(d, 'yyyy-MM-dd');
     guard++;
   }
-  keys.add(bucketKey(end, periode));
+  keys.add(bucketKey(akhir, periode));
   return Array.from(keys).sort();
 }
 
-// ===== Pengambilan data terfilter di server, dengan cursor (anti duplikat halaman) =====
+// ===== Pengambilan data terfilter di server, dengan cursor (tanpa menghitung ganda halaman) =====
 async function fetchFiltered(entity, query, fields, maxRecords = 10000) {
   const out = [];
   let cursor;
@@ -119,7 +129,7 @@ export default function StatistikTab({ readOnly }) {
 
   // ===== Olah data (memo) =====
   const stats = useMemo(() => {
-    // Absensi: dedup 1 kejadian = 1 (tanggal, siswa, jenis) — tidak dihitung dobel
+    // Absensi: 1 kejadian = 1 (tanggal, siswa, jenis absensi) — tidak dihitung dobel
     const seen = new Set();
     const absensiUnik = [];
     (absensiQuery.data || []).forEach(a => {
@@ -143,8 +153,7 @@ export default function StatistikTab({ readOnly }) {
     });
 
     const trenKehadiran = axis.map(k => ({
-      bucket: k,
-      label: bucketLabel(axis.find(x => x === k) && firstDateOfBucket(k, periode) || k, periode),
+      label: bucketLabel(firstDateOfBucket(k, periode), periode),
       Izin: byBucket.get(k).Izin, Sakit: byBucket.get(k).Sakit, Alfa: byBucket.get(k).Alfa
     }));
 
@@ -155,7 +164,7 @@ export default function StatistikTab({ readOnly }) {
     const totals = { Izin: 0, Sakit: 0, Alfa: 0 };
     absensiUnik.forEach(a => { totals[a.status] += 1; });
 
-    // Poin pelanggaran & improvement: hanya record pada periode terpilih (bukan kumulatif siswa)
+    // Poin pelanggaran & improvement: hanya record tercatat PADA periode terpilih (bukan kumulatif siswa)
     const poinTren = (rows, field) => {
       const m = new Map(axis.map(k => [k, 0]));
       rows.forEach(r => {
@@ -206,7 +215,7 @@ export default function StatistikTab({ readOnly }) {
   };
 
   // ===== Export .xlsx =====
-  const exportExcel = async () => {
+  const exportExcel = () => {
     setExporting(true);
     try {
       const wb = XLSX.utils.book_new();
@@ -234,19 +243,23 @@ export default function StatistikTab({ readOnly }) {
         ['Jumlah Kejadian', stats.improvement.totalKejadian]
       ]), 'Ringkasan');
 
-      const trenSheet = (tren, kolom) => XLSX.utils.aoa_to_sheet([
-        ['Periode', ...kolom],
-        ...tren.map(t => [t.label, ...kolom.map(k => t[k.toLowerCase()] ?? 0)])
+      const trenSheet = (tren) => XLSX.utils.aoa_to_sheet([
+        ['Periode', 'Poin'],
+        ...tren.map(t => [t.label, t.poin])
       ]);
-      XLSX.utils.book_append_sheet(wb, trenSheet(stats.trenKehadiran, ['Izin', 'Sakit', 'Alfa']), 'Tren Kehadiran');
+      const kehadiranTrenSheet = XLSX.utils.aoa_to_sheet([
+        ['Periode', 'Izin', 'Sakit', 'Alfa'],
+        ...stats.trenKehadiran.map(t => [t.label, t.Izin, t.Sakit, t.Alfa])
+      ]);
+      XLSX.utils.book_append_sheet(wb, kehadiranTrenSheet, 'Tren Kehadiran');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
         stats.kehadiranPerKelas.map(k => ({ Kelas: k.nama_kelas, Izin: k.Izin, Sakit: k.Sakit, Alfa: k.Alfa, Total: k.total }))
       ), 'Kehadiran per Kelas');
-      XLSX.utils.book_append_sheet(wb, trenSheet(stats.pelanggaran.tren, ['poin']).let ? trenSheet(stats.pelanggaran.tren, ['poin']) : trenSheet(stats.pelanggaran.tren, ['poin']), 'Tren Poin Pelanggaran');
+      XLSX.utils.book_append_sheet(wb, trenSheet(stats.pelanggaran.tren), 'Tren Poin Pelanggaran');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
         stats.pelanggaran.perKelas.map(k => ({ Kelas: k.nama_kelas, Poin: k.poin }))
       ), 'Pelanggaran per Kelas');
-      XLSX.utils.book_append_sheet(wb, trenSheet(stats.improvement.tren, ['poin']), 'Tren Poin Improvement');
+      XLSX.utils.book_append_sheet(wb, trenSheet(stats.improvement.tren), 'Tren Poin Improvement');
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(
         stats.improvement.perKelas.map(k => ({ Kelas: k.nama_kelas, Poin: k.poin }))
       ), 'Improvement per Kelas');
@@ -345,7 +358,7 @@ export default function StatistikTab({ readOnly }) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(v) => [v, undefined]} />
+                  <Tooltip />
                   <Legend />
                   {STATUSES.map(s => (
                     <Line key={s} type="monotone" dataKey={s} stroke={STATUS_COLORS[s]}
@@ -374,23 +387,29 @@ export default function StatistikTab({ readOnly }) {
           {/* ===== Poin Pelanggaran ===== */}
           <PoinSection
             judul="Statistik Poin Pelanggaran"
-            subjudul={`Total poin tercatat ${infoFilter.periode.toLowerCase()} (${infoFilter.tanggalMulai} s.d. ${infoFilter.tanggalAkhir}) — poin Pending & Dibatalkan tidak dihitung`}
+            subjudul={`Total poin tercatat pada periode terpilih — poin berstatus Pending & Dibatalkan tidak dihitung`}
             warna="red"
+            warnaChart="#ef4444"
             totalPoin={stats.pelanggaran.totalPoin}
             totalKejadian={stats.pelanggaran.totalKejadian}
             tren={stats.pelanggaran.tren}
+            trenLabel={`Tren Akumulasi Poin Pelanggaran (${PERIODE_LABEL[periode]})`}
             perKelas={stats.pelanggaran.perKelas}
+            topKelasLabel="Kelas dengan Poin Pelanggaran Tertinggi"
           />
 
           {/* ===== Poin Improvement ===== */}
           <PoinSection
             judul="Statistik Poin Improvement"
-            subjudul={`Total poin tercatat ${infoFilter.periode.toLowerCase()} (${infoFilter.tanggalMulai} s.d. ${infoFilter.tanggalAkhir}) — hanya record berstatus Aktif`}
+            subjudul="Total poin tercatat pada periode terpilih — hanya record berstatus Aktif"
             warna="emerald"
+            warnaChart="#10b981"
             totalPoin={stats.improvement.totalPoin}
             totalKejadian={stats.improvement.totalKejadian}
             tren={stats.improvement.tren}
+            trenLabel={`Tren Akumulasi Poin Improvement (${PERIODE_LABEL[periode]})`}
             perKelas={stats.improvement.perKelas}
+            topKelasLabel="Kelas dengan Poin Improvement Tertinggi"
           />
         </>
       )}
@@ -398,23 +417,10 @@ export default function StatistikTab({ readOnly }) {
   );
 }
 
-// Label bucket dari tanggal pertama bucket-nya
-function firstDateOfBucket(bucketKeyStr, periode) {
-  if (periode === 'harian') return bucketKeyStr;
-  if (periode === 'bulanan') return `${bucketKeyStr}-01`;
-  // mingguan: bucket "2026-W41" → hari Senin minggu itu (pakai senin minggu tsb sebagai label)
-  const [y, w] = bucketKeyStr.split('-W');
-  const jan4 = new Date(Date.UTC(Number(y), 0, 4)); // 4 Jan selalu di minggu ISO 1
-  const day = jan4.getUTCDay() || 7;
-  const mondayW1 = new Date(jan4); mondayW1.setUTCDate(jan4.getUTCDate() - (day - 1));
-  const monday = new Date(mondayW1); monday.setUTCDate(mondayW1.getUTCDate() + (Number(w) - 1) * 7);
-  return format(monday, 'yyyy-MM-dd');
-}
-
-function PoinSection({ judul, subjudul, warna, totalPoin, totalKejadian, tren, perKelas }) {
+function PoinSection({ judul, subjudul, warna, warnaChart, totalPoin, totalKejadian, tren, trenLabel, perKelas, topKelasLabel }) {
   const warnaMap = {
-    red: { text: 'text-red-600', bg: 'bg-red-500', ring: 'border-red-200' },
-    emerald: { text: 'text-emerald-600', bg: 'bg-emerald-500', ring: 'border-emerald-200' }
+    red: { text: 'text-red-600', ring: 'border-red-200' },
+    emerald: { text: 'text-emerald-600', ring: 'border-emerald-200' }
   };
   const c = warnaMap[warna];
   return (
@@ -433,7 +439,54 @@ function PoinSection({ judul, subjudul, warna, totalPoin, totalKejadian, tren, p
           <p className="text-2xl md:text-3xl font-bold mt-1 text-slate-700">{totalKejadian}</p>
         </div>
       </div>
-      <div className="mb-2 text-sm font-semibold text-slate-600">Tren Akumulasi Poin ({PERIODE_LABEL[stats_label_map[arguments.length && arguments[0] ? 0 : 0]] || ''})</div>
+      <div className="mb-2 text-sm font-semibold text-slate-600">{trenLabel}</div>
+      <div className="h-64 md:h-72 mb-6">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={tren} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Line type="monotone" dataKey="poin" name="Poin" stroke={warnaChart} strokeWidth={2} dot={{ r: 3 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mb-2 text-sm font-semibold text-slate-600">Perbandingan Poin per Kelas</div>
+      <div className="h-64 md:h-72 mb-6">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={perKelas} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="nama_kelas" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Bar dataKey="poin" name="Poin" fill={warnaChart} radius={[3, 3, 0, 0]}>
+              <LabelList dataKey="poin" position="top" style={{ fontSize: 10, fill: '#64748b' }} />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      {perKelas.length > 0 && (
+        <div>
+          <div className="mb-2 text-sm font-semibold text-slate-600">{topKelasLabel}</div>
+          <div className="space-y-2">
+            {perKelas.slice(0, 5).map((k, i) => (
+              <div key={k.nama_kelas} className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-sm font-medium text-slate-700 w-16">{k.nama_kelas}</span>
+                <div className="flex-1 h-2.5 rounded-full bg-slate-100 overflow-hidden">
+                  <div className="h-full rounded-full" style={{
+                    width: `${perKelas[0].poin > 0 ? Math.max((k.poin / perKelas[0].poin) * 100, 3) : 0}%`,
+                    backgroundColor: warnaChart
+                  }} />
+                </div>
+                <span className={`text-sm font-bold w-16 text-right ${c.text}`}>{k.poin}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

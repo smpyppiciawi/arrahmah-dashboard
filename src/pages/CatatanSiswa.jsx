@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, TrendingDown } from "lucide-react";
+import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, TrendingDown, BarChart3 } from "lucide-react";
 import AppHeader from "@/components/appui/AppHeader";
 import PrestasiTab from '../components/catatan/PrestasiTab';
 import PelanggaranTab from '../components/catatan/PelanggaranTab';
@@ -12,6 +12,7 @@ import UKSTab from '../components/catatan/UKSTab';
 import CariRecordSiswa from '../components/catatan/CariRecordSiswa';
 import MenstruasiTab from '../components/catatan/MenstruasiTab';
 import IzinTab from '../components/catatan/IzinTab';
+import StatistikTab from '../components/catatan/StatistikTab';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function CatatanSiswa() {
@@ -88,6 +89,15 @@ export default function CatatanSiswa() {
               <Calendar className="w-4 h-4" />
               <span className="hidden sm:inline">Menstruasi</span>
             </TabsTrigger>
+            {(userRole === 'admin' || userRole === 'guru') && (
+            <TabsTrigger
+              value="statistik"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-violet-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/25 transition-all"
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">Statistik</span>
+            </TabsTrigger>
+            )}
             <TabsTrigger
               value="izin"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-amber-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-amber-500/25 transition-all"
@@ -102,6 +112,7 @@ export default function CatatanSiswa() {
           <TabsContent value="improvement"><ImprovementTab readOnly={isYayasan} /></TabsContent>
           <TabsContent value="uks"><UKSTab readOnly={isYayasan} /></TabsContent>
           <TabsContent value="menstruasi"><MenstruasiTab readOnly={isYayasan} /></TabsContent>
+          {(userRole === 'admin' || userRole === 'guru') && <TabsContent value="statistik"><StatistikTab /></TabsContent>}
           <TabsContent value="izin"><IzinTab readOnly={isYayasan} /></TabsContent>
         </Tabs>
       </div>
