@@ -60,6 +60,9 @@ export default function HomeVisit() {
   const { activeAcademicYear } = useActiveAcademicYear();
   const { pendingCount, pendingItems, syncing, syncNow, addPending, removePending, isOnline } = useOfflineSync();
 
+  const userRole = currentUser?.role || 'guru';
+  const isGuru = userRole === 'guru';
+  const { waliKelasIds } = useWaliKelas();
   const { data: siswaListAll = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
   // Guru: filter kelas wali di sisi server — tidak memuat seluruh koleksi
@@ -70,10 +73,6 @@ export default function HomeVisit() {
       : base44.entities.HomeVisit.list('-tanggal_homevisit'),
     enabled: !isGuru || waliKelasIds.length > 0,
   });
-
-  const userRole = currentUser?.role || 'guru';
-  const isGuru = userRole === 'guru';
-  const { waliKelasIds } = useWaliKelas();
   const siswaList = isGuru ? siswaListAll.filter(s => waliKelasIds.includes(s.kelas_id)) : siswaListAll;
   const homeVisitList = isGuru ? homeVisitListAll.filter(hv => waliKelasIds.includes(hv.kelas_id)) : homeVisitListAll;
 
