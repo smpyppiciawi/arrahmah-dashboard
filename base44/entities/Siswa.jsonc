@@ -2,6 +2,10 @@
   "name": "Siswa",
   "type": "object",
   "properties": {
+    "uid": {
+      "type": "string",
+      "description": "UID permanen unik (UUID) \u2014 identitas tetap seumur hidup record; tidak berubah walau NIS/NISN berubah"
+    },
     "nis": {
       "type": "string",
       "description": "Nomor Induk Siswa (Kunci Utama)"
@@ -233,6 +237,27 @@
     "tahun_lulus": {
       "type": "string",
       "description": "Tahun ajaran saat lulus (contoh: 2024/2025)"
+    },
+    "is_arsip": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = siswa diarsipkan: disembunyikan dari seluruh daftar aktif; profil & riwayat tetap tersimpan dan dapat dipulihkan lewat menu Arsip"
+    },
+    "status_sebelum_arsip": {
+      "type": "string",
+      "description": "Status siswa sebelum diarsipkan \u2014 dikembalikan saat dipulihkan"
+    },
+    "arsip_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat diarsipkan"
+    },
+    "arsip_alasan": {
+      "type": "string",
+      "description": "Alasan pengarsipan"
+    },
+    "arsip_oleh": {
+      "type": "string",
+      "description": "Nama pengguna yang mengarsipkan"
     },
     "notif_absen3hari_minggu": {
       "type": "string",

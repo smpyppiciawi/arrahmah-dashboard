@@ -62,7 +62,14 @@ export default function HomeVisit() {
 
   const { data: siswaListAll = [] } = useQuery({ queryKey: ['siswa'], queryFn: () => base44.entities.Siswa.filter({ status: 'Aktif' }) });
   const { data: kelasList = [] } = useQuery({ queryKey: ['kelas'], queryFn: () => base44.entities.Kelas.list('nama_kelas') });
-  const { data: homeVisitListAll = [], isLoading } = useQuery({ queryKey: ['homeVisit'], queryFn: () => base44.entities.HomeVisit.list('-tanggal_homevisit') });
+  // Guru: filter kelas wali di sisi server — tidak memuat seluruh koleksi
+  const { data: homeVisitListAll = [], isLoading } = useQuery({
+    queryKey: isGuru ? ['homeVisit', 'wali', waliKelasIds.join(',')] : ['homeVisit', 'all'],
+    queryFn: () => isGuru
+      ? base44.entities.HomeVisit.filter({ kelas_id: { $in: waliKelasIds } }, { sort: '-tanggal_homevisit' }).then(p => p.items || [])
+      : base44.entities.HomeVisit.list('-tanggal_homevisit'),
+    enabled: !isGuru || waliKelasIds.length > 0,
+  });
 
   const userRole = currentUser?.role || 'guru';
   const isGuru = userRole === 'guru';

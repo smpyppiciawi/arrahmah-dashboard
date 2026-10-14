@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap } from "lucide-react";
+import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap, Archive } from "lucide-react";
+import ArsipDialog from "@/components/arsip/ArsipDialog";
+import { runMigrasiUid } from '@/lib/uidMigrasi';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AlasanKeluarDialog from "@/components/guru/AlasanKeluarDialog";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
@@ -40,6 +42,8 @@ export default function Guru() {
   const [reactivateConfirmOpen, setReactivateConfirmOpen] = useState(false);
   const [reactivateId, setReactivateId] = useState(null);
   const [backfilling, setBackfilling] = useState(false);
+  const [arsipOpen, setArsipOpen] = useState(false);
+  const [migrasiUidBerjalan, setMigrasiUidBerjalan] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -90,10 +94,11 @@ export default function Guru() {
 
   // Pegawai Aktif vs Pegawai Keluar dipisah berdasarkan status
   const aktifList = guruList.filter(g => g.status !== 'Keluar');
-  const keluarList = guruList.filter(g => g.status === 'Keluar');
+  const keluarList = guruList.filter(g => g.status === 'Keluar' && !g.is_arsip);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Guru.create(data),
+    // UID permanen otomatis untuk pegawai baru
+    mutationFn: (data) => base44.entities.Guru.create({ ...data, uid: data.uid || crypto.randomUUID() }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guru'] });
       resetForm();
@@ -108,8 +113,16 @@ export default function Guru() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Guru.delete(id),
+  // Arsip alih-alih hapus permanen: profil pegawai tetap tersimpan, dapat dipulihkan lewat menu Arsip
+  const archiveMutation = useMutation({
+    mutationFn: async (row) => base44.entities.Guru.update(row.id, {
+      is_arsip: true,
+      status_sebelum_arsip: row.status || 'Aktif',
+      status: 'Keluar',
+      arsip_at: new Date().toISOString(),
+      arsip_alasan: 'Dihapus dari daftar pegawai (diarsipkan)',
+      arsip_oleh: currentUser?.full_name || '',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guru'] });
       setDeleteConfirmOpen(false);
@@ -117,15 +130,26 @@ export default function Guru() {
     },
   });
 
-  const handleDeleteClick = (id) => {
-    setDeleteId(id);
+  const handleDeleteClick = (row) => {
+    setDeleteId(row);
     setDeleteConfirmOpen(true);
   };
 
   const confirmDelete = () => {
     if (deleteId) {
-      deleteMutation.mutate(deleteId);
+      archiveMutation.mutate(deleteId);
     }
+  };
+
+  const handleMigrasiUid = async () => {
+    setMigrasiUidBerjalan(true);
+    try {
+      const s = await runMigrasiUid();
+      toast({ title: 'Migrasi UID selesai', description: `Siswa: ${s.siswa}, Pegawai: ${s.guru}. Belum ber-UID: ${s.sisa_siswa + s.sisa_guru}.` });
+    } catch (error) {
+      toast({ title: 'Migrasi UID gagal', description: error.message || 'Terjadi kesalahan.', variant: 'destructive' });
+    }
+    setMigrasiUidBerjalan(false);
   };
 
   const handleBackfill = async () => {
@@ -351,7 +375,7 @@ export default function Guru() {
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
             <Edit2 className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)}>
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row)} title="Arsipkan">
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -403,8 +427,8 @@ export default function Guru() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-        title="Hapus Data Guru/Pegawai"
-        description="Apakah Anda yakin ingin menghapus data ini? Tindakan ini tidak dapat dibatalkan."
+        title="Arsipkan Data Guru/Pegawai"
+        description="Pegawai akan diarsipkan: disembunyikan dari daftar aktif dan keluar. Profil tetap tersimpan dan dapat dipulihkan melalui tombol Arsip. Hapus permanen hanya tersedia di menu Arsip oleh Admin."
       />
       <ConfirmDialog
         open={reactivateConfirmOpen}
@@ -420,6 +444,22 @@ export default function Guru() {
         onConfirm={handleKeluarConfirm}
         saving={createMutation.isPending || updateMutation.isPending}
       />
+      {canEdit && (
+        <ArsipDialog
+          open={arsipOpen}
+          onOpenChange={setArsipOpen}
+          entity="Guru"
+          title="Arsip Pegawai"
+          subtitle="Cari arsip lewat UID, NUPTK, atau nama lalu pulihkan. Hapus permanen hanya untuk Admin."
+          columns={[
+            { key: 'uid', label: 'UID' },
+            { key: 'nuptk', label: 'NUPTK' },
+            { key: 'nama', label: 'Nama' },
+            { key: 'jabatan', label: 'Jabatan' },
+            { key: 'arsip_at', label: 'Diarsipkan', render: (r) => r.arsip_at ? new Date(r.arsip_at).toLocaleDateString('id-ID') : '-' },
+          ]}
+        />
+      )}
 
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
@@ -440,6 +480,15 @@ export default function Guru() {
                   <span className="hidden sm:inline">{backfilling ? 'Menyinkronkan...' : 'Sinkron Relasi'}</span>
                 </Button>
               )}
+              {isAdmin && (
+                <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
+                  <DatabaseZap className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
+                </Button>
+              )}
+              <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm">
+                <Archive className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Arsip</span>
+              </Button>
               <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
                 <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>

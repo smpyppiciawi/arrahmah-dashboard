@@ -19,7 +19,7 @@ import PtsTab from "@/components/nilai/PtsTab";
 import PtsGuruView from "@/components/nilai/PtsGuruView";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
-import { fetchAllNilai } from '@/lib/nilaiLoad';
+import { fetchAllNilai, fetchNilai } from '@/lib/nilaiLoad';
 
 // Daftar mapel lama — hanya dipakai sebagai cadangan jika data Mapel kosong
 const MAPEL_FALLBACK = [
@@ -147,14 +147,14 @@ export default function Nilai() {
   };
 
   const { data: nilaiList = [], isLoading } = useQuery({
-    queryKey: ['nilai', currentUser?.email, userRole, assignedKelasIds, assignedMapel],
-    queryFn: async () => {
-      const all = await fetchAllNilai();
-      if (isGuruRole) {
-        return all.filter(n => assignedKelasIds.includes(n.kelas_id) && assignedMapel.includes(n.mapel));
-      }
-      return all;
-    },
+    // Guru: filter di sisi server (hanya kelas & mapel yang diampu) — tidak memuat seluruh koleksi
+    // Admin/TU: seluruh data dibutuhkan tab lintas tahun; dibagikan satu cache dengan Analisis & Pengelolaan
+    queryKey: isGuruRole
+      ? ['nilai', 'guru', assignedKelasIds.join(','), assignedMapel.join(',')]
+      : ['nilai', 'all'],
+    queryFn: () => isGuruRole
+      ? fetchNilai({ kelas_id: { $in: assignedKelasIds }, mapel: { $in: assignedMapel } })
+      : fetchAllNilai(),
     // Tunggu data penugasan selesai termuat agar daftar nilai tidak di-fetch dua kali (rate limit)
     enabled: !isGuruRole || (!!currentUser && !!guruData && pembelajaranGuruLoaded),
     staleTime: 60000,

@@ -24,7 +24,7 @@ export default function AnalisisNilai() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: nilaiList = [] } = useQuery({
-    queryKey: ['nilai-all'],
+    queryKey: ['nilai', 'all'],
     queryFn: () => fetchAllNilai(),
   });
 

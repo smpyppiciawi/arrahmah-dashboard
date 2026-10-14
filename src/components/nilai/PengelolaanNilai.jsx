@@ -23,7 +23,7 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
   const [filterTahunAjaran, setFilterTahunAjaran] = useState('');
 
   const { data: nilaiList = [] } = useQuery({
-    queryKey: ['nilai-all'],
+    queryKey: ['nilai', 'all'],
     queryFn: () => fetchAllNilai(),
   });
 
@@ -44,7 +44,7 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
     mutationFn: (format) => base44.entities.PengaturanAplikasi.update(pengaturanList[0].id, { format_nilai_akhir: format }),
     onSuccess: (data, format) => {
       queryClient.invalidateQueries({ queryKey: ['pengaturan-aplikasi'] });
-      queryClient.invalidateQueries({ queryKey: ['nilai-all'] });
+      queryClient.invalidateQueries({ queryKey: ['nilai', 'all'] });
       toast({ title: 'Format Nilai Akhir diubah', description: `Sekarang aktif: Format ${format} — ${FORMAT_NILAI_AKHIR[format].label}` });
     },
   });

@@ -2,6 +2,10 @@
   "name": "Guru",
   "type": "object",
   "properties": {
+    "uid": {
+      "type": "string",
+      "description": "UID permanen unik (UUID) \u2014 identitas tetap seumur hidup record; tidak berubah walau NUPTK/NIP berubah"
+    },
     "nuptk": {
       "type": "string",
       "description": "NUPTK / NIP / NIK pegawai (nomor sama dengan NIP sebelumnya, hanya nama isian yang berubah)"
@@ -82,6 +86,27 @@
       "type": "string",
       "format": "date",
       "description": "Tanggal pegawai keluar (tanggal efektif berhenti)"
+    },
+    "is_arsip": {
+      "type": "boolean",
+      "default": false,
+      "description": "True = pegawai diarsipkan: disembunyikan dari daftar aktif & keluar; profil & riwayat tetap tersimpan dan dapat dipulihkan lewat menu Arsip"
+    },
+    "status_sebelum_arsip": {
+      "type": "string",
+      "description": "Status pegawai sebelum diarsipkan \u2014 dikembalikan saat dipulihkan"
+    },
+    "arsip_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat diarsipkan"
+    },
+    "arsip_alasan": {
+      "type": "string",
+      "description": "Alasan pengarsipan"
+    },
+    "arsip_oleh": {
+      "type": "string",
+      "description": "Nama pengguna yang mengarsipkan"
     },
     "golongan_id": {
       "type": "string",

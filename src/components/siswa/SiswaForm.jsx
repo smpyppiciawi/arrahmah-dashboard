@@ -118,7 +118,7 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editingData) updateMutation.mutate({ id: editingData.id, data: formData });
-    else createMutation.mutate(formData);
+    else createMutation.mutate({ ...formData, uid: crypto.randomUUID() });
   };
 
   // Step 1 Mutasi Masuk → lanjut ke form data siswa

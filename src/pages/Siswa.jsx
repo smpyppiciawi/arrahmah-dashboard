@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck, Archive, DatabaseZap } from "lucide-react";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
@@ -16,6 +16,9 @@ import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
 import SiswaFotoGrid from "@/components/siswa/SiswaFotoGrid";
 import SiswaDapoView from "@/components/siswa/SiswaDapoView";
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
+import ArsipDialog from "@/components/arsip/ArsipDialog";
+import { runMigrasiUid } from '@/lib/uidMigrasi';
+import { useToast } from "@/components/ui/use-toast";
 
 export default function Siswa() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,7 +31,10 @@ export default function Siswa() {
   const [keluarSiswa, setKeluarSiswa] = useState(null);
   const [detailSiswa, setDetailSiswa] = useState(null);
   const [viewMode, setViewMode] = useState('tabel');
+  const [arsipOpen, setArsipOpen] = useState(false);
+  const [migrasiUidBerjalan, setMigrasiUidBerjalan] = useState(false);
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -44,6 +50,7 @@ export default function Siswa() {
 
   const userRole = currentUser?.role || 'guru';
   const canEdit = ['admin', 'tu'].includes(userRole);
+  const isAdmin = userRole === 'admin';
 
   const { data: siswaList = [], isLoading } = useQuery({
     queryKey: ['siswa'],
@@ -61,46 +68,43 @@ export default function Siswa() {
     enabled: viewMode === 'foto',
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id) => {
-      // Hapus semua data terkait siswa secara cascade
-      const [absensiData, nilaiData, pelanggaranData, prestasiData, uksData] = await Promise.all([
-        base44.entities.Absensi.filter({ siswa_id: id }),
-        base44.entities.Nilai.filter({ siswa_id: id }),
-        base44.entities.Pelanggaran.filter({ siswa_id: id }),
-        base44.entities.Prestasi.filter({ siswa_id: id }),
-        base44.entities.UKS.filter({ siswa_id: id }),
-      ]);
-      await Promise.all([
-        ...absensiData.map(r => base44.entities.Absensi.delete(r.id)),
-        ...nilaiData.map(r => base44.entities.Nilai.delete(r.id)),
-        ...pelanggaranData.map(r => base44.entities.Pelanggaran.delete(r.id)),
-        ...prestasiData.map(r => base44.entities.Prestasi.delete(r.id)),
-        ...uksData.map(r => base44.entities.UKS.delete(r.id)),
-      ]);
-      return base44.entities.Siswa.delete(id);
-    },
+  // Arsip alih-alih hapus permanen: profil & riwayat tetap tersimpan, dapat dipulihkan lewat menu Arsip
+  const archiveMutation = useMutation({
+    mutationFn: async (row) => base44.entities.Siswa.update(row.id, {
+      is_arsip: true,
+      status_sebelum_arsip: row.status || 'Aktif',
+      status: 'Keluar',
+      arsip_at: new Date().toISOString(),
+      arsip_alasan: 'Dihapus dari daftar aktif (diarsipkan)',
+      arsip_oleh: currentUser?.full_name || '',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
-      queryClient.invalidateQueries({ queryKey: ['absensi'] });
-      queryClient.invalidateQueries({ queryKey: ['nilai'] });
-      queryClient.invalidateQueries({ queryKey: ['pelanggaran'] });
-      queryClient.invalidateQueries({ queryKey: ['prestasi'] });
-      queryClient.invalidateQueries({ queryKey: ['uks'] });
       setDeleteConfirmOpen(false);
       setDeleteId(null);
     },
   });
 
-  const handleDeleteClick = (id) => {
-    setDeleteId(id);
+  const handleDeleteClick = (row) => {
+    setDeleteId(row);
     setDeleteConfirmOpen(true);
   };
 
   const confirmDelete = () => {
     if (deleteId) {
-      deleteMutation.mutate(deleteId);
+      archiveMutation.mutate(deleteId);
     }
+  };
+
+  const handleMigrasiUid = async () => {
+    setMigrasiUidBerjalan(true);
+    try {
+      const s = await runMigrasiUid();
+      toast({ title: 'Migrasi UID selesai', description: `Siswa: ${s.siswa}, Pegawai: ${s.guru}. Belum ber-UID: ${s.sisa_siswa + s.sisa_guru}.` });
+    } catch (e) {
+      toast({ title: 'Migrasi UID gagal', description: e.message || 'Terjadi kesalahan.', variant: 'destructive' });
+    }
+    setMigrasiUidBerjalan(false);
   };
 
   const handleDownloadTemplate = () => {
@@ -174,7 +178,7 @@ export default function Siswa() {
           <Button size="sm" variant="ghost" className="text-orange-500" onClick={() => setKeluarSiswa(row)} title="Keluarkan Siswa">
             <LogOut className="w-4 h-4" />
           </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row.id)} title="Hapus">
+          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row)} title="Arsipkan">
             <Trash2 className="w-4 h-4" />
           </Button>
         </div>
@@ -190,8 +194,8 @@ export default function Siswa() {
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
         onConfirm={confirmDelete}
-        title="Hapus Data Siswa"
-        description="Apakah Anda yakin? Menghapus siswa ini akan menghapus SEMUA data terkait: absensi, nilai, pelanggaran, prestasi, dan UKS siswa ini secara permanen."
+        title="Arsipkan Data Siswa"
+        description="Siswa akan diarsipkan: disembunyikan dari seluruh daftar aktif. Profil dan riwayatnya (absensi, nilai, pelanggaran, dll.) tetap tersimpan dan dapat dipulihkan melalui tombol Arsip. Hapus permanen hanya tersedia di menu Arsip oleh Admin."
       />
       
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
@@ -222,6 +226,14 @@ export default function Siswa() {
               <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
                 <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
               </Button>
+              <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm">
+                <Archive className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Arsip</span>
+              </Button>
+              {isAdmin && (
+                <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
+                  <DatabaseZap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
+                </Button>
+              )}
               <ImportSiswaCSV />
               <Link to="/DataLulusan">
                 <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50">
@@ -269,6 +281,22 @@ export default function Siswa() {
     </div>
     {canEdit && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Siswa" color="blue" icon={Plus} />}
     {keluarSiswa && <SiswaKeluarDialog siswa={keluarSiswa} onClose={() => setKeluarSiswa(null)} />}
+    {canEdit && (
+      <ArsipDialog
+        open={arsipOpen}
+        onOpenChange={setArsipOpen}
+        entity="Siswa"
+        title="Arsip Siswa"
+        subtitle="Cari arsip lewat UID, NIS, atau nama lalu pulihkan. Hapus permanen hanya untuk Admin."
+        columns={[
+          { key: 'uid', label: 'UID' },
+          { key: 'nis', label: 'NIS' },
+          { key: 'nama', label: 'Nama Siswa' },
+          { key: 'nama_kelas', label: 'Kelas' },
+          { key: 'arsip_at', label: 'Diarsipkan', render: (r) => r.arsip_at ? new Date(r.arsip_at).toLocaleDateString('id-ID') : '-' },
+        ]}
+      />
+    )}
     {detailSiswa && <SiswaDetailDialog siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
     </>
   );

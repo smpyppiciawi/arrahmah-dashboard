@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, Trophy, Table2, User, Users, ListChecks } from 'lucide-react';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
-import { fetchAllNilai } from '@/lib/nilaiLoad';
+import { fetchNilai } from '@/lib/nilaiLoad';
 import PaginationBar from '@/components/appui/PaginationBar';
 import PillTabs from '@/components/appui/PillTabs';
 import PtsStatusGuruView from '@/components/nilai/PtsStatusGuruView';
@@ -33,9 +33,10 @@ export default function PtsGuruView({ activeAcademicYear }) {
   const [pageSize, setPageSize] = useState(10);
   const [statusDetail, setStatusDetail] = useState(null);
 
+  // Filter di sisi server: hanya record Nilai Ujian PTS (tanpa memuat seluruh koleksi)
   const { data: nilaiPts = [], isLoading } = useQuery({
-    queryKey: ['nilai-pts-wali'],
-    queryFn: async () => (await fetchAllNilai()).filter(n => n.jenis_penilaian === 'PTS'),
+    queryKey: ['nilai', 'pts-wali'],
+    queryFn: () => fetchNilai({ jenis_penilaian: 'PTS' }),
     staleTime: 60000,
   });
 
