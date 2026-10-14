@@ -59,7 +59,7 @@ function bucketAxis(mulai, akhir, periode) {
     guard++;
   }
   keys.add(bucketKey(akhir, periode));
-  return Array.from(keys).sort();
+  return Array.from(keys); // urutan sisip = urutan kronologis (sort string salah utk minggu 1-9 vs 10+)
 }
 
 // ===== Pengambilan data terfilter di server, dengan cursor (tanpa menghitung ganda halaman) =====
