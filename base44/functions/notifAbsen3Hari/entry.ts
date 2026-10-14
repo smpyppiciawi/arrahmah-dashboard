@@ -1,187 +1,235 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
+import { secrets } from 'base44:runtime';
+import { getNotifGateway, sendFonnteWA } from '../../shared/waSender.ts';
+import { detectAbsen3Hari, addDays } from '../../shared/absen3Hari.ts';
 
-// Hitung minggu sekolah (Senin-Jumat) untuk tanggal 'yyyy-MM-dd'
-function getSchoolWeek(dateStr) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const day = d.getUTCDay(); // 0=Sun..6=Sat
-  const monday = new Date(d);
-  monday.setUTCDate(d.getUTCDate() - (day === 0 ? 6 : day - 1));
-  const friday = new Date(monday);
-  friday.setUTCDate(monday.getUTCDate() + 4);
-  const fmt = (x) => x.toISOString().slice(0, 10);
-  // ISO week number
-  const thu = new Date(monday);
-  thu.setUTCDate(monday.getUTCDate() + 3);
-  const year = thu.getUTCFullYear();
-  const jan1 = new Date(Date.UTC(year, 0, 1));
-  const dayOfYear = Math.floor((thu.getTime() - jan1.getTime()) / 86400000);
-  const jan1Day = (jan1.getUTCDay() + 6) % 7;
-  const weekNum = Math.ceil((dayOfYear + jan1Day + 1) / 7);
-  return {
-    weekKey: `${year}-${String(weekNum).padStart(2, '0')}`,
-    weekStart: fmt(monday),
-    weekEnd: fmt(friday),
-  };
+// Peringatan Absen 3 Hari — deteksi PER STATUS (Sakit/Izin/Alfa masing-masing) dengan 3 ketentuan:
+// Beruntun 3 Hari, Akumulasi 3 Hari/Minggu, Sama Hari 3 Minggu (hari yang sama di 3 minggu berbeda).
+// Notifikasi WA + Email otomatis ke Wali Kelas siswa, Waka Kesiswaan & Waka Kurikulum
+// (data kontak diambil dari record Guru terkini; menghormati sakelar gateway WA & Email jenis Siswa).
+// Dedup per siswa+status+kriteria+minggu lewat entitas NotifAbsen3Hari (gagal kirim diulang di run berikutnya).
+
+async function fetchAllAbsensi(svc, windowStart) {
+  const out = [];
+  let cursor;
+  for (;;) {
+    const page = await svc.entities.Absensi.filter(
+      { tanggal: { $gte: windowStart } },
+      { sort: 'tanggal', limit: 1000, cursor, fields: ['siswa_id', 'tanggal', 'status', 'keterangan'] }
+    );
+    out.push(...(page.items || []));
+    if (!page.has_more || !page.next_cursor) break;
+    cursor = page.next_cursor;
+  }
+  return out;
 }
 
-const addDays = (dateStr, n) => {
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-
-Deno.serve(async (req) => {
+export default async function(req) {
   try {
     const base44 = createClientFromRequest(req);
     const svc = base44.asServiceRole;
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const { weekKey, weekStart, weekEnd } = getSchoolWeek(todayStr);
-    const prevWeekStart = addDays(weekStart, -7);
+    // Token WA gateway (dipakai langsung — panggilan terjadwal/layanan tidak punya sesi user)
+    const fonnteToken = secrets.get('WA_FONNTE_TOKEN');
+    // WIB (UTC+7) — konsisten dgn zona waktu sekolah
+    const todayStr = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 
-    const siswaList = await svc.entities.Siswa.filter({ status: 'Aktif' });
-    const kelasList = await svc.entities.Kelas.list();
-    const guruList = await svc.entities.Guru.list();
+    const [kalenderList, siswaList, kelasList, guruList, absensiRecords, gateway] = await Promise.all([
+      svc.entities.KalenderAkademik.list(),
+      svc.entities.Siswa.filter({ status: 'Aktif' }),
+      svc.entities.Kelas.list(),
+      svc.entities.Guru.list(),
+      fetchAllAbsensi(svc, addDays(todayStr, -35)),
+      getNotifGateway(svc),
+    ]);
 
-    // Hanya record Alfa/Sakit pada 2 minggu terakhir (subset kecil — akurat, bebas jendela data)
-    const absenRecords = await svc.entities.Absensi.filter(
-      { status: { $in: ['Alfa', 'Sakit'] }, tanggal: { $gte: prevWeekStart, $lte: weekEnd } },
-      'tanggal',
-      5000
-    );
+    const detection = detectAbsen3Hari({ absensiRecords, todayStr, kalenderList });
+    const siswaById = {};
+    (siswaList || []).forEach((s) => { siswaById[s.id] = s; });
+    const kelasById = {};
+    (kelasList || []).forEach((k) => { kelasById[k.id] = k; });
+    const guruById = {};
+    (guruList || []).forEach((g) => { guruById[g.id] = g; });
 
-    const bySiswa = {};
-    for (const r of absenRecords) {
-      if (!r.siswa_id || !r.tanggal) continue;
-      if (!bySiswa[r.siswa_id]) bySiswa[r.siswa_id] = [];
-      bySiswa[r.siswa_id].push(r);
+    const candidateIds = Object.keys(detection);
+    if (candidateIds.length === 0) {
+      return Response.json({ status: 'no_absence', tanggal: todayStr, message: 'Tidak ada siswa yang memenuhi kriteria Peringatan Absen 3 Hari' });
     }
 
-    // Deteksi kandidat:
-    // (1) akumulasi Alfa/Sakit >= 3 hari pada minggu berjalan (Senin-Jumat) -> notifikasi;
-    // (2) memenuhi ambang pada minggu lalu & BELUM ada perubahan (record absensi terakhir
-    //     masih Alfa/Sakit) -> pengingat berlanjut. Notifikasi cukup 1x per minggu
-    //     (dedup via notif_absen3hari_minggu == weekKey); minggu berikutnya masih absen -> muncul lagi.
-    const siswaAbsen3Hari = [];
-    for (const s of siswaList) {
-      const recs = (bySiswa[s.id] || []).sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-      const curRecs = recs.filter((r) => r.tanggal >= weekStart && r.tanggal <= weekEnd);
-      let base = null;
-      let berlanjut = false;
-      if (curRecs.length >= 3) {
-        base = curRecs;
-      } else {
-        const prevRecs = recs.filter((r) => r.tanggal >= prevWeekStart && r.tanggal < weekStart);
-        if (prevRecs.length >= 3) {
-          const latest = await svc.entities.Absensi.filter({ siswa_id: s.id }, '-tanggal', 1);
-          const last = (latest || [])[0];
-          const stillAbsent = last && (last.status === 'Alfa' || last.status === 'Sakit') && last.tanggal >= prevWeekStart;
-          if (stillAbsent) {
-            base = [...prevRecs, ...curRecs];
-            berlanjut = true;
+    // Dedup: log notifikasi yang sudah terkirim (minimal 1 kanal sukses) dilewati
+    const existingLogs = await svc.entities.NotifAbsen3Hari.filter({ siswa_id: { $in: candidateIds } });
+    const logMap = {};
+    (existingLogs || []).forEach((l) => {
+      logMap[`${l.siswa_id}|${l.status}|${l.kriteria}|${l.minggu_key}`] = l;
+    });
+
+    const pending = [];
+    for (const siswaId of candidateIds) {
+      const s = siswaById[siswaId];
+      if (!s) continue;
+      const det = detection[siswaId];
+      det.events.forEach((ev) => {
+        const key = `${siswaId}|${ev.status}|${ev.kriteria}|${ev.minggu_key}`;
+        const existing = logMap[key];
+        if (existing && (existing.wa_terkirim || existing.email_terkirim)) return;
+        pending.push({ key, siswa: s, ev, existing });
+      });
+    }
+
+    if (pending.length === 0) {
+      return Response.json({ status: 'no_new', tanggal: todayStr, kandidat: candidateIds.length, message: 'Semua kriteria terpenuhi sudah dinotifikasi (dedup)' });
+    }
+
+    if (gateway.wa_siswa === false && gateway.email_siswa === false) {
+      return Response.json({
+        status: 'gateway_off',
+        tanggal: todayStr,
+        kandidat: pending.length,
+        message: 'Gateway WA & Email jenis Siswa dimatikan di Pengaturan — notifikasi dijeda (dedup belum ditandai)',
+      });
+    }
+
+    // Penerima: Wali Kelas (per kelas) + Waka Kesiswaan & Waka Kurikulum (aktif, dari data Guru terkini)
+    const waka = { ks: null, kr: null };
+    (guruList || []).forEach((g) => {
+      if (g.status !== 'Aktif') return;
+      if (g.tugas_tambahan === 'Waka Kesiswaan' && !waka.ks) waka.ks = g;
+      if (g.tugas_tambahan === 'Waka Kurikulum' && !waka.kr) waka.kr = g;
+    });
+
+    const groups = {};
+    const addEntry = (key, guru, p) => {
+      if (!guru) return;
+      if (!groups[key]) groups[key] = { nama: guru.nama, tugas: guru.tugas_tambahan || '', phone: guru.no_telp, email: guru.email, entries: [] };
+      groups[key].entries.push(p);
+    };
+    pending.forEach((p) => {
+      const kelas = kelasById[p.siswa.kelas_id];
+      const wali = kelas ? (kelas.wali_kelas_id ? guruById[kelas.wali_kelas_id] : (guruList || []).find((g) => g.nama === kelas.wali_kelas)) : null;
+      addEntry(`wali-${wali ? wali.id : p.siswa.kelas_id}`, wali, p);
+      if (waka.ks) addEntry('waka-ks', waka.ks, p);
+      if (waka.kr) addEntry('waka-kr', waka.kr, p);
+    });
+
+    // Email hanya ke penerima yang terdaftar sebagai pengguna aplikasi
+    const groupEmails = [...new Set(Object.values(groups).map((g) => g.email).filter(Boolean))];
+    let registeredSet = new Set();
+    if (groupEmails.length > 0) {
+      try {
+        const users = await svc.entities.User.filter({ email: { $in: groupEmails } });
+        registeredSet = new Set((users || []).map((u) => u.email));
+      } catch (e) {
+        registeredSet = new Set();
+      }
+    }
+
+    const entryLine = (p) => `• ${p.siswa.nama} (${p.siswa.nama_kelas}) — ${p.ev.status} · ${p.ev.kriteria}: ${p.ev.detail}`;
+
+    const groupKeys = Object.keys(groups);
+    let waSentGroups = 0;
+    let emailSentGroups = 0;
+    let waFailGroups = 0;
+
+    for (let i = 0; i < groupKeys.length; i += 6) {
+      const slice = groupKeys.slice(i, i + 6);
+      await Promise.allSettled(slice.map(async (key) => {
+        const g = groups[key];
+        const greeting = `Yth. Bpk/Ibu ${g.nama}${g.tugas ? ` (${g.tugas})` : ''}`;
+        const shown = g.entries.slice(0, 25);
+        const lines = shown.map(entryLine).join('\n') + (g.entries.length > 25 ? `\n… +${g.entries.length - 25} siswa lainnya` : '');
+
+        // WA
+        if (gateway.wa_siswa && g.phone) {
+          try {
+            const message = `${greeting},\n\n` +
+              `Berikut siswa yang memenuhi Ketentuan Peringatan Absen 3 Hari (pemantauan otomatis ${todayStr}):\n\n` +
+              `${lines}\n\n` +
+              `Mohon tindak lanjut dan segera hubungi orang tua/wali siswa terkait. Terima kasih.\n\n` +
+              `- Sistem Informasi Sekolah YPPI ARRAHMAH`;
+            await sendFonnteWA(g.phone, message, fonnteToken);
+            g.entries.forEach((p) => { p.waOk = true; p.penerimaWa = g.nama; });
+            waSentGroups++;
+          } catch (e) {
+            waFailGroups++;
           }
         }
-      }
-      if (!base) continue;
-      // Dedup: sudah pernah dikirim notifikasi untuk minggu ini
-      if (s.notif_absen3hari_minggu === weekKey) continue;
-      const kelas = kelasList.find((k) => k.id === s.kelas_id);
-      const waliGuru = guruList.find((g) => g.nama === kelas?.wali_kelas);
-      siswaAbsen3Hari.push({
-        id: s.id,
-        nama: s.nama,
-        kelas: s.nama_kelas || kelas?.nama_kelas,
-        waliName: kelas?.wali_kelas,
-        waliPhone: waliGuru?.no_telp,
-        alfaCount: base.filter((r) => r.status === 'Alfa').length,
-        sakitCount: base.filter((r) => r.status === 'Sakit').length,
-        lastDate: base[base.length - 1].tanggal,
-        berlanjut,
+
+        // Email
+        if (gateway.email_siswa && g.email && registeredSet.has(g.email)) {
+          try {
+            const rows = shown
+              .map((p) => `<tr><td style="padding:8px 12px 8px 0;color:#0f172a;vertical-align:top">${p.siswa.nama}<br/><span style="font-size:11px;color:#64748b">${p.siswa.nama_kelas}</span></td><td style="padding:8px 12px 8px 0;font-weight:600;color:#0f172a;vertical-align:top;white-space:nowrap">${p.ev.status} · ${p.ev.kriteria}</td><td style="padding:8px 0;color:#334155;vertical-align:top">${p.ev.detail}</td></tr>`)
+              .join('');
+            const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden">` +
+              `<div style="background:#bfdbfe;padding:18px 24px"><h2 style="margin:0;font-size:16px;color:#000000">Peringatan Absen 3 Hari</h2><p style="margin:4px 0 0;font-size:12px;color:#374151">Sistem Informasi Sekolah YPPI ARRAHMAH — ${todayStr}</p></div>` +
+              `<div style="padding:20px 24px"><p style="margin:0 0 12px;font-size:14px;color:#334155">${greeting},</p>` +
+              `<p style="margin:0 0 12px;font-size:14px;color:#334155">Siswa berikut memenuhi ketentuan Peringatan Absen 3 Hari (Sakit/Izin/Alfa dihitung per status masing-masing):</p>` +
+              `<table style="width:100%;border-collapse:collapse;font-size:13px"><tr><th align="left" style="padding:6px 12px 6px 0;color:#64748b;border-bottom:1px solid #e5e7eb">Siswa</th><th align="left" style="padding:6px 12px 6px 0;color:#64748b;border-bottom:1px solid #e5e7eb">Kriteria</th><th align="left" style="padding:6px 0;color:#64748b;border-bottom:1px solid #e5e7eb">Detail</th></tr>${rows}</table>` +
+              `<p style="margin:14px 0 0;font-size:13px;color:#334155">Mohon tindak lanjut dan segera hubungi orang tua/wali siswa terkait.</p></div>` +
+              `<div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e5e7eb"><p style="margin:0;font-size:11px;color:#94a3b8">Email otomatis dari Panel Absen 3 Hari. Mohon tidak membalas email ini.</p></div></div>`;
+            await svc.integrations.Core.SendEmail({
+              to: g.email,
+              subject: `Peringatan Absen 3 Hari — ${g.entries.length} Siswa (${todayStr})`,
+              html,
+              from_name: 'Sistem Informasi Sekolah',
+            });
+            g.entries.forEach((p) => { p.emailOk = true; p.penerimaEmail = g.nama; });
+            emailSentGroups++;
+          } catch (e) {
+            // gagal kirim individual — tidak menghentikan penerima lain
+          }
+        }
+      }));
+    }
+
+    // Simpan/update log dedup per kejadian
+    const byKey = {};
+    pending.forEach((p) => { byKey[p.key] = p; });
+    const creates = [];
+    const updates = [];
+    Object.keys(byKey).forEach((key) => {
+      const p = byKey[key];
+      const waTer = !!p.waOk;
+      const emailTer = !!p.emailOk;
+      if (!waTer && !emailTer && !p.existing) return; // belum ada upaya kirim sama sekali — coba lagi di run berikut
+      const rec = {
+        wa_terkirim: waTer,
+        email_terkirim: emailTer,
+        penerima_wa: p.penerimaWa || (p.existing && p.existing.penerima_wa) || '',
+        penerima_email: p.penerimaEmail || (p.existing && p.existing.penerima_email) || '',
+      };
+      if (p.existing) updates.push(svc.entities.NotifAbsen3Hari.update(p.existing.id, rec));
+      else creates.push({
+        siswa_id: p.siswa.id,
+        nis: p.siswa.nis || '',
+        nama_siswa: p.siswa.nama,
+        nama_kelas: p.siswa.nama_kelas || '',
+        status: p.ev.status,
+        kriteria: p.ev.kriteria,
+        detail: p.ev.detail,
+        minggu_key: p.ev.minggu_key,
+        tanggal_pemicu: p.ev.tanggal_pemicu,
+        ...rec,
       });
-    }
-
-    if (siswaAbsen3Hari.length === 0) {
-      return Response.json({
-        status: 'no_absence',
-        weekKey,
-        weekStart,
-        weekEnd,
-        message: 'Tidak ada siswa absen 3+ hari yang perlu dinotifikasi minggu ini',
-      });
-    }
-
-    // Hormati sakelar gateway: WA jenis Siswa (Pengaturan)
-    const gatewayRows = await svc.entities.PengaturanAplikasi.list();
-    const gw = (gatewayRows || [])[0] || {};
-    if (gw.notif_wa_siswa === false) {
-      return Response.json({
-        status: 'wa_off',
-        weekKey,
-        weekStart,
-        weekEnd,
-        kandidat: siswaAbsen3Hari.length,
-        message: 'Gateway WA Siswa dimatikan (OFF) di Pengaturan — notifikasi dijeda, dedup mingguan tidak ditandai',
-      });
-    }
-
-    // Kelompokkan per Wali Kelas (berdasarkan no_telp)
-    const byWali = {};
-    for (const s of siswaAbsen3Hari) {
-      const key = s.waliPhone || `no-phone-${s.waliName || s.kelas}`;
-      if (!byWali[key]) byWali[key] = { waliName: s.waliName, waliPhone: s.waliPhone, siswa: [] };
-      byWali[key].siswa.push(s);
-    }
-
-    let sentCount = 0;
-    let noPhoneCount = 0;
-    let berlanjutCount = 0;
-    const notifiedSiswaIds = [];
-    for (const key of Object.keys(byWali)) {
-      const w = byWali[key];
-      if (!w.waliPhone) { noPhoneCount++; continue; }
-      const siswaRows = w.siswa
-        .map((s) => `• ${s.nama} (${s.kelas}) — Alfa ${s.alfaCount}x, Sakit ${s.sakitCount}x${s.berlanjut ? ' — masih belum hadir (berlanjut dari minggu lalu)' : ''}`)
-        .join('\n');
-      const message =
-        `Yth. Bpk/Ibu ${w.waliName || 'Wali Kelas'},\n\n` +
-        `Mohon tindak lanjut siswa berikut yang telah absen (Alfa/Sakit) 3+ hari (${weekStart} s/d ${weekEnd}):\n\n` +
-        `${siswaRows}\n\n` +
-        `Mohon segera hubungi orang tua. Terima kasih.\n\n- Sistem Informasi Sekolah YPPI ARRAHMAH`;
-      try {
-        await svc.functions.invoke('sendWANotif', { phone: w.waliPhone, message });
-        sentCount++;
-        w.siswa.forEach((s) => {
-          notifiedSiswaIds.push(s.id);
-          if (s.berlanjut) berlanjutCount++;
-        });
-      } catch (e) {
-        // skip gagal kirim individual
-      }
-    }
-
-    // Tandai siswa yang sudah dinotifikasi (sekali per minggu) — dedup
-    if (notifiedSiswaIds.length > 0) {
-      try {
-        await svc.entities.Siswa.updateMany(
-          { id: { $in: notifiedSiswaIds } },
-          { $set: { notif_absen3hari_minggu: weekKey } }
-        );
-      } catch (e) {
-        // skip gagal update dedup
-      }
+    });
+    try {
+      if (creates.length > 0) await svc.entities.NotifAbsen3Hari.bulkCreate(creates);
+      if (updates.length > 0) await Promise.allSettled(updates);
+    } catch (e) {
+      // gagal simpan log — tidak mempengaruhi pengiriman yang sudah terjadi
     }
 
     return Response.json({
       status: 'success',
-      weekKey,
-      weekStart,
-      weekEnd,
-      siswa_absen_3hari: siswaAbsen3Hari.length,
-      berlanjut: berlanjutCount,
-      wali_notified: sentCount,
-      wali_no_phone: noPhoneCount,
-      siswa_marked_notified: notifiedSiswaIds.length,
+      tanggal: todayStr,
+      kandidat: candidateIds.length,
+      kejadian_baru: pending.length,
+      wa_groups_terkirim: waSentGroups,
+      wa_groups_gagal: waFailGroups,
+      email_groups_terkirim: emailSentGroups,
+      log_dibuat: creates.length,
+      log_diperbarui: updates.length,
     });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
-});
+}

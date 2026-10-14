@@ -1,0 +1,93 @@
+{
+  "name": "NotifAbsen3Hari",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Sakit",
+        "Izin",
+        "Alfa"
+      ],
+      "description": "Status absensi pemicu (dihitung per status masing-masing)"
+    },
+    "kriteria": {
+      "type": "string",
+      "enum": [
+        "Beruntun 3 Hari",
+        "Akumulasi 3 Hari/Minggu",
+        "Sama Hari 3 Minggu"
+      ],
+      "description": "Ketentuan yang terpenuhi"
+    },
+    "detail": {
+      "type": "string",
+      "description": "Rincian tanggal/hari pemicu"
+    },
+    "minggu_key": {
+      "type": "string",
+      "description": "Kunci minggu sekolah pemicu (cth: 2026-42) \u2014 kunci deduplikasi"
+    },
+    "tanggal_pemicu": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal terakhir yang melengkapi kriteria"
+    },
+    "wa_terkirim": {
+      "type": "boolean",
+      "default": false,
+      "description": "WA gateway berhasil terkirim ke minimal satu penerima"
+    },
+    "email_terkirim": {
+      "type": "boolean",
+      "default": false,
+      "description": "Email gateway berhasil terkirim ke minimal satu penerima"
+    },
+    "penerima_wa": {
+      "type": "string",
+      "description": "Nama penerima WA (wali kelas / waka)"
+    },
+    "penerima_email": {
+      "type": "string",
+      "description": "Nama penerima email (wali kelas / waka)"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "nama_siswa",
+    "status",
+    "kriteria",
+    "minggu_key"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

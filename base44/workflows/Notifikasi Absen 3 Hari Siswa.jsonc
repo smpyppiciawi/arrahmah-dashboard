@@ -1,11 +1,13 @@
 {
+  "name": "Notifikasi Absen 3 Hari Siswa",
+  "description": "Setiap jam sekolah (Senin-Jumat, 07:00-15:00 WIB) evaluasi Peringatan Absen 3 Hari secara PER STATUS (Sakit/Izin/Alfa dihitung masing-masing): Beruntun 3 Hari, Akumulasi 3 Hari/Minggu, dan Sama Hari 3 Minggu (hari yang sama di 3 minggu berbeda). Notifikasi WA + Email otomatis ke Wali Kelas, Waka Kesiswaan & Waka Kurikulum dari data Guru terkini (dedup per siswa/status/kriteria/minggu; gagal kirim diulang run berikutnya; menghormati sakelar gateway WA & Email jenis Siswa). Panel Absen 3 Hari di Dashboard Kepsek menampilkan hasilnya real-time.",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "0 8 * * *",
+      "cron_expression": "0 7-15 * * 1-5",
       "one_time_date": null,
       "timezone": "Asia/Jakarta",
       "interval_value": null,
@@ -20,25 +22,23 @@
     "document": {
       "dsl": "1.0.0",
       "name": "notif_absen_3hari",
-      "version": "1.0",
+      "version": "1.1",
       "namespace": "base44"
     },
     "do": [
       {
-        "send_absen_3hari_notification": {
+        "evaluasi_absen_3hari": {
           "call": "invoke_backend_function",
           "with": {
             "function_name": "notifAbsen3Hari"
           },
           "then": "end",
           "x-base44": {
-            "title": "Kirim Notifikasi Absen 3 Hari",
-            "description": "Cek siswa absen (Alfa/Sakit) akumulasi 3+ hari dalam minggu berjalan (Senin-Jumat), lalu kirim WA ke Wali Kelas via Fonnte \u2014 sekali per minggu"
+            "title": "Evaluasi & Kirim Notifikasi Absen 3 Hari",
+            "description": "Deteksi per status (Beruntun \u00b7 Akumulasi \u00b7 Hari Sama) lalu kirim WA & Email ke Wali Kelas dan Waka"
           }
         }
       }
     ]
-  },
-  "name": "Notifikasi Absen 3 Hari Siswa",
-  "description": "Setiap hari pukul 08:00 WIB, cek siswa dengan akumulasi absen (Alfa/Sakit) 3+ hari dalam minggu berjalan (Senin-Jumat; Sabtu-Minggu libur). Jika tercapai 3 hari (berturut atau akumulasi) dan belum dinotifikasi minggu ini, kirim WA sekali ke Wali Kelas via Fonnte. Dedup per minggu \u2014 tidak mengirim ulang walaupun belum diverifikasi Wali Kelas. Panel Absen 3 Hari di Dashboard Kepsek muncul saat akumulasi 3 hari dalam minggu tsb."
+  }
 }
