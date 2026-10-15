@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Plus, X, Loader2, UserPlus, LogIn } from "lucide-react";
 import { format } from "date-fns";
 import MapPicker from "@/components/ui/MapPicker";
+import UidMatchDialog from "@/components/uid/UidMatchDialog";
 import { useActiveAcademicYear } from "@/context/ActiveAcademicYearContext";
 import { PENDIDIKAN_OPTIONS, PEKERJAAN_OPTIONS, PENGHASILAN_OPTIONS, AGAMA_OPTIONS } from "@/lib/dapodikConstants";
 
@@ -49,6 +50,7 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
   const [mode, setMode] = useState('normal'); // 'normal' | 'mutasi'
   const [mutasiStep, setMutasiStep] = useState(1); // 1: data mutasi awal, 2: data siswa lengkap
   const [mutasiData, setMutasiData] = useState(DEFAULT_MUTASI);
+  const [pendingMatch, setPendingMatch] = useState(null); // { data, kandidat }
 
   useEffect(() => {
     if (isOpen) {
@@ -118,7 +120,26 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (editingData) updateMutation.mutate({ id: editingData.id, data: formData });
-    else createMutation.mutate({ ...formData, uid: crypto.randomUUID() });
+    else cekKandidatDanBuat(formData);
+  };
+
+  // Pencocokan gabungan: sebelum membuat record baru, cari kandidat siswa lama
+  // (keluar/lulus/arsip). Jika dikonfirmasi orang yang sama, record baru memakai
+  // UID lama sehingga seluruh riwayat lintas modul tetap terhubung.
+  const cekKandidatDanBuat = async (data) => {
+    const res = await base44.functions.invoke('cariKandidatUid', {
+      tipe: 'Siswa', nis: data.nis, nisn: data.nisn, nik: data.nik,
+      nama: data.nama, jenis_kelamin: data.jenis_kelamin, tanggal_lahir: data.tanggal_lahir,
+    });
+    const kandidat = res.data?.kandidat || [];
+    if (kandidat.length > 0) setPendingMatch({ data, kandidat });
+    else createMutation.mutate({ ...data, uid: crypto.randomUUID() });
+  };
+
+  const buatDenganUid = (uid) => {
+    const data = pendingMatch.data;
+    setPendingMatch(null);
+    createMutation.mutate({ ...data, uid });
   };
 
   // Step 1 Mutasi Masuk → lanjut ke form data siswa
@@ -143,6 +164,7 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
   const isMutasiAwal = !editingData && mode === 'mutasi' && mutasiStep === 1;
 
   return (
+    <>
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
@@ -379,5 +401,17 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
         )}
       </DialogContent>
     </Dialog>
+    {pendingMatch && (
+      <UidMatchDialog
+        open
+        tipe="Siswa"
+        dataBaru={pendingMatch.data}
+        kandidat={pendingMatch.kandidat}
+        saving={createMutation.isPending}
+        onSame={(k) => buatDenganUid(k.uid)}
+        onDifferent={() => buatDenganUid(crypto.randomUUID())}
+      />
+    )}
+    </>
   );
 }

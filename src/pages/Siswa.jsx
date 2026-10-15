@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
 import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck, Archive, DatabaseZap } from "lucide-react";
+import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck, Archive, DatabaseZap, History, ListChecks } from "lucide-react";
+import RiwayatUidDialog from "@/components/uid/RiwayatUidDialog";
+import UidAuditDialog from "@/components/uid/UidAuditDialog";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
@@ -33,6 +35,8 @@ export default function Siswa() {
   const [viewMode, setViewMode] = useState('tabel');
   const [arsipOpen, setArsipOpen] = useState(false);
   const [migrasiUidBerjalan, setMigrasiUidBerjalan] = useState(false);
+  const [riwayatSiswa, setRiwayatSiswa] = useState(null);
+  const [auditOpen, setAuditOpen] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -172,6 +176,9 @@ export default function Siswa() {
           <Button size="sm" variant="ghost" onClick={() => setDetailSiswa(row)} title="Detail">
             <Eye className="w-4 h-4" />
           </Button>
+          <Button size="sm" variant="ghost" onClick={() => setRiwayatSiswa(row)} title="Riwayat via UID">
+            <History className="w-4 h-4" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)} title="Edit">
             <Edit2 className="w-4 h-4" />
           </Button>
@@ -232,6 +239,11 @@ export default function Siswa() {
               {isAdmin && (
                 <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
                   <DatabaseZap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
+                </Button>
+              )}
+              {isAdmin && (
+                <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm">
+                  <ListChecks className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Audit UID</span>
                 </Button>
               )}
               <ImportSiswaCSV />
@@ -298,6 +310,17 @@ export default function Siswa() {
       />
     )}
     {detailSiswa && <SiswaDetailDialog siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
+    {riwayatSiswa && (
+      <RiwayatUidDialog
+        open
+        onOpenChange={(o) => !o && setRiwayatSiswa(null)}
+        tipe="Siswa"
+        uid={riwayatSiswa.uid}
+        personId={riwayatSiswa.id}
+        nama={riwayatSiswa.nama}
+      />
+    )}
+    {isAdmin && <UidAuditDialog open={auditOpen} onOpenChange={setAuditOpen} />}
     </>
   );
 }

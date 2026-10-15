@@ -64,8 +64,9 @@ export default async function(req) {
       return Response.json({ error: 'Record belum memiliki UID. Jalankan Migrasi UID terlebih dahulu.' }, { status: 400 });
     }
 
-    const records = await base44.entities[tipe].filter({ uid }, { limit: 50 });
-    const ids = (records || []).map((r) => r.id);
+    const pageMain = await base44.entities[tipe].filter({ uid }, { limit: 50 });
+    const records = pageMain.items || pageMain || [];
+    const ids = records.map((r) => r.id);
     if (ids.length === 0) {
       return Response.json({ error: 'Tidak ada record utama dengan UID tersebut.' }, { status: 404 });
     }

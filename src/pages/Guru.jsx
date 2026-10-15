@@ -10,7 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap, Archive } from "lucide-react";
+import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap, Archive, History, ListChecks } from "lucide-react";
+import UidMatchDialog from "@/components/uid/UidMatchDialog";
+import RiwayatUidDialog from "@/components/uid/RiwayatUidDialog";
+import UidAuditDialog from "@/components/uid/UidAuditDialog";
 import ArsipDialog from "@/components/arsip/ArsipDialog";
 import { runMigrasiUid } from '@/lib/uidMigrasi';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
@@ -44,6 +47,9 @@ export default function Guru() {
   const [backfilling, setBackfilling] = useState(false);
   const [arsipOpen, setArsipOpen] = useState(false);
   const [migrasiUidBerjalan, setMigrasiUidBerjalan] = useState(false);
+  const [pendingMatch, setPendingMatch] = useState(null); // { data, kandidat }
+  const [riwayatGuru, setRiwayatGuru] = useState(null);
+  const [auditOpen, setAuditOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -244,8 +250,26 @@ export default function Guru() {
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: dataToSubmit });
     } else {
-      createMutation.mutate(dataToSubmit);
+      buatGuruDenganCek(dataToSubmit);
     }
+  };
+
+  // Pencocokan gabungan: sebelum membuat record baru, cari kandidat pegawai lama
+  // (keluar/arsip). Jika dikonfirmasi orang yang sama, record baru memakai UID lama
+  // sehingga seluruh riwayat lintas modul tetap terhubung.
+  const buatGuruDenganCek = async (data) => {
+    const res = await base44.functions.invoke('cariKandidatUid', {
+      tipe: 'Guru', nuptk: data.nuptk, nama: data.nama, jenis_kelamin: data.jenis_kelamin,
+    });
+    const kandidat = res.data?.kandidat || [];
+    if (kandidat.length > 0) setPendingMatch({ data, kandidat });
+    else createMutation.mutate({ ...data, uid: crypto.randomUUID() });
+  };
+
+  const buatDenganUid = (uid) => {
+    const data = pendingMatch.data;
+    setPendingMatch(null);
+    createMutation.mutate({ ...data, uid });
   };
 
   // Konfirmasi popup Alasan Keluar -> simpan dengan alasan & tanggal keluar
@@ -255,7 +279,7 @@ export default function Guru() {
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: finalData });
     } else {
-      createMutation.mutate(finalData);
+      buatGuruDenganCek(finalData);
     }
     setPendingSubmit(null);
     setKeluarDialogOpen(false);
@@ -372,6 +396,9 @@ export default function Guru() {
       filterable: false,
       render: (row) => canEdit ? (
         <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setRiwayatGuru(row)} title="Riwayat via UID">
+            <History className="w-4 h-4" />
+          </Button>
           <Button size="sm" variant="ghost" onClick={() => handleEdit(row)}>
             <Edit2 className="w-4 h-4" />
           </Button>
@@ -407,14 +434,19 @@ export default function Guru() {
       sortable: false,
       filterable: false,
       render: (row) => canEdit ? (
-        <Button
-          size="sm"
-          variant="outline"
-          className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
-          onClick={() => handleReactivateClick(row.id)}
-        >
-          <Undo2 className="w-3.5 h-3.5 mr-1" /> Kembali Aktif
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setRiwayatGuru(row)} title="Riwayat via UID">
+            <History className="w-4 h-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+            onClick={() => handleReactivateClick(row.id)}
+          >
+            <Undo2 className="w-3.5 h-3.5 mr-1" /> Kembali Aktif
+          </Button>
+        </div>
       ) : (
         <span className="text-xs text-slate-400">-</span>
       )
@@ -484,6 +516,12 @@ export default function Guru() {
                 <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
                   <DatabaseZap className="w-4 h-4 sm:mr-2" />
                   <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
+                </Button>
+              )}
+              {isAdmin && (
+                <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm">
+                  <ListChecks className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Audit UID</span>
                 </Button>
               )}
               <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm">
@@ -712,6 +750,28 @@ export default function Guru() {
       </div>
     </div>
     {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Data" color="purple" icon={Plus} />}
+    {pendingMatch && (
+      <UidMatchDialog
+        open
+        tipe="Guru"
+        dataBaru={pendingMatch.data}
+        kandidat={pendingMatch.kandidat}
+        saving={createMutation.isPending}
+        onSame={(k) => buatDenganUid(k.uid)}
+        onDifferent={() => buatDenganUid(crypto.randomUUID())}
+      />
+    )}
+    {riwayatGuru && (
+      <RiwayatUidDialog
+        open
+        onOpenChange={(o) => !o && setRiwayatGuru(null)}
+        tipe="Guru"
+        uid={riwayatGuru.uid}
+        personId={riwayatGuru.id}
+        nama={riwayatGuru.nama}
+      />
+    )}
+    {isAdmin && <UidAuditDialog open={auditOpen} onOpenChange={setAuditOpen} />}
     </>
   );
 }

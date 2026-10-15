@@ -10,19 +10,22 @@ import { Loader2, Fingerprint, ChevronDown, ChevronRight, History } from "lucide
  * Menelusuri seluruh riwayat lintas modul seorang siswa/pegawai via UID —
  * mencakup riwayat record lama (ID internal lama) dan record baru ber-UID sama.
  */
-export default function RiwayatUidDialog({ open, onOpenChange, tipe, uid, nama }) {
+export default function RiwayatUidDialog({ open, onOpenChange, tipe, uid, personId, nama }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = null;
   const [cariUid, setCariUid] = useState('');
   const [terbuka, setTerbuka] = useState({});
 
-  const muat = async (uidTarget) => {
+  const muat = async (uidTarget, seedId) => {
     setLoading(true);
     setError('');
     setData(null);
     try {
-      const res = await base44.functions.invoke('riwayatUid', { tipe, uid: uidTarget });
+      const body = { tipe };
+      if (uidTarget) body.uid = uidTarget;
+      else if (seedId) { if (tipe === 'Guru') body.guru_id = seedId; else body.siswa_id = seedId; }
+      const res = await base44.functions.invoke('riwayatUid', body);
       setData(res.data);
     } catch (e) {
       setError(e?.message || 'Gagal memuat riwayat.');
@@ -31,16 +34,16 @@ export default function RiwayatUidDialog({ open, onOpenChange, tipe, uid, nama }
   };
 
   useEffect(() => {
-    if (open && uid) {
-      setCariUid(uid);
-      muat(uid);
+    if (open && (uid || personId)) {
+      setCariUid(uid || '');
+      muat(uid, personId);
     }
-    if (open && !uid) {
+    if (open && !uid && !personId) {
       setCariUid('');
       setData(null);
       setError('');
     }
-  }, [open, uid]);
+  }, [open, uid, personId]);
 
   const ringkas = (it) => {
     const tgl = it.tanggal || it.tanggal_setor || it.tanggal_masuk || String(it.created_date || '').slice(0, 10);
