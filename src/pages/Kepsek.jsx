@@ -35,7 +35,8 @@ import ApprovalPoinWidget from '@/components/kepsek/ApprovalPoinWidget';
 import RaporStatusWidget from '@/components/kepsek/RaporStatusWidget';
 import ApprovalPoinDialog from '@/components/catatan/ApprovalPoinDialog';
 import BukuTamuKepsekWidget from '@/components/kepsek/BukuTamuKepsekWidget';
-import SaldoBreakdownDialog, { BELUM_TERPETAKAN } from '@/components/kepsek/SaldoBreakdownDialog';
+import SaldoBreakdownDialog from '@/components/kepsek/SaldoBreakdownDialog';
+import { buildSaldoSumberDana } from '@/lib/saldoSumberDana';
 import KehadiranKepsekSection from '@/components/kepsek/KehadiranKepsekSection';
 import KehadiranPegawaiSection from '@/components/kepsek/KehadiranPegawaiSection';
 import { useAbsen3Hari, getSchoolWeek } from '@/hooks/useAbsen3Hari';
@@ -103,6 +104,8 @@ export default function Kepsek() {
   const { data: materiList = [] } = useQuery({ queryKey: ['materi-kepsek'], queryFn: () => base44.entities.Materi.list('-created_date', 2000) });
   const { data: izinPegawaiList = [] } = useQuery({ queryKey: ['izinPegawai-kepsek'], queryFn: () => base44.entities.IzinPegawai.filter({ status_approval: 'Pending' }) });
   const { data: sumberDanaList = [] } = useQuery({ queryKey: ['sumberDana-kepsek'], queryFn: () => base44.entities.SumberDana.list() });
+  // Kunci cache sama dengan Bendahara → transfer langsung tercermin di saldo
+  const { data: transferDanaList = [] } = useQuery({ queryKey: ['transfer-dana'], queryFn: () => base44.entities.TransferDana.list('-tanggal') });
   const { data: bukuTamuList = [] } = useQuery({ queryKey: ['bukuTamu-kepsek'], queryFn: () => base44.entities.BukuTamu.list('-tanggal') });
   const { data: tarifList = [] } = useQuery({ queryKey: ['tarifIuran'], queryFn: () => base44.entities.TarifIuran.list(), staleTime: 300000 });
   const { data: biayaKhususList = [] } = useQuery({ queryKey: ['biayaKhusus-kepsek'], queryFn: () => base44.entities.BiayaKhusus.list(), staleTime: 300000 });
@@ -245,34 +248,14 @@ export default function Kepsek() {
     const visitedIds = new Set(homeVisitList.map(h => h.siswa_id));
     const visitedSiswa = aktiveSiswa.filter(s => visitedIds.has(s.id));
     const notVisitedSiswa = aktiveSiswa.filter(s => !visitedIds.has(s.id));
-    // Saldo & rincian mengikuti PERIODE filter Kepsek (bukan all-time) — sama dengan Bendahara
-    // Hanya Sumber Dana RESMI yang menjadi baris saldo. Transaksi tanpa sumber dana
-    // (atau bernilai di luar daftar SumberDana) dikumpulkan eksplisit pada baris
-    // "Belum Terpetakan" — tidak lagi menyamar sebagai sumber dana "Umum".
-    const namaSumberResmi = sumberDanaList.map(s => s.nama);
-    const keySumber = (k) => (k.sumber_rekening && namaSumberResmi.includes(k.sumber_rekening)) ? k.sumber_rekening : BELUM_TERPETAKAN;
-    const sumberDanaBreakdown = [...namaSumberResmi, BELUM_TERPETAKAN].map(key => {
-      const rows = filteredKeuangan.filter(k => keySumber(k) === key);
-      const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
-      const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
-      return { sumber_dana: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
-    }).filter(s => s.transaksi > 0 || namaSumberResmi.includes(s.sumber_dana));
-    // Rincian transaksi per sumber dana — dipakai dialog saldo untuk audit baris
-    const sumberDetail = {};
-    filteredKeuangan.forEach(k => {
-      const key = keySumber(k);
-      if (!sumberDetail[key]) sumberDetail[key] = [];
-      sumberDetail[key].push(k);
-    });
-    // Saldo per Kategori — periode filter
-    const kategoriKeys = new Set();
-    filteredKeuangan.forEach(k => { if (k.kategori) kategoriKeys.add(k.kategori); });
-    const kategoriBreakdown = [...kategoriKeys].map(key => {
-      const rows = filteredKeuangan.filter(k => (k.kategori || 'Lainnya') === key);
-      const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
-      const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
-      return { kategori: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
-    }).filter(s => s.transaksi > 0).sort((a, b) => b.saldo - a.saldo);
+    // Saldo per Sumber Dana & Kategori memakai logika bersama Laporan Keuangan Bendahara:
+    // transfer dana diperhitungkan, Iuran Muka & Saldo Awal netral terhadap kas.
+    // Dua acuan: periode filter Kepsek dan saldo berjalan (seluruh riwayat).
+    const saldoPeriodeData = buildSaldoSumberDana({ keuanganList, transferDanaList, sumberDanaList, dateFrom, dateTo });
+    const saldoBerjalanData = buildSaldoSumberDana({ keuanganList, transferDanaList, sumberDanaList });
+    const sumberDanaBreakdown = saldoPeriodeData.sumberDanaBreakdown;
+    const sumberDetail = saldoPeriodeData.sumberDetail;
+    const kategoriBreakdown = saldoPeriodeData.kategoriBreakdown;
     // Agenda materi per guru (total bab setahun)
     const materiByGuru = {};
     materiList.forEach(m => {
@@ -296,10 +279,10 @@ export default function Kepsek() {
       homeVisitTotal: homeVisitList.length, homeVisitVisited: visitedSiswa.length,
       homeVisitNotVisited: notVisitedSiswa, homeVisitNotVisitedCount: notVisitedSiswa.length,
       saldoPeriode: totalPemasukan - totalPengeluaran, pemasukanPeriode: totalPemasukan, pengeluaranPeriode: totalPengeluaran,
-      sumberDanaBreakdown, kategoriBreakdown, sumberDetail,
+      sumberDanaBreakdown, kategoriBreakdown, sumberDetail, saldoPeriodeData, saldoBerjalanData,
       materiPerGuru, totalBab, izinPegawaiPending: izinPegawaiList,
     };
-  }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, pelanggaranImpList, improvementList, prestasiList, kalenderList, izinList, uksList, homeVisitList, absensiPegawaiList, jadwalPelajaranList, materiList, izinPegawaiList, sumberDanaList, dateFrom, dateTo, activeDayStr, activeDayName]);
+  }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, pelanggaranImpList, improvementList, prestasiList, kalenderList, izinList, uksList, homeVisitList, absensiPegawaiList, jadwalPelajaranList, materiList, izinPegawaiList, sumberDanaList, transferDanaList, dateFrom, dateTo, activeDayStr, activeDayName]);
 
   const alerts = useMemo(() => {
     const list = [];
@@ -617,7 +600,7 @@ export default function Kepsek() {
       <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
       <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
-      <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} sumberDanaBreakdown={stats.sumberDanaBreakdown} kategoriBreakdown={stats.kategoriBreakdown} sumberDetail={stats.sumberDetail} formatRupiah={formatRupiah} periodLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} />
+      <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} periode={stats.saldoPeriodeData} berjalan={stats.saldoBerjalanData} formatRupiah={formatRupiah} periodLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className={`max-w-md ${t.dialog}`}>
