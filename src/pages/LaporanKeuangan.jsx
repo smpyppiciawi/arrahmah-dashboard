@@ -561,6 +561,22 @@ export default function LaporanKeuangan() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold text-emerald-700">{formatRupiah(laporanPemasukanPengeluaran.totalPemasukan)}</p>
+                  <div className="mt-3 rounded-xl bg-white/90 border border-emerald-100 overflow-hidden">
+                    {Object.keys(laporanPemasukanPengeluaran.pemasukanByKategori).length === 0 ? (
+                      <p className="px-3 py-4 text-xs text-slate-400 text-center">Belum ada pemasukan pada filter ini.</p>
+                    ) : (
+                      <div className="divide-y divide-emerald-50 max-h-64 overflow-y-auto">
+                        {Object.entries(laporanPemasukanPengeluaran.pemasukanByKategori)
+                          .sort((a, b) => b[1] - a[1])
+                          .map(([kategori, jumlah]) => (
+                            <div key={kategori} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                              <span className="text-slate-600 truncate">{kategori}</span>
+                              <span className="font-semibold text-emerald-700 flex-shrink-0">{formatRupiah(jumlah)}</span>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-emerald-700/70 mt-2">
                     {filterKategori ? `Kategori ${filterKategori}` : 'Semua kategori'} · {laporanPemasukanPengeluaran.jumlahPemasukan} transaksi
                   </p>

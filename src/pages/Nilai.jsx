@@ -204,8 +204,11 @@ export default function Nilai() {
   };
 
   const handleNilaiChange = (nilai) => {
-    const numNilai = Number(nilai);
-    setFormData({ ...formData, nilai: numNilai, status_ketuntasan: numNilai >= kkmPts ? 'Tuntas' : 'Belum Tuntas' });
+    const value = batasiNilai(nilai);
+    setFormData({
+      ...formData, nilai: value,
+      status_ketuntasan: value === '' ? '' : (Number(value) >= kkmPts ? 'Tuntas' : 'Belum Tuntas'),
+    });
   };
 
   const handleSubmit = (e) => {
@@ -251,7 +254,7 @@ export default function Nilai() {
   // Simpan dari Bottom Sheet (edit cepat nilai)
   const handleSheetSave = (nilai) => {
     if (!sheetRow) return;
-    const numNilai = Number(nilai);
+    const numNilai = Number(batasiNilai(nilai) || 0);
     updateMutation.mutate({
       id: sheetRow.id,
       data: { ...sheetRow, nilai: numNilai, status_ketuntasan: numNilai >= kkmPts ? 'Tuntas' : 'Belum Tuntas' }
@@ -299,10 +302,11 @@ export default function Nilai() {
     }));
   }, [comboKey, existingForCombo, siswaList, kelasList, kelasFormData.kelas_id, kelasFormData.kategori, isHarianKategori]);
 
-  // Mode sheet per BAB: pastikan selalu ada label aktif yang valid
+  // Semua kolom Nilai Harian terkunci (read only) sampai Guru memilih satu kolom.
+  // Bila kolom aktif dihapus / berganti kombinasi, kembali ke posisi terkunci.
   useEffect(() => {
     if (isHarianKategori && !kelasLabels.some(l => l.id === activeLabelId)) {
-      setActiveLabelId(kelasLabels[0]?.id || null);
+      setActiveLabelId(null);
     }
   }, [kelasLabels, activeLabelId, isHarianKategori]);
 
@@ -314,10 +318,13 @@ export default function Nilai() {
     setKelasFormData(prev => ({ ...prev, mapel, nama_guru: namaGuruPengampu(prev.kelas_id, mapel) }));
   };
 
-  // Fitur Tambah Nilai: menambah kolom label Nilai Harian (teks bebas per BAB/materi)
+  // Fitur Tambah Nilai: menambah kolom Nilai Harian (judul/label bebas per BAB/materi).
+  // Kolom baru langsung aktif agar Guru bisa mengisi judulnya tanpa langkah tambahan.
   const tambahLabel = () => {
     labelCounterRef.current += 1;
-    setKelasLabels(prev => [...prev, { id: `baru${labelCounterRef.current}`, text: `Nilai BAB ${prev.length + 1}` }]);
+    const id = `baru${labelCounterRef.current}`;
+    setKelasLabels(prev => [...prev, { id, text: '' }]);
+    setActiveLabelId(id);
   };
   const ubahLabel = (id, text) => setKelasLabels(prev => prev.map(l => l.id === id ? { ...l, text } : l));
   const hapusLabel = (id) => {
@@ -328,7 +335,14 @@ export default function Nilai() {
     setKelasLabels(prev => prev.filter(l => l.id !== id));
     setKelasNilaiData(prev => prev.map(r => { const v = { ...r.values }; delete v[id]; return { ...r, values: v }; }));
   };
-  const setNilaiCell = (siswaId, labelId, nilai) => setKelasNilaiData(prev => prev.map(r => r.siswa_id === siswaId ? { ...r, values: { ...r.values, [labelId]: nilai } } : r));
+  // Batas nilai 0–100: guru tidak bisa menginput nilai di atas 100
+  const batasiNilai = (nilai) => {
+    if (nilai === '' || nilai === null || nilai === undefined) return '';
+    const num = Number(nilai);
+    if (isNaN(num)) return '';
+    return String(Math.min(100, Math.max(0, num)));
+  };
+  const setNilaiCell = (siswaId, labelId, nilai) => setKelasNilaiData(prev => prev.map(r => r.siswa_id === siswaId ? { ...r, values: { ...r.values, [labelId]: batasiNilai(nilai) } } : r));
 
   const handleKelasSubmit = async (e) => {
     e.preventDefault();

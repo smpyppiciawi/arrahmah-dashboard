@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Inbox } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, BookMarked } from 'lucide-react';
 
 const getInitials = (name) => String(name || '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
@@ -33,6 +33,9 @@ export default function NilaiCardList({ data = [], canEdit, onEdit, pageSize = 1
 
       {rows.map(row => {
         const tuntas = row.status_ketuntasan === 'Tuntas';
+        // Nilai Harian: tampilkan judul BAB/materi agar jelas nilai harian mana yang dimaksud
+        const isHarian = row.kategori === 'Nilai Harian' || ['Harian', 'Ulangan Harian', 'Tugas', 'Praktik'].includes(row.jenis_penilaian);
+        const judulHarian = isHarian ? (row.kompetensi_bab || row.label || '') : '';
         return (
           <div
             key={row.id}
@@ -68,6 +71,13 @@ export default function NilaiCardList({ data = [], canEdit, onEdit, pageSize = 1
                     {row.status_ketuntasan}
                   </span>
                 </div>
+
+                {judulHarian && (
+                  <p className="mt-1.5 inline-flex items-center gap-1 max-w-full px-1.5 py-0.5 rounded text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-100">
+                    <BookMarked className="w-3 h-3 flex-shrink-0" />
+                    <span className="truncate">{judulHarian}</span>
+                  </p>
+                )}
               </div>
             </div>
           </div>

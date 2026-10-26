@@ -15,6 +15,9 @@ export default function NilaiEditSheet({ row, open, onOpenChange, onSave, onDele
   const kkm = row.kkm || 75;
   const numNilai = Number(nilai);
   const isTuntas = nilai !== '' && !isNaN(numNilai) && numNilai >= kkm;
+  // Nilai Harian: judul BAB/materi yang dinilai
+  const isHarian = row.kategori === 'Nilai Harian' || ['Harian', 'Ulangan Harian', 'Tugas', 'Praktik'].includes(row.jenis_penilaian);
+  const judulHarian = isHarian ? (row.kompetensi_bab || row.label || '') : '';
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -45,6 +48,11 @@ export default function NilaiEditSheet({ row, open, onOpenChange, onSave, onDele
             <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium">{row.nama_kelas}</span>
             <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium">{row.mapel}</span>
             <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium">{row.jenis_penilaian}</span>
+            {judulHarian && (
+              <span className="bg-amber-50 text-amber-700 border border-amber-100 px-3 py-1.5 rounded-lg text-sm font-medium max-w-full truncate">
+                Label: {judulHarian}
+              </span>
+            )}
             <span className={`px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 ${
               isTuntas ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-600 border border-red-100'
             }`}>
@@ -59,7 +67,12 @@ export default function NilaiEditSheet({ row, open, onOpenChange, onSave, onDele
             <div className="flex justify-center">
               <input
                 type="number" min="0" max="100" value={nilai}
-                onChange={(e) => setNilai(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === '') { setNilai(''); return; }
+                  const n = Number(v);
+                  setNilai(isNaN(n) ? '' : String(Math.min(100, Math.max(0, n))));
+                }}
                 className="w-40 bg-slate-50 border-2 border-slate-200 rounded-2xl px-4 py-3 text-3xl font-bold text-center text-amber-500 focus:outline-none focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition-all"
               />
             </div>

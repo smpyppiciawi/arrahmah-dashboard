@@ -1,153 +1,187 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, MoreVertical, Plus, Pencil, Trash2, X } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { CheckCircle, Plus, Trash2, Lock, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 
 /**
  * Area isian nilai pada dialog Input Nilai Per Kelas.
- * Mobile: mode sheet per BAB (satu label aktif, tab pill BAB di bawah, edit/hapus label via menu titik-tiga).
- * Desktop: tabel rapat (kolom label inline) seperti sebelumnya.
+ * Semua kolom Nilai Harian terkunci (read only) sampai Guru memilih satu kolom
+ * dan mengonfirmasi "Ya". Kolom lain tetap terkunci agar tidak salah isi.
+ * Desktop: tabel gaya Excel dengan kolom Nama dibekukan (sticky) + nomor kolom Nilai 1..n.
+ * Mobile : daftar kartu per siswa dengan pilihan Nomor Nilai di atas.
  */
 export default function KelasNilaiInputArea({
   isHarianKategori, jenisPenilaian, kelasLabels, kelasNilaiData, kkmPts,
   setNilaiCell, tambahLabel, ubahLabel, hapusLabel,
   activeLabelId, setActiveLabelId, totalTerisi, actions,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
+  const [pendingKolom, setPendingKolom] = useState(null);
   const [hapusOpen, setHapusOpen] = useState(false);
-  const [editText, setEditText] = useState('');
 
-  const kolom = isHarianKategori
-    ? (kelasLabels.find(l => l.id === activeLabelId) || kelasLabels[0] || null)
-    : { id: 'ujian', label: '' };
-  const judulKolom = isHarianKategori
-    ? (kolom?.text || kolom?.label || 'Nilai Harian')
-    : `Nilai ${jenisPenilaian || 'Ujian'}`;
+  const kolomList = isHarianKategori ? kelasLabels : [{ id: 'ujian', text: '' }];
+  const activeKolom = isHarianKategori ? kelasLabels.find(l => l.id === activeLabelId) || null : kolomList[0];
+  const activeIndex = activeKolom ? kolomList.findIndex(k => k.id === activeKolom.id) : -1;
+  const isEditable = (id) => !isHarianKategori || activeLabelId === id;
   const tersimpan = kelasNilaiData.filter(i => Object.keys(i.existing).length > 0).length;
   const showTable = kelasNilaiData.length > 0;
 
+  const mintaAktif = (kolom) => {
+    if (!isHarianKategori || isEditable(kolom.id)) return;
+    setPendingKolom(kolom);
+  };
+  const konfirmasiAktif = () => {
+    if (pendingKolom) setActiveLabelId(pendingKolom.id);
+    setPendingKolom(null);
+  };
+  const nilaiTeks = (val) => (val === '' || val == null ? '–' : val);
   const cellClass = (val) =>
-    `text-center h-11 rounded-xl text-base font-semibold ${val !== '' && val != null ? (Number(val) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`;
+    `w-20 mx-auto text-center h-9 font-semibold ${val !== '' && val != null ? (Number(val) >= kkmPts ? 'border-emerald-300 text-emerald-700 bg-emerald-50/40' : 'border-red-300 text-red-700 bg-red-50/40') : ''}`;
+  const readClass = (val) =>
+    val === '' || val == null
+      ? 'border-slate-100 bg-slate-50/70 text-slate-300'
+      : Number(val) >= kkmPts
+        ? 'border-emerald-100 bg-emerald-50/60 text-emerald-700'
+        : 'border-red-100 bg-red-50/60 text-red-600';
+
+  const tambahButton = (variant = 'outline', extra = '') => (
+    <Button type="button" size="sm" variant={variant} onClick={tambahLabel} className={extra}>
+      <Plus className="w-4 h-4 mr-1" /> Tambah Nilai
+    </Button>
+  );
 
   return (
     <div>
       {showTable && (
         <>
-          {/* ===== MOBILE: sheet per BAB ===== */}
-          <div className="md:hidden">
-            {/* Header ringkasan menempel di atas */}
-            <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-b border-slate-100 flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-slate-900 leading-tight">Daftar Siswa ({kelasNilaiData.length})</p>
-                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                  Terisi {totalTerisi} • Tersimpan {tersimpan}
-                  {tersimpan > 0 && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
-                </p>
-              </div>
-              {isHarianKategori && (
-                <Button type="button" size="sm" onClick={tambahLabel} className="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-4 flex-shrink-0">
-                  <Plus className="w-4 h-4 mr-1" /> Tambah Nilai
-                </Button>
+          {/* ================= DESKTOP : tabel gaya Excel ================= */}
+          <div className="hidden md:block border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-slate-200 flex items-center justify-between gap-3 bg-white">
+              <p className="text-sm font-semibold text-slate-700">
+                Daftar Siswa ({kelasNilaiData.length})
+                <span className="ml-2 text-[11px] font-normal text-slate-500">Terisi {totalTerisi} • Tersimpan {tersimpan}</span>
+              </p>
+              {isHarianKategori ? tambahButton() : (
+                <span className="text-[11px] text-slate-500">Nilai {jenisPenilaian || 'Ujian'} — satu kali pelaksanaan</span>
               )}
             </div>
 
-            {/* Kartu judul BAB/label aktif */}
-            <div className="mt-4 border border-slate-200 rounded-2xl p-4 flex items-start justify-between gap-3 bg-white shadow-sm">
-              <h3 className="text-lg font-bold text-slate-900 leading-snug break-words min-w-0">{judulKolom}</h3>
-              {isHarianKategori && (
-                <button
-                  type="button"
-                  onClick={() => setMenuOpen(true)}
-                  className="p-2 -mr-2 -mt-1 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors flex-shrink-0"
-                  title="Opsi label"
-                >
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-
-            {/* Daftar siswa — baris besar ramah sentuh */}
-            <div className="mt-3 bg-white border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-sm">
-              {kelasNilaiData.map((item) => {
-                if (!kolom) return null;
-                const val = item.values[kolom.id] ?? item.existing[kolom.id]?.nilai ?? '';
-                const saved = !!item.existing[kolom.id];
-                return (
-                  <div key={item.siswa_id} className="flex items-center gap-3 px-4 py-3">
-                    <span className="flex-1 min-w-0 text-sm text-slate-800 break-words line-clamp-2 leading-snug">{item.nama_siswa}</span>
-                    <Input
-                      type="number" min="0" max="100" placeholder="0" inputMode="numeric"
-                      className={`w-24 flex-shrink-0 ${cellClass(val)}`}
-                      value={val}
-                      onChange={(e) => setNilaiCell(item.siswa_id, kolom.id, e.target.value)}
-                    />
-                    <span className="w-5 flex-shrink-0 flex justify-center">
-                      {saved && <CheckCircle className="w-5 h-5 text-emerald-500" />}
+            {isHarianKategori && (
+              activeKolom ? (
+                <div className="px-4 py-2.5 bg-amber-50/70 border-b border-amber-100 flex flex-wrap items-end gap-3">
+                  <div className="flex-shrink-0 pb-1.5">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[11px] font-bold">
+                      <Pencil className="w-3 h-3" /> Mengedit Nilai {activeIndex + 1}
                     </span>
                   </div>
-                );
-              })}
-            </div>
-            <p className="mt-2 text-[11px] text-slate-400">Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
-          </div>
-
-          {/* ===== DESKTOP: tabel rapat ===== */}
-          <div className="hidden md:block border border-slate-200 rounded-xl overflow-hidden">
-            <div className="bg-slate-50 px-4 py-2 border-b border-slate-200 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-700">Daftar Siswa ({kelasNilaiData.length})</p>
-              <p className="text-[11px] text-slate-500">
-                Terisi {totalTerisi} • Tersimpan {tersimpan}
-              </p>
-            </div>
-            {isHarianKategori && (
-              <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
-                <p className="text-[11px] text-slate-500">Label Nilai Harian ({kelasLabels.length}) — teks bebas per BAB/materi</p>
-                <Button type="button" size="sm" variant="outline" onClick={tambahLabel}>
-                  <Plus className="w-4 h-4 mr-1" /> Tambah Nilai
-                </Button>
-              </div>
+                  <div className="flex-1 min-w-[240px]">
+                    <Label className="text-[11px] text-slate-600">
+                      Label Nilai Harian ({activeKolom.text || 'belum diisi'}) — teks bebas per BAB/Materi
+                    </Label>
+                    <Input
+                      className="mt-1 h-9 bg-white"
+                      value={activeKolom.text || ''}
+                      onChange={(e) => ubahLabel(activeKolom.id, e.target.value)}
+                      placeholder="Contoh: BAB 2 Pidato"
+                    />
+                  </div>
+                  <div className="flex gap-2 pb-1">
+                    <Button type="button" size="sm" variant="outline" className="h-9 bg-white" onClick={() => setActiveLabelId(null)}>
+                      <Lock className="w-3.5 h-3.5 mr-1" /> Selesai
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-9 text-red-600 hover:bg-red-50" onClick={() => setHapusOpen(true)}>
+                      <Trash2 className="w-3.5 h-3.5 mr-1" /> Hapus
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                    <Lock className="w-3.5 h-3.5 text-slate-400" />
+                    Semua nilai terkunci. Klik judul kolom atau sel Nilai untuk mulai mengedit.
+                  </p>
+                  {tambahButton()}
+                </div>
+              )
             )}
-            <div className="max-h-72 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10">
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="text-left px-4 py-2 font-semibold text-slate-600 bg-slate-50">Siswa</th>
-                    {(isHarianKategori ? kelasLabels : [{ id: 'ujian', label: '' }]).map(k => (
-                      <th key={k.id} className="px-2 py-1.5 min-w-[140px] bg-slate-50">
-                        {isHarianKategori ? (
-                          <div className="flex items-center gap-1">
-                            <Input value={k.text || ''} onChange={(e) => ubahLabel(k.id, e.target.value)} placeholder="Label Nilai" className="h-7 text-xs px-2" />
-                            <button type="button" onClick={() => hapusLabel(k.id)} className="text-slate-300 hover:text-red-500 flex-shrink-0" title="Hapus kolom">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs font-semibold text-slate-600">Nilai {jenisPenilaian || 'Ujian'}</span>
-                        )}
-                      </th>
-                    ))}
+
+            <div className="overflow-auto max-h-[56vh]">
+              <table className="w-full text-sm border-separate border-spacing-0">
+                <thead>
+                  <tr>
+                    <th className="sticky left-0 top-0 z-30 w-[13rem] min-w-[13rem] bg-slate-100 border-b border-r border-slate-200 px-4 py-2.5 text-left text-xs font-bold text-slate-600">
+                      Nama Siswa
+                    </th>
+                    {kolomList.map((k, i) => {
+                      const aktif = isHarianKategori && isEditable(k.id);
+                      return (
+                        <th
+                          key={k.id}
+                          className={`sticky top-0 z-20 min-w-[104px] border-b border-slate-200 px-2 py-2 ${aktif ? 'bg-amber-100' : 'bg-slate-100'}`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => mintaAktif(k)}
+                            disabled={aktif}
+                            className={`w-full flex flex-col items-center gap-0.5 rounded-md px-1 py-0.5 transition-colors ${aktif ? 'cursor-default' : 'hover:bg-white/70'}`}
+                            title={isHarianKategori ? (k.text || 'Klik untuk mengedit label') : 'Nilai Ujian'}
+                          >
+                            <span className={`inline-flex items-center gap-1 text-xs font-bold ${aktif ? 'text-amber-700' : 'text-slate-600'}`}>
+                              {isHarianKategori ? `Nilai ${i + 1}` : `Nilai ${jenisPenilaian || 'Ujian'}`}
+                              {isHarianKategori && !aktif && <Lock className="w-3 h-3 text-slate-400" />}
+                            </span>
+                            {isHarianKategori && (
+                              <span className={`text-[10px] max-w-[96px] truncate ${aktif ? 'text-amber-700 font-medium' : 'text-slate-400'}`}>
+                                {k.text || 'Tanpa label'}
+                              </span>
+                            )}
+                          </button>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {kelasNilaiData.map((item) => (
-                    <tr key={item.siswa_id}>
-                      <td className="px-4 py-2 text-sm text-slate-700 truncate max-w-[180px] sticky left-0 bg-white">
-                        {item.nama_siswa}
-                        {Object.keys(item.existing).length > 0 && <CheckCircle className="inline w-3.5 h-3.5 text-emerald-500 ml-1 -mt-0.5" />}
+                    <tr key={item.siswa_id} className="group">
+                      <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-b border-r border-slate-100 px-4 py-2 align-middle">
+                        <div className="flex items-start gap-1.5">
+                          <span className="w-[10.5rem] text-[13px] leading-snug text-slate-800 break-words line-clamp-2" title={item.nama_siswa}>
+                            {item.nama_siswa}
+                          </span>
+                          {Object.keys(item.existing).length > 0 && (
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0 mt-0.5" />
+                          )}
+                        </div>
                       </td>
-                      {(isHarianKategori ? kelasLabels : [{ id: 'ujian', label: '' }]).map(k => {
+                      {kolomList.map((k) => {
                         const val = item.values[k.id] ?? item.existing[k.id]?.nilai ?? '';
+                        const editable = isEditable(k.id);
                         return (
-                          <td key={k.id} className="px-2 py-1.5">
-                            <Input
-                              type="number" min="0" max="100" placeholder="0"
-                              className={`w-20 text-center h-8 text-sm font-medium ${val !== '' && val != null ? (Number(val) >= kkmPts ? 'border-emerald-300 text-emerald-700' : 'border-red-300 text-red-700') : ''}`}
-                              value={val}
-                              onChange={(e) => setNilaiCell(item.siswa_id, k.id, e.target.value)}
-                            />
+                          <td
+                            key={k.id}
+                            className={`border-b border-slate-100 px-2 py-1.5 text-center ${isHarianKategori && isEditable(k.id) ? 'bg-amber-50/50' : ''}`}
+                          >
+                            {editable ? (
+                              <Input
+                                type="number" min="0" max="100" inputMode="numeric" placeholder="–"
+                                className={cellClass(val)}
+                                value={val}
+                                onChange={(e) => setNilaiCell(item.siswa_id, k.id, e.target.value)}
+                                onFocus={(e) => e.target.select()}
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => mintaAktif(k)}
+                                className={`w-20 mx-auto h-9 rounded-lg border text-sm font-semibold transition-colors hover:ring-2 hover:ring-amber-300 ${readClass(val)}`}
+                                title="Klik untuk mengedit kolom ini"
+                              >
+                                {nilaiTeks(val)}
+                              </button>
+                            )}
                           </td>
                         );
                       })}
@@ -156,76 +190,169 @@ export default function KelasNilaiInputArea({
                 </tbody>
               </table>
             </div>
-            <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100">Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
+            <p className="px-4 py-2 text-[11px] text-slate-400 bg-slate-50 border-t border-slate-100">
+              Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan. Nilai maksimal 100.
+            </p>
+          </div>
+
+          {/* ================= MOBILE ================= */}
+          <div className="md:hidden">
+            <div className="sticky top-0 z-30 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-b border-slate-100 space-y-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-slate-900 leading-tight">Daftar Siswa ({kelasNilaiData.length})</p>
+                  <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                    Terisi {totalTerisi} • Tersimpan {tersimpan}
+                    {tersimpan > 0 && <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />}
+                  </p>
+                </div>
+                {isHarianKategori && tambahButton('default', 'bg-amber-500 hover:bg-amber-600 text-white rounded-full px-4 flex-shrink-0')}
+              </div>
+
+              {/* Pilihan kolom Nilai 1..n */}
+              {isHarianKategori && kolomList.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-0.5">
+                  {kolomList.map((k, i) => {
+                    const aktif = isEditable(k.id);
+                    return (
+                      <button
+                        key={k.id}
+                        type="button"
+                        onClick={() => mintaAktif(k)}
+                        className={`flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
+                          aktif
+                            ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/30'
+                            : 'bg-white border-slate-200 text-slate-600'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1">
+                          Nilai {i + 1}
+                          {!aktif && <Lock className="w-3 h-3 text-slate-400" />}
+                        </span>
+                        <span className={`block text-[10px] font-medium truncate max-w-[92px] ${aktif ? 'text-amber-50' : 'text-slate-400'}`}>
+                          {k.text || 'Tanpa label'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Kartu label kolom aktif */}
+            {isHarianKategori && (activeKolom ? (
+              <div className="mt-3 border border-amber-200 rounded-2xl p-3.5 bg-amber-50/60 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500 text-white text-[11px] font-bold">
+                    <Pencil className="w-3 h-3" /> Mengedit Nilai {activeIndex + 1}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button type="button" size="sm" variant="outline" className="h-8 bg-white px-2.5" onClick={() => setActiveLabelId(null)}>
+                      <Lock className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5 text-red-600 hover:bg-red-50" onClick={() => setHapusOpen(true)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-[11px] text-slate-600">Label Nilai Harian — teks bebas per BAB/Materi</Label>
+                  <Input
+                    className="mt-1 h-9 bg-white"
+                    value={activeKolom.text || ''}
+                    onChange={(e) => ubahLabel(activeKolom.id, e.target.value)}
+                    placeholder="Contoh: BAB 2 Pidato"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="mt-3 border border-slate-200 rounded-2xl p-3.5 bg-white flex items-start gap-2">
+                <Lock className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Semua nilai terkunci. Pilih <span className="font-semibold text-slate-700">Nilai 1, Nilai 2, …</span> di atas untuk mulai mengedit kolom tersebut.
+                </p>
+              </div>
+            ))}
+
+            {/* Daftar siswa */}
+            <div className="mt-3 bg-white border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-sm">
+              {kelasNilaiData.map((item) => {
+                if (!activeKolom) {
+                  const first = kolomList[0];
+                  const val = first ? (item.values[first.id] ?? item.existing[first.id]?.nilai ?? '') : '';
+                  return (
+                    <div key={item.siswa_id} className="flex items-start gap-3 px-4 py-3">
+                      <span className="flex-1 min-w-0 text-sm text-slate-800 break-words leading-snug line-clamp-2">{item.nama_siswa}</span>
+                      <span className={`w-20 h-9 flex-shrink-0 rounded-lg border flex items-center justify-center text-sm font-semibold ${readClass(val)}`}>
+                        {nilaiTeks(val)}
+                      </span>
+                      <span className="w-5 flex-shrink-0" />
+                    </div>
+                  );
+                }
+                const val = item.values[activeKolom.id] ?? item.existing[activeKolom.id]?.nilai ?? '';
+                const saved = !!item.existing[activeKolom.id];
+                const editable = isEditable(activeKolom.id);
+                return (
+                  <div key={item.siswa_id} className="flex items-start gap-3 px-4 py-3">
+                    <span className="flex-1 min-w-0 text-sm text-slate-800 break-words leading-snug line-clamp-2">{item.nama_siswa}</span>
+                    {editable ? (
+                      <Input
+                        type="number" min="0" max="100" placeholder="–" inputMode="numeric"
+                        className={`w-24 flex-shrink-0 h-9 ${cellClass(val)}`}
+                        value={val}
+                        onChange={(e) => setNilaiCell(item.siswa_id, activeKolom.id, e.target.value)}
+                        onFocus={(e) => e.target.select()}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => mintaAktif(activeKolom)}
+                        className={`w-20 h-9 flex-shrink-0 rounded-lg border text-sm font-semibold ${readClass(val)}`}
+                      >
+                        {nilaiTeks(val)}
+                      </button>
+                    )}
+                    <span className="w-5 flex-shrink-0 flex justify-center pt-2">
+                      {saved && <CheckCircle className="w-4 h-4 text-emerald-500" />}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[11px] text-slate-400">Nilai maksimal 100. Baris kosong tidak tersimpan; nilai yang sudah ada otomatis diperbarui saat disimpan.</p>
           </div>
         </>
       )}
 
-      {/* ===== MOBILE: footer sticky — tab BAB + tombol aksi selalu terlihat tanpa scroll ===== */}
+      {/* ===== MOBILE: footer sticky — tombol aksi selalu terlihat tanpa scroll ===== */}
       <div className={
         showTable
           ? 'md:hidden sticky bottom-0 z-30 -mx-6 mt-4 px-6 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur border-t border-slate-100 space-y-2.5'
           : 'md:hidden pt-1'
       }>
-        {showTable && isHarianKategori && kelasLabels.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar">
-            {kelasLabels.map(l => (
-              <button
-                key={l.id}
-                type="button"
-                onClick={() => setActiveLabelId(l.id)}
-                className={`flex-none px-4 py-2 rounded-full text-sm font-semibold max-w-[140px] truncate transition-all ${
-                  kolom?.id === l.id
-                    ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
-                    : 'bg-white border border-slate-300 text-slate-600 hover:border-amber-300'
-                }`}
-              >
-                {l.text || 'Nilai Harian'}
-              </button>
-            ))}
-          </div>
-        )}
         {actions}
       </div>
 
       {/* ===== DESKTOP: tombol aksi biasa di akhir form ===== */}
-      <div className="hidden md:block">{actions}</div>
+      <div className="hidden md:block pt-4">{actions}</div>
 
-      {/* Menu titik-tiga: Ubah / Hapus label */}
-      <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
-        <DialogContent className="w-[90vw] max-w-xs">
-          <DialogHeader><DialogTitle>Opsi Label</DialogTitle></DialogHeader>
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => { setEditText(kolom?.text || ''); setMenuOpen(false); setEditOpen(true); }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-amber-50 hover:border-amber-300 transition-colors text-left"
-            >
-              <Pencil className="w-4 h-4 text-amber-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-slate-800">Ubah Label</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => { setMenuOpen(false); setHapusOpen(true); }}
-              className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-red-50 hover:border-red-300 transition-colors text-left"
-            >
-              <Trash2 className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <span className="text-sm font-medium text-red-600">Hapus Kolom</span>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog ubah label */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="w-[90vw] max-w-sm">
-          <DialogHeader><DialogTitle>Ubah Label</DialogTitle></DialogHeader>
-          <Input value={editText} onChange={(e) => setEditText(e.target.value)} placeholder="Contoh: Nilai BAB 1" autoFocus />
-          <div className="flex gap-2 justify-end">
-            <Button type="button" variant="outline" size="sm" onClick={() => setEditOpen(false)}>Batal</Button>
-            <Button type="button" size="sm" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={() => { if (kolom) ubahLabel(kolom.id, editText); setEditOpen(false); }}>
-              Simpan
-            </Button>
+      {/* Konfirmasi sebelum kolom nilai aktif */}
+      <Dialog open={!!pendingKolom} onOpenChange={(v) => !v && setPendingKolom(null)}>
+        <DialogContent className="w-[92vw] max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Aktifkan Kolom Nilai</DialogTitle>
+            <DialogDescription>
+              Anda akan mengedit{' '}
+              <span className="font-semibold text-slate-800">
+                {pendingKolom ? `Nilai ${kolomList.findIndex(k => k.id === pendingKolom.id) + 1}` : 'Nilai'}
+                {pendingKolom?.text ? ` (${pendingKolom.text})` : ''}
+              </span>? Kolom nilai lain tetap terkunci dan hanya bisa dilihat.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 justify-end pt-1">
+            <Button type="button" variant="outline" onClick={() => setPendingKolom(null)}>Tidak</Button>
+            <Button type="button" className="bg-amber-500 hover:bg-amber-600 text-white" onClick={konfirmasiAktif}>Ya</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -234,7 +361,7 @@ export default function KelasNilaiInputArea({
       <ConfirmDialog
         open={hapusOpen}
         onOpenChange={setHapusOpen}
-        onConfirm={() => { if (kolom) hapusLabel(kolom.id); }}
+        onConfirm={() => { if (activeKolom) hapusLabel(activeKolom.id); setActiveLabelId(null); }}
         title="Hapus Kolom Nilai"
         description="Apakah Anda yakin ingin menghapus kolom label ini?"
       />
