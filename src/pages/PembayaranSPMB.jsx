@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/AuthContext';
 import { Search, Wallet, CheckCircle2, Circle, Plus, Receipt } from 'lucide-react';
 import { fmtRp } from '@/lib/spmbUtils';
+import { bolehAksesSpmb, bolehKelolaPenuhSpmb } from '@/lib/spmbAkses';
 
 const TABS = [
   { id: 'pendaftar', label: 'Pendaftar' },
@@ -20,8 +21,8 @@ const TABS = [
 function PembayaranPage() {
   const qc = useQueryClient();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const canInput = ['admin', 'tu', 'bendahara'].includes(user?.role);
+  const bolehGelombang = bolehKelolaPenuhSpmb(user?.role);
+  const canInput = bolehAksesSpmb(user?.role);
 
   const { data, isLoading } = useQuery({
     queryKey: ['SiswaSPMB'],
@@ -59,7 +60,7 @@ function PembayaranPage() {
 
   const bukaInput = (d) => { setTarget(d || null); setFormOpen(true); };
 
-  const tabs = isAdmin ? TABS : TABS.filter((t) => t.id !== 'gelombang');
+  const tabs = bolehGelombang ? TABS : TABS.filter((t) => t.id !== 'gelombang');
 
   return (
     <div className="p-4 lg:p-8 space-y-6">

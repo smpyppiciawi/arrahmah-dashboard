@@ -83,6 +83,16 @@ const FULL_ACCESS_MENU = {
   ]
 };
 
+const SPMB_GROUP_TERBATAS = {
+  id: 'spmb', name: 'SPMB', icon: ClipboardList, color: '#f43f5e',
+  items: [
+    { name: 'Pendaftar', icon: UserPlus, page: 'PendaftarSPMB', color: '#3b82f6' },
+    { name: 'Wawancara', icon: MessagesSquare, page: 'WawancaraSPMB', color: '#8b5cf6' },
+    { name: 'Pembayaran SPMB', icon: CreditCard, page: 'PembayaranSPMB', color: '#14b8a6' },
+  ],
+  separated: true,
+};
+
 const ROLE_MENU = {
   admin: FULL_ACCESS_MENU,
   operator: {
@@ -97,7 +107,7 @@ const ROLE_MENU = {
       { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
     ],
-    groups: []
+    groups: [SPMB_GROUP_TERBATAS]
   },
   tu: {
     topItems: [
@@ -282,7 +292,7 @@ const ROLE_MENU = {
       { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
     ],
-    groups: []
+    groups: [SPMB_GROUP_TERBATAS]
   }
 };
 
@@ -308,6 +318,11 @@ export default function Layout({ children, currentPageName }) {
   const [sidebarHidden, setSidebarHidden] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState({});
   const { user: currentUser } = useAuth();
+  const { data: appSettings } = useQuery({
+    queryKey: ['pengaturan-aplikasi'],
+    queryFn: () => base44.entities.PengaturanAplikasi.list(),
+  });
+  const spmbMenuAktif = appSettings?.[0]?.spmb_menu_aktif !== false;
 
   const userRole = currentUser?.role || 'guru';
   const baseMenu = ROLE_MENU[userRole] || ROLE_MENU['tu'];
@@ -325,7 +340,6 @@ export default function Layout({ children, currentPageName }) {
   if (isWaliKelasWithSiswa) {
     topItems = [...topItems, { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' }, { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' }];
   }
-  topItems = [...topItems, { name: 'Portal SPMB', icon: ClipboardList, page: 'PortalSPMB', color: '#f43f5e' }];
   const menuConfig = { ...baseMenu, topItems };
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
 
@@ -422,7 +436,7 @@ export default function Layout({ children, currentPageName }) {
               );
             })}
 
-            {menuConfig.groups.map((group) => {
+            {menuConfig.groups.filter((g) => g.id !== 'spmb' || spmbMenuAktif).map((group) => {
               const GroupIcon = group.icon;
               const isExpanded = expandedGroups[group.id];
               return (

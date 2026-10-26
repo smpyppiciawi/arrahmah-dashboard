@@ -14,6 +14,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { Search, Users, UserCheck, Clock, XCircle, BadgeCheck, Plus, Pencil, Trash2 } from 'lucide-react';
 import { fmtRp } from '@/lib/spmbUtils';
 import { DOC_FIELDS } from '@/lib/spmbDaftar';
+import { bolehAksesSpmb, bolehKelolaPenuhSpmb } from '@/lib/spmbAkses';
 
 const STATUS_OPTIONS = [
   { v: 'all', l: 'Semua Status' },
@@ -125,7 +126,8 @@ function PendaftarPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
-  const canManage = ['admin', 'tu'].includes(user?.role);
+  const canManage = bolehAksesSpmb(user?.role);
+  const canHapus = bolehKelolaPenuhSpmb(user?.role);
 
   const { data, isLoading } = useQuery({
     queryKey: ['SiswaSPMB'],
@@ -259,9 +261,11 @@ function PendaftarPage() {
                           <button onClick={() => bukaEdit(d)} className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-blue-50" title="Ubah">
                             <Pencil className="w-4 h-4" />
                           </button>
-                          <button onClick={() => setHapus(d)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50" title="Hapus">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {canHapus && (
+                            <button onClick={() => setHapus(d)} className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50" title="Hapus">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     )}

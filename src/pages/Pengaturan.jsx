@@ -25,6 +25,7 @@ import BackfillAlfaCard from '@/components/pengaturan/BackfillAlfaCard';
 import NotifikasiGatewayCard from '@/components/pengaturan/NotifikasiGatewayCard';
 import AntiDedupMonitorCard from '@/components/pengaturan/AntiDedupMonitorCard';
 import AbsensiDedupMonitorCard from '@/components/pengaturan/AbsensiDedupMonitorCard';
+import MenuSpmbCard from '@/components/pengaturan/MenuSpmbCard';
 
 export default function Pengaturan() {
   const { user: currentUser } = useAuth();
@@ -268,6 +269,8 @@ export default function Pengaturan() {
               )}
             </CardContent>
           </Card>
+
+          <MenuSpmbCard pengaturan={pengaturan} isAdmin={currentUser?.role === 'admin'} />
 
           <NotifikasiGatewayCard pengaturan={pengaturan} isAdmin={currentUser?.role === 'admin'} />
 

@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/AuthContext';
 import { MessagesSquare, CalendarDays, UserRound, ChevronDown, ChevronUp, Home, Loader2, Pencil } from 'lucide-react';
 import { buatDrafHomeVisit } from '@/lib/spmbUtils';
 import { WAWANCARA_QUESTIONS } from '@/lib/spmbWawancara';
+import { bolehAksesSpmb } from '@/lib/spmbAkses';
 
 function InterviewCard({ d, onEdit, onMakeDraft, busyId, canManage }) {
   const [open, setOpen] = useState(false);
@@ -73,7 +74,7 @@ function WawancaraPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
-  const canManage = ['admin', 'tu'].includes(user?.role);
+  const canManage = bolehAksesSpmb(user?.role);
 
   const { data, isLoading } = useQuery({
     queryKey: ['SiswaSPMB'],

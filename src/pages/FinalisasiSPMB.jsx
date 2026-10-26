@@ -186,5 +186,5 @@ function FinalisasiPage() {
 }
 
 export default function FinalisasiSPMB() {
-  return <SpmbGuard><FinalisasiPage /></SpmbGuard>;
+  return <SpmbGuard penuh><FinalisasiPage /></SpmbGuard>;
 }

@@ -14,6 +14,11 @@
       "type": "string",
       "description": "Keterangan tambahan"
     },
+    "spmb_menu_aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "ON = Menu SPMB tampil di navigasi seluruh akun; OFF = Menu SPMB disembunyikan dari navigasi (akses langsung ke halaman tetap berjalan). Hanya diatur oleh Admin di Pengaturan."
+    },
     "tampilkan_status_kehadiran_piket": {
       "type": "boolean",
       "default": true,
