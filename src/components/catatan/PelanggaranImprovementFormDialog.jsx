@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
-import { Search, AlertTriangle, Lock, Info, ImagePlus, X, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Search, AlertTriangle, Lock, Info, ImagePlus, X, Loader2, Check } from "lucide-react";
 import { compressImage } from '@/lib/imageCompress';
 import { recomputeRaporForSiswa, isPendingPoin } from '@/lib/raporStatus';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -40,6 +41,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const [showDupConfirm, setShowDupConfirm] = useState(false);
   const [uploadingFoto, setUploadingFoto] = useState(false);
   const [pendingPayload, setPendingPayload] = useState(null);
+  // Pencatatan Kolektif: satu pelanggaran yang sama dicatat untuk banyak siswa dalam 1 kelas
+  const [kolektif, setKolektif] = useState(false);
+  const [selectedSiswaIds, setSelectedSiswaIds] = useState([]);
 
   const isGuru = currentUser?.role === 'guru';
 
@@ -76,6 +80,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       };
       if (prefillSiswa) { f.siswa_id = prefillSiswa.id; f.nis = prefillSiswa.nis; f.nama_siswa = prefillSiswa.nama; f.kelas_id = prefillSiswa.kelas_id; f.nama_kelas = prefillSiswa.nama_kelas; }
       setRincianHint('');
+      setKolektif(false); setSelectedSiswaIds([]);
       setFormData(f);
     }
   }, [open, editing, currentUser, tahunAjaran, prefillSiswa]);
@@ -100,6 +105,19 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
       handleClose();
     }
   });
+  const createManyMutation = useMutation({
+    mutationFn: (rows) => base44.entities.PelanggaranImprovement.bulkCreate(rows),
+    onSuccess: (_d, rows) => {
+      rows.forEach(r => { if (r.siswa_id) recomputeRaporForSiswa(r.siswa_id).catch(() => {}); });
+      queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      toast({
+        title: 'Pelanggaran kolektif tersimpan',
+        description: `${rows.length} siswa tercatat dengan pelanggaran yang sama.`,
+      });
+      handleClose();
+    }
+  });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.PelanggaranImprovement.update(id, data),
     onSuccess: (_d, vars) => {
@@ -121,6 +139,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKodeSearch(false); setSearchKode('');
     setRincianHint('');
+    setKolektif(false); setSelectedSiswaIds([]);
     onOpenChange(false);
   };
 
@@ -128,6 +147,14 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     const aktif = (siswaList || []).filter(s => s.status === 'Aktif');
     const byKelas = filterKelas ? aktif.filter(s => s.kelas_id === filterKelas) : aktif;
     return byKelas.sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [siswaList, filterKelas]);
+
+  // Daftar siswa pada kelas terpilih (untuk pencatatan kolektif)
+  const siswaKelas = useMemo(() => {
+    if (!filterKelas) return [];
+    return (siswaList || [])
+      .filter(s => s.status === 'Aktif' && s.kelas_id === filterKelas)
+      .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [siswaList, filterKelas]);
 
   const filteredKode = useMemo(() => {
@@ -214,6 +241,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     if (isPendingPoin(formData.poin)) {
       toast({ title: "Pelanggaran berstatus Pending", description: "Poin ≥ 100 menunggu Approval sebelum terakumulasi." });
     }
+    if (Array.isArray(payload)) { createManyMutation.mutate(payload); return; }
     createMutation.mutate(payload);
   };
 
@@ -242,11 +270,32 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
   const handleSubmit = (e) => {
     e?.preventDefault();
-    if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
     if (!formData.kode_pelanggaran_id) { toast({ title: "Pilih kode pelanggaran", variant: "destructive" }); return; }
-    if (!formData.pencatat_id && !formData.pencatat_nama) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
     if (!validasiPoin()) return;
     const payload = buildPayload();
+
+    // Kolektif: satu pelanggaran dicatat untuk semua siswa terpilih di kelas
+    if (kolektif && !editing) {
+      if (!filterKelas) { toast({ title: "Pilih kelas untuk pencatatan kolektif", variant: "destructive" }); return; }
+      if (!selectedSiswaIds.length) { toast({ title: "Centang siswa yang terkena pelanggaran", variant: "destructive" }); return; }
+      if (!formData.pencatat_id && !formData.pencatat_nama) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
+      const rows = siswaKelas
+        .filter(s => selectedSiswaIds.includes(s.id))
+        .map(s => ({
+          ...payload,
+          siswa_id: s.id, nis: s.nis, nama_siswa: s.nama,
+          kelas_id: s.kelas_id, nama_kelas: s.nama_kelas,
+        }));
+      const adaGanda = rows.some(r => (pelanggaranImprovementExisting || []).some(x =>
+        x.tanggal === r.tanggal && x.siswa_id === r.siswa_id && x.kode === r.kode
+      ));
+      if (adaGanda) { setPendingPayload(rows); setShowDupConfirm(true); return; }
+      doCreate(rows);
+      return;
+    }
+
+    if (!formData.siswa_id) { toast({ title: "Pilih siswa terlebih dahulu", variant: "destructive" }); return; }
+    if (!formData.pencatat_id && !formData.pencatat_nama) { toast({ title: "Pilih pencatat", variant: "destructive" }); return; }
     if (editing) { updateMutation.mutate({ id: editing.id, data: payload }); return; }
     if (isDuplicate()) { setPendingPayload(payload); setShowDupConfirm(true); return; }
     doCreate(payload);
@@ -289,48 +338,105 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
             {hariForm && <p className="text-xs text-slate-500 mt-1">Hari: {hariForm}</p>}
           </div>
 
-          {/* Filter Kelas (opsional) */}
-          <div>
-            <Label>Pilih Kelas <span className="text-xs text-slate-400">(opsional — untuk memfilter siswa)</span></Label>
-            <Select value={filterKelas || 'all'} onValueChange={(v) => setFilterKelas(v === 'all' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Semua Kelas</SelectItem>
-                {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          {/* Pilih Kelas + saklar Pencatatan Kolektif (sejajar) */}
+          <div className="flex items-end gap-3">
+            <div className="flex-1 min-w-0">
+              <Label>Pilih Kelas <span className="text-xs text-slate-400">(opsional — untuk memfilter siswa)</span></Label>
+              <Select
+                value={filterKelas || 'all'}
+                onValueChange={(v) => { setFilterKelas(v === 'all' ? '' : v); setSelectedSiswaIds([]); }}
+              >
+                <SelectTrigger><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Semua Kelas</SelectItem>
+                  {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {!editing && (
+              <div className="flex items-center gap-2 pb-2 shrink-0">
+                <Switch
+                  id="kolektif-pelanggaran"
+                  checked={kolektif}
+                  onCheckedChange={(v) => { setKolektif(v); setSelectedSiswaIds([]); }}
+                />
+                <Label htmlFor="kolektif-pelanggaran" className="text-xs font-medium cursor-pointer whitespace-nowrap">Kolektif</Label>
+              </div>
+            )}
           </div>
+          {kolektif && !editing && !filterKelas && (
+            <p className="text-xs text-amber-600 -mt-2">Pilih kelas dulu untuk menampilkan daftar siswa kolektif.</p>
+          )}
 
-          {/* Cari Nama/Kelas */}
-          <div>
-            <Label>Cari Nama Siswa / Kelas</Label>
-            <Popover open={openSiswaSearch} onOpenChange={setOpenSiswaSearch}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  <Search className="w-4 h-4 mr-2 text-slate-400" />
-                  {formData.nama_siswa ? `${formData.nama_siswa} — ${formData.nama_kelas}` : "Ketik nama siswa atau kelas..."}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Cari nama / NIS / kelas..." value={searchSiswa} onValueChange={setSearchSiswa} />
-                  <CommandList className="max-h-72">
-                    <CommandEmpty>Tidak ditemukan</CommandEmpty>
-                    <CommandGroup heading={`Siswa Aktif (${filteredSiswa.length})`}>
-                      {filteredSiswa.map(s => (
-                        <CommandItem key={s.id} value={`${s.nama} ${s.nis} ${s.nama_kelas}`} onSelect={() => handleSelectSiswa(s)} className="cursor-pointer">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="font-medium">{s.nama}</span>
-                            <Badge variant="outline" className="text-xs">{s.nama_kelas}</Badge>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+          {/* Mode kolektif: ceklis banyak siswa 1 kelas. Mode biasa: cari 1 siswa */}
+          {kolektif && !editing ? (
+            <div>
+              <Label>Daftar Siswa Kelas <span className="text-xs text-slate-400">(centang siswa yang terkena)</span></Label>
+              <div className="mt-1 border border-slate-200 rounded-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
+                {siswaKelas.length === 0 ? (
+                  <p className="px-3 py-4 text-xs text-slate-400 text-center">Pilih kelas terlebih dahulu untuk menampilkan daftar siswa.</p>
+                ) : siswaKelas.map(s => {
+                  const on = selectedSiswaIds.includes(s.id);
+                  return (
+                    <button
+                      type="button"
+                      key={s.id}
+                      onClick={() => setSelectedSiswaIds(p => on ? p.filter(x => x !== s.id) : [...p, s.id])}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-50"
+                    >
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-red-600 border-red-600' : 'border-slate-300 bg-white'}`}>
+                        {on && <Check className="w-3 h-3 text-white" />}
+                      </span>
+                      <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{s.nama}</span>
+                      <Badge variant="outline" className="text-[10px]">{s.nis}</Badge>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between mt-1.5">
+                <p className="text-xs text-slate-500">{selectedSiswaIds.length} siswa dipilih</p>
+                {siswaKelas.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSiswaIds(selectedSiswaIds.length === siswaKelas.length ? [] : siswaKelas.map(s => s.id))}
+                    className="text-xs font-medium text-red-600 hover:underline"
+                  >
+                    {selectedSiswaIds.length === siswaKelas.length ? 'Batal pilih semua' : 'Pilih semua'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div>
+              <Label>Cari Nama Siswa / Kelas</Label>
+              <Popover open={openSiswaSearch} onOpenChange={setOpenSiswaSearch}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal">
+                    <Search className="w-4 h-4 mr-2 text-slate-400" />
+                    {formData.nama_siswa ? `${formData.nama_siswa} — ${formData.nama_kelas}` : "Ketik nama siswa atau kelas..."}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[500px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Cari nama / NIS / kelas..." value={searchSiswa} onValueChange={setSearchSiswa} />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>Tidak ditemukan</CommandEmpty>
+                      <CommandGroup heading={`Siswa Aktif (${filteredSiswa.length})`}>
+                        {filteredSiswa.map(s => (
+                          <CommandItem key={s.id} value={`${s.nama} ${s.nis} ${s.nama_kelas}`} onSelect={() => handleSelectSiswa(s)} className="cursor-pointer">
+                            <div className="flex items-center justify-between w-full">
+                              <span className="font-medium">{s.nama}</span>
+                              <Badge variant="outline" className="text-xs">{s.nama_kelas}</Badge>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+          )}
 
           {/* Cari Pelanggaran */}
           <div>
@@ -495,7 +601,9 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={handleClose} className="flex-1">Batal</Button>
-            <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">{editing ? 'Simpan' : 'Tambah Pelanggaran'}</Button>
+            <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700" disabled={createMutation.isPending || createManyMutation.isPending}>
+              {editing ? 'Simpan' : kolektif ? `Catat untuk ${selectedSiswaIds.length} Siswa` : 'Tambah Pelanggaran'}
+            </Button>
           </div>
         </form>
 

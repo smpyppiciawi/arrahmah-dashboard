@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
@@ -505,10 +505,19 @@ export default function Nilai() {
             {canEdit && (
               <>
                 <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
-                  <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] overflow-y-auto max-md:w-full max-md:max-w-none max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:rounded-none max-md:overflow-x-hidden">
-                    <DialogHeader><DialogTitle>Input Nilai Per Kelas</DialogTitle></DialogHeader>
-                    <form onSubmit={handleKelasSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <DialogContent
+                    className="w-[97vw] max-w-[1500px] h-[92dvh] p-0 gap-0 flex flex-col overflow-hidden max-md:w-screen max-md:max-w-none max-md:h-[100dvh] max-md:rounded-none max-md:border-0"
+                    onEscapeKeyDown={(e) => e.preventDefault()}
+                  >
+                    <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 pr-12 pb-2.5 border-b border-slate-200 bg-white text-left">
+                      <DialogTitle className="text-base sm:text-lg">Input Nilai Per Kelas</DialogTitle>
+                      <DialogDescription className="text-[11px] sm:text-xs">
+                        Isian kelas & tombol aksi tetap terlihat. Daftar nilai bisa digeser — kolom Nama Siswa terkunci.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleKelasSubmit} className="flex flex-col flex-1 min-h-0">
+                      <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/70">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                         <div>
                           <Label className="text-xs text-slate-500">Kelas</Label>
                           <Select value={kelasFormData.kelas_id} onValueChange={handleKelasChange}>
@@ -523,8 +532,7 @@ export default function Nilai() {
                             <SelectContent>{mapelUntukKelas(kelasFormData.kelas_id).map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}</SelectContent>
                           </Select>
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
                         <div>
                           <Label className="text-xs text-slate-500">Kategori Nilai</Label>
                           <Select value={kelasFormData.kategori} onValueChange={(v) => setKelasFormData({...kelasFormData, kategori: v, jenis_penilaian: v === 'Nilai Harian' ? 'Harian' : ''})}>
@@ -546,8 +554,7 @@ export default function Nilai() {
                           <Label className="text-xs text-slate-500">KKM (Global)</Label>
                           <Input type="number" value={kkmPts} disabled className="mt-1 bg-slate-50 font-semibold" />
                         </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
                         <div>
                           <Label className="text-xs text-slate-500">Nama Guru</Label>
                           <Input value={kelasFormData.nama_guru} disabled placeholder="Otomatis dari Pembelajaran" className="mt-1 bg-slate-50" />
@@ -573,6 +580,7 @@ export default function Nilai() {
                           </Select>
                         </div>
                       </div>
+                      </div>
                       <KelasNilaiInputArea
                         isHarianKategori={isHarianKategori}
                         jenisPenilaian={kelasFormData.jenis_penilaian}
@@ -586,19 +594,17 @@ export default function Nilai() {
                         activeLabelId={activeLabelId}
                         setActiveLabelId={setActiveLabelId}
                         totalTerisi={totalTerisi}
-                        actions={
-                          <div className="flex flex-col-reverse gap-2.5 sm:flex-row sm:gap-3">
-                            <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="w-full h-11 sm:flex-1">Batal</Button>
-                            <Button type="submit" className="w-full h-11 sm:flex-1 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
-                              {menyimpanKelas ? (
-                                <>
-                                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…
-                                </>
-                              ) : `Simpan Nilai Terisi (${totalTerisi})`}
-                            </Button>
-                          </div>
-                        }
                       />
+                      <div className="shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 bg-white flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="w-full h-11 sm:w-auto sm:px-8">Batal</Button>
+                        <Button type="submit" className="w-full h-11 sm:w-auto sm:px-8 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
+                          {menyimpanKelas ? (
+                            <>
+                              <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" /> Menyimpan…
+                            </>
+                          ) : `Simpan Nilai Terisi (${totalTerisi})`}
+                        </Button>
+                      </div>
                     </form>
                   </DialogContent>
                 </Dialog>
