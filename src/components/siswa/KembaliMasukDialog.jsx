@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
+import { catatRiwayatIdentitas } from '@/lib/riwayatIdentitas';
 import { LogIn } from "lucide-react";
 
 export default function KembaliMasukDialog({ siswaKeluar, kelasList, onClose }) {
@@ -28,6 +29,15 @@ export default function KembaliMasukDialog({ siswaKeluar, kelasList, onClose }) 
         });
       }
       await base44.entities.SiswaKeluar.delete(siswaKeluar.id);
+      // Riwayat identitas seumur hidup: catat kembali masuk
+      await catatRiwayatIdentitas('Siswa', {
+        id: siswaKeluar.siswa_id, uid: siswaKeluar.uid || '', nis: siswaKeluar.nis,
+        nama: siswaKeluar.nama, jenis_kelamin: siswaKeluar.jenis_kelamin,
+      }, 'Kembali Masuk', {
+        detail: `Masuk kembali ke kelas ${kelasName}`,
+        sumber: 'Siswa Mutasi (Kembali Masuk)',
+        snapshot: { nama_kelas: kelasName, status: 'Aktif', kategori_keluar_sebelumnya: siswaKeluar.kategori },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['siswa'] });

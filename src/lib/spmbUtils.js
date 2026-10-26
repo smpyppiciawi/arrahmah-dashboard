@@ -1,4 +1,5 @@
 import { base44 } from '@/api/base44Client';
+import { catatRiwayatIdentitas } from '@/lib/riwayatIdentitas';
 
 export const fmtRp = (n) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(Number(n) || 0);
@@ -62,6 +63,12 @@ export async function finalisasiPendaftar(bridge, kelas, tahunAjaran) {
     nama_ibu_kandung: bridge.mother_name || '',
     nama_wali: bridge.guardian_name || '',
     kontak_list: kontak,
+  });
+  // Riwayat identitas seumur hidup: catat Masuk via SPMB
+  await catatRiwayatIdentitas('Siswa', siswa, 'Masuk', {
+    detail: 'Finalisasi pendaftar SPMB menjadi siswa aktif',
+    sumber: 'Finalisasi SPMB',
+    snapshot: { nama_kelas: kelas.nama_kelas || '', status: 'Aktif', reg_number: bridge.reg_number || '' },
   });
 
   const update = {

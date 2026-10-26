@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
 import { tautkanSpmbKeuangan, str } from '../../shared/rekonsiliasiCore.ts';
+import { snapIdentitas } from '../../shared/riwayatIdentitas.ts';
 
 export default async function(req) {
   try {
@@ -200,6 +201,19 @@ export default async function(req) {
         { $set: { status: 'Lulus', tahun_lulus: tahun_ajaran_lama } }
       );
       jumlahSiswaLulus = siswaKelas9.length;
+      // Riwayat identitas: catat peristiwa Lulus per siswa (seumur hidup, lintas modul)
+      const riwayatLulus = siswaKelas9.map((s) => ({
+        ...snapIdentitas('Siswa', s),
+        event: 'Lulus',
+        tanggal_event: now.slice(0, 10),
+        tahun_ajaran: tahun_ajaran_lama,
+        detail: `Lulus via Finalisasi Tahun Ajaran ${tahun_ajaran_lama}`,
+        snapshot: { nama_kelas: str(s.nama_kelas), status: 'Lulus', tahun_lulus: tahun_ajaran_lama },
+        sumber: 'Finalisasi Tahun Ajaran',
+      }));
+      for (let i = 0; i < riwayatLulus.length; i += 40) {
+        await svc.entities.RiwayatIdentitas.bulkCreate(riwayatLulus.slice(i, i + 40));
+      }
     }
 
     // Step 8: Checksum independen — hitung ulang dari ArsipKeuangan (bukan dari array pembuatan)

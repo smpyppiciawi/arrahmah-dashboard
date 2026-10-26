@@ -19,6 +19,7 @@ import { runMigrasiUid } from '@/lib/uidMigrasi';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AlasanKeluarDialog from "@/components/guru/AlasanKeluarDialog";
 import FloatingAddButton from "@/components/ui/FloatingAddButton";
+import { catatRiwayatIdentitas } from "@/lib/riwayatIdentitas";
 import { useToast } from "@/components/ui/use-toast";
 
 const fmtTanggal = (d) => {
@@ -105,7 +106,13 @@ export default function Guru() {
   const createMutation = useMutation({
     // UID permanen otomatis untuk pegawai baru
     mutationFn: (data) => base44.entities.Guru.create({ ...data, uid: data.uid || crypto.randomUUID() }),
-    onSuccess: () => {
+    onSuccess: (guru) => {
+      // Riwayat identitas seumur hidup: catat Masuk
+      if (guru) catatRiwayatIdentitas('Pegawai', guru, 'Masuk', {
+        detail: `Masuk sebagai ${guru.jabatan || 'Pegawai'}`,
+        sumber: 'Form Pegawai',
+        snapshot: { jabatan: guru.jabatan || '', status: 'Aktif' },
+      });
       queryClient.invalidateQueries({ queryKey: ['guru'] });
       resetForm();
     },
@@ -129,7 +136,13 @@ export default function Guru() {
       arsip_alasan: 'Dihapus dari daftar pegawai (diarsipkan)',
       arsip_oleh: currentUser?.full_name || '',
     }),
-    onSuccess: () => {
+    onSuccess: (res, row) => {
+      // Riwayat identitas seumur hidup: catat Arsip
+      catatRiwayatIdentitas('Pegawai', row, 'Arsip', {
+        detail: `Alasan: ${row?.arsip_alasan || 'diarsipkan'}`,
+        sumber: 'Form Pegawai (Arsip)',
+        snapshot: { jabatan: row?.jabatan || '', status_sebelum: row?.status || 'Aktif' },
+      });
       queryClient.invalidateQueries({ queryKey: ['guru'] });
       setDeleteConfirmOpen(false);
       setDeleteId(null);
@@ -276,6 +289,13 @@ export default function Guru() {
   const handleKeluarConfirm = (keluarData) => {
     if (!pendingSubmit) return;
     const finalData = { ...pendingSubmit, ...keluarData };
+    // Riwayat identitas seumur hidup: catat akhir siklus pegawai
+    catatRiwayatIdentitas('Pegawai', pendingSubmit, ['Mutasi', 'Meninggal Dunia'].includes(keluarData.alasan_keluar) ? keluarData.alasan_keluar : 'Keluar', {
+      tanggal_event: keluarData.tanggal_keluar || '',
+      detail: `Alasan: ${keluarData.alasan_keluar}`,
+      sumber: 'Form Pegawai (Keluar)',
+      snapshot: { jabatan: pendingSubmit.jabatan || '', status: 'Keluar', alasan_keluar: keluarData.alasan_keluar },
+    });
     if (editingData) {
       updateMutation.mutate({ id: editingData.id, data: finalData });
     } else {
@@ -305,6 +325,13 @@ export default function Guru() {
 
   const confirmReactivate = () => {
     if (reactivateId) {
+      const row = guruList.find((g) => g.id === reactivateId) || {};
+      // Riwayat identitas seumur hidup: catat kembali masuk
+      catatRiwayatIdentitas('Pegawai', row, 'Kembali Masuk', {
+        detail: 'Pegawai dikembalikan menjadi aktif',
+        sumber: 'Form Pegawai (Pulih)',
+        snapshot: { jabatan: row.jabatan || '', status: 'Aktif' },
+      });
       updateMutation.mutate({
         id: reactivateId,
         data: { status: 'Aktif', alasan_keluar: '', tanggal_keluar: '' }

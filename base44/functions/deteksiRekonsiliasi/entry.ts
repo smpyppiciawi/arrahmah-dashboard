@@ -23,6 +23,8 @@ export default async function(req) {
     const siswaSemua = await fetchAllPages(svc.entities.Siswa);
     const siswaById = new Map(siswaSemua.map((s) => [s.id, s]));
     const siswaAktif = siswaSemua.filter((s) => !s.is_arsip && s.status === 'Aktif');
+    const guruAll = await fetchAllPages(svc.entities.Guru);
+    const guruById = new Map(guruAll.map((g) => [g.id, g]));
 
     const antrean = await fetchAllPages(svc.entities.AntrianRekonsiliasi);
     const openKeys = new Set(
@@ -73,21 +75,59 @@ export default async function(req) {
       });
     }
 
-    // 2. Keuangan: transaksi siswa tanpa siswa_id
+    // 2. Keuangan: transaksi dengan BUKTI keterkaitan siswa tetapi relasi tidak lengkap.
+    // Transaksi umum (tidak memilih siswa/pegawai sama sekali) VALID dan TIDAK masuk antrean.
     const keuAll = await fetchAllPages(svc.entities.Keuangan);
+    const uidBackfill = [];
     for (const k of keuAll) {
-      if (str(k.siswa_id)) continue;
       if (str(k.sumber_rekening) === 'SPMB') continue;
       if (k.is_iuran_muka || k.is_saldo_awal) continue;
-      if (!KATEGORI_SISWA.includes(str(k.kategori))) continue;
+      const sid = str(k.siswa_id);
+      const adaReferensi = !!(sid || str(k.nis) || str(k.nama_siswa) || str(k.siswa_uid));
+      if (sid && siswaById.has(sid)) {
+        // Relasi utuh — lengkapi UID permanen bila belum ada (idempoten, untuk sinkronisasi akurat)
+        if (!str(k.siswa_uid)) {
+          const s = siswaById.get(sid);
+          uidBackfill.push({
+            id: k.id,
+            siswa_uid: str(s.uid),
+            nis: str(k.nis) || str(s.nis),
+            nama_siswa: str(k.nama_siswa) || str(s.nama),
+            kelas: str(k.kelas) || str(s.nama_kelas),
+          });
+        }
+        continue;
+      }
+      if (!adaReferensi) continue; // transaksi umum yang valid
       await add('Keuangan Tanpa Siswa', 'Keuangan', k.id, {
         nis: str(k.nis),
         nama: str(k.nama_siswa),
         nama_kelas: str(k.kelas),
         jumlah: Number(k.jumlah) || 0,
-        uraian: str(k.uraian) || str(k.tipe_transaksi) || str(k.kategori),
-        detail: `Tanggal ${str(k.tanggal)} · Kategori ${str(k.kategori)} · Status ${str(k.status_bayar)}`,
+        uraian: sid ? 'Transaksi menunjuk siswa yang tidak dikenal' : (str(k.uraian) || str(k.tipe_transaksi) || str(k.kategori)),
+        detail: `Tanggal ${str(k.tanggal)} · Kategori ${str(k.kategori)} · Status ${str(k.status_bayar)}${sid ? ' · Siswa ID asal: ' + sid.slice(0, 12) + '…' : ''}`,
         kandidat: toKandidat({ nisn: '', nik: '', nis: k.nis, nama: k.nama_siswa, jenis_kelamin: '', tanggal_lahir: '' }),
+      });
+    }
+    // Lengkapi stempel UID permanen pada transaksi yang relasinya sudah utuh
+    for (let i = 0; i < uidBackfill.length; i += 40) {
+      await svc.entities.Keuangan.bulkUpdate(uidBackfill.slice(i, i + 40));
+    }
+
+    // 2B. Keuangan: transaksi dengan BUKTI keterkaitan pegawai tetapi pegawai tidak dikenal.
+    // Transaksi pegawai yang relasinya utuh, dan transaksi umum, tidak masuk antrean.
+    for (const k of keuAll) {
+      const gid = str(k.guru_id);
+      if (gid && guruById.has(gid)) continue;
+      if (!gid && !str(k.nip_pegawai) && !str(k.nama_pegawai)) continue;
+      await add('Keuangan Tanpa Pegawai', 'Keuangan', k.id, {
+        nis: '',
+        nama: str(k.nama_pegawai),
+        nama_kelas: str(k.jabatan_pegawai),
+        jumlah: Number(k.jumlah) || 0,
+        uraian: str(k.uraian) || str(k.tipe_transaksi) || str(k.kategori),
+        detail: `Tanggal ${str(k.tanggal)} · Kategori ${str(k.kategori)} · NIP ${str(k.nip_pegawai) || '-'}${gid ? ' · Pegawai ID asal: ' + gid.slice(0, 12) + '…' : ''}`,
+        kandidat: [],
       });
     }
 
@@ -155,6 +195,7 @@ export default async function(req) {
       spmb_tertaut: linkHasil.diperbarui,
       spmb_keuangan_id_dibackfill: linkHasil.keuangan_id_dibackfill,
       item_baru: itemBaru,
+      uid_dibackfill: uidBackfill.length,
       sisa_belum_tersimpan: sisaBelumTersimpan,
       antrean_terbuka: terbuka.length,
       ringkasan,

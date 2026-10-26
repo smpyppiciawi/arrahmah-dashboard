@@ -13,6 +13,7 @@ import MapPicker from "@/components/ui/MapPicker";
 import UidMatchDialog from "@/components/uid/UidMatchDialog";
 import { useActiveAcademicYear } from "@/context/ActiveAcademicYearContext";
 import { PENDIDIKAN_OPTIONS, PEKERJAAN_OPTIONS, PENGHASILAN_OPTIONS, AGAMA_OPTIONS } from "@/lib/dapodikConstants";
+import { catatRiwayatIdentitas } from "@/lib/riwayatIdentitas";
 
 const REGISTRASI_OPTIONS = ['Siswa Baru', 'Naik Kelas', 'Mengulang'];
 const autoRegistrasi = (tingkat) => (tingkat === '7' ? 'Siswa Baru' : 'Naik Kelas');
@@ -88,6 +89,13 @@ export default function SiswaForm({ isOpen, onClose, editingData, kelasList }) {
   const createMutation = useMutation({
     mutationFn: async (data) => {
       const siswa = await base44.entities.Siswa.create(data);
+      // Riwayat identitas seumur hidup: catat Masuk / Mutasi masuk
+      await catatRiwayatIdentitas('Siswa', siswa, mode === 'mutasi' ? 'Mutasi' : 'Masuk', {
+        tanggal_event: mode === 'mutasi' ? (mutasiData.tanggal_masuk || '') : '',
+        detail: mode === 'mutasi' ? `Mutasi masuk dari ${mutasiData.nama_sekolah_asal || '-'}` : 'Data siswa baru dibuat',
+        sumber: mode === 'mutasi' ? 'Mutasi Masuk' : 'Form Siswa',
+        snapshot: { nama_kelas: data.nama_kelas || '', status: 'Aktif' },
+      });
       if (mode === 'mutasi') {
         await base44.entities.SiswaMasuk.create({
           siswa_id: siswa.id,

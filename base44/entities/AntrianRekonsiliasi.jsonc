@@ -7,6 +7,7 @@
       "enum": [
         "NIS Duplikat",
         "Keuangan Tanpa Siswa",
+        "Keuangan Tanpa Pegawai",
         "SPMB Belum Tertaut",
         "Absensi Tak Dikenal",
         "Izin Tak Dikenal"
@@ -22,7 +23,7 @@
         "Selesai Tanpa Taut"
       ],
       "default": "Menunggu",
-      "description": "Status penanganan item. Tertaut = Admin mengonfirmasi tautan ke siswa; Selesai Tanpa Taut = ditutup tanpa mengubah relasi; Ditunda = belum terselesaikan."
+      "description": "Status penanganan item. Tertaut = Admin mengonfirmasi tautan ke siswa; Selesai Tanpa Taut = ditutup tanpa mengubah relasi (termasuk transaksi umum yang valid); Ditunda = belum terselesaikan."
     },
     "ref_entity": {
       "type": "string",

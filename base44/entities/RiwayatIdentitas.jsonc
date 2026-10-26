@@ -1,0 +1,104 @@
+{
+  "name": "RiwayatIdentitas",
+  "type": "object",
+  "properties": {
+    "tipe": {
+      "type": "string",
+      "enum": [
+        "Siswa",
+        "Pegawai"
+      ],
+      "description": "Jenis subjek riwayat"
+    },
+    "uid": {
+      "type": "string",
+      "description": "UID permanen subjek (kunci seumur hidup; kosong untuk record lama pra-migrasi)"
+    },
+    "record_id": {
+      "type": "string",
+      "description": "ID record Siswa/Guru saat kejadian"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS saat kejadian (Siswa)"
+    },
+    "nuptk": {
+      "type": "string",
+      "description": "NUPTK/NIP saat kejadian (Pegawai)"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama lengkap saat kejadian"
+    },
+    "jenis_kelamin": {
+      "type": "string",
+      "description": "Jenis kelamin"
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "Masuk",
+        "Kembali Masuk",
+        "Aktif",
+        "Lulus",
+        "Pindah",
+        "Keluar",
+        "Meninggal Dunia",
+        "Mengundurkan Diri",
+        "Mutasi",
+        "Arsip",
+        "Pulihkan",
+        "Perubahan Status"
+      ],
+      "description": "Peristiwa siklus hidup yang dicatat"
+    },
+    "tanggal_event": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal efektif peristiwa"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran saat peristiwa (contoh: Lulus 2026/2027)"
+    },
+    "detail": {
+      "type": "string",
+      "description": "Keterangan peristiwa (alasan, sekolah tujuan/asal, dsb)"
+    },
+    "snapshot": {
+      "type": "object",
+      "description": "Snapshot identitas saat kejadian (kelas, jabatan, status, sekolah tujuan/asal) \u2014 tidak berubah walau profil sekarang berubah"
+    },
+    "sumber": {
+      "type": "string",
+      "description": "Sumber pencatatan (Form Siswa, Mutasi Masuk, Finalisasi SPMB, Finalisasi Tahun Ajaran, Sistem)"
+    }
+  },
+  "required": [
+    "tipe",
+    "nama",
+    "event"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

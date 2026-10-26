@@ -11,12 +11,39 @@ export default async function(req) {
     }
 
     const body = await req.json();
-    const { queue_id, tindakan, siswa_id, catatan } = body;
-    if (!queue_id || !['taut', 'tunda', 'selesai'].includes(tindakan)) {
-      return Response.json({ error: 'queue_id dan tindakan (taut/tunda/selesai) wajib diisi' }, { status: 400 });
+    const { queue_id, queue_ids, tindakan, siswa_id, catatan } = body;
+    if (!tindakan || !['taut', 'tunda', 'selesai'].includes(tindakan)) {
+      return Response.json({ error: 'tindakan (taut/tunda/selesai) wajib diisi' }, { status: 400 });
     }
 
     const svc = base44.asServiceRole;
+    const now0 = new Date().toISOString();
+    const oleh0 = user.full_name || 'Admin';
+
+    // Aksi massal: tutup/tunda banyak item antrean sekaligus (maks 200 per panggilan)
+    if (Array.isArray(queue_ids) && queue_ids.length > 0) {
+      if (tindakan === 'taut') {
+        return Response.json({ error: 'Tautan hanya satu per satu lewat dialog peninjauan.' }, { status: 400 });
+      }
+      const ids = queue_ids.slice(0, 200);
+      const kandidat = await svc.entities.AntrianRekonsiliasi.filter({ id: { $in: ids } }, undefined, 200);
+      const terbuka = (kandidat.items || kandidat).filter((q) => ['Menunggu', 'Ditunda'].includes(str(q.status)));
+      const updates = terbuka.map((q) => ({
+        id: q.id,
+        status: tindakan === 'tunda' ? 'Ditunda' : 'Selesai Tanpa Taut',
+        catatan: catatan || (tindakan === 'tunda' ? 'Ditunda oleh Admin' : 'Ditutup tanpa tautan oleh Admin'),
+        ditangani_oleh: oleh0,
+        ditangani_at: now0,
+      }));
+      for (let i = 0; i < updates.length; i += 40) {
+        await svc.entities.AntrianRekonsiliasi.bulkUpdate(updates.slice(i, i + 40));
+      }
+      return Response.json({ ok: true, diproses: updates.length });
+    }
+
+    if (!queue_id) {
+      return Response.json({ error: 'queue_id atau queue_ids wajib diisi' }, { status: 400 });
+    }
     const item = await svc.entities.AntrianRekonsiliasi.get(queue_id);
     if (!item) return Response.json({ error: 'Item antrean tidak ditemukan' }, { status: 404 });
     if (!['Menunggu', 'Ditunda'].includes(str(item.status))) {

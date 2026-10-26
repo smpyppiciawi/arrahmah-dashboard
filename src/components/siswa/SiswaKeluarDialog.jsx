@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import { useActiveAcademicYear } from '@/context/ActiveAcademicYearContext';
+import { catatRiwayatIdentitas } from '@/lib/riwayatIdentitas';
 import { LogOut } from "lucide-react";
 
 export default function SiswaKeluarDialog({ siswa, onClose }) {
@@ -41,6 +42,19 @@ export default function SiswaKeluarDialog({ siswa, onClose }) {
         tahun_ajaran: activeAcademicYear || '',
       });
       await base44.entities.Siswa.update(siswa.id, { status: 'Keluar' });
+      // Riwayat identitas seumur hidup: catat akhir siklus siswa
+      await catatRiwayatIdentitas('Siswa', siswa, ['Pindah', 'Meninggal Dunia', 'Mengundurkan Diri'].includes(formData.kategori) ? formData.kategori : 'Keluar', {
+        tanggal_event: formData.tanggal_keluar,
+        tahun_ajaran: activeAcademicYear || '',
+        detail: `Alasan: ${formData.kategori === 'Lainnya' && formData.kategori_manual ? formData.kategori_manual : (formData.alasan || formData.kategori)}`,
+        sumber: 'Menu Siswa (Keluar)',
+        snapshot: {
+          nama_kelas: siswa.nama_kelas || '',
+          status_sebelum: 'Aktif',
+          kategori_keluar: formData.kategori,
+          nama_sekolah_tujuan: formData.kategori === 'Pindah' ? formData.nama_sekolah_tujuan : '',
+        },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
