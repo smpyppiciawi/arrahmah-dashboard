@@ -106,6 +106,19 @@ export default function LaporanKeuangan() {
     return map;
   }, [keuanganList, sumberDanaList, transferDanaList]);
 
+  // Transaksi tanpa Sumber Dana resmi — ditampilkan terpisah agar saldo tetap dapat direkonsiliasi
+  const belumTerpetakan = useMemo(() => {
+    const namaResmi = sumberDanaList.map(s => s.nama);
+    const rows = keuanganList.filter(k =>
+      !k.aplikasi_iuran_muka && !k.is_saldo_awal &&
+      !(k.sumber_rekening && namaResmi.includes(k.sumber_rekening))
+    );
+    return {
+      jumlah: rows.length,
+      saldo: rows.reduce((s, k) => s + (k.jenis === 'Pemasukan' ? (k.jumlah || 0) : -(k.jumlah || 0)), 0),
+    };
+  }, [keuanganList, sumberDanaList]);
+
   const formatRupiah = (value) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -499,6 +512,21 @@ export default function LaporanKeuangan() {
               );
             })}
           </div>
+        )}
+
+        {belumTerpetakan.jumlah > 0 && (
+          <Card className="border border-amber-200 bg-amber-50 shadow-sm mb-6">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-2">
+                <Wallet className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-amber-700">Belum Terpetakan · {belumTerpetakan.jumlah} transaksi</p>
+                  <p className="text-lg font-bold text-amber-800">{formatRupiah(belumTerpetakan.saldo)}</p>
+                  <p className="text-[11px] text-amber-700/80 mt-0.5">Transaksi ini belum memiliki Sumber Dana. Tetapkan sumbernya di menu Transaksi agar masuk ke saldo rekening.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         )}
 
         {/* Filter Tanggal */}

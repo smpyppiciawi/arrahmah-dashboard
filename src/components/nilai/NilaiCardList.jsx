@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Inbox, BookMarked } from 'lucide-react';
 const getInitials = (name) => String(name || '').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 
 // Daftar nilai siswa — kartu app style dengan pagination bulat
-export default function NilaiCardList({ data = [], canEdit, onEdit, pageSize = 10 }) {
+export default function NilaiCardList({ data = [], canEdit, onEdit, pageSize = 10, loading = false }) {
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
 
@@ -15,6 +15,22 @@ export default function NilaiCardList({ data = [], canEdit, onEdit, pageSize = 1
   const rows = data.slice(start, start + pageSize);
 
   if (data.length === 0) {
+    if (loading) {
+      return (
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map(i => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3 animate-pulse">
+              <div className="w-12 h-12 rounded-full bg-slate-100 flex-none" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-slate-100 rounded w-2/3" />
+                <div className="h-2.5 bg-slate-100 rounded w-1/3" />
+                <div className="h-2.5 bg-slate-100 rounded w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
     return (
       <div className="text-center py-12">
         <Inbox className="w-10 h-10 text-slate-300 mx-auto mb-3" />

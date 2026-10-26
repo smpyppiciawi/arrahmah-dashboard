@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { TrendingUp, TrendingDown, Minus, Search } from "lucide-react";
 import { fetchAllNilai } from '@/lib/nilaiLoad';
 import { nilaiAkhirRapor } from '@/lib/nilaiAkhir';
+import NilaiLoading from '@/components/nilai/NilaiLoading';
 
 const SEMESTER_ORDER = [
   { semester: 'Ganjil', tahun: null, label: 'Sem 1' },
@@ -23,7 +24,7 @@ export default function AnalisisNilai() {
   const [filterMapel, setFilterMapel] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: nilaiList = [] } = useQuery({
+  const { data: nilaiList = [], isLoading: nilaiLoading, isError: nilaiError, refetch: refetchNilai } = useQuery({
     queryKey: ['nilai', 'all'],
     queryFn: () => fetchAllNilai(),
   });
@@ -184,7 +185,9 @@ export default function AnalisisNilai() {
             </Select>
           </div>
 
-          {analisisData.length === 0 ? (
+          {nilaiLoading || nilaiError ? (
+            <NilaiLoading loading={nilaiLoading} error={nilaiError} onRetry={refetchNilai} />
+          ) : analisisData.length === 0 ? (
             <div className="text-center py-12 text-slate-400">
               <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p>Belum ada data nilai untuk dianalisis</p>

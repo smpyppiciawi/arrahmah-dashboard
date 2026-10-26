@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
-import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText } from "lucide-react";
+import { BookOpen, Plus, Search, TrendingUp, Calculator, CheckCircle, XCircle, Award, Users, User, FileText, Loader2, RefreshCw } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AnalisisNilai from "@/components/nilai/AnalisisNilai";
 import PengelolaanNilai from "@/components/nilai/PengelolaanNilai";
@@ -146,7 +146,7 @@ export default function Nilai() {
     return [...new Set(pembelajaranGuru.filter(p => p.kelas_id === kelasId).map(p => p.mapel))];
   };
 
-  const { data: nilaiList = [], isLoading } = useQuery({
+  const { data: nilaiList = [], isLoading, isError: nilaiError, refetch: refetchNilai } = useQuery({
     // Guru: filter di sisi server (hanya kelas & mapel yang diampu) — tidak memuat seluruh koleksi
     // Admin/TU: seluruh data dibutuhkan tab lintas tahun; dibagikan satu cache dengan Analisis & Pengelolaan
     queryKey: isGuruRole
@@ -493,6 +493,21 @@ export default function Nilai() {
           })}
         </div>
 
+        {/* Status pemuatan / kegagalan data nilai — berlaku untuk seluruh tampilan Nilai */}
+        {isLoading && (
+          <div className="flex items-center gap-2 text-xs text-slate-500 bg-white border border-slate-200 rounded-xl px-3 py-2 mb-4">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Memuat data nilai…
+          </div>
+        )}
+        {nilaiError && (
+          <div className="flex items-center justify-between gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mb-4">
+            <span>Gagal memuat data nilai. Periksa koneksi lalu coba lagi.</span>
+            <button onClick={() => refetchNilai()} className="inline-flex items-center gap-1 font-semibold text-amber-700">
+              <RefreshCw className="w-3.5 h-3.5" /> Coba lagi
+            </button>
+          </div>
+        )}
+
         {activeTab === 'analisis' && <AnalisisNilai />}
         {activeTab === 'pengelolaan' && <PengelolaanNilai userRole={userRole} />}
         {activeTab === 'tka' && <TkaTab userRole={userRole} guruData={guruData} kelasList={kelasList} siswaList={siswaList} currentUser={currentUser} />}
@@ -796,6 +811,7 @@ export default function Nilai() {
                 data={filteredData}
                 canEdit={canEdit}
                 onEdit={(row) => setSheetRow(row)}
+                loading={isLoading}
               />
             </div>
 

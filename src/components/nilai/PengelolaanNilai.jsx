@@ -10,6 +10,7 @@ import { Calculator, Download, Percent, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { fetchAllNilai } from '@/lib/nilaiLoad';
+import NilaiLoading from '@/components/nilai/NilaiLoading';
 import { FORMAT_NILAI_AKHIR, nilaiAkhirRapor, nilaiAkhirIjazah, rerataHarian, rerataUjian } from '@/lib/nilaiAkhir';
 
 const BISA_ATUR_FORMAT = ['admin'];
@@ -22,7 +23,7 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
   const [filterSemester, setFilterSemester] = useState('');
   const [filterTahunAjaran, setFilterTahunAjaran] = useState('');
 
-  const { data: nilaiList = [] } = useQuery({
+  const { data: nilaiList = [], isLoading: nilaiLoading, isError: nilaiError, refetch: refetchNilai } = useQuery({
     queryKey: ['nilai', 'all'],
     queryFn: () => fetchAllNilai(),
   });
@@ -242,6 +243,14 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
           )}
         </CardContent>
       </Card>
+
+      {(nilaiLoading || nilaiError) && (
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-0">
+            <NilaiLoading loading={nilaiLoading} error={nilaiError} onRetry={refetchNilai} />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Hasil */}
       {nilaiAkhirData.length > 0 && (

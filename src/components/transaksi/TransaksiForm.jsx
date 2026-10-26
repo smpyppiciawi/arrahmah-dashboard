@@ -484,6 +484,11 @@ export default function TransaksiForm({
       toast({ title: "Jumlah harus diisi", variant: "destructive" });
       return;
     }
+    // Transaksi siswa & umum wajib punya Sumber Dana — jika tidak, saldo tidak masuk rekening mana pun
+    if ((jenisTransaksi === 'siswa' || jenisTransaksi === 'umum') && !formData.sumber_rekening) {
+      toast({ title: "Sumber Dana harus dipilih", description: "Pilih rekening/kas tujuan agar transaksi masuk ke saldo yang benar.", variant: "destructive" });
+      return;
+    }
     // Untuk pegawai, dropdown Kategori disembunyikan (diganti Bulan) — auto-derive dari tipe
     let resolvedKategori = formData.kategori;
     if (jenisTransaksi === 'pegawai' && !resolvedKategori && formData.tipe_transaksi) {
@@ -984,6 +989,22 @@ export default function TransaksiForm({
               </Select>
             </div>
           </div>
+
+          {/* Sumber Dana untuk transaksi siswa & umum — wajib, agar saldo tidak jatuh ke "Belum Terpetakan" */}
+          {(jenisTransaksi === 'siswa' || jenisTransaksi === 'umum') && (
+            <div>
+              <Label>Sumber Dana <span className="text-rose-500">*</span></Label>
+              <Select value={formData.sumber_rekening} onValueChange={(v) => set('sumber_rekening', v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih sumber dana" /></SelectTrigger>
+                <SelectContent>
+                  {sumberDanaList.map(sumber => (
+                    <SelectItem key={sumber.id} value={sumber.nama}>{sumber.nama}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-slate-400 mt-1">Wajib dipilih agar transaksi masuk ke saldo sumber dana yang benar.</p>
+            </div>
+          )}
 
           {terbilangText && (
             <div className="p-3 bg-teal-50 rounded-lg border border-teal-100">
