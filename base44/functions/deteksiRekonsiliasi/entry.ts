@@ -60,7 +60,7 @@ export default async function(req) {
     const byNis = {};
     for (const s of siswaAktif) {
       const n = str(s.nis);
-      if (n) (byNis[n] = byNis[n] || []).push(s);
+      if (n && n !== '0') (byNis[n] = byNis[n] || []).push(s); // NIS '0' = placeholder, bukan duplikat
     }
     for (const [nis, list] of Object.entries(byNis)) {
       if (list.length < 2) continue;

@@ -25,6 +25,12 @@ export async function fetchAllPages(entity, opts = {}) {
 export const normNama = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 export const normAngka = (s) => String(s ?? '').replace(/\D/g, '');
 
+/** NIS/NUPTK bernilai '0' atau kosong = placeholder tidak valid, TIDAK boleh dipakai sebagai kunci pencocokan. */
+export const isIdJunk = (v) => {
+  const n = normAngka(v);
+  return !n || n === '0';
+};
+
 const skorAlasan = (alasan) =>
   alasan.reduce((a, x) => a + (x.startsWith('NISN') || x.startsWith('NIK') || x.startsWith('NUPTK') ? 3 : x.startsWith('NIS') ? 2 : 1), 0);
 
@@ -46,7 +52,7 @@ export function cariKandidatSiswa(input, records) {
     const alasan = [];
     if (nisn && normAngka(r.nisn) === nisn) alasan.push('NISN sama');
     if (nik && normAngka(r.nik) === nik) alasan.push('NIK sama');
-    if (nis && normAngka(r.nis) === nis) alasan.push('NIS sama');
+    if (nis && !isIdJunk(input.nis) && !isIdJunk(r.nis) && normAngka(r.nis) === nis) alasan.push('NIS sama');
     if (nama && normNama(r.nama) === nama && jk && r.jenis_kelamin === jk && tgl && String(r.tanggal_lahir || '').slice(0, 10) === tgl) {
       alasan.push('Nama, jenis kelamin & tanggal lahir sama');
     }
@@ -71,7 +77,7 @@ export function cariKandidatGuru(input, records) {
   const hasil = [];
   for (const r of records) {
     const alasan = [];
-    if (nuptk && normAngka(r.nuptk) === nuptk) alasan.push('NUPTK/NIP sama');
+    if (nuptk && !isIdJunk(input.nuptk) && !isIdJunk(r.nuptk) && normAngka(r.nuptk) === nuptk) alasan.push('NUPTK/NIP sama');
     if (nama && normNama(r.nama) === nama && jk && r.jenis_kelamin === jk) {
       alasan.push('Nama & jenis kelamin sama');
     }

@@ -35,8 +35,12 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
 
   const isNisDup = item.jenis === 'NIS Duplikat';
   const isNisTidakSesuai = item.jenis === 'NIS Tidak Sesuai';
+  const sudahDitangani = ['Tertaut', 'Selesai Tanpa Taut'].includes(item.status);
+  // Kandidat ber-NIS '0'/kosong = hasil pencocokan placeholder tidak valid — jangan tampilkan
+  const junkId = (v) => { const n = String(v || '').replace(/\D/g, ''); return !n || n === '0'; };
+  const kandidatTampil = (item.kandidat || []).filter((k) => !junkId(k.nis));
   const bisaOtomatis = isNisTidakSesuai; // selalu bisa otomatis via transaksi sumber
-  const bisaTaut = !isNisDup && ((item.kandidat || []).length > 0 || bisaOtomatis);
+  const bisaTaut = !isNisDup && (kandidatTampil.length > 0 || bisaOtomatis);
 
   return (
     <Dialog open={!tutup} onOpenChange={(open) => !open && onClose()}>
@@ -68,8 +72,17 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
             </div>
           )}
 
-          {item.jenis === 'NIS Tidak Sesuai' && (item.kandidat || []).length > 0 && (() => {
-            const k = item.kandidat[0];
+          {sudahDitangani && (
+            <div className="flex gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-emerald-800">
+                Item ini sudah ditangani ({item.status}{item.ditangani_oleh ? ` oleh ${item.ditangani_oleh}` : ''}) — tidak ada aksi lagi yang diperlukan.
+              </p>
+            </div>
+          )}
+
+          {item.jenis === 'NIS Tidak Sesuai' && kandidatTampil.length > 0 && (() => {
+            const k = kandidatTampil[0];
             const cocokNama = (k.nama || '').toLowerCase() === (item.nama || '').toLowerCase();
             const cocokKelas = (k.nama_kelas || '') === (item.nama_kelas || '');
             return (
@@ -91,7 +104,7 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
             <div>
               <Label className="text-xs font-semibold text-slate-700">Siswa Tujuan Tautan</Label>
               <div className="mt-2 space-y-1.5">
-                {bisaOtomatis && (
+                {bisaOtomatis && !sudahDitangani && (
                   <label
                     className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
                       !kandidatId ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
@@ -110,7 +123,7 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
                     </div>
                   </label>
                 )}
-                {item.kandidat.map((k) => (
+                {kandidatTampil.map((k) => (
                   <label
                     key={k.siswa_id}
                     className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
@@ -146,23 +159,23 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
           </div>
 
           <div className="flex flex-wrap gap-2 justify-end">
-            <Button size="sm" variant="outline" onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'tunda', catatan })} disabled={terapkan.isPending}>
+            <Button size="sm" variant="outline" onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'tunda', catatan })} disabled={terapkan.isPending || sudahDitangani}>
               <Clock className="w-3.5 h-3.5 mr-1" /> Tunda
             </Button>
-            <Button size="sm" variant="outline" onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'selesai', catatan })} disabled={terapkan.isPending}>
+            <Button size="sm" variant="outline" onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'selesai', catatan })} disabled={terapkan.isPending || sudahDitangani}>
               <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Tutup Tanpa Taut
             </Button>
             <Button
               size="sm"
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'taut', siswa_id: kandidatId, catatan })}
-              disabled={terapkan.isPending || (bisaTaut && !bisaOtomatis && !kandidatId)}
+              disabled={terapkan.isPending || sudahDitangani || (bisaTaut && !bisaOtomatis && !kandidatId)}
             >
               {terapkan.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Link2 className="w-3.5 h-3.5 mr-1" />}
               {item.jenis === 'NIS Tidak Sesuai' ? 'Siswa Sama — Perbarui NIS & Riwayat' : 'Konfirmasi Tautan'}
             </Button>
           </div>
-          {bisaTaut && !bisaOtomatis && !kandidatId && (
+          {bisaTaut && !sudahDitangani && !bisaOtomatis && !kandidatId && (
             <p className="text-[11px] text-slate-400 text-right">Pilih kandidat siswa untuk mengaktifkan tautan.</p>
           )}
         </div>
