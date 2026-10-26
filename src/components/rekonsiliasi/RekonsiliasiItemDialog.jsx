@@ -22,7 +22,13 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
   const terapkan = useMutation({
     mutationFn: (payload) => base44.functions.invoke('terapkanRekonsiliasi', payload),
     onSuccess: (res) => {
-      toast({ title: 'Berhasil', description: `Status item: ${res?.status || 'diperbarui'}.` });
+      const n = res?.riwayat_diperbarui;
+      toast({
+        title: 'Berhasil',
+        description: n != null
+          ? `Status item: ${res?.status || 'diperbarui'} · ${n} riwayat transaksi disamakan.`
+          : `Status item: ${res?.status || 'diperbarui'}.`,
+      });
       onClose();
     },
     onError: (err) => toast({ title: 'Gagal', description: err.message, variant: 'destructive' }),

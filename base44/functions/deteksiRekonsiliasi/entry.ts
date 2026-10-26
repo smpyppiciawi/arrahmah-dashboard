@@ -105,7 +105,14 @@ export default async function(req) {
             jumlah: Number(k.jumlah) || 0,
             uraian: str(k.uraian) || 'NIS transaksi berbeda dari NIS siswa',
             detail: `Tanggal ${str(k.tanggal)} · Kategori ${str(k.kategori)} · NIS transaksi: ${nisTrx} · NIS siswa saat ini: ${str(siswaById.get(sid).nis)}`,
-            kandidat: toKandidat({ nisn: '', nik: '', nis: k.nis, nama: k.nama_siswa, jenis_kelamin: '', tanggal_lahir: '' }),
+            kandidat: [{
+              siswa_id: sid,
+              nis: str(siswaById.get(sid).nis),
+              nama: str(siswaById.get(sid).nama),
+              nama_kelas: str(siswaById.get(sid).nama_kelas),
+              alasan: 'Tertaut via siswa_id pada transaksi',
+              skor: 100,
+            }],
           });
         }
         continue;

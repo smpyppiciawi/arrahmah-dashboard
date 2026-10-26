@@ -77,9 +77,27 @@ export default async function(req) {
     if (item.jenis === 'NIS Duplikat') {
       return Response.json({ error: 'NIS duplikat diperbaiki manual lewat menu Siswa, bukan lewat tautan.' }, { status: 400 });
     }
-    if (!siswa_id) return Response.json({ error: 'Pilih kandidat siswa terlebih dahulu' }, { status: 400 });
-    const siswa = await svc.entities.Siswa.get(siswa_id);
-    if (!siswa) return Response.json({ error: 'Siswa tidak ditemukan' }, { status: 404 });
+    let siswa = null;
+    if (siswa_id) siswa = await svc.entities.Siswa.get(siswa_id).catch(() => null);
+
+    // NIS Tidak Sesuai: bila Admin tidak memilih kandidat, derivasi siswa dari transaksi sumber.
+    // Temuan ini dibuat dari transaksi yang sudah tertaut via siswa_id/siswa_uid — tautan pasti, bukan nama/NIS.
+    if (!siswa && str(item.jenis) === 'NIS Tidak Sesuai' && str(item.ref_entity) === 'Keuangan') {
+      const trxSumber = await svc.entities.Keuangan.get(item.ref_id).catch(() => null);
+      if (!trxSumber) {
+        return Response.json({ error: 'Transaksi sumber tidak ditemukan (kemungkinan sudah dihapus). Gunakan Tutup Tanpa Taut bila tidak relevan.' }, { status: 404 });
+      }
+      const candId = str(trxSumber.siswa_id);
+      if (candId) siswa = await svc.entities.Siswa.get(candId).catch(() => null);
+      if (!siswa && str(trxSumber.siswa_uid)) {
+        const byUid = await svc.entities.Siswa.filter({ uid: str(trxSumber.siswa_uid) }, { limit: 1 });
+        siswa = ((byUid.items || byUid)[0]) || null;
+      }
+    }
+
+    if (!siswa) {
+      return Response.json({ error: 'Tidak ada tautan siswa yang pasti: pilih kandidat siswa, atau transaksi sumber tidak memiliki relasi siswa.' }, { status: 400 });
+    }
 
     let riwayatDiperbarui = 0;
     const snap = {
@@ -90,21 +108,29 @@ export default async function(req) {
     };
 
     if (item.ref_entity === 'Keuangan') {
+      const trxSumber = await svc.entities.Keuangan.get(item.ref_id).catch(() => null);
+      if (!trxSumber) {
+        return Response.json({ error: 'Transaksi sumber tidak ditemukan (kemungkinan sudah dihapus). Gunakan Tutup Tanpa Taut bila tidak relevan.' }, { status: 404 });
+      }
       await svc.entities.Keuangan.update(item.ref_id, { ...snap, kelas: str(siswa.nama_kelas || item.nama_kelas) });
 
-      // NIS Tidak Sesuai: samakan SELURUH riwayat transaksi siswa ini (NIS/Nama/Kelas) dengan data siswa saat ini
+      // NIS Tidak Sesuai: samakan SELURUH riwayat transaksi yang PASTI milik siswa ini
+      // (kunci relasi siswa_id/siswa_uid — bukan nama/NIS; idempoten: hanya record yang berbeda yang diubah)
       if (str(item.jenis) === 'NIS Tidak Sesuai') {
         let cursor;
         for (;;) {
           const page = await svc.entities.Keuangan.filter(
-            { siswa_id: siswa.id },
+            { $or: [{ siswa_id: siswa.id }, { siswa_uid: str(siswa.uid) }] },
             cursor ? { limit: 500, cursor } : { limit: 500 }
           );
           const rows = page.items || [];
           const perlu = rows.filter((r) =>
-            str(r.nis) !== str(siswa.nis) ||
-            str(r.nama_siswa) !== str(siswa.nama) ||
-            str(r.kelas) !== str(siswa.nama_kelas)
+            r.id !== item.ref_id && (
+              str(r.nis) !== str(siswa.nis) ||
+              str(r.nama_siswa) !== str(siswa.nama) ||
+              str(r.kelas) !== str(siswa.nama_kelas) ||
+              str(r.siswa_uid) !== str(siswa.uid)
+            )
           );
           for (let i = 0; i < perlu.length; i += 40) {
             await svc.entities.Keuangan.bulkUpdate(perlu.slice(i, i + 40).map((r) => ({
@@ -112,6 +138,7 @@ export default async function(req) {
               nis: str(siswa.nis),
               nama_siswa: str(siswa.nama),
               kelas: str(siswa.nama_kelas),
+              siswa_uid: str(siswa.uid),
             })));
           }
           riwayatDiperbarui += perlu.length;
