@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import SpmbGuard from '@/components/spmb/SpmbGuard';
-import SpmbSyncButton from '@/components/spmb/SpmbSyncButton';
 import StatusBadge from '@/components/spmb/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -63,7 +62,6 @@ function FinalisasiPage() {
           <h1 className="text-2xl font-bold text-slate-900">Finalisasi Pendaftar</h1>
           <p className="text-sm text-slate-500">Menjadikan pendaftar berstatus Diterima sebagai Siswa Aktif</p>
         </div>
-        <SpmbSyncButton />
       </div>
 
       <div>

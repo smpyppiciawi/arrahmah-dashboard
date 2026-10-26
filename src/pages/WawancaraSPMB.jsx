@@ -2,15 +2,17 @@ import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import SpmbGuard from '@/components/spmb/SpmbGuard';
-import SpmbSyncButton from '@/components/spmb/SpmbSyncButton';
 import StatusBadge from '@/components/spmb/StatusBadge';
+import WawancaraFormDialog from '@/components/spmb/WawancaraFormDialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
-import { MessagesSquare, CalendarDays, UserRound, ChevronDown, ChevronUp, Home, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { MessagesSquare, CalendarDays, UserRound, ChevronDown, ChevronUp, Home, Loader2, Pencil } from 'lucide-react';
 import { buatDrafHomeVisit } from '@/lib/spmbUtils';
+import { WAWANCARA_QUESTIONS } from '@/lib/spmbWawancara';
 
-function InterviewCard({ d, onMakeDraft, busyId }) {
+function InterviewCard({ d, onEdit, onMakeDraft, busyId, canManage }) {
   const [open, setOpen] = useState(false);
   const answers = d.interview_answers || [];
   const sudah = d.interview_status && d.interview_status !== 'belum';
@@ -40,25 +42,29 @@ function InterviewCard({ d, onMakeDraft, busyId }) {
         </button>
       )}
       {open && (
-        <div className="space-y-1 bg-slate-50 rounded-lg p-3 max-h-60 overflow-y-auto">
+        <div className="space-y-1.5 bg-slate-50 rounded-lg p-3 max-h-72 overflow-y-auto">
           {answers.map((a) => (
-            <p key={a.no} className="text-xs text-slate-600"><span className="font-mono text-slate-400">{a.no}</span> — {a.jawaban}</p>
+            <div key={a.no} className="text-xs text-slate-600">
+              <span className="font-mono text-slate-400">{a.no}</span>
+              {WAWANCARA_QUESTIONS[a.no] ? ` — ${WAWANCARA_QUESTIONS[a.no].label}` : ''}
+              <p className="text-slate-800 font-medium">{a.jawaban}</p>
+            </div>
           ))}
         </div>
       )}
-      {d.finalized && (
-        <div className="pt-1 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-[11px] text-slate-400">
-            {d.homevisit_id ? 'Draf Home Visit sudah dibuat' : 'Sudah jadi siswa aktif — bisa dibuatkan draf Home Visit'}
-          </span>
-          {!d.homevisit_id && (answers.length > 0 || d.interview_notes) && (
-            <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={busyId === d.id} onClick={() => onMakeDraft(d)}>
-              {busyId === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Home className="w-3.5 h-3.5" />}
-              Draf Home Visit
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="pt-1 border-t border-slate-100 flex items-center justify-between gap-2">
+        {canManage ? (
+          <Button size="sm" variant="outline" className="gap-1.5 h-8" onClick={() => onEdit(d)}>
+            <Pencil className="w-3.5 h-3.5" /> {sudah ? 'Ubah Hasil' : 'Isi Wawancara'}
+          </Button>
+        ) : <span className="text-[11px] text-slate-400">Hanya lihat</span>}
+        {d.finalized && !d.homevisit_id && (answers.length > 0 || d.interview_notes) && (
+          <Button size="sm" variant="outline" className="gap-1.5 h-8" disabled={busyId === d.id} onClick={() => onMakeDraft(d)}>
+            {busyId === d.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Home className="w-3.5 h-3.5" />}
+            Draf Home Visit
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -66,14 +72,23 @@ function InterviewCard({ d, onMakeDraft, busyId }) {
 function WawancaraPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const canManage = ['admin', 'tu'].includes(user?.role);
+
   const { data, isLoading } = useQuery({
     queryKey: ['SiswaSPMB'],
     queryFn: () => base44.entities.SiswaSPMB.list('-created_date', 200),
   });
+  const pengaturanQ = useQuery({ queryKey: ['PengaturanAplikasi'], queryFn: () => base44.entities.PengaturanAplikasi.list() });
+
   const [filter, setFilter] = useState('all');
   const [busyId, setBusyId] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   const list = data || [];
+  const taAktif = (pengaturanQ.data || [])[0]?.tahun_ajaran_aktif || '';
+
   const filtered = list.filter((d) => {
     if (filter === 'sudah') return d.interview_status && d.interview_status !== 'belum';
     if (filter === 'belum') return !d.interview_status || d.interview_status === 'belum';
@@ -85,10 +100,12 @@ function WawancaraPage() {
     draf: list.filter((d) => d.homevisit_id).length,
   }), [list]);
 
+  const bukaForm = (d) => { setEditing(d); setFormOpen(true); };
+
   const handleDraft = async (d) => {
     setBusyId(d.id);
     try {
-      await buatDrafHomeVisit(d);
+      await buatDrafHomeVisit(d, null, taAktif);
       await qc.invalidateQueries({ queryKey: ['SiswaSPMB'] });
       toast({ title: 'Draf Home Visit dibuat', description: `${d.nama} — terisi dari hasil wawancara SPMB.` });
     } catch (e) {
@@ -103,9 +120,8 @@ function WawancaraPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Wawancara SPMB</h1>
-          <p className="text-sm text-slate-500">Hasil wawancara pendaftar — draf Home Visit dibuat saat finalisasi</p>
+          <p className="text-sm text-slate-500">Isi hasil wawancara orang tua/wali untuk setiap pendaftar</p>
         </div>
-        <SpmbSyncButton />
       </div>
 
       <div className="flex flex-wrap gap-3 text-sm">
@@ -130,10 +146,17 @@ function WawancaraPage() {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {filtered.map((d) => (
-            <InterviewCard key={d.id} d={d} onMakeDraft={handleDraft} busyId={busyId} />
+            <InterviewCard key={d.id} d={d} onEdit={bukaForm} onMakeDraft={handleDraft} busyId={busyId} canManage={canManage} />
           ))}
         </div>
       )}
+
+      <WawancaraFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        pendaftar={editing}
+        onSaved={() => qc.invalidateQueries({ queryKey: ['SiswaSPMB'] })}
+      />
     </div>
   );
 }
