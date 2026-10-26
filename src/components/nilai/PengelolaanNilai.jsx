@@ -293,7 +293,46 @@ export default function PengelolaanNilai({ userRole = 'guru' }) {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              {/* Mobile: kartu ringkas agar nilai terbaca tanpa geser ke samping */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {nilaiAkhirData.map((row, i) => (
+                  <div key={`m-${row.siswa_id}-${row.mapel}`} className="p-3 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{row.nama_siswa}</p>
+                        <p className="text-[11px] text-slate-400 font-mono">{row.nis} · No. {i + 1}</p>
+                      </div>
+                      <Badge className="bg-purple-100 text-purple-700 border-0 text-[10px] flex-shrink-0">{row.mapel}</Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="bg-slate-50 rounded-xl p-2 text-center border border-slate-100">
+                        <p className="text-[10px] text-slate-400 leading-none mb-1">HARIAN</p>
+                        <p className="text-sm font-bold text-slate-700 tabular-nums">{row.rataHarian ?? '-'}</p>
+                      </div>
+                      <div className="bg-slate-50 rounded-xl p-2 text-center border border-slate-100">
+                        <p className="text-[10px] text-slate-400 leading-none mb-1">UJIAN</p>
+                        <p className="text-sm font-bold text-slate-700 tabular-nums">{row.rataUjian ?? '-'}</p>
+                      </div>
+                      <div className={`rounded-xl p-2 text-center border ${row.nilaiAkhirRapor !== null && row.nilaiAkhirRapor >= row.kkm ? 'bg-emerald-50 border-emerald-100' : row.nilaiAkhirRapor !== null ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
+                        <p className="text-[10px] leading-none mb-1 font-semibold text-slate-500">AKHIR</p>
+                        <p className={`text-sm font-bold tabular-nums ${row.nilaiAkhirRapor !== null && row.nilaiAkhirRapor >= row.kkm ? 'text-emerald-700' : row.nilaiAkhirRapor !== null ? 'text-red-600' : 'text-slate-400'}`}>{row.nilaiAkhirRapor ?? '-'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isGenap9 && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${row.nilaiAkhirIjazah !== null ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}>
+                          Ijazah {row.nilaiAkhirIjazah ?? '-'}
+                        </span>
+                      )}
+                      <Badge className={`text-[10px] ${row.tuntas ? 'bg-emerald-100 text-emerald-700 border-0' : 'bg-red-100 text-red-700 border-0'}`}>
+                        {row.tuntas ? 'Tuntas' : 'Belum Tuntas'}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50">
