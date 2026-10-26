@@ -66,6 +66,7 @@ const FULL_ACCESS_MENU = {
         { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
         { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+        { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
       ],
       separated: true
     },
@@ -170,6 +171,8 @@ const ROLE_MENU = {
           { name: 'Data Lulusan', icon: GraduationCap, page: 'DataLulusan', color: '#f59e0b' },
           { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
           { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+          { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
+        { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
         ]
       }
     ]
@@ -201,6 +204,8 @@ const ROLE_MENU = {
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
           { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
           { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+          { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
+        { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
         ]
       },
       {
@@ -249,6 +254,7 @@ const ROLE_MENU = {
           { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' },
         { name: 'Sarpras', icon: Package, page: 'Sarpras', color: '#0d9488' },
         { name: 'Profil Sekolah', icon: School, page: 'ProfilSekolah', color: '#0ea5e9' },
+        { name: 'Rekonsiliasi Data', icon: ShieldCheck, page: 'RekonsiliasiData', color: '#dc2626' },
         ],
         separated: true
         },

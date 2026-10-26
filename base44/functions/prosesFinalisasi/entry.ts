@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { tautkanSpmbKeuangan, str } from '../../shared/rekonsiliasiCore.ts';
 
 export default async function(req) {
   try {
@@ -6,7 +7,7 @@ export default async function(req) {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     if (!['admin', 'operator', 'kepsek'].includes(user.role)) {
-      return Response.json({ error: 'Akses ditolak. Hanya admin/kepsek yang dapat menjalankan finalisasi.' }, { status: 403 });
+      return Response.json({ error: 'Akses ditolak. Hanya admin/operator/kepsek yang dapat menjalankan finalisasi.' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -90,8 +91,42 @@ export default async function(req) {
     if (arsipKeuanganRecords.length > 0) {
       await svc.entities.ArsipKeuangan.bulkCreate(arsipKeuanganRecords);
       jumlahTunggakanDiarsip = arsipKeuanganRecords.length;
-      totalSaldoSesudah = arsipKeuanganRecords.reduce((sum, r) => sum + r.sisa_tunggakan, 0);
     }
+
+    // Step 4B: Arsipkan tunggakan buku kas (Keuangan) yang belum Lunas pada tahun lama
+    const tunggakanKeu = await svc.entities.Keuangan.filter({
+      jenis: 'Pemasukan',
+      tahun_ajaran: tahun_ajaran_lama,
+      status_bayar: { $ne: 'Lunas' },
+    });
+    const tunggakanKeuValid = tunggakanKeu.filter(k => !k.is_iuran_muka && !k.aplikasi_iuran_muka);
+    const arsipTunggakanKeu = tunggakanKeuValid.map(k => ({
+      siswa_id: str(k.siswa_id),
+      nis: str(k.nis),
+      nama_siswa: str(k.nama_siswa),
+      nama_kelas: str(k.kelas),
+      tingkat: '',
+      tahun_ajaran_asal: tahun_ajaran_lama,
+      nama_iuran: `${str(k.tipe_transaksi) || str(k.kategori)} (tunggakan buku kas)`,
+      jenis_iuran: 'Lainnya',
+      tarif_iuran_id: str(k.tarif_iuran_id),
+      biaya_khusus_id: '',
+      nominal_tagihan: Number(k.jumlah) || 0,
+      nominal_bayar: 0,
+      sisa_tunggakan: Number(k.jumlah) || 0,
+      status: str(k.status_bayar) === 'Cicilan' ? 'Cicil' : 'Belum Lunas',
+      kategori: str(k.kategori),
+      migrated_at: now,
+      migrate_log_id: logRecord.id,
+    }));
+    if (arsipTunggakanKeu.length > 0) {
+      await svc.entities.ArsipKeuangan.bulkCreate(arsipTunggakanKeu);
+      jumlahTunggakanDiarsip += arsipTunggakanKeu.length;
+      totalSaldoSebelum += arsipTunggakanKeu.reduce((sum, r) => sum + r.sisa_tunggakan, 0);
+    }
+
+    // Step 4C: Tautkan transaksi SPMB lama ke siswa final (idempoten)
+    const spmbLink = await tautkanSpmbKeuangan(svc);
 
     // Step 5: Migrasi Nilai → ArsipNilai
     if (allNilai.length > 0) {
@@ -167,7 +202,11 @@ export default async function(req) {
       jumlahSiswaLulus = siswaKelas9.length;
     }
 
-    // Step 8: Update LogTahunAjaran → Completed
+    // Step 8: Checksum independen — hitung ulang dari ArsipKeuangan (bukan dari array pembuatan)
+    const arsipBaru = await svc.entities.ArsipKeuangan.filter({ migrate_log_id: logRecord.id }, undefined, 2000);
+    totalSaldoSesudah = arsipBaru.reduce((sum, r) => sum + (r.sisa_tunggakan || 0), 0);
+
+    // Step 8B: Update LogTahunAjaran → Completed
     await svc.entities.LogTahunAjaran.update(logRecord.id, {
       status: 'Completed',
       jumlah_siswa_diarsip: jumlahSiswaDiarsip,
@@ -200,6 +239,8 @@ export default async function(req) {
         total_saldo_sebelum: totalSaldoSebelum,
         total_saldo_sesudah: totalSaldoSesudah,
         checksum_match: totalSaldoSebelum === totalSaldoSesudah,
+        spmb_tertaut: spmbLink.diperbarui,
+        spmb_keuangan_id_dibackfill: spmbLink.keuangan_id_dibackfill,
       },
     });
   } catch (error) {

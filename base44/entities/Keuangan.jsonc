@@ -74,6 +74,10 @@
       "type": "string",
       "description": "ID siswa (untuk transaksi siswa)"
     },
+    "siswa_uid": {
+      "type": "string",
+      "description": "UID permanen siswa \u2014 kunci identitas tetap walau NIS berubah"
+    },
     "nis": {
       "type": "string",
       "description": "NIS siswa"
@@ -89,6 +93,10 @@
     "tarif_iuran_id": {
       "type": "string",
       "description": "ID TarifIuran yang dipilih saat input transaksi siswa (penanda eksplisit item iuran \u2014 dipakai pencocokan transaksi, peringatan transaksi ganda, dan fitur SPP Juli gratis PPDB)"
+    },
+    "ref_payment_id": {
+      "type": "string",
+      "description": "ID Payment SPMB sumber (kunci idempoten anti-dobel sinkronisasi pembayaran SPMB)"
     },
     "guru_id": {
       "type": "string",

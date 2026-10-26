@@ -1,0 +1,137 @@
+{
+  "name": "LogAuditKeuangan",
+  "type": "object",
+  "properties": {
+    "transaksi_id": {
+      "type": "string",
+      "description": "ID transaksi Keuangan yang diubah/dihapus"
+    },
+    "aksi": {
+      "type": "string",
+      "enum": [
+        "Ubah",
+        "Hapus"
+      ],
+      "description": "Jaksi aksi yang dicatat"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "ID pengguna pelaku"
+    },
+    "operator_nama": {
+      "type": "string",
+      "description": "Nama pengguna pelaku"
+    },
+    "waktu": {
+      "type": "string",
+      "description": "Timestamp ISO saat aksi dilakukan"
+    },
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal transaksi asal"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Uraian transaksi asal"
+    },
+    "jumlah_sebelum": {
+      "type": "number",
+      "default": 0,
+      "description": "Nominal sebelum perubahan"
+    },
+    "jumlah_sesudah": {
+      "type": "number",
+      "default": 0,
+      "description": "Nominal sesudah perubahan (0 untuk hapus)"
+    },
+    "ringkasan": {
+      "type": "string",
+      "description": "Ringkasan nilai sebelum/sesudah (uraian, tanggal, status bayar)"
+    }
+  },
+  "required": [
+    "transaksi_id",
+    "aksi",
+    "operator_nama"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bendahara"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bendahara"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bendahara"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

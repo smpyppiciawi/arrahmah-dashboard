@@ -1,0 +1,132 @@
+{
+  "name": "AntrianRekonsiliasi",
+  "type": "object",
+  "properties": {
+    "jenis": {
+      "type": "string",
+      "enum": [
+        "NIS Duplikat",
+        "Keuangan Tanpa Siswa",
+        "SPMB Belum Tertaut",
+        "Absensi Tak Dikenal",
+        "Izin Tak Dikenal"
+      ],
+      "description": "Jenis temuan rekonsiliasi data"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Menunggu",
+        "Ditunda",
+        "Tertaut",
+        "Selesai Tanpa Taut"
+      ],
+      "default": "Menunggu",
+      "description": "Status penanganan item. Tertaut = Admin mengonfirmasi tautan ke siswa; Selesai Tanpa Taut = ditutup tanpa mengubah relasi; Ditunda = belum terselesaikan."
+    },
+    "ref_entity": {
+      "type": "string",
+      "description": "Nama entitas asal temuan (Keuangan / Absensi / IzinSiswa / Siswa)"
+    },
+    "ref_id": {
+      "type": "string",
+      "description": "ID record asal temuan (atau kunci seperti nis:<NIS> untuk NIS duplikat)"
+    },
+    "nis": {
+      "type": "string",
+      "description": "NIS pada record asal"
+    },
+    "nama": {
+      "type": "string",
+      "description": "Nama pada record asal"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Kelas pada record asal"
+    },
+    "jumlah": {
+      "type": "number",
+      "default": 0,
+      "description": "Nominal transaksi (untuk temuan keuangan)"
+    },
+    "uraian": {
+      "type": "string",
+      "description": "Uraian/ringkasan temuan"
+    },
+    "detail": {
+      "type": "string",
+      "description": "Bukti/rincian temuan (tanggal, kategori, sumber, dsb)"
+    },
+    "kandidat": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "siswa_id": {
+            "type": "string"
+          },
+          "nis": {
+            "type": "string"
+          },
+          "nama": {
+            "type": "string"
+          },
+          "nama_kelas": {
+            "type": "string"
+          },
+          "alasan": {
+            "type": "string"
+          },
+          "skor": {
+            "type": "number"
+          }
+        }
+      },
+      "description": "Kandidat siswa pencocokan (nama, NIS, alasan kecocokan, skor) \u2014 Admin memilih & mengonfirmasi"
+    },
+    "catatan": {
+      "type": "string",
+      "description": "Catatan Admin saat menangani item"
+    },
+    "ditangani_oleh": {
+      "type": "string",
+      "description": "Nama Admin yang menangani"
+    },
+    "ditangani_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat ditangani"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran saat temuan dideteksi"
+    }
+  },
+  "required": [
+    "jenis",
+    "status",
+    "ref_entity",
+    "ref_id"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

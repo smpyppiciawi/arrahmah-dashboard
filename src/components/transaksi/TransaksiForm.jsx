@@ -519,8 +519,12 @@ export default function TransaksiForm({
 
     const saldoAwalActive = isSaldoAwal && jenisTransaksi === 'siswa' && !mukaActive;
 
+    const siswaUntukPayload = formData.siswa_id ? siswaList.find(s => s.id === formData.siswa_id) : null;
+
     setSubmitting(true);
     const payload = {
+      // Stamp UID permanen siswa — kunci identitas tetap walau NIS berubah
+      ...(siswaUntukPayload?.uid ? { siswa_uid: siswaUntukPayload.uid } : {}),
       ...formData,
       kategori: resolvedKategori || formData.kategori,
       jumlah: Number(formData.jumlah),
@@ -564,6 +568,21 @@ export default function TransaksiForm({
 
     try {
       if (editingData) {
+        // Jejak audit sebelum perubahan — identitas pelaku, waktu, ringkasan sebelum/sesudah
+        try {
+          await base44.entities.LogAuditKeuangan.create({
+            transaksi_id: editingData.id,
+            aksi: 'Ubah',
+            operator_id: currentUser?.id || '',
+            operator_nama: currentUser?.full_name || '',
+            waktu: new Date().toISOString(),
+            tanggal: editingData.tanggal || '',
+            uraian: editingData.uraian || editingData.tipe_transaksi || '',
+            jumlah_sebelum: Number(editingData.jumlah) || 0,
+            jumlah_sesudah: Number(payload.jumlah) || 0,
+            ringkasan: `Sebelum: ${editingData.uraian || editingData.tipe_transaksi || '-'} · ${editingData.tanggal} · ${editingData.status_bayar || 'Lunas'} → Sesudah: ${payload.uraian || payload.tipe_transaksi || '-'} · ${payload.tanggal} · ${payload.status_bayar || 'Lunas'}`,
+          });
+        } catch (e) { /* jejak audit gagal tidak boleh memblokir transaksi */ }
         await base44.entities.Keuangan.update(editingData.id, payload);
         // Sinkron alokasi iuran muka: ganti alokasi lama dengan yang terbaru
         if (linkedMukaList.length) {

@@ -1,0 +1,77 @@
+{
+  "name": "EksporBackupLog",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal ekspor dijalankan"
+    },
+    "operator_id": {
+      "type": "string",
+      "description": "ID Admin pelaku"
+    },
+    "operator_nama": {
+      "type": "string",
+      "description": "Nama Admin pelaku"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Berhasil",
+        "Gagal"
+      ],
+      "default": "Berhasil",
+      "description": "Status ekspor"
+    },
+    "total_record": {
+      "type": "number",
+      "default": 0,
+      "description": "Total record yang diekspor"
+    },
+    "jumlah_entitas": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah entitas yang diekspor"
+    },
+    "manifest_url": {
+      "type": "string",
+      "description": "Tautan berkas manifest di Google Drive"
+    },
+    "drive_file_ids": {
+      "type": "string",
+      "description": "ID berkas manifest di Drive"
+    },
+    "catatan": {
+      "type": "string",
+      "description": "Catatan (hash manifest, entitas yang dilewati, dsb)"
+    }
+  },
+  "required": [
+    "tanggal",
+    "status",
+    "operator_nama"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

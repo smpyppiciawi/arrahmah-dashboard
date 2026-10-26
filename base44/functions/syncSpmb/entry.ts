@@ -1,5 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
+import { tautkanSpmbKeuangan } from '../../shared/rekonsiliasiCore.ts';
 
 const ALLOWED_ROLES = ['admin', 'tu', 'kepsek', 'bendahara'];
 
@@ -68,6 +69,17 @@ export default async function(req) {
     const tarifList = await svc.entities.TarifIuran.filter({ status: 'Aktif' });
     const tarifPPDB = tarifList.filter((t) => str(t.jenis_iuran).includes('PPDB'));
     const tipeList = await svc.entities.TipeTransaksi.list();
+
+    // Peta siswa (lazily) untuk mengisi UID permanen pada transaksi SPMB yang sudah difinalisasi
+    let siswaPeta = null;
+    const getSiswaById = async (id) => {
+      if (!id) return null;
+      if (!siswaPeta) {
+        const list = await svc.entities.Siswa.list();
+        siswaPeta = new Map(list.map((s) => [s.id, s]));
+      }
+      return siswaPeta.get(id) || null;
+    };
 
     // ===== 4. Upsert SiswaSPMB + sinkron pembayaran =====
     const existing = await svc.entities.SiswaSPMB.list();
@@ -148,6 +160,23 @@ export default async function(req) {
       const list = paymentsByStudent[str(s.id)] || [];
       const existingPays = Array.isArray(bridge.pembayaran) ? bridge.pembayaran : [];
       const knownIds = new Set(existingPays.map((p) => str(p.payment_id)));
+      // Idempotensi: isi ulang keuangan_id pembayaran yang tercatat tetapi belum tertaut
+      let hasNewBackfill = false;
+      for (const p of existingPays) {
+        if (!str(p.payment_id) || str(p.keuangan_id)) continue;
+        const keuLama = await svc.entities.Keuangan.filter({ ref_payment_id: str(p.payment_id) });
+        if (keuLama.length > 0) {
+          p.keuangan_id = keuLama[0].id;
+          hasNewBackfill = true;
+        }
+      }
+      if (hasNewBackfill) {
+        await svc.entities.SiswaSPMB.update(bridge.id, {
+          pembayaran: existingPays,
+          total_dibayar: existingPays.reduce((a, p) => a + (Number(p.nominal) || 0), 0),
+        });
+        bridge = { ...bridge, pembayaran: existingPays };
+      }
       const totalBefore = existingPays.reduce((a, p) => a + (Number(p.nominal) || 0), 0);
       let total = existingPays.map((p) => ({ ...p }));
       let hasNew = false;
@@ -182,6 +211,8 @@ export default async function(req) {
             uraian: `SPMB ${reg} — ${str(s.full_name)}${label ? ' (' + label + ')' : ''}${notes ? ' — ' + notes : ''}`,
             jumlah: nominal,
             siswa_id: bridge.finalized && bridge.siswa_id ? bridge.siswa_id : '',
+            siswa_uid: bridge.finalized && bridge.siswa_id ? str((await getSiswaById(bridge.siswa_id))?.uid || '') : '',
+            ref_payment_id: pid,
             nama_siswa: str(s.full_name),
             nama_donatur: '',
             sumber_rekening: 'SPMB',
@@ -205,9 +236,14 @@ export default async function(req) {
       }
     }
 
+    // Tautkan transaksi SPMB lama yang belum terhubung (idempoten, kecocokan pasti saja)
+    const link = await tautkanSpmbKeuangan(svc);
+
     return Response.json({
       ok: true,
       pendaftar: students.length,
+      spmb_tertaut: link.diperbarui,
+      spmb_keuangan_id_dibackfill: link.keuangan_id_dibackfill,
       dibuat: created,
       diperbarui: updated,
       pembayaran_baru: paymentsNew,

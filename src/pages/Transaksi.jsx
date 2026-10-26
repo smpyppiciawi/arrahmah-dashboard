@@ -103,7 +103,24 @@ export default function Transaksi() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Keuangan.delete(id),
+    mutationFn: async (data) => {
+      // Jejak audit penghapusan — identitas pelaku, waktu, ringkasan nilai
+      try {
+        await base44.entities.LogAuditKeuangan.create({
+          transaksi_id: data.id,
+          aksi: 'Hapus',
+          operator_id: currentUser?.id || '',
+          operator_nama: currentUser?.full_name || '',
+          waktu: new Date().toISOString(),
+          tanggal: data.tanggal || '',
+          uraian: data.uraian || data.tipe_transaksi || '',
+          jumlah_sebelum: Number(data.jumlah) || 0,
+          jumlah_sesudah: 0,
+          ringkasan: `Dihapus: ${data.uraian || data.tipe_transaksi || '-'} · ${data.tanggal} · ${formatRupiah(data.jumlah)} · ${data.status_bayar || 'Lunas'}`,
+        });
+      } catch (e) { /* jejak audit gagal tidak boleh memblokir penghapusan */ }
+      return base44.entities.Keuangan.delete(data.id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['keuangan'] });
       toast({ title: "Transaksi dihapus" });
@@ -145,7 +162,7 @@ export default function Transaksi() {
 
   const handleDelete = (data) => {
     if (window.confirm(`Hapus transaksi "${data.uraian || data.tipe_transaksi}"?`)) {
-      deleteMutation.mutate(data.id);
+      deleteMutation.mutate(data);
     }
   };
 
