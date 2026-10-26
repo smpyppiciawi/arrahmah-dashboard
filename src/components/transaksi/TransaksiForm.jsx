@@ -65,7 +65,7 @@ const DEFAULT_FORM = {
   bulan_dibayar: [],
   bulan: '',
   sumber_rekening: '',
-  bukti_file: '',
+  bukti_files: [],
   status_bayar: 'Lunas',
   is_saldo_awal: false,
   tahun_ajaran: '',
@@ -95,7 +95,11 @@ export default function TransaksiForm({
   useEffect(() => {
     if (isOpen) {
       if (editingData) {
-        const ed = { ...DEFAULT_FORM, ...editingData, bulan_dibayar: editingData.bulan_dibayar || [] };
+        // Dukung bukti lama (satu berkas) dan bukti baru (banyak berkas)
+        const buktiLama = Array.isArray(editingData.bukti_files) && editingData.bukti_files.length > 0
+          ? editingData.bukti_files
+          : (editingData.bukti_file ? [editingData.bukti_file] : []);
+        const ed = { ...DEFAULT_FORM, ...editingData, bulan_dibayar: editingData.bulan_dibayar || [], bukti_files: buktiLama };
         setFormData(ed);
         if (editingData.siswa_id) setJenisTransaksi('siswa');
         else if (editingData.guru_id) setJenisTransaksi('pegawai');
@@ -526,6 +530,9 @@ export default function TransaksiForm({
       // Stamp UID permanen siswa — kunci identitas tetap walau NIS berubah
       ...(siswaUntukPayload?.uid ? { siswa_uid: siswaUntukPayload.uid } : {}),
       ...formData,
+      bukti_files: Array.isArray(formData.bukti_files) ? formData.bukti_files.filter(Boolean) : [],
+      // Simpan berkas pertama pada kolom lama agar data & fitur lama tetap terbaca
+      bukti_file: (Array.isArray(formData.bukti_files) ? formData.bukti_files.filter(Boolean)[0] : '') || '',
       kategori: resolvedKategori || formData.kategori,
       jumlah: Number(formData.jumlah),
       terbilang: terbilangText,
@@ -1069,9 +1076,8 @@ export default function TransaksiForm({
 
           {/* Section: Bukti Upload */}
           <BuktiUpload
-            buktiFile={formData.bukti_file}
-            onUpload={(url) => set('bukti_file', url)}
-            onClear={() => set('bukti_file', '')}
+            value={Array.isArray(formData.bukti_files) ? formData.bukti_files : []}
+            onChange={(urls) => set('bukti_files', urls)}
           />
 
           {/* Actions */}

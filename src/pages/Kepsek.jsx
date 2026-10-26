@@ -91,7 +91,8 @@ export default function Kepsek() {
   const { data: pelanggaranImpList = [] } = useQuery({ queryKey: ['pelanggaranImp-kepsek'], queryFn: () => base44.entities.PelanggaranImprovement.list('-tanggal') });
   const { data: improvementList = [] } = useQuery({ queryKey: ['improvement-kepsek'], queryFn: () => base44.entities.Improvement.list('-tanggal') });
   const { data: prestasiList = [] } = useQuery({ queryKey: ['prestasi-kepsek'], queryFn: () => base44.entities.Prestasi.list('-tanggal') });
-  const { data: keuanganList = [] } = useQuery({ queryKey: ['keuangan-kepsek'], queryFn: () => base44.entities.Keuangan.list('-tanggal') });
+  // Kunci cache sama dengan Bendahara (Laporan & Transaksi) → angka selalu identik & ikut realtime
+  const { data: keuanganList = [] } = useQuery({ queryKey: ['keuangan'], queryFn: () => base44.entities.Keuangan.list('-tanggal') });
   const { data: kalenderList = [] } = useQuery({ queryKey: ['kalender-kepsek'], queryFn: () => base44.entities.KalenderAkademik.list('-tanggal_mulai') });
   const { data: izinList = [] } = useQuery({ queryKey: ['izin-kepsek'], queryFn: () => base44.entities.IzinSiswa.list('-tanggal', 500) });
   const { data: uksList = [] } = useQuery({ queryKey: ['uks-kepsek'], queryFn: () => base44.entities.UKS.list('-tanggal') });
@@ -214,8 +215,11 @@ export default function Kepsek() {
     const absensiHariIni = absensiList.filter(a => a.tanggal === activeDayStr);
     const hadirHariIni = absensiHariIni.filter(a => a.status === 'Hadir' || a.status === 'Terlambat').length;
     const persenHadir = absensiHariIni.length > 0 ? Math.round((hadirHariIni / absensiHariIni.length) * 100) : 0;
-    const filteredKeuangan = keuanganList.filter(k => k.tanggal >= dateFrom && k.tanggal <= dateTo);
-    const totalPemasukan = filteredKeuangan.filter(k => k.jenis === 'Pemasukan' && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
+    // Sama persis dengan Laporan Bendahara: penerapan Iuran Muka & Saldo Awal netral terhadap kas
+    const filteredKeuangan = keuanganList.filter(k =>
+      k.tanggal >= dateFrom && k.tanggal <= dateTo && !k.aplikasi_iuran_muka && !k.is_saldo_awal
+    );
+    const totalPemasukan = filteredKeuangan.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
     const totalPengeluaran = filteredKeuangan.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
     // Siswa absen 3+ hari kini dihitung oleh hook useAbsen3Hari (query khusus Alfa/Sakit
     // + persistensi "tampil hingga ada perubahan") — bebas dari jendela 1000 record dashboard.
@@ -231,7 +235,9 @@ export default function Kepsek() {
       const siswa = siswaList.find(s => s.id === p.siswa_id);
       return siswa && siswa.status === 'Aktif';
     });
-    const prestasiPeriod = prestasiList.filter(p => p.tanggal >= dateFrom && p.tanggal <= dateTo);
+    // Prestasi dibaca menyeluruh (bukan hanya tanggal hari ini) agar catatan dari menu
+    // Catatan Siswa > Prestasi selalu tampil di dashboard.
+    const prestasiData = [...prestasiList].sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
     const pelanggaranImpPeriod = pelanggaranImpList.filter(p => p.tanggal >= dateFrom && p.tanggal <= dateTo && p.status !== 'Dibatalkan');
     const improvementPeriod = improvementList.filter(i => i.tanggal >= dateFrom && i.tanggal <= dateTo && i.status === 'Aktif');
     const h2Date = wibNow(); h2Date.setDate(h2Date.getDate() + 2);
@@ -239,25 +245,22 @@ export default function Kepsek() {
     const visitedIds = new Set(homeVisitList.map(h => h.siswa_id));
     const visitedSiswa = aktiveSiswa.filter(s => visitedIds.has(s.id));
     const notVisitedSiswa = aktiveSiswa.filter(s => !visitedIds.has(s.id));
-    // Saldo all-time gabungan semua sumber dana
-    const allPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
-    const allPengeluaran = keuanganList.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
-    const allSaldo = allPemasukan - allPengeluaran;
+    // Saldo & rincian mengikuti PERIODE filter Kepsek (bukan all-time) — sama dengan Bendahara
     const sumberKeys = new Set();
     sumberDanaList.forEach(s => sumberKeys.add(s.nama));
     keuanganList.forEach(k => { if (k.sumber_rekening) sumberKeys.add(k.sumber_rekening); });
     sumberKeys.add('Umum');
     const sumberDanaBreakdown = [...sumberKeys].map(key => {
-      const rows = keuanganList.filter(k => (k.sumber_rekening || 'Umum') === key && !k.is_saldo_awal);
+      const rows = filteredKeuangan.filter(k => (k.sumber_rekening || 'Umum') === key);
       const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
       const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
       return { sumber_dana: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
     }).filter(s => s.transaksi > 0 || sumberDanaList.some(sd => sd.nama === s.sumber_dana));
-    // Saldo per Kategori (all-time)
+    // Saldo per Kategori — periode filter
     const kategoriKeys = new Set();
-    keuanganList.forEach(k => { if (k.kategori) kategoriKeys.add(k.kategori); });
+    filteredKeuangan.forEach(k => { if (k.kategori) kategoriKeys.add(k.kategori); });
     const kategoriBreakdown = [...kategoriKeys].map(key => {
-      const rows = keuanganList.filter(k => (k.kategori || 'Lainnya') === key && !k.is_saldo_awal);
+      const rows = filteredKeuangan.filter(k => (k.kategori || 'Lainnya') === key);
       const masuk = rows.filter(k => k.jenis === 'Pemasukan').reduce((s, k) => s + (k.jumlah || 0), 0);
       const keluar = rows.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
       return { kategori: key, masuk, keluar, saldo: masuk - keluar, transaksi: rows.length };
@@ -280,11 +283,12 @@ export default function Kepsek() {
       izinHariIni: absensiHariIni.filter(a => a.status === 'Izin').length,
       saldo: totalPemasukan - totalPengeluaran, totalPemasukan, totalPengeluaran,
       pegawaiHadirHariIni, jadwalHariIni,
-      pelanggaranBerat, pelanggaranSangatBerat, prestasiPeriod, pelanggaranImpPeriod, improvementPeriod,
+      pelanggaranBerat, pelanggaranSangatBerat, prestasiData, pelanggaranImpPeriod, improvementPeriod,
       h2Events, izinCount: izinList.filter(i => i.tanggal === activeDayStr).length, uksCount: uksList.filter(u => u.tanggal === activeDayStr).length,
       homeVisitTotal: homeVisitList.length, homeVisitVisited: visitedSiswa.length,
       homeVisitNotVisited: notVisitedSiswa, homeVisitNotVisitedCount: notVisitedSiswa.length,
-      allSaldo, allPemasukan, allPengeluaran, sumberDanaBreakdown, kategoriBreakdown,
+      saldoPeriode: totalPemasukan - totalPengeluaran, pemasukanPeriode: totalPemasukan, pengeluaranPeriode: totalPengeluaran,
+      sumberDanaBreakdown, kategoriBreakdown,
       materiPerGuru, totalBab, izinPegawaiPending: izinPegawaiList,
     };
   }, [siswaList, guruList, kelasList, absensiList, keuanganList, pelanggaranList, pelanggaranImpList, improvementList, prestasiList, kalenderList, izinList, uksList, homeVisitList, absensiPegawaiList, jadwalPelajaranList, materiList, izinPegawaiList, sumberDanaList, dateFrom, dateTo, activeDayStr, activeDayName]);
@@ -382,15 +386,16 @@ export default function Kepsek() {
         { key: 'progress', label: 'Progress', render: r => r.progress_sanksi?.length ? `${r.progress_sanksi.filter(s => s.selesai).length}/${r.progress_sanksi.length}` : '-' },
         { key: 'status', label: 'Status', render: r => <Badge className={r.status === 'Selesai' ? (isDark ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-700') : (isDark ? 'bg-amber-500/20 text-amber-300' : 'bg-amber-100 text-amber-700')}>{r.status}</Badge> },
       ], fullLink: '/CatatanSiswa' },
-      saldo: { title: 'Saldo per Sumber Dana (All-Time)', data: stats.sumberDanaBreakdown, columns: [
+      saldo: { title: 'Saldo per Sumber Dana (Periode Terpilih)', data: stats.sumberDanaBreakdown, columns: [
         { key: 'sumber_dana', label: 'Sumber Dana' },
         { key: 'masuk', label: 'Pemasukan', render: r => <span className="text-emerald-500">{formatRupiah(r.masuk)}</span> },
         { key: 'keluar', label: 'Pengeluaran', render: r => <span className="text-red-500">{formatRupiah(r.keluar)}</span> },
         { key: 'saldo', label: 'Saldo', render: r => <span className={`font-semibold ${r.saldo >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>{formatRupiah(r.saldo)}</span> },
         { key: 'transaksi', label: 'Transaksi' },
       ], fullLink: '/Transaksi' },
-      prestasi: { title: 'Prestasi Siswa', data: stats.prestasiPeriod, columns: [
-        { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_prestasi', label: 'Prestasi' }, { key: 'kategori', label: 'Kategori' }, { key: 'tingkat', label: 'Tingkat' },
+      prestasi: { title: `Prestasi Siswa (${stats.prestasiData.length} tercatat)`, data: stats.prestasiData, columns: [
+        { key: 'tanggal', label: 'Tanggal' }, { key: 'nama_siswa', label: 'Siswa' }, { key: 'nama_kelas', label: 'Kelas' },
+        { key: 'nama_prestasi', label: 'Prestasi' }, { key: 'kategori', label: 'Kategori' }, { key: 'tingkat', label: 'Tingkat' },
       ], fullLink: '/CatatanSiswa' },
       materi: { title: 'Agenda Materi per Guru (Total BAB Setahun)', data: stats.materiPerGuru, columns: [
         { key: 'nama_guru', label: 'Nama Guru' },
@@ -442,9 +447,9 @@ export default function Kepsek() {
     { label: 'Kehadiran', value: `${stats.persenHadir}%`, subtitle: `${stats.hadirHariIni}/${stats.absensiHariIni} siswa`, icon: Calendar, gradient: 'from-emerald-500 to-emerald-600', alert: stats.alfaHariIni, onClick: () => openDrillDown('kehadiran') },
     { label: 'Absen 3 Hari', value: absen3Hari.length, subtitle: loadingAbsen3Hari ? 'memuat...' : 'Pemantauan otomatis aktif (WIB)', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: absen3Hari.length, onClick: () => openDrillDown('alfa3') },
     { label: 'Pelanggaran', value: stats.pelanggaranImpPeriod.length, subtitle: 'catatan periode', icon: AlertTriangle, gradient: 'from-orange-500 to-red-500', alert: stats.pelanggaranImpPeriod.length, onClick: () => setPelanggaranDrill(true) },
-    { label: 'Saldo', value: formatRupiah(stats.allSaldo).replace('Rp', '').trim(), subtitle: `+${formatRupiah(stats.allPemasukan).replace('Rp','').trim()} / -${formatRupiah(stats.allPengeluaran).replace('Rp','').trim()}`, icon: Wallet, gradient: stats.allSaldo >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-red-600', onClick: () => setSaldoOpen(true) },
+    { label: 'Saldo', value: formatRupiah(stats.saldoPeriode).replace('Rp', '').trim(), subtitle: `+${formatRupiah(stats.pemasukanPeriode).replace('Rp','').trim()} / -${formatRupiah(stats.pengeluaranPeriode).replace('Rp','').trim()}`, icon: Wallet, gradient: stats.saldoPeriode >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-red-600', onClick: () => setSaldoOpen(true) },
     { label: 'Pegawai Hadir', value: stats.pegawaiHadirHariIni.length, subtitle: activeDayStr === todayStr ? 'hari ini' : format(parseISO(activeDayStr), 'd MMM', { locale: idLocale }), icon: UserCheck, gradient: 'from-teal-500 to-emerald-600', onClick: () => openDrillDown('pegawaiHadir') },
-    { label: 'Prestasi', value: stats.prestasiPeriod.length, subtitle: 'prestasi', icon: Award, gradient: 'from-yellow-500 to-amber-600', onClick: () => openDrillDown('prestasi') },
+    { label: 'Prestasi', value: stats.prestasiData.length, subtitle: 'total prestasi', icon: Award, gradient: 'from-yellow-500 to-amber-600', onClick: () => openDrillDown('prestasi') },
     { label: 'Agenda Materi', value: stats.totalBab, subtitle: 'total bab', icon: BookMarked, gradient: 'from-violet-500 to-purple-600', onClick: () => openDrillDown('materi') },
     { label: 'Kegiatan H-2', value: stats.h2Events.length, subtitle: 'lusa', icon: CalendarDays, gradient: 'from-indigo-500 to-purple-600', alert: stats.h2Events.length },
   ];
@@ -457,10 +462,6 @@ export default function Kepsek() {
             <KepsekMenuDrawer isDark={effIsDark} />
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
               <School className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className={`${t.text} font-bold text-sm md:text-base`}>Dashboard Kepala Sekolah</h1>
-              <p className={`${t.textMuted} text-xs`}>{currentSettings.nama_sekolah || 'YPPI ARRAHMAH'} — Command Center</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -487,17 +488,7 @@ export default function Kepsek() {
         </div>
       </header>
 
-      <div className="max-w-[1800px] mx-auto p-3 md:p-6 space-y-3 md:space-y-5">
-        <div className="flex items-center gap-2 overflow-x-auto flex-nowrap pb-1 md:flex-wrap md:pb-0">
-          {DATE_PRESETS.map(p => (
-            <button key={p.key} onClick={() => setPreset(p.key)} className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${preset === p.key ? t.presetActive : t.presetInactive}`}>{p.label}</button>
-          ))}
-          <div className={`flex items-center gap-1 ${t.input} rounded-lg px-2 py-1`}>
-            <input type="date" value={dateFrom} onChange={(e) => { setPreset('custom'); setDateFrom(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
-            <span className={t.textSubtle}>-</span>
-            <input type="date" value={dateTo} onChange={(e) => { setPreset('custom'); setDateTo(e.target.value); }} className="bg-transparent text-xs border-0 focus:outline-none" />
-          </div>
-        </div>
+      <div className="max-w-[1800px] mx-auto p-3 md:p-6 pb-28 md:pb-28 space-y-3 md:space-y-5">
 
         <KepsekAlerts alerts={alerts} onWhatsApp={handleWhatsApp} onDirectWA={handleDirectWA} onEmail={handleEmail} onApproveIzin={handleApproveIzin} isDark={effIsDark} />
 
@@ -576,7 +567,7 @@ export default function Kepsek() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
           <div className="space-y-3 md:space-y-4">
             <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} />
-            <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} />
+            <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} isDark={effIsDark} />
           </div>
           <div className="space-y-3 md:space-y-4">
             <LaporanJenisIuranWidget
@@ -610,7 +601,7 @@ export default function Kepsek() {
       {fabsShown && <GuruContactFab guruList={guruList} onWhatsApp={handleWhatsApp} isDark={effIsDark} />}
       <button
         onClick={() => setFabsShown(s => !s)}
-        className={`fixed bottom-6 z-[60] w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${retro ? 'xp-btn' : 'bg-slate-600/80 hover:bg-slate-500/90 text-white backdrop-blur'} ${fabsShown ? 'right-24' : 'right-6'}`}
+        className={`fixed bottom-24 z-[60] w-9 h-9 rounded-full flex items-center justify-center shadow-lg transition-all ${retro ? 'xp-btn' : 'bg-slate-600/80 hover:bg-slate-500/90 text-white backdrop-blur'} ${fabsShown ? 'right-24' : 'right-6'}`}
         title={fabsShown ? 'Sembunyikan Tombol Melayang' : 'Tampilkan Tombol Melayang'}
       >
         {fabsShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -618,7 +609,7 @@ export default function Kepsek() {
       <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
       <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
-      <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} sumberDanaBreakdown={stats.sumberDanaBreakdown} kategoriBreakdown={stats.kategoriBreakdown} formatRupiah={formatRupiah} />
+      <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} sumberDanaBreakdown={stats.sumberDanaBreakdown} kategoriBreakdown={stats.kategoriBreakdown} formatRupiah={formatRupiah} periodLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} />
 
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
         <DialogContent className={`max-w-md ${t.dialog}`}>
@@ -631,6 +622,39 @@ export default function Kepsek() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Filter periode — melekat di bawah layar agar selalu terjangkau & tidak menutupi konten */}
+      <div className={`fixed left-2 right-2 md:left-1/2 md:right-auto md:-translate-x-1/2 z-40 ${retro ? 'bottom-7' : 'bottom-2'}`}>
+        <div className={`rounded-2xl border shadow-xl backdrop-blur-md px-2 py-2 ${retro ? 'xp-card bg-[#ece9d8] border-[#d4d0c8]' : isDark ? 'bg-slate-900/95 border-slate-700 shadow-black/50' : 'bg-white/95 border-slate-200 shadow-slate-400/30'}`}>
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {DATE_PRESETS.map(p => (
+              <button
+                key={p.key}
+                onClick={() => setPreset(p.key)}
+                className={`shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors ${preset === p.key ? t.presetActive : t.presetInactive}`}
+              >
+                {p.label}
+              </button>
+            ))}
+            <span className={`shrink-0 w-px h-5 mx-0.5 ${isDark && !retro ? 'bg-slate-700' : 'bg-slate-200'}`} />
+            <div className={`shrink-0 flex items-center gap-1 rounded-lg px-2 py-1 ${t.input}`}>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setPreset('custom'); setDateFrom(e.target.value); }}
+                className="bg-transparent text-[11px] border-0 focus:outline-none w-[104px]"
+              />
+              <span className={t.textSubtle}>-</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setPreset('custom'); setDateTo(e.target.value); }}
+                className="bg-transparent text-[11px] border-0 focus:outline-none w-[104px]"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

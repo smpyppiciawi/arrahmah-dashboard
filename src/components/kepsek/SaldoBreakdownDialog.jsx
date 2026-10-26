@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-export default function SaldoBreakdownDialog({ open, onOpenChange, sumberDanaBreakdown, kategoriBreakdown, formatRupiah }) {
+export default function SaldoBreakdownDialog({ open, onOpenChange, sumberDanaBreakdown, kategoriBreakdown, formatRupiah, periodLabel }) {
   const renderTable = (rows, labelKey) => (
     <div className="overflow-x-auto rounded-xl border border-slate-100">
       <Table>
@@ -35,7 +35,10 @@ export default function SaldoBreakdownDialog({ open, onOpenChange, sumberDanaBre
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>Saldo per Sumber Dana & Kategori (All-Time)</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>Saldo per Sumber Dana &amp; Kategori</DialogTitle>
+          <p className="text-xs text-slate-500">{periodLabel ? `Periode ${periodLabel}` : 'Periode terpilih'} · sama dengan Laporan Bendahara</p>
+        </DialogHeader>
         <Tabs defaultValue="sumber">
           <TabsList className="mb-3">
             <TabsTrigger value="sumber">Sumber Dana</TabsTrigger>

@@ -248,14 +248,21 @@ export default function Transaksi() {
       label: 'Aksi',
       sortable: false,
       filterable: false,
-      render: (row) => (
+      render: (row) => {
+        const buktiList = Array.isArray(row.bukti_files) && row.bukti_files.length > 0
+          ? row.bukti_files.filter(Boolean)
+          : (row.bukti_file ? [row.bukti_file] : []);
+        return (
         <div className="flex gap-1">
-          {row.bukti_file && (
-            <a href={row.bukti_file} target="_blank" rel="noopener noreferrer">
-              <Button size="sm" variant="ghost" title="Lihat bukti">
+          {buktiList.slice(0, 3).map((url, i) => (
+            <a key={`${url}-${i}`} href={url} target="_blank" rel="noopener noreferrer">
+              <Button size="sm" variant="ghost" title={`Lihat bukti ${i + 1} dari ${buktiList.length}`}>
                 <Paperclip className="w-4 h-4 text-slate-400" />
               </Button>
             </a>
+          ))}
+          {buktiList.length > 3 && (
+            <span className="self-center text-[10px] font-semibold text-slate-400">+{buktiList.length - 3}</span>
           )}
           <Button size="sm" variant="ghost" onClick={() => handlePrint(row)} title="Cetak Kwitansi">
             <Printer className="w-4 h-4" />
@@ -271,7 +278,8 @@ export default function Transaksi() {
             </>
           )}
         </div>
-      ),
+        );
+      },
     },
   ];
 

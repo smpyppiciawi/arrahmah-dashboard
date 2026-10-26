@@ -193,7 +193,14 @@
     },
     "bukti_file": {
       "type": "string",
-      "description": "URL file bukti transaksi"
+      "description": "URL file bukti transaksi (lama) \u2014 dipertahankan untuk data historis; gunakan bukti_files untuk bukti lebih dari satu"
+    },
+    "bukti_files": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Daftar URL bukti transaksi (nota/struk/bukti transfer) \u2014 dapat lebih dari satu"
     },
     "rencana_belanja_id": {
       "type": "string",

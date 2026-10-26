@@ -14,7 +14,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { 
   FileText, Printer, Users, TrendingUp, TrendingDown, 
   Wallet, Calendar, Filter, Download, AlertCircle, Megaphone,
-  ArrowLeftRight
+  ArrowLeftRight, ChevronDown, Layers
 } from "lucide-react";
 import PengumumanBendahara from '@/components/keuangan/PengumumanBendahara';
 import TunggakanDetailDialog from '@/components/laporan/TunggakanDetailDialog';
@@ -39,6 +39,7 @@ export default function LaporanKeuangan() {
   const [selectedTA, setSelectedTA] = useState('__aktif__');
   const [detailRow, setDetailRow] = useState(null);
   const [cetakOpen, setCetakOpen] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
 
   const { data: keuanganList = [] } = useQuery({
     queryKey: ['keuangan'],
@@ -190,8 +191,23 @@ export default function LaporanKeuangan() {
       acc[kat] = (acc[kat] || 0) + (k.jumlah || 0);
       return acc;
     }, {});
-    
-    return { totalPemasukan, totalPengeluaran, pemasukanByKategori, pengeluaranByKategori };
+
+    // Rincian pengeluaran per Tipe Transaksi — dipakai tray pada kartu Total Pengeluaran
+    const pengeluaranTipeMap = pengeluaran.reduce((acc, k) => {
+      const tipe = k.tipe_transaksi || 'Lainnya';
+      acc[tipe] = (acc[tipe] || 0) + (k.jumlah || 0);
+      return acc;
+    }, {});
+    const pengeluaranByTipe = Object.entries(pengeluaranTipeMap)
+      .map(([tipe, jumlah]) => ({ tipe, jumlah }))
+      .sort((a, b) => b.jumlah - a.jumlah);
+
+    return {
+      totalPemasukan, totalPengeluaran, pemasukanByKategori, pengeluaranByKategori,
+      pengeluaranByTipe,
+      jumlahPemasukan: pemasukan.length,
+      jumlahPengeluaran: pengeluaran.length,
+    };
   }, [laporanFilteredData]);
 
   // Unique iuran names for filter
@@ -538,39 +554,61 @@ export default function LaporanKeuangan() {
           <TabsContent value="pemasukan-pengeluaran">
             <div className="grid md:grid-cols-2 gap-6 mb-6">
               <Card className="border-0 shadow-sm bg-emerald-50">
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-emerald-700">
                     <TrendingUp className="w-5 h-5" /> Total Pemasukan
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold text-emerald-700">{formatRupiah(laporanPemasukanPengeluaran.totalPemasukan)}</p>
-                  <div className="mt-4 space-y-2">
-                    {Object.entries(laporanPemasukanPengeluaran.pemasukanByKategori).map(([kat, jml]) => (
-                      <div key={kat} className="flex justify-between text-sm">
-                        <span>{kat}</span>
-                        <span className="font-medium">{formatRupiah(jml)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs text-emerald-700/70 mt-2">
+                    {filterKategori ? `Kategori ${filterKategori}` : 'Semua kategori'} · {laporanPemasukanPengeluaran.jumlahPemasukan} transaksi
+                  </p>
                 </CardContent>
               </Card>
 
               <Card className="border-0 shadow-sm bg-red-50">
-                <CardHeader>
+                <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-red-700">
                     <TrendingDown className="w-5 h-5" /> Total Pengeluaran
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold text-red-700">{formatRupiah(laporanPemasukanPengeluaran.totalPengeluaran)}</p>
-                  <div className="mt-4 space-y-2">
-                    {Object.entries(laporanPemasukanPengeluaran.pengeluaranByKategori).map(([kat, jml]) => (
-                      <div key={kat} className="flex justify-between text-sm">
-                        <span>{kat}</span>
-                        <span className="font-medium">{formatRupiah(jml)}</span>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setTrayOpen((v) => !v)}
+                      className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/80 border border-red-200 text-red-700 hover:bg-white transition-colors"
+                      aria-expanded={trayOpen}
+                    >
+                      <span className="flex items-center gap-2 text-xs font-semibold">
+                        <Layers className="w-3.5 h-3.5" /> Rincian per Tipe Transaksi
+                      </span>
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${trayOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {trayOpen && (
+                      <div className="mt-2 rounded-xl bg-white/90 border border-red-100 overflow-hidden">
+                        {laporanPemasukanPengeluaran.pengeluaranByTipe.length === 0 ? (
+                          <p className="px-3 py-4 text-xs text-slate-400 text-center">Belum ada pengeluaran pada filter ini.</p>
+                        ) : (
+                          <>
+                            <div className="divide-y divide-red-50 max-h-64 overflow-y-auto">
+                              {laporanPemasukanPengeluaran.pengeluaranByTipe.map(({ tipe, jumlah }) => (
+                                <div key={tipe} className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
+                                  <span className="text-slate-600 truncate">{tipe}</span>
+                                  <span className="font-semibold text-red-700 flex-shrink-0">{formatRupiah(jumlah)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex items-center justify-between gap-3 px-3 py-2 bg-red-50/80 border-t border-red-100 text-xs font-bold text-red-800">
+                              <span>Total Pengeluaran</span>
+                              <span className="flex-shrink-0">{formatRupiah(laporanPemasukanPengeluaran.totalPengeluaran)}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    ))}
+                    )}
                   </div>
                 </CardContent>
               </Card>
