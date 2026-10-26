@@ -81,7 +81,6 @@ export default async function(req) {
     const uidBackfill = [];
     for (const k of keuAll) {
       if (str(k.sumber_rekening) === 'SPMB') continue;
-      if (k.is_iuran_muka || k.is_saldo_awal) continue;
       const sid = str(k.siswa_id);
       const adaReferensi = !!(sid || str(k.nis) || str(k.nama_siswa) || str(k.siswa_uid));
       if (sid && siswaById.has(sid)) {
@@ -94,6 +93,19 @@ export default async function(req) {
             nis: str(k.nis) || str(s.nis),
             nama_siswa: str(k.nama_siswa) || str(s.nama),
             kelas: str(k.kelas) || str(s.nama_kelas),
+          });
+        }
+        // NIS catatan transaksi berbeda dari NIS siswa saat ini — perlu konfirmasi Admin
+        const nisTrx = str(k.nis);
+        if (nisTrx && nisTrx !== str(siswaById.get(sid).nis)) {
+          await add('NIS Tidak Sesuai', 'Keuangan', k.id, {
+            nis: nisTrx,
+            nama: str(k.nama_siswa) || str(siswaById.get(sid).nama),
+            nama_kelas: str(k.kelas) || str(siswaById.get(sid).nama_kelas),
+            jumlah: Number(k.jumlah) || 0,
+            uraian: str(k.uraian) || 'NIS transaksi berbeda dari NIS siswa',
+            detail: `Tanggal ${str(k.tanggal)} · Kategori ${str(k.kategori)} · NIS transaksi: ${nisTrx} · NIS siswa saat ini: ${str(siswaById.get(sid).nis)}`,
+            kandidat: toKandidat({ nisn: '', nik: '', nis: k.nis, nama: k.nama_siswa, jenis_kelamin: '', tanggal_lahir: '' }),
           });
         }
         continue;
@@ -185,10 +197,11 @@ export default async function(req) {
     }
     itemBaru = pending.length;
 
-    // Ringkasan antrean terbuka
+    // Ringkasan antrean terbuka (termasuk item yang baru dibuat pada proses ini)
     const terbuka = antrean.filter((q) => q.status === 'Menunggu' || q.status === 'Ditunda');
     const ringkasan = {};
     for (const q of terbuka) ringkasan[str(q.jenis)] = (ringkasan[str(q.jenis)] || 0) + 1;
+    for (const q of pending) ringkasan[str(q.jenis)] = (ringkasan[str(q.jenis)] || 0) + 1;
 
     return Response.json({
       ok: true,
@@ -197,7 +210,7 @@ export default async function(req) {
       item_baru: itemBaru,
       uid_dibackfill: uidBackfill.length,
       sisa_belum_tersimpan: sisaBelumTersimpan,
-      antrean_terbuka: terbuka.length,
+      antrean_terbuka: terbuka.length + pending.length,
       ringkasan,
     });
   } catch (error) {

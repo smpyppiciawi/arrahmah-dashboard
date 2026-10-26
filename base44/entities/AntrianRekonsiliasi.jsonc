@@ -6,6 +6,7 @@
       "type": "string",
       "enum": [
         "NIS Duplikat",
+        "NIS Tidak Sesuai",
         "Keuangan Tanpa Siswa",
         "Keuangan Tanpa Pegawai",
         "SPMB Belum Tertaut",

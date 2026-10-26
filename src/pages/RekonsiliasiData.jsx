@@ -13,10 +13,11 @@ import RekonsiliasiItemDialog from '@/components/rekonsiliasi/RekonsiliasiItemDi
 import BackupPanel from '@/components/rekonsiliasi/BackupPanel';
 import AuditIdentitasTab from '@/components/rekonsiliasi/AuditIdentitasTab';
 
-const JENIS_LIST = ['NIS Duplikat', 'Keuangan Tanpa Siswa', 'Keuangan Tanpa Pegawai', 'SPMB Belum Tertaut', 'Absensi Tak Dikenal', 'Izin Tak Dikenal'];
+const JENIS_LIST = ['NIS Duplikat', 'NIS Tidak Sesuai', 'Keuangan Tanpa Siswa', 'Keuangan Tanpa Pegawai', 'SPMB Belum Tertaut', 'Absensi Tak Dikenal', 'Izin Tak Dikenal'];
 
 const JENIS_BADGE = {
   'NIS Duplikat': 'bg-amber-100 text-amber-700',
+  'NIS Tidak Sesuai': 'bg-orange-100 text-orange-700',
   'Keuangan Tanpa Siswa': 'bg-rose-100 text-rose-700',
   'Keuangan Tanpa Pegawai': 'bg-fuchsia-100 text-fuchsia-700',
   'SPMB Belum Tertaut': 'bg-cyan-100 text-cyan-700',
