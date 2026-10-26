@@ -42,6 +42,7 @@ export default function RekonsiliasiData() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
   const [filterJenis, setFilterJenis] = useState('Semua');
+  const [filterValidasi, setFilterValidasi] = useState('belum');
   const [filterCari, setFilterCari] = useState('');
   const [selected, setSelected] = useState(null);
   const [umumConfirmOpen, setUmumConfirmOpen] = useState(false);
@@ -96,7 +97,9 @@ export default function RekonsiliasiData() {
 
   const terbuka = items.filter(i => i.status === 'Menunggu' || i.status === 'Ditunda');
   const selesai = items.length - terbuka.length;
+  const isValidasi = (i) => i.status === 'Tertaut' || i.status === 'Selesai Tanpa Taut';
   const filtered = items.filter(i => {
+    if (filterValidasi === 'sudah' ? !isValidasi(i) : isValidasi(i)) return false;
     if (filterJenis !== 'Semua' && i.jenis !== filterJenis) return false;
     if (filterCari) {
       const q = filterCari.toLowerCase();
@@ -194,6 +197,18 @@ export default function RekonsiliasiData() {
               </Button>
             </div>
           )}
+
+          {/* Tab status validasi */}
+          <Tabs value={filterValidasi} onValueChange={setFilterValidasi}>
+            <TabsList>
+              <TabsTrigger value="belum" className="gap-1.5">
+                <Clock className="w-3.5 h-3.5" /> Belum Validasi ({terbuka.length})
+              </TabsTrigger>
+              <TabsTrigger value="sudah" className="gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Sudah Validasi ({selesai})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {/* Daftar antrean */}
           <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">

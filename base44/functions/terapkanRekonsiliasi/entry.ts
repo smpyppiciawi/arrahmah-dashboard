@@ -81,6 +81,7 @@ export default async function(req) {
     const siswa = await svc.entities.Siswa.get(siswa_id);
     if (!siswa) return Response.json({ error: 'Siswa tidak ditemukan' }, { status: 404 });
 
+    let riwayatDiperbarui = 0;
     const snap = {
       siswa_id: siswa.id,
       siswa_uid: str(siswa.uid),
@@ -90,6 +91,34 @@ export default async function(req) {
 
     if (item.ref_entity === 'Keuangan') {
       await svc.entities.Keuangan.update(item.ref_id, { ...snap, kelas: str(siswa.nama_kelas || item.nama_kelas) });
+
+      // NIS Tidak Sesuai: samakan SELURUH riwayat transaksi siswa ini (NIS/Nama/Kelas) dengan data siswa saat ini
+      if (str(item.jenis) === 'NIS Tidak Sesuai') {
+        let cursor;
+        for (;;) {
+          const page = await svc.entities.Keuangan.filter(
+            { siswa_id: siswa.id },
+            cursor ? { limit: 500, cursor } : { limit: 500 }
+          );
+          const rows = page.items || [];
+          const perlu = rows.filter((r) =>
+            str(r.nis) !== str(siswa.nis) ||
+            str(r.nama_siswa) !== str(siswa.nama) ||
+            str(r.kelas) !== str(siswa.nama_kelas)
+          );
+          for (let i = 0; i < perlu.length; i += 40) {
+            await svc.entities.Keuangan.bulkUpdate(perlu.slice(i, i + 40).map((r) => ({
+              id: r.id,
+              nis: str(siswa.nis),
+              nama_siswa: str(siswa.nama),
+              kelas: str(siswa.nama_kelas),
+            })));
+          }
+          riwayatDiperbarui += perlu.length;
+          if (!page.next_cursor) break;
+          cursor = page.next_cursor;
+        }
+      }
     } else if (item.ref_entity === 'Absensi') {
       await svc.entities.Absensi.update(item.ref_id, { ...snap, kelas_id: str(siswa.kelas_id || ''), nama_kelas: str(siswa.nama_kelas || item.nama_kelas) });
     } else if (item.ref_entity === 'IzinSiswa') {
@@ -105,7 +134,7 @@ export default async function(req) {
       ditangani_at: now,
     });
 
-    return Response.json({ ok: true, status: 'Tertaut', siswa: { id: siswa.id, nama: str(siswa.nama), nis: str(siswa.nis) } });
+    return Response.json({ ok: true, status: 'Tertaut', riwayat_diperbarui: riwayatDiperbarui, siswa: { id: siswa.id, nama: str(siswa.nama), nis: str(siswa.nis) } });
   } catch (error) {
     return Response.json({ error: error.message || String(error) }, { status: 500 });
   }

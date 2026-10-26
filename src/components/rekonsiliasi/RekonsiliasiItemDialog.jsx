@@ -13,7 +13,9 @@ const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
 export default function RekonsiliasiItemDialog({ item, onClose }) {
-  const [kandidatId, setKandidatId] = useState('');
+  const [kandidatId, setKandidatId] = useState(
+    item.jenis === 'NIS Tidak Sesuai' && (item.kandidat || []).length > 0 ? item.kandidat[0].siswa_id : ''
+  );
   const [catatan, setCatatan] = useState('');
   const [tutup] = useState(false);
 
@@ -58,6 +60,24 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
               </p>
             </div>
           )}
+
+          {item.jenis === 'NIS Tidak Sesuai' && (item.kandidat || []).length > 0 && (() => {
+            const k = item.kandidat[0];
+            const cocokNama = (k.nama || '').toLowerCase() === (item.nama || '').toLowerCase();
+            const cocokKelas = (k.nama_kelas || '') === (item.nama_kelas || '');
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-1.5">
+                <p className="text-xs font-semibold text-blue-900">Perbandingan Data Transaksi vs Siswa Saat Ini</p>
+                <div className="text-xs text-blue-900 space-y-0.5">
+                  <p>NIS Transaksi: <span className="font-semibold">{item.nis || '-'}</span> · NIS Siswa: <span className="font-semibold">{k.nis || '-'}</span></p>
+                  <p>Nama: {item.nama || '-'} {cocokNama ? '✓' : '✗'} · Kelas: {item.nama_kelas || '-'} / {k.nama_kelas || '-'} {cocokKelas ? '✓' : '✗'}</p>
+                </div>
+                <p className="text-[11px] text-blue-700">
+                  Jika data lainnya (nama/kelas) cocok dan hanya NIS-nya berbeda, tekan "Siswa Sama". Seluruh riwayat transaksi siswa ini akan otomatis disamakan dengan NIS/Nama/Kelas saat ini.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* Kandidat */}
           {bisaTaut && (
@@ -113,7 +133,7 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
               disabled={terapkan.isPending || (bisaTaut && !kandidatId)}
             >
               {terapkan.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Link2 className="w-3.5 h-3.5 mr-1" />}
-              Konfirmasi Tautan
+              {item.jenis === 'NIS Tidak Sesuai' ? 'Siswa Sama — Perbarui NIS & Riwayat' : 'Konfirmasi Tautan'}
             </Button>
           </div>
           {bisaTaut && !kandidatId && (
