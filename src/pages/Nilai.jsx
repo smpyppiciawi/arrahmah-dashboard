@@ -521,7 +521,7 @@ export default function Nilai() {
               <>
                 <Dialog open={kelasInputOpen} onOpenChange={setKelasInputOpen}>
                   <DialogContent
-                    className="w-[97vw] max-w-[1500px] h-[92dvh] p-0 gap-0 flex flex-col overflow-hidden max-md:w-screen max-md:max-w-none max-md:h-[100dvh] max-md:rounded-none max-md:border-0"
+                    className="w-[97vw] max-w-[1500px] h-[92dvh] p-0 gap-0 flex flex-col overflow-hidden max-md:w-screen max-md:max-w-none max-md:h-[100dvh] max-md:rounded-none max-md:border-0 max-md:overflow-y-auto max-md:overflow-x-hidden max-md:block"
                     onEscapeKeyDown={(e) => e.preventDefault()}
                   >
                     <DialogHeader className="shrink-0 px-4 sm:px-6 pt-4 pr-12 pb-2.5 border-b border-slate-200 bg-white text-left">
@@ -530,7 +530,7 @@ export default function Nilai() {
                         Isian kelas & tombol aksi tetap terlihat. Daftar nilai bisa digeser — kolom Nama Siswa terkunci.
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleKelasSubmit} className="flex flex-col flex-1 min-h-0">
+                    <form onSubmit={handleKelasSubmit} className="flex flex-col flex-1 min-h-0 max-md:flex-none max-md:min-h-0">
                       <div className="shrink-0 px-4 sm:px-6 py-3 border-b border-slate-100 bg-slate-50/70">
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
                         <div>
@@ -610,7 +610,7 @@ export default function Nilai() {
                         setActiveLabelId={setActiveLabelId}
                         totalTerisi={totalTerisi}
                       />
-                      <div className="shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 bg-white flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                      <div className="shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-t border-slate-200 bg-white flex flex-col-reverse gap-2 sm:flex-row sm:justify-end max-md:sticky max-md:bottom-0 max-md:z-20">
                         <Button type="button" variant="outline" onClick={() => setKelasInputOpen(false)} className="w-full h-11 sm:w-auto sm:px-8">Batal</Button>
                         <Button type="submit" className="w-full h-11 sm:w-auto sm:px-8 bg-amber-500 hover:bg-amber-600 text-white" disabled={totalTerisi === 0 || menyimpanKelas}>
                           {menyimpanKelas ? (

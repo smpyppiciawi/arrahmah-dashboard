@@ -198,7 +198,7 @@ export default function KelasNilaiInputArea({
           </div>
 
           {/* ================= MOBILE ================= */}
-          <div className="md:hidden flex flex-col flex-1 min-h-0">
+          <div className="md:hidden flex flex-col flex-1 min-h-0 max-md:flex-none">
             <div className="shrink-0 px-4 py-2.5 bg-white border-b border-slate-100 space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -266,7 +266,7 @@ export default function KelasNilaiInputArea({
             </div>
 
             {/* Daftar siswa — semua nilai tetap terlihat */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-y-auto max-md:overflow-visible">
               <div className="divide-y divide-slate-100">
                 {kelasNilaiData.map((item) => {
                   const kolomAktif = activeKolom;
