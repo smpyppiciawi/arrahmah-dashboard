@@ -4,11 +4,11 @@
   "properties": {
     "reg_number": {
       "type": "string",
-      "description": "Nomor pendaftaran SPMB (kunci idempoten sinkronisasi)"
+      "description": "Nomor pendaftaran SPMB (kunci unik pendaftar)"
     },
     "spmb_student_id": {
       "type": "string",
-      "description": "ID record Student di aplikasi SPMB"
+      "description": "ID record lama (arsip) \u2014 tidak dipakai lagi pada alur internal"
     },
     "nama": {
       "type": "string",
@@ -68,9 +68,22 @@
     "postal_code": {
       "type": "string"
     },
+    "registration_officer": {
+      "type": "string",
+      "description": "Nama petugas pendaftaran yang menerima berkas"
+    },
+    "gelombang_id": {
+      "type": "string",
+      "description": "ID GelombangSPMB yang dipilih saat pendaftaran"
+    },
+    "biaya_tertagih": {
+      "type": "number",
+      "default": 0,
+      "description": "Biaya pendaftaran sesuai gelombang saat pendaftaran"
+    },
     "wave": {
       "type": "string",
-      "description": "Gelombang pendaftaran (Gelombang 1 / Gelombang 2)"
+      "description": "Nama gelombang pendaftaran (Gelombang 1 / Gelombang 2)"
     },
     "registration_date": {
       "type": "string",
@@ -85,15 +98,15 @@
         "tarik_berkas",
         "undur_diri"
       ],
-      "description": "Status pendaftaran dari SPMB"
+      "description": "Status pendaftaran"
     },
     "payment_status": {
       "type": "string",
-      "description": "Status pembayaran di SPMB"
+      "description": "Status pembayaran pendaftar"
     },
     "interview_status": {
       "type": "string",
-      "description": "Status wawancara dari SPMB (belum/selesai/dll)"
+      "description": "Status wawancara (belum/lulus/tidak_lulus)"
     },
     "interview_date": {
       "type": "string",
@@ -153,7 +166,52 @@
     },
     "photo_url": {
       "type": "string",
-      "description": "URL foto pendaftar di SPMB"
+      "description": "URL foto pendaftar"
+    },
+    "doc_birth_certificate": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: Akta Kelahiran"
+    },
+    "doc_family_card": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: Kartu Keluarga"
+    },
+    "doc_ktp_father": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: KTP Ayah"
+    },
+    "doc_ktp_mother": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: KTP Ibu"
+    },
+    "doc_photo_3x4": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: Foto 3x4"
+    },
+    "doc_ijazah": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: Ijazah SD/MI"
+    },
+    "doc_skhun": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: SKHUN"
+    },
+    "doc_nisn_card": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: Kartu NISN"
+    },
+    "doc_kip": {
+      "type": "boolean",
+      "default": false,
+      "description": "Berkas: KIP (jika ada)"
     },
     "pembayaran": {
       "type": "array",
@@ -162,10 +220,14 @@
         "properties": {
           "payment_id": {
             "type": "string",
-            "description": "ID Payment di SPMB (anti-dobel)"
+            "description": "ID unik pembayaran (anti-dobel)"
           },
           "tanggal": {
             "type": "string"
+          },
+          "jenis": {
+            "type": "string",
+            "description": "Jenis pembiayaan"
           },
           "nominal": {
             "type": "number"
@@ -175,7 +237,7 @@
           },
           "keuangan_id": {
             "type": "string",
-            "description": "ID transaksi Keuangan hasil sinkron"
+            "description": "ID transaksi Keuangan terkait"
           }
         }
       },
@@ -209,7 +271,7 @@
     },
     "spmb_updated_at": {
       "type": "string",
-      "description": "updated_date terakhir dari record SPMB"
+      "description": "Timestamp perubahan terakhir"
     }
   },
   "required": [

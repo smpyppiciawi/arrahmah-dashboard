@@ -1,0 +1,85 @@
+{
+  "name": "GelombangSPMB",
+  "type": "object",
+  "properties": {
+    "nama": {
+      "type": "string",
+      "description": "Nama gelombang (contoh: Gelombang 1)"
+    },
+    "tanggal_mulai": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal mulai berlakunya gelombang"
+    },
+    "tanggal_selesai": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal berakhirnya gelombang"
+    },
+    "biaya": {
+      "type": "number",
+      "description": "Biaya pendaftaran pada gelombang ini"
+    },
+    "keterangan": {
+      "type": "string"
+    },
+    "tahun_ajaran": {
+      "type": "string",
+      "description": "Tahun ajaran berlaku (contoh: 2026/2027)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Aktif",
+        "Tidak Aktif"
+      ],
+      "default": "Aktif",
+      "description": "Status gelombang"
+    }
+  },
+  "required": [
+    "nama",
+    "biaya"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bendahara"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
