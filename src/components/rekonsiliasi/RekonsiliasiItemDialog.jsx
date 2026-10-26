@@ -13,9 +13,8 @@ const formatRupiah = (v) =>
   new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
 export default function RekonsiliasiItemDialog({ item, onClose }) {
-  const [kandidatId, setKandidatId] = useState(
-    item.jenis === 'NIS Tidak Sesuai' && (item.kandidat || []).length > 0 ? item.kandidat[0].siswa_id : ''
-  );
+  // '' = mode Otomatis: sistem memakai siswa dari transaksi sumber (tanpa memilih kandidat)
+  const [kandidatId, setKandidatId] = useState('');
   const [catatan, setCatatan] = useState('');
   const [tutup] = useState(false);
 
@@ -35,7 +34,9 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
   });
 
   const isNisDup = item.jenis === 'NIS Duplikat';
-  const bisaTaut = !isNisDup && (item.kandidat || []).length > 0;
+  const isNisTidakSesuai = item.jenis === 'NIS Tidak Sesuai';
+  const bisaOtomatis = isNisTidakSesuai; // selalu bisa otomatis via transaksi sumber
+  const bisaTaut = !isNisDup && ((item.kandidat || []).length > 0 || bisaOtomatis);
 
   return (
     <Dialog open={!tutup} onOpenChange={(open) => !open && onClose()}>
@@ -73,7 +74,7 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
             const cocokKelas = (k.nama_kelas || '') === (item.nama_kelas || '');
             return (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 space-y-1.5">
-                <p className="text-xs font-semibold text-blue-900">Perbandingan Data Transaksi vs Siswa Saat Ini</p>
+                <p className="text-xs font-semibold text-blue-900">Perbandingan Data Transaksi vs Kandidat Pencocokan</p>
                 <div className="text-xs text-blue-900 space-y-0.5">
                   <p>NIS Transaksi: <span className="font-semibold">{item.nis || '-'}</span> · NIS Siswa: <span className="font-semibold">{k.nis || '-'}</span></p>
                   <p>Nama: {item.nama || '-'} {cocokNama ? '✓' : '✗'} · Kelas: {item.nama_kelas || '-'} / {k.nama_kelas || '-'} {cocokKelas ? '✓' : '✗'}</p>
@@ -88,8 +89,27 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
           {/* Kandidat */}
           {bisaTaut && (
             <div>
-              <Label className="text-xs font-semibold text-slate-700">Kandidat Siswa — pilih satu lalu konfirmasi</Label>
+              <Label className="text-xs font-semibold text-slate-700">Siswa Tujuan Tautan</Label>
               <div className="mt-2 space-y-1.5">
+                {bisaOtomatis && (
+                  <label
+                    className={`flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-colors ${
+                      !kandidatId ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="kandidat"
+                      className="mt-0.5"
+                      checked={!kandidatId}
+                      onChange={() => setKandidatId('')}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-slate-800">Otomatis — Gunakan Data Transaksi Sumber</p>
+                      <p className="text-[11px] text-slate-500">Sistem memakai siswa yang tertaut pada transaksi ini ({item.nama || '-'}) — tidak perlu memilih kandidat.</p>
+                    </div>
+                  </label>
+                )}
                 {item.kandidat.map((k) => (
                   <label
                     key={k.siswa_id}
@@ -136,13 +156,13 @@ export default function RekonsiliasiItemDialog({ item, onClose }) {
               size="sm"
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => terapkan.mutate({ queue_id: item.id, tindakan: 'taut', siswa_id: kandidatId, catatan })}
-              disabled={terapkan.isPending || (bisaTaut && !kandidatId)}
+              disabled={terapkan.isPending || (bisaTaut && !bisaOtomatis && !kandidatId)}
             >
               {terapkan.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Link2 className="w-3.5 h-3.5 mr-1" />}
               {item.jenis === 'NIS Tidak Sesuai' ? 'Siswa Sama — Perbarui NIS & Riwayat' : 'Konfirmasi Tautan'}
             </Button>
           </div>
-          {bisaTaut && !kandidatId && (
+          {bisaTaut && !bisaOtomatis && !kandidatId && (
             <p className="text-[11px] text-slate-400 text-right">Pilih kandidat siswa untuk mengaktifkan tautan.</p>
           )}
         </div>
