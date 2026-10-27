@@ -1,29 +1,73 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Clock, Users, CheckCircle2, Circle, CalendarClock } from 'lucide-react';
-import { formatTanggal, getHari } from '@/lib/agendaUtils';
+import {
+  CalendarDays, Clock, Users, CheckCircle2, Circle, CalendarClock,
+  ChevronLeft, ChevronRight, FileText, Check, Minus,
+} from 'lucide-react';
+import { formatTanggal, getHari, geserTanggal, todayISO } from '@/lib/agendaUtils';
 
-export default function AgendaJadwalList({ tanggal, rows = [], loading, guruMissing, onOpen }) {
+function Indikator({ checked, label }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+      checked
+        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        : 'bg-slate-50 text-slate-400 border-slate-200'
+    }`}>
+      {checked ? <Check className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
+      {label}
+    </span>
+  );
+}
+
+export default function AgendaJadwalList({ tanggal, onTanggalChange, rows = [], loading, guruMissing, onOpen }) {
   const terisi = rows.filter((r) => r.agenda).length;
+  const hariIni = todayISO();
 
   return (
     <div>
-      <div className="flex flex-col gap-2 pb-2 border-b md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 pb-3 border-b md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-slate-800 flex items-center gap-2">
             <CalendarClock className="w-5 h-5 text-indigo-500" />
             Jadwal Mengajar — {getHari(tanggal)}
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">{formatTanggal(tanggal)}</p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <p className="text-xs text-slate-500">{formatTanggal(tanggal)}</p>
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px]">
+              {terisi} terisi
+            </Badge>
+            <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[11px]">
+              {rows.length - terisi} belum
+            </Badge>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
-            {terisi} terisi
-          </Badge>
-          <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200">
-            {rows.length - terisi} belum
-          </Badge>
+
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onTanggalChange(geserTanggal(tanggal, -1))}
+            title="Hari sebelumnya"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={tanggal === hariIni}
+            onClick={() => onTanggalChange(hariIni)}
+          >
+            Hari Ini
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onTanggalChange(geserTanggal(tanggal, 1))}
+            title="Hari berikutnya"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
@@ -39,52 +83,63 @@ export default function AgendaJadwalList({ tanggal, rows = [], loading, guruMiss
           <div className="py-8 text-center">
             <CalendarDays className="w-10 h-10 text-slate-200 mx-auto mb-2" />
             <p className="text-sm text-slate-500">Tidak ada jadwal mengajar pada {getHari(tanggal)} ini</p>
-            <p className="text-xs text-slate-400 mt-1">Pilih tanggal lain yang sesuai hari jadwal mengajar Anda.</p>
+            <p className="text-xs text-slate-400 mt-1">Gunakan tombol panah atau pilih tanggal lain untuk melihat jadwal hari lainnya.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {rows.map((row) => (
-              <div
-                key={row.id}
-                className={`flex flex-col gap-3 rounded-xl border p-3 transition sm:flex-row sm:items-center ${
-                  row.agenda ? 'border-emerald-100 bg-emerald-50/40' : 'border-slate-100 bg-white hover:border-indigo-200'
-                }`}
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-semibold text-slate-800">{row.nama_kelas}</span>
-                    <Badge variant="secondary" className="text-[11px]">{row.mapel}</Badge>
-                    {row.agenda && (
-                      <Badge variant="outline" className="text-[11px] bg-emerald-100 text-emerald-700 border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Sudah diisi
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mt-1 flex-wrap">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5" /> {row.jam_mulai} – {row.jam_selesai}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5" /> {row.jumlah_siswa} siswa
-                    </span>
-                    <span className="truncate">{row.nama_guru || '—'}</span>
-                  </div>
-                </div>
+            {rows.map((row) => {
+              const materiTerisi = !!(row.agenda && (row.agenda.materi_pokok || row.agenda.uraian_kegiatan));
+              const absensiTerisi = !!(row.agenda && (row.agenda.absensi_agenda || []).length > 0);
+              const lengkap = materiTerisi && absensiTerisi;
 
-                <Button
-                  size="sm"
-                  variant={row.agenda ? 'outline' : 'default'}
-                  className={row.agenda ? '' : 'bg-indigo-600 hover:bg-indigo-700'}
-                  onClick={() => onOpen(row)}
+              return (
+                <div
+                  key={row.id}
+                  className={`flex flex-col gap-3 rounded-lg border p-3 transition sm:flex-row sm:items-center sm:justify-between ${
+                    lengkap
+                      ? 'border-emerald-200 bg-emerald-50/40'
+                      : row.agenda
+                        ? 'border-indigo-100 bg-indigo-50/30'
+                        : 'border-slate-200 bg-white hover:border-indigo-200'
+                  }`}
                 >
-                  {row.agenda ? (
-                    <><Circle className="w-3.5 h-3.5 mr-1.5 fill-current" /> Buka Agenda</>
-                  ) : (
-                    'Sesuai Jadwal & Waktu KBM'
-                  )}
-                </Button>
-              </div>
-            ))}
+                  <div className="min-w-0">
+                    <p className="font-bold text-indigo-900 leading-tight truncate">{row.nama_kelas}</p>
+                    <p className="text-sm text-slate-600 mt-0.5 truncate">{row.mapel}</p>
+                    <div className="flex items-center gap-3 text-xs text-slate-500 mt-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" /> {row.jam_mulai} - {row.jam_selesai}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" /> {row.jumlah_siswa} Siswa
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                      <Indikator checked={materiTerisi} label="Materi" />
+                      <Indikator checked={absensiTerisi} label="Absensi" />
+                      {lengkap && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Lengkap
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 border-indigo-100 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-800"
+                    onClick={() => onOpen(row)}
+                  >
+                    {row.agenda ? (
+                      <><Circle className="w-3.5 h-3.5 mr-1.5 fill-current" /> Buka Agenda</>
+                    ) : (
+                      <><FileText className="w-3.5 h-3.5 mr-1.5" /> Isi Agenda</>
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

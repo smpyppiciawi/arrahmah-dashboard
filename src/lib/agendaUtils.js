@@ -34,6 +34,13 @@ export function toISODate(date) {
 
 export const todayISO = () => toISODate(new Date());
 
+/** Geser tanggal ISO sebanyak `delta` hari (boleh negatif). */
+export function geserTanggal(tanggal, delta) {
+  const d = parseDate(tanggal);
+  d.setDate(d.getDate() + delta);
+  return toISODate(d);
+}
+
 export const getHari = (tanggal) => HARI_SEMUA[parseDate(tanggal).getDay()];
 
 export const getMingguKe = (tanggal) => Math.min(4, Math.ceil(parseDate(tanggal).getDate() / 7));

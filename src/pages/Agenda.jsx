@@ -5,18 +5,14 @@ import { useAuth } from '@/lib/AuthContext';
 import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import { NotebookPen, ClipboardCheck } from 'lucide-react';
 import AgendaFilters from '@/components/agenda/AgendaFilters';
 import AgendaJadwalList from '@/components/agenda/AgendaJadwalList';
-import AgendaDaftarList from '@/components/agenda/AgendaDaftarList';
 import AgendaFormDialog from '@/components/agenda/AgendaFormDialog';
 import MonitoringAbsensiTab from '@/components/agenda/MonitoringAbsensiTab';
-import {
-  todayISO, getHari, getMingguKe, getBulanIndex, legacyMateriToAgenda,
-} from '@/lib/agendaUtils';
+import { todayISO, getHari } from '@/lib/agendaUtils';
 
-const FILTER_AWAL = { q: '', hari: 'all', minggu: 'all', bulan: 'all', tahunAjaran: 'all' };
+const FILTER_AWAL = { q: '' };
 
 export default function Agenda() {
   const { user } = useAuth();
@@ -30,7 +26,6 @@ export default function Agenda() {
   const [monTanggal, setMonTanggal] = useState(todayISO());
   const [filters, setFilters] = useState(FILTER_AWAL);
   const [dialog, setDialog] = useState(null);
-  const [deleteTarget, setDeleteTarget] = useState(null);
 
   const { waliKelasIds, isWaliKelas } = useWaliKelas();
 
@@ -66,14 +61,9 @@ export default function Agenda() {
     staleTime: 60000,
   });
 
-  const { data: agendaList = [], isLoading: loadingAgenda } = useQuery({
+  const { data: agendaList = [] } = useQuery({
     queryKey: ['agenda-kelas'],
     queryFn: () => base44.entities.AgendaKelas.list('-tanggal'),
-  });
-
-  const { data: materiLama = [] } = useQuery({
-    queryKey: ['materi'],
-    queryFn: () => base44.entities.Materi.list('-created_date'),
   });
 
   const { data: siswaList = [] } = useQuery({
@@ -92,12 +82,6 @@ export default function Agenda() {
     queryFn: () => base44.entities.Absensi.filter({ tanggal: absensiTanggal }),
     enabled: !!absensiTanggal,
   });
-
-  const assignedMapel = useMemo(() => {
-    const dariPembelajaran = pembelajaranGuru.map((p) => p.mapel).filter(Boolean);
-    const dariGuru = guruData?.mapel || [];
-    return [...new Set([...dariPembelajaran, ...dariGuru])];
-  }, [pembelajaranGuru, guruData]);
 
   const jumlahSiswaMap = useMemo(
     () => siswaList.reduce((acc, s) => {
@@ -140,45 +124,7 @@ export default function Agenda() {
       }));
   }, [jadwalGuru, tanggal, filters.q, jumlahSiswaMap, agendaLookup]);
 
-  const daftarAgenda = useMemo(() => {
-    const semua = [...agendaList, ...materiLama.map(legacyMateriToAgenda)];
-    return semua
-      .filter((it) => {
-        if (isGuru) {
-          const milikGuru = it.legacy
-            ? assignedMapel.includes(it.mapel) || (guruData && it.nama_guru === guruData.nama)
-            : it.guru_id === guruData?.id || it.created_by_id === user?.id || assignedMapel.includes(it.mapel);
-          if (!milikGuru) return false;
-        }
-        const q = filters.q.trim().toLowerCase();
-        if (q && ![it.nama_kelas, it.mapel, it.materi_pokok, it.uraian_kegiatan, it.nama_guru]
-          .some((v) => (v || '').toLowerCase().includes(q))) return false;
-        if (filters.hari !== 'all' && it.hari !== filters.hari) return false;
-        if (filters.minggu !== 'all' && Number(filters.minggu) !== (it.minggu_ke || getMingguKe(it.tanggal))) return false;
-        if (filters.bulan !== 'all' && getBulanIndex(it.tanggal) !== Number(filters.bulan)) return false;
-        if (filters.tahunAjaran !== 'all' && !it.legacy && (it.tahun_ajaran || '') !== filters.tahunAjaran) return false;
-        return true;
-      })
-      .sort((a, b) => (b.tanggal || '').localeCompare(a.tanggal || ''));
-  }, [agendaList, materiLama, isGuru, assignedMapel, guruData, user, filters]);
-
-  const tahunAjaranOptions = useMemo(() => {
-    const set = new Set(agendaList.map((a) => a.tahun_ajaran).filter(Boolean));
-    if (tahunAjaranAktif) set.add(tahunAjaranAktif);
-    return [...set].sort().reverse();
-  }, [agendaList, tahunAjaranAktif]);
-
-  const canEditItem = (item) => {
-    if (canManageAll) return true;
-    if (item.legacy) return false;
-    if (!isGuru) return false;
-    if (item.created_by_id && item.created_by_id === user?.id) return true;
-    if (guruData && item.guru_id === guruData.id) return true;
-    return assignedMapel.includes(item.mapel);
-  };
-
   const openJadwal = (row) => setDialog({ jadwal: row, agenda: row.agenda, tanggal });
-  const openAgendaItem = (item) => setDialog({ jadwal: null, agenda: item, tanggal: item.tanggal });
 
   const dialogKelasId = dialog?.jadwal?.kelas_id || dialog?.agenda?.kelas_id || '';
   const dialogSiswa = useMemo(
@@ -194,13 +140,6 @@ export default function Agenda() {
     });
     return map;
   }, [absensiList, dialogKelasId]);
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    await base44.entities.AgendaKelas.delete(deleteTarget.id);
-    setDeleteTarget(null);
-    queryClient.invalidateQueries({ queryKey: ['agenda-kelas'] });
-  };
 
   const showMonitoring = canManageAll || isWaliKelas;
 
@@ -232,33 +171,18 @@ export default function Agenda() {
                 <AgendaFilters
                   value={filters}
                   onChange={setFilters}
-                  tahunAjaranOptions={tahunAjaranOptions}
                   tanggal={tanggal}
                   onTanggalChange={setTanggal}
                 />
 
                 <AgendaJadwalList
                   tanggal={tanggal}
+                  onTanggalChange={setTanggal}
                   rows={jadwalRows}
                   loading={loadingJadwal}
                   guruMissing={isGuru && !guruData}
                   onOpen={openJadwal}
                 />
-
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between px-1 mb-2">
-                    <h2 className="text-sm font-semibold text-slate-700">Daftar Agenda</h2>
-                    <span className="text-xs text-slate-400">{daftarAgenda.length} agenda</span>
-                  </div>
-
-                  <AgendaDaftarList
-                    items={daftarAgenda}
-                    loading={loadingAgenda}
-                    onOpen={openAgendaItem}
-                    onDelete={setDeleteTarget}
-                    canEdit={canEditItem}
-                  />
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -305,14 +229,6 @@ export default function Agenda() {
           onSaved={() => queryClient.invalidateQueries({ queryKey: ['agenda-kelas'] })}
         />
       )}
-
-      <ConfirmDialog
-        open={!!deleteTarget}
-        onOpenChange={(v) => !v && setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="Hapus Agenda"
-        description={deleteTarget ? `Hapus agenda ${deleteTarget.mapel} kelas ${deleteTarget.nama_kelas} (${deleteTarget.tanggal})?` : ''}
-      />
     </div>
   );
 }
