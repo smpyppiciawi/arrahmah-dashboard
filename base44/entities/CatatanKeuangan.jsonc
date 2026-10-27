@@ -1,0 +1,146 @@
+{
+  "name": "CatatanKeuangan",
+  "type": "object",
+  "properties": {
+    "bulan": {
+      "type": "number",
+      "description": "Bulan catatan (1-12)"
+    },
+    "tahun": {
+      "type": "number",
+      "description": "Tahun catatan"
+    },
+    "items": {
+      "type": "array",
+      "description": "Daftar item pemasukan & pengeluaran dalam satu catatan bulanan",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tanggal": {
+            "type": "string",
+            "format": "date",
+            "description": "Tanggal item dicatat"
+          },
+          "jenis": {
+            "type": "string",
+            "enum": [
+              "Pemasukan",
+              "Pengeluaran"
+            ],
+            "description": "Jenis item"
+          },
+          "nama_item": {
+            "type": "string",
+            "description": "Nama item pemasukan/pengeluaran"
+          },
+          "nominal": {
+            "type": "number",
+            "description": "Nominal item"
+          }
+        }
+      }
+    },
+    "catatan": {
+      "type": "string",
+      "description": "Catatan tambahan untuk bulan tersebut"
+    }
+  },
+  "required": [
+    "bulan",
+    "tahun"
+  ],
+  "rls": {
+    "read": {
+      "$and": [
+        {
+          "user_condition": {
+            "email": "gustini583@admin.smp.belajar.id"
+          }
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "bendahara"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "kepsek"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "create": {
+      "$and": [
+        {
+          "user_condition": {
+            "email": "gustini583@admin.smp.belajar.id"
+          }
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "bendahara"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "kepsek"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "update": {
+      "$and": [
+        {
+          "user_condition": {
+            "email": "gustini583@admin.smp.belajar.id"
+          }
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "bendahara"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "kepsek"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "delete": {
+      "$and": [
+        {
+          "user_condition": {
+            "email": "gustini583@admin.smp.belajar.id"
+          }
+        },
+        {
+          "$or": [
+            {
+              "user_condition": {
+                "role": "bendahara"
+              }
+            },
+            {
+              "user_condition": {
+                "role": "kepsek"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -8,9 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { NotebookPen, ClipboardCheck } from 'lucide-react';
 import AgendaFilters from '@/components/agenda/AgendaFilters';
 import AgendaJadwalList from '@/components/agenda/AgendaJadwalList';
+import AgendaPeriodeFilter from '@/components/agenda/AgendaPeriodeFilter';
 import AgendaFormDialog from '@/components/agenda/AgendaFormDialog';
 import MonitoringAbsensiTab from '@/components/agenda/MonitoringAbsensiTab';
-import { todayISO, getHari } from '@/lib/agendaUtils';
+import { todayISO, getHari, getMingguKe, parseDate, tanggalMingguHari } from '@/lib/agendaUtils';
 
 const FILTER_AWAL = { q: '' };
 
@@ -143,6 +144,29 @@ export default function Agenda() {
 
   const showMonitoring = canManageAll || isWaliKelas;
 
+  const periode = useMemo(() => {
+    const d = parseDate(tanggal);
+    return {
+      bulan: d.getMonth() + 1,
+      tahun: d.getFullYear(),
+      minggu: getMingguKe(tanggal),
+      hari: getHari(tanggal),
+    };
+  }, [tanggal]);
+
+  const gantiPeriode = (bulanBaru, tahunBaru) => {
+    setTanggal(`${tahunBaru}-${String(bulanBaru).padStart(2, '0')}-01`);
+  };
+
+  const pilihMinggu = (minggu) => {
+    const hariAcuan = ['Sabtu', 'Minggu'].includes(periode.hari) ? 'Senin' : periode.hari;
+    setTanggal(tanggalMingguHari(periode.bulan, periode.tahun, minggu, hariAcuan));
+  };
+
+  const pilihHari = (hari) => {
+    setTanggal(tanggalMingguHari(periode.bulan, periode.tahun, periode.minggu, hari));
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8">
       <div className="mx-auto max-w-6xl space-y-4">
@@ -168,12 +192,21 @@ export default function Agenda() {
           <TabsContent value="agenda" className="pt-3">
             <Card className="border-0 shadow-sm">
               <CardContent className="p-4 space-y-4">
-                <AgendaFilters
-                  value={filters}
-                  onChange={setFilters}
-                  tanggal={tanggal}
-                  onTanggalChange={setTanggal}
+                <AgendaPeriodeFilter
+                  periode={periode}
+                  onBulanChange={gantiPeriode}
+                  onMingguChange={pilihMinggu}
+                  onHariChange={pilihHari}
                 />
+
+                <div className="border-t pt-3">
+                  <AgendaFilters
+                    value={filters}
+                    onChange={setFilters}
+                    tanggal={tanggal}
+                    onTanggalChange={setTanggal}
+                  />
+                </div>
 
                 <AgendaJadwalList
                   tanggal={tanggal}

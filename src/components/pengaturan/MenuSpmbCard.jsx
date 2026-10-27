@@ -25,7 +25,7 @@ export default function MenuSpmbCard({ pengaturan, isAdmin }) {
         title: val ? 'Menu SPMB diaktifkan' : 'Menu SPMB dimatikan',
         description: val
           ? 'Menu SPMB kembali tampil di navigasi seluruh akun.'
-          : 'Menu SPMB disembunyikan dari navigasi. Akses langsung ke halaman tetap berjalan.',
+          : 'Menu SPMB disembunyikan dari navigasi akun Guru & Operator. Akun Admin, TU, Kepala Sekolah, dan Bendahara tetap melihat menu SPMB.',
       });
     },
     onError: () => toast({ title: 'Gagal menyimpan', description: 'Coba lagi.', variant: 'destructive' }),
@@ -46,7 +46,7 @@ export default function MenuSpmbCard({ pengaturan, isAdmin }) {
           <div>
             <p className="text-sm font-medium text-slate-700">Tampilkan Menu SPMB</p>
             <p className="text-xs text-slate-500 mt-0.5">
-              Saat dimatikan, menu SPMB disembunyikan dari navigasi seluruh akun. Halaman SPMB tetap dapat dibuka lewat tautan langsung.
+              Saat dimatikan, menu SPMB disembunyikan dari navigasi akun Guru &amp; Operator. Akun Admin, TU, Kepala Sekolah, dan Bendahara tetap melihat menu SPMB. Halaman SPMB tetap dapat dibuka lewat tautan langsung.
             </p>
           </div>
           <Switch checked={aktif} disabled={simpan.isPending} onCheckedChange={(v) => simpan.mutate(v)} />

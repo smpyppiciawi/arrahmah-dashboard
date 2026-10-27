@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { createPageUrl } from './utils';
 import {
@@ -20,6 +20,11 @@ import LiveClock from '@/components/ui/LiveClock';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import { PengingatMengajarProvider } from '@/components/guru/PengingatMengajar';
 import KepsekBackButton from '@/components/kepsek/KepsekBackButton';
+import { canAksesCatatanKeuangan } from '@/lib/catatanKeuanganUtils';
+
+const CATATAN_KEUANGAN_MENU = {
+  name: 'Catatan Keuangan', icon: NotebookPen, page: 'CatatanKeuangan', color: '#f59e0b',
+};
 
 const FULL_ACCESS_MENU = {
   topItems: [
@@ -326,6 +331,15 @@ export default function Layout({ children, currentPageName }) {
   const spmbMenuAktif = appSettings?.[0]?.spmb_menu_aktif !== false;
 
   const userRole = currentUser?.role || 'guru';
+  // Menu SPMB hanya boleh disembunyikan untuk akun Guru & Operator
+  const spmbTampil = spmbMenuAktif || !['guru', 'operator'].includes(userRole);
+  const tampilCatatanKeuangan = canAksesCatatanKeuangan(currentUser);
+
+  useEffect(() => {
+    if (!tampilCatatanKeuangan) return;
+    setExpandedGroups((prev) => ({ ...prev, bendahara: true, 'kepsek-keuangan': true }));
+  }, [tampilCatatanKeuangan]);
+
   const baseMenu = ROLE_MENU[userRole] || ROLE_MENU['tu'];
 
   // Untuk Guru: tampilkan menu Periodik Siswa & Home Visit hanya jika menjadi Wali Kelas dengan siswa aktif
@@ -341,7 +355,15 @@ export default function Layout({ children, currentPageName }) {
   if (isWaliKelasWithSiswa) {
     topItems = [...topItems, { name: 'Periodik Siswa', icon: Ruler, page: 'PeriodikSiswa', color: '#8b5cf6' }, { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' }];
   }
-  const menuConfig = { ...baseMenu, topItems };
+  const menuConfig = {
+    ...baseMenu,
+    topItems,
+    groups: (baseMenu.groups || []).map((g) => (
+      tampilCatatanKeuangan && ['bendahara', 'kepsek-keuangan'].includes(g.id)
+        ? { ...g, items: [...g.items, CATATAN_KEUANGAN_MENU] }
+        : g
+    )),
+  };
   const roleColor = ROLE_COLORS[userRole] || ROLE_COLORS['guru'];
 
   // Kepsek dashboard: full-screen, no sidebar
@@ -437,7 +459,7 @@ export default function Layout({ children, currentPageName }) {
               );
             })}
 
-            {menuConfig.groups.filter((g) => g.id !== 'spmb' || spmbMenuAktif).map((group) => {
+            {menuConfig.groups.filter((g) => g.id !== 'spmb' || spmbTampil).map((group) => {
               const GroupIcon = group.icon;
               const isExpanded = expandedGroups[group.id];
               return (

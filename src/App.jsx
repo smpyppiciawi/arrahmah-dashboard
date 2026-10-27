@@ -34,6 +34,7 @@ import PembayaranSPMB from './pages/PembayaranSPMB';
 import FinalisasiSPMB from './pages/FinalisasiSPMB';
 import RekonsiliasiData from './pages/RekonsiliasiData';
 import Agenda from './pages/Agenda';
+import CatatanKeuangan from './pages/CatatanKeuangan';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -186,6 +187,11 @@ const AuthenticatedApp = () => {
       <Route path="/Agenda" element={
         isAuthenticated
           ? <LayoutWrapper currentPageName="Agenda"><Agenda /></LayoutWrapper>
+          : <Navigate to="/Masuk" replace />
+      } />
+      <Route path="/CatatanKeuangan" element={
+        isAuthenticated
+          ? <LayoutWrapper currentPageName="CatatanKeuangan"><CatatanKeuangan /></LayoutWrapper>
           : <Navigate to="/Masuk" replace />
       } />
 

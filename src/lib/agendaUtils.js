@@ -45,6 +45,17 @@ export const getHari = (tanggal) => HARI_SEMUA[parseDate(tanggal).getDay()];
 
 export const getMingguKe = (tanggal) => Math.min(4, Math.ceil(parseDate(tanggal).getDate() / 7));
 
+/** Tanggal ISO pada minggu ke-`minggu` (1-4) bulan & tahun tertentu yang jatuh pada `hari`. */
+export function tanggalMingguHari(bulan, tahun, minggu, hari) {
+  const mulai = (Math.min(Math.max(minggu, 1), 4) - 1) * 7 + 1;
+  for (let day = mulai; day < mulai + 7; day += 1) {
+    const d = new Date(tahun, bulan - 1, day);
+    if (d.getMonth() !== bulan - 1) break;
+    if (getHari(toISODate(d)) === hari) return toISODate(d);
+  }
+  return toISODate(new Date(tahun, bulan - 1, mulai));
+}
+
 export const getBulanIndex = (tanggal) => parseDate(tanggal).getMonth() + 1;
 
 export function formatTanggal(tanggal) {
