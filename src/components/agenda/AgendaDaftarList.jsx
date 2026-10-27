@@ -10,18 +10,16 @@ export default function AgendaDaftarList({ items = [], loading, onOpen, onDelete
   const [preview, setPreview] = useState(null);
 
   if (loading) {
-    return <Card className="border-0 shadow-sm"><CardContent className="p-12 text-center text-sm text-slate-400">Memuat daftar agenda...</CardContent></Card>;
+    return <div className="p-10 text-center text-sm text-slate-400">Memuat daftar agenda...</div>;
   }
 
   if (items.length === 0) {
     return (
-      <Card className="border-0 shadow-sm">
-        <CardContent className="p-12 text-center">
-          <NotebookPen className="w-10 h-10 text-slate-200 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">Belum ada agenda yang cocok dengan pencarian/filter</p>
-          <p className="text-xs text-slate-400 mt-1">Isi agenda dari daftar jadwal mengajar di atas.</p>
-        </CardContent>
-      </Card>
+      <div className="p-10 text-center">
+        <NotebookPen className="w-10 h-10 text-slate-200 mx-auto mb-3" />
+        <p className="text-sm text-slate-500">Belum ada agenda yang cocok dengan pencarian/filter</p>
+        <p className="text-xs text-slate-400 mt-1">Isi agenda dari daftar jadwal mengajar di atas.</p>
+      </div>
     );
   }
 

@@ -226,30 +226,41 @@ export default function Agenda() {
             )}
           </TabsList>
 
-          <TabsContent value="agenda" className="space-y-3 pt-3">
-            <AgendaJadwalList
-              tanggal={tanggal}
-              onTanggalChange={setTanggal}
-              rows={jadwalRows}
-              loading={loadingJadwal}
-              guruMissing={isGuru && !guruData}
-              onOpen={openJadwal}
-            />
+          <TabsContent value="agenda" className="pt-3">
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-4 space-y-4">
+                <AgendaFilters
+                  value={filters}
+                  onChange={setFilters}
+                  tahunAjaranOptions={tahunAjaranOptions}
+                  tanggal={tanggal}
+                  onTanggalChange={setTanggal}
+                />
 
-            <AgendaFilters value={filters} onChange={setFilters} tahunAjaranOptions={tahunAjaranOptions} />
+                <AgendaJadwalList
+                  tanggal={tanggal}
+                  rows={jadwalRows}
+                  loading={loadingJadwal}
+                  guruMissing={isGuru && !guruData}
+                  onOpen={openJadwal}
+                />
 
-            <div className="flex items-center justify-between px-1">
-              <h2 className="text-sm font-semibold text-slate-700">Daftar Agenda</h2>
-              <span className="text-xs text-slate-400">{daftarAgenda.length} agenda</span>
-            </div>
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between px-1 mb-2">
+                    <h2 className="text-sm font-semibold text-slate-700">Daftar Agenda</h2>
+                    <span className="text-xs text-slate-400">{daftarAgenda.length} agenda</span>
+                  </div>
 
-            <AgendaDaftarList
-              items={daftarAgenda}
-              loading={loadingAgenda}
-              onOpen={openAgendaItem}
-              onDelete={setDeleteTarget}
-              canEdit={canEditItem}
-            />
+                  <AgendaDaftarList
+                    items={daftarAgenda}
+                    loading={loadingAgenda}
+                    onOpen={openAgendaItem}
+                    onDelete={setDeleteTarget}
+                    canEdit={canEditItem}
+                  />
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {showMonitoring && (
