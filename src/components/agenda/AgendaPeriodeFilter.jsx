@@ -1,7 +1,7 @@
 import React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BULAN, HARI_FILTER } from '@/lib/agendaUtils';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, CalendarDays } from 'lucide-react';
 
 const MINGGU = [1, 2, 3, 4];
 
@@ -11,11 +11,25 @@ export default function AgendaPeriodeFilter({ periode, onBulanChange, onMingguCh
   if (!daftarTahun.includes(periode.tahun)) daftarTahun.push(periode.tahun);
   daftarTahun.sort();
 
+  // Rentang tanggal tiap minggu mengikuti bulan yang dipilih
+  const jumlahHari = new Date(periode.tahun, periode.bulan, 0).getDate();
+  const singkatBulan = BULAN[periode.bulan - 1].slice(0, 3);
+  const opsiMinggu = MINGGU.map((m) => {
+    const awal = (m - 1) * 7 + 1;
+    const akhir = m === 4 ? jumlahHari : Math.min(m * 7, jumlahHari);
+    return { m, awal, akhir, kosong: awal > jumlahHari };
+  });
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 text-slate-500">
-        <CalendarRange className="w-4 h-4" />
-        <span className="text-xs font-semibold uppercase tracking-wide">Periode Jadwal</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-slate-500">
+          <CalendarRange className="w-4 h-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">Periode Jadwal</span>
+        </div>
+        <span className="text-[11px] font-medium text-indigo-500">
+          {singkatBulan} {periode.tahun}
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -48,25 +62,29 @@ export default function AgendaPeriodeFilter({ periode, onBulanChange, onMingguCh
         </Select>
       </div>
 
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Pilih Minggu</p>
-        <div className="grid grid-cols-4 gap-1.5">
-          {MINGGU.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => onMingguChange(m)}
-              className={`rounded-lg border px-2 py-2 text-xs font-semibold transition ${
-                periode.minggu === m
-                  ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                  : 'border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:text-indigo-600'
-              }`}
-            >
-              Minggu {m}
-            </button>
+      <Select
+        value={String(periode.minggu)}
+        onValueChange={(v) => onMingguChange(Number(v))}
+      >
+        <SelectTrigger className="rounded-xl border-slate-200 bg-white">
+          <div className="flex items-center gap-2 min-w-0">
+            <CalendarDays className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+            <SelectValue placeholder="Pilih Minggu" />
+          </div>
+        </SelectTrigger>
+        <SelectContent>
+          {opsiMinggu.map(({ m, awal, akhir, kosong }) => (
+            <SelectItem key={m} value={String(m)} disabled={kosong}>
+              <span className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">Minggu {m}</span>
+                <span className="text-xs text-slate-400">
+                  {kosong ? 'tidak tersedia' : `${awal}–${akhir} ${singkatBulan}`}
+                </span>
+              </span>
+            </SelectItem>
           ))}
-        </div>
-      </div>
+        </SelectContent>
+      </Select>
 
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5">Pilih Hari</p>
