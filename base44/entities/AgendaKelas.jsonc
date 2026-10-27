@@ -1,0 +1,252 @@
+{
+  "name": "AgendaKelas",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal pelaksanaan KBM (dipilih dari tanggal jadwal mengajar, termasuk tanggal lampau)"
+    },
+    "hari": {
+      "type": "string",
+      "enum": [
+        "Senin",
+        "Selasa",
+        "Rabu",
+        "Kamis",
+        "Jumat",
+        "Sabtu",
+        "Minggu"
+      ],
+      "description": "Hari pelaksanaan (otomatis dari tanggal)"
+    },
+    "minggu_ke": {
+      "type": "number",
+      "description": "Minggu ke-1 sampai 4 dalam bulan (otomatis dari tanggal)"
+    },
+    "jadwal_id": {
+      "type": "string",
+      "description": "ID JadwalPelajaran sumber agenda"
+    },
+    "kelas_id": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string"
+    },
+    "mapel": {
+      "type": "string"
+    },
+    "jam_mulai": {
+      "type": "string",
+      "description": "Jam mulai jadwal (HH:mm) saat agenda dibuat"
+    },
+    "jam_selesai": {
+      "type": "string",
+      "description": "Jam selesai jadwal (HH:mm) saat agenda dibuat"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID pegawai guru mata pelajaran"
+    },
+    "nama_guru": {
+      "type": "string",
+      "description": "Nama guru mata pelajaran"
+    },
+    "jumlah_siswa": {
+      "type": "number",
+      "description": "Jumlah siswa kelas saat agenda diisi"
+    },
+    "materi_pokok": {
+      "type": "string",
+      "description": "Materi pokok yang dibahas"
+    },
+    "uraian_kegiatan": {
+      "type": "string",
+      "description": "Uraian kegiatan KBM"
+    },
+    "deskripsi": {
+      "type": "string",
+      "description": "Deskripsi tambahan / catatan kelas"
+    },
+    "file_urls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Daftar URL file materi yang diunggah"
+    },
+    "link_materi": {
+      "type": "string",
+      "description": "Tautan materi (video/dokumen daring)"
+    },
+    "absensi_agenda": {
+      "type": "array",
+      "description": "Absensi agenda KBM per siswa. Terpisah dari entitas Absensi (absensi petugas piket) \u2014 tidak menulis ke absensi utama.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "siswa_id": {
+            "type": "string"
+          },
+          "nis": {
+            "type": "string"
+          },
+          "nama_siswa": {
+            "type": "string"
+          },
+          "status_petugas": {
+            "type": "string",
+            "description": "Snapshot absensi petugas piket saat agenda disimpan (hanya arsip, bukan sumber kebenaran)"
+          },
+          "status_agenda": {
+            "type": "string",
+            "enum": [
+              "Hadir",
+              "Izin",
+              "Sakit",
+              "Alfa"
+            ],
+            "description": "Keterangan absensi menurut guru mata pelajaran pada KBM"
+          },
+          "keterangan": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    },
+    "sumber": {
+      "type": "string",
+      "enum": [
+        "Agenda",
+        "Materi"
+      ],
+      "default": "Agenda",
+      "description": "Agenda = entri agenda KBM; Materi = data lama menu Materi yang ditampilkan sebagai agenda"
+    }
+  },
+  "required": [
+    "tanggal",
+    "kelas_id",
+    "nama_kelas",
+    "mapel",
+    "materi_pokok"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "operator"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "piket"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "bendahara"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "yayasan"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        }
+      ]
+    }
+  }
+}

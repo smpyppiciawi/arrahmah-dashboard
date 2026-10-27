@@ -7,7 +7,7 @@ import {
   School, LogOut, ChevronDown, ClipboardList, Settings,
   UserCircle, TrendingUp, Bell, Search, CalendarDays, Home as HomeIcon, Ruler, Package,
   PanelLeftClose, PanelLeftOpen,   ScanLine, ShieldCheck, BookMarked, BookUser, ClipboardCheck, BookText, Camera,
-  UserPlus, MessagesSquare, CreditCard, UserCheck
+  UserPlus, MessagesSquare, CreditCard, UserCheck, NotebookPen
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,7 +29,7 @@ const FULL_ACCESS_MENU = {
     { name: 'Jadwal Piket', icon: ShieldCheck, page: 'JadwalPiketPegawai', color: '#0d9488' },
     { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
     { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
-    { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+    { name: 'Agenda', icon: NotebookPen, page: 'Agenda', color: '#6366f1' },
     { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
     { name: 'Home Visit', icon: HomeIcon, page: 'HomeVisit', color: '#6366f1' },
     { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },
@@ -117,7 +117,7 @@ const ROLE_MENU = {
       { name: 'Jadwal Piket', icon: ShieldCheck, page: 'JadwalPiketPegawai', color: '#0d9488' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+      { name: 'Agenda', icon: NotebookPen, page: 'Agenda', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
@@ -195,6 +195,7 @@ const ROLE_MENU = {
       { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Scan Absensi', icon: ScanLine, page: 'ScanAbsensi', color: '#10b981' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
+      { name: 'Agenda', icon: NotebookPen, page: 'Agenda', color: '#6366f1' },
       { name: 'Buku Tamu', icon: BookUser, page: 'BukuTamu', color: '#0891b2' },
       { name: 'Buku Induk', icon: BookText, page: 'BukuInduk', color: '#7c3aed' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
@@ -287,7 +288,7 @@ const ROLE_MENU = {
       { name: 'Absensi Siswa', icon: Calendar, page: 'Absensi', color: '#10b981' },
     { name: 'Absensi Pegawai', icon: ClipboardList, page: 'AbsensiPegawai', color: '#0d9488' },
       { name: 'Nilai', icon: BookOpen, page: 'Nilai', color: '#f59e0b' },
-      { name: 'Materi', icon: FolderOpen, page: 'Materi', color: '#6366f1' },
+      { name: 'Agenda', icon: NotebookPen, page: 'Agenda', color: '#6366f1' },
       { name: 'Catatan Siswa', icon: ClipboardList, page: 'CatatanSiswa', color: '#8b5cf6' },
       { name: 'Hapalan', icon: BookMarked, page: 'Hapalan', color: '#16a34a' },
       { name: 'Kalender Akademik', icon: CalendarDays, page: 'KalenderAkademik', color: '#6366f1' },

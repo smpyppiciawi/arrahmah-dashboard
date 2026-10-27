@@ -8,7 +8,7 @@ const SYNCED_ENTITIES = [
   'Pelanggaran', 'Prestasi', 'UKS', 'Menstruasi', 'IzinSiswa', 'IzinPegawai',
   'HomeVisit', 'PeriodikSiswa', 'KartuAbsensi', 'DataWajah', 'JadwalAbsensi',
   'JadwalBel', 'TarifIuran', 'BiayaKhusus', 'UangKas', 'Sarpras', 'DataLulusan',
-  'SiswaKeluar', 'KalenderAkademik', 'Pengumuman', 'Materi', 'Pembelajaran',
+  'SiswaKeluar', 'KalenderAkademik', 'Pengumuman', 'Materi', 'Pembelajaran', 'AgendaKelas',
   'JadwalPelajaran', 'Mapel', 'RencanaBelanja', 'TindakLanjut', 'KodePelanggaran',
   'Golongan', 'TipeTransaksi', 'KategoriTransaksi', 'SumberDana', 'PengaturanAplikasi',
   'TugasMateri', 'JadwalPiket', 'HapalanSiswa', 'HapalanItem', 'ProfilSekolah',
