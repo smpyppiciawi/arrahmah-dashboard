@@ -374,78 +374,105 @@ export default function IzinTab({ readOnly = false }) {
 
       {/* Dialog Form */}
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-amber-500" /> Catat Izin Siswa
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+          <DialogHeader className="border-b bg-amber-50/60 px-5 py-4 sm:rounded-t-lg">
+            <DialogTitle className="flex items-center gap-2 text-amber-900">
+              <FileText className="w-5 h-5 text-amber-600" /> Catat Izin Siswa
             </DialogTitle>
+            <p className="text-xs text-amber-700/80 mt-0.5">Isi data izin di kolom kiri, lalu pilih siswa di kolom kanan.</p>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Tanggal</Label>
-                <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
+
+          <form onSubmit={handleSubmit} className="px-4 sm:px-5 py-4 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Kolom kiri — data izin */}
+              <div className="rounded-xl border border-slate-200 bg-white p-3 sm:p-4 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                  <FileText className="w-4 h-4 text-slate-500" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Data Izin</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Tanggal</Label>
+                    <Input type="date" value={formData.tanggal} onChange={(e) => setFormData({ ...formData, tanggal: e.target.value })} required />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Jam Izin</Label>
+                    <Input type="time" value={formData.jam_izin} onChange={(e) => setFormData({ ...formData, jam_izin: e.target.value })} required />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Alasan</Label>
+                  <Select value={formData.alasan} onValueChange={(v) => setFormData({ ...formData, alasan: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Dispensasi">Dispensasi</SelectItem>
+                      <SelectItem value="Permintaan Orang Tua">Permintaan Orang Tua</SelectItem>
+                      <SelectItem value="Keluar Sekolah">Keluar Sekolah</SelectItem>
+                      <SelectItem value="Lainnya">Lainnya</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {formData.alasan === 'Lainnya' && (
+                  <div>
+                    <Label className="text-xs">Alasan (Manual)</Label>
+                    <Input value={formData.alasan_manual} onChange={(e) => setFormData({ ...formData, alasan_manual: e.target.value })} placeholder="Masukkan alasan" required />
+                  </div>
+                )}
+
+                <div>
+                  <Label className="text-xs">Keterangan Izin</Label>
+                  <Textarea value={formData.keterangan} onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })} placeholder="Keterangan tambahan" rows={3} />
+                </div>
+
+                <div>
+                  <Label className="text-xs">Petugas Piket</Label>
+                  <Select value={formData.petugas_piket_id} onValueChange={(v) => {
+                    const guru = guruList.find(g => g.id === v);
+                    setFormData({ ...formData, petugas_piket_id: v, petugas_piket: guru?.nama || '' });
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Petugas" /></SelectTrigger>
+                    <SelectContent>
+                      {guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label className="text-xs">Jam Izin</Label>
-                <Input type="time" value={formData.jam_izin} onChange={(e) => setFormData({ ...formData, jam_izin: e.target.value })} required />
+
+              {/* Kolom kanan — pencarian & siswa terpilih */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 sm:p-4 space-y-3">
+                <div className="flex items-center gap-2 pb-2 border-b border-amber-200/70">
+                  <Search className="w-4 h-4 text-amber-600" />
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Pilih Siswa</p>
+                  <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                    {siswaTerpilih.length} terpilih
+                  </span>
+                </div>
+
+                <IzinSiswaPicker
+                  siswaList={siswaList}
+                  kelasList={kelasList}
+                  selected={siswaTerpilih}
+                  onChange={setSiswaTerpilih}
+                />
+
+                <div className="rounded-lg bg-white/80 border border-amber-200/70 p-2 text-[11px] text-amber-700 flex items-start gap-1.5">
+                  <Send className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>Setelah simpan, gunakan tombol Kirim WA pada tabel untuk mengirim notifikasi via WA Gateway.</span>
+                </div>
               </div>
             </div>
-            <div>
-              <Label className="text-xs">Alasan</Label>
-              <Select value={formData.alasan} onValueChange={(v) => setFormData({ ...formData, alasan: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Dispensasi">Dispensasi</SelectItem>
-                  <SelectItem value="Permintaan Orang Tua">Permintaan Orang Tua</SelectItem>
-                  <SelectItem value="Keluar Sekolah">Keluar Sekolah</SelectItem>
-                  <SelectItem value="Lainnya">Lainnya</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.alasan === 'Lainnya' && (
-              <div>
-                <Label className="text-xs">Alasan (Manual)</Label>
-                <Input value={formData.alasan_manual} onChange={(e) => setFormData({ ...formData, alasan_manual: e.target.value })} placeholder="Masukkan alasan" required />
-              </div>
-            )}
-            <div>
-              <Label className="text-xs">Keterangan Izin</Label>
-              <Textarea value={formData.keterangan} onChange={(e) => setFormData({ ...formData, keterangan: e.target.value })} placeholder="Keterangan tambahan" rows={2} />
-            </div>
-            <div>
-              <Label className="text-xs">Petugas Piket</Label>
-              <Select value={formData.petugas_piket_id} onValueChange={(v) => {
-                const guru = guruList.find(g => g.id === v);
-                setFormData({ ...formData, petugas_piket_id: v, petugas_piket: guru?.nama || '' });
-              }}>
-                <SelectTrigger><SelectValue placeholder="Pilih Petugas" /></SelectTrigger>
-                <SelectContent>
-                  {guruList.map(g => <SelectItem key={g.id} value={g.id}>{g.nama}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-amber-600" />
-                <p className="text-xs font-semibold text-amber-800">Cari Nama Siswa</p>
-                <span className="ml-auto text-[11px] font-medium text-amber-700">{siswaTerpilih.length} terpilih</span>
-              </div>
-              <IzinSiswaPicker
-                siswaList={siswaList}
-                kelasList={kelasList}
-                selected={siswaTerpilih}
-                onChange={setSiswaTerpilih}
-              />
-            </div>
-            <div className="p-2 bg-amber-50 rounded-lg text-xs text-amber-700 flex items-center gap-1.5">
-              <Send className="w-3.5 h-3.5" />
-              Setelah simpan, gunakan tombol Kirim WA pada tabel untuk mengirim notifikasi via WA Gateway.
-            </div>
-            <div className="flex gap-3 pt-1">
-              <Button type="button" variant="outline" className="flex-1" onClick={resetForm}>Batal</Button>
-              <Button type="submit" className="flex-1 bg-amber-600 hover:bg-amber-700" disabled={createMutation.isPending || siswaTerpilih.length === 0}>
-                {createMutation.isPending ? 'Menyimpan...' : 'Simpan'}
+
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:justify-end border-t border-slate-200 pt-3">
+              <Button type="button" variant="outline" className="sm:w-28" onClick={resetForm}>Batal</Button>
+              <Button
+                type="submit"
+                className="sm:w-40 bg-amber-600 hover:bg-amber-700"
+                disabled={createMutation.isPending || siswaTerpilih.length === 0}
+              >
+                {createMutation.isPending ? 'Menyimpan...' : `Simpan${siswaTerpilih.length > 0 ? ` (${siswaTerpilih.length})` : ''}`}
               </Button>
             </div>
           </form>
