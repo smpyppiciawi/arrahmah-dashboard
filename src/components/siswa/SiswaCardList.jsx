@@ -10,6 +10,8 @@ import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 
 const PAGE_SIZE = 24;
 const KOLOM_KEY = 'siswa-kolom-per-baris';
+// Mode paginasi: selalu 3 baris kartu per halaman
+const BARIS_PER_HALAMAN = 3;
 
 // Jumlah kartu per baris — kelas dibuat literal agar tidak terbuang saat build
 const GRID_KOLOM = {
@@ -22,23 +24,13 @@ const GRID_KOLOM = {
   8: 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
 };
 
-const BARIS_KEY = 'siswa-baris-per-halaman';
-
 export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onPilihKontak, aktifkanKontak, paginasi = false }) {
   const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [limit, setLimit] = useState(PAGE_SIZE);
-  // Baris kartu per halaman (khusus mode paginasi) — default 2 baris di mobile
-  const [baris, setBaris] = useState(() => Number(localStorage.getItem(BARIS_KEY)) || 2);
   const [page, setPage] = useState(1);
 
-  const ubahBaris = (v) => {
-    const n = Number(v);
-    setBaris(n);
-    localStorage.setItem(BARIS_KEY, String(n));
-    setPage(1);
-  };
   const [kolom, setKolom] = useState(() => {
     const saved = Number(localStorage.getItem(KOLOM_KEY));
     return GRID_KOLOM[saved] ? saved : 4;
@@ -62,7 +54,7 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
   });
   // Jumlah kolom yang benar-benar tampil di layar → 1 baris = sekian kartu
   const kolomEfektif = isMobile ? (kolom >= 5 ? 2 : 1) : kolom;
-  const perHalaman = baris * kolomEfektif;
+  const perHalaman = BARIS_PER_HALAMAN * kolomEfektif;
   const totalHalaman = Math.max(1, Math.ceil(filtered.length / perHalaman));
   const halamanAktif = Math.min(page, totalHalaman);
   const mulai = (halamanAktif - 1) * perHalaman;
@@ -111,7 +103,7 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
         </div>
       ) : (
         <>
-          <div className={`grid ${GRID_KOLOM[kolom]} ${kolom >= 6 ? 'gap-2' : 'gap-3 md:gap-4'}`}>
+          <div className={`grid ${GRID_KOLOM[kolom]} ${paginasi || kolom >= 6 ? 'gap-2 md:gap-3' : 'gap-3 md:gap-4'}`}>
             {visible.map((s) => (
               <SiswaCard
                 key={s.id}
@@ -119,21 +111,12 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
                 onClick={onSelect}
                 onPilihKontak={onPilihKontak}
                 aktifkanKontak={aktifkanKontak}
+                kompak={paginasi}
               />
             ))}
           </div>
           {paginasi ? (
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <Select value={String(baris)} onValueChange={ubahBaris}>
-                <SelectTrigger className="h-8 w-[104px] text-xs bg-white" title="Jumlah baris per halaman">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2, 3, 4, 6].map((n) => (
-                    <SelectItem key={n} value={String(n)}>{n} baris</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-start gap-2 flex-wrap pb-14">
               <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span className="whitespace-nowrap tabular-nums">
                   {filtered.length === 0 ? 0 : mulai + 1}–{Math.min(filtered.length, mulai + perHalaman)} / {filtered.length}

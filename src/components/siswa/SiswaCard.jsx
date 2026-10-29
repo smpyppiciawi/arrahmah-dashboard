@@ -17,7 +17,7 @@ const statusColor = (status) => (
   'bg-slate-500/90 text-white'
 );
 
-export default function SiswaCard({ siswa, onClick, onPilihKontak, aktifkanKontak }) {
+export default function SiswaCard({ siswa, onClick, onPilihKontak, aktifkanKontak, kompak = false }) {
   const foto = getFotoAktif(siswa);
 
   return (
@@ -28,7 +28,7 @@ export default function SiswaCard({ siswa, onClick, onPilihKontak, aktifkanKonta
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick?.(siswa); }}
       className="group text-left rounded-2xl border border-slate-200 bg-white hover:border-blue-300 hover:shadow-lg transition-all overflow-hidden flex flex-col cursor-pointer"
     >
-      <div className="relative aspect-[3/4] bg-slate-100 overflow-hidden">
+      <div className={`relative bg-slate-100 overflow-hidden ${kompak ? 'h-24 sm:h-28' : 'aspect-[3/4]'}`}>
         {foto ? (
           <img
             src={foto}
@@ -37,7 +37,7 @@ export default function SiswaCard({ siswa, onClick, onPilihKontak, aktifkanKonta
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-            <User className="w-10 h-10" />
+            <User className={kompak ? 'w-7 h-7' : 'w-10 h-10'} />
             <span className="text-[10px] mt-1">Tanpa foto</span>
           </div>
         )}
