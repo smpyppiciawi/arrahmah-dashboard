@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import SiswaForm from "@/components/siswa/SiswaForm";
-import { DataTable } from "@/components/ui/data-table";
-import { Users, Plus, Download, Edit2, Trash2, GraduationCap, LogOut, Eye, Images, LayoutList, ClipboardCheck, Archive, DatabaseZap, History, ListChecks } from "lucide-react";
+import { Users, Plus, Download, GraduationCap, LogOut, LayoutGrid, ClipboardCheck, Archive, DatabaseZap, ListChecks } from "lucide-react";
 import RiwayatUidDialog from "@/components/uid/RiwayatUidDialog";
 import UidAuditDialog from "@/components/uid/UidAuditDialog";
 import { Link } from 'react-router-dom';
@@ -14,9 +12,9 @@ import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
 import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
 import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
-import SiswaFotoGrid from "@/components/siswa/SiswaFotoGrid";
+import SiswaCardList from "@/components/siswa/SiswaCardList";
+import SiswaFotoViewer from "@/components/siswa/SiswaFotoViewer";
 import SiswaDapoView from "@/components/siswa/SiswaDapoView";
-import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 import ArsipDialog from "@/components/arsip/ArsipDialog";
 import { runMigrasiUid } from '@/lib/uidMigrasi';
 import { useToast } from "@/components/ui/use-toast";
@@ -31,7 +29,8 @@ export default function Siswa() {
   const [deleteId, setDeleteId] = useState(null);
   const [keluarSiswa, setKeluarSiswa] = useState(null);
   const [detailSiswa, setDetailSiswa] = useState(null);
-  const [viewMode, setViewMode] = useState('tabel');
+  const [viewMode, setViewMode] = useState('kartu');
+  const [fotoViewer, setFotoViewer] = useState(null);
   const [arsipOpen, setArsipOpen] = useState(false);
   const [migrasiUidBerjalan, setMigrasiUidBerjalan] = useState(false);
   const [riwayatSiswa, setRiwayatSiswa] = useState(null);
@@ -65,12 +64,6 @@ export default function Siswa() {
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
-  const { data: siswaLulus = [] } = useQuery({
-    queryKey: ['siswa', 'lulus'],
-    queryFn: () => base44.entities.Siswa.filter({ status: 'Lulus' }),
-    enabled: viewMode === 'foto',
-  });
-
   // Arsip alih-alih hapus permanen: profil & riwayat tetap tersimpan, dapat dipulihkan lewat menu Arsip
   const archiveMutation = useMutation({
     mutationFn: async (row) => base44.entities.Siswa.update(row.id, {
@@ -87,6 +80,19 @@ export default function Siswa() {
       setDeleteId(null);
     },
   });
+
+  // Nomor penerima notifikasi gateway: kontak_utama disimpan di record siswa
+  const kontakUtamaMutation = useMutation({
+    mutationFn: ({ siswa, phone }) => base44.entities.Siswa.update(siswa.id, { kontak_utama: phone }),
+    onSuccess: (_res, vars) => {
+      queryClient.invalidateQueries({ queryKey: ['siswa'] });
+      setDetailSiswa((prev) => (prev && prev.id === vars.siswa.id ? { ...prev, kontak_utama: vars.phone } : prev));
+      toast({ title: 'Nomor notifikasi diperbarui', description: `${vars.phone} kini menjadi penerima notifikasi gateway.` });
+    },
+    onError: (e) => toast({ title: 'Gagal mengubah nomor', description: e.message || 'Terjadi kesalahan.', variant: 'destructive' }),
+  });
+
+  const handlePilihKontak = (siswa, phone) => kontakUtamaMutation.mutate({ siswa, phone });
 
   const handleDeleteClick = (row) => {
     setDeleteId(row);
@@ -126,74 +132,6 @@ export default function Siswa() {
     setIsOpen(true);
   };
 
-  const siswaColumns = [
-    { key: 'nis', label: 'NIS' },
-    { key: 'nama', label: 'Nama Siswa' },
-    { 
-      key: 'nama_kelas', 
-      label: 'Kelas',
-      render: (row) => (
-        <Badge className={
-          row.nama_kelas?.startsWith('7') ? 'bg-blue-100 text-blue-700' :
-          row.nama_kelas?.startsWith('8') ? 'bg-purple-100 text-purple-700' :
-          'bg-emerald-100 text-emerald-700'
-        }>
-          {row.nama_kelas}
-        </Badge>
-      )
-    },
-    { key: 'jenis_kelamin', label: 'JK' },
-    { key: 'alamat', label: 'Alamat', render: (row) => (
-      <span className="text-xs text-slate-600 line-clamp-2 max-w-[200px] block">{formatAlamatLengkap(row)}</span>
-    ) },
-    { key: 'kontak', label: 'Kontak WA', render: (row) => {
-      const contacts = [];
-      if (row.kontak_list?.length > 0) row.kontak_list.forEach(k => { if (k.no_telp) contacts.push(k.no_telp); });
-      if (row.no_telp_ortu && !contacts.includes(row.no_telp_ortu)) contacts.push(row.no_telp_ortu);
-      return contacts.length > 0 ? <span className="text-xs">{contacts.length} kontak</span> : <span className="text-slate-300 text-xs">-</span>;
-    }},
-    { 
-      key: 'status', 
-      label: 'Status',
-      render: (row) => (
-        <Badge className={
-          row.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' :
-          row.status === 'Lulus' ? 'bg-blue-100 text-blue-700' :
-          'bg-slate-100 text-slate-700'
-        }>
-          {row.status}
-        </Badge>
-      )
-    },
-    {
-      key: 'aksi',
-      label: 'Aksi',
-      sortable: false,
-      filterable: false,
-      render: (row) => canEdit ? (
-        <div className="flex gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setDetailSiswa(row)} title="Detail">
-            <Eye className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => setRiwayatSiswa(row)} title="Riwayat via UID">
-            <History className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => handleEdit(row)} title="Edit">
-            <Edit2 className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" className="text-orange-500" onClick={() => setKeluarSiswa(row)} title="Keluarkan Siswa">
-            <LogOut className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="ghost" className="text-red-500" onClick={() => handleDeleteClick(row)} title="Arsipkan">
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
-      ) : (
-        <span className="text-xs text-slate-400">-</span>
-      )
-    }
-  ];
-
   return (
     <>
       <ConfirmDialog
@@ -222,8 +160,7 @@ export default function Siswa() {
 
             <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 self-start lg:self-auto">
               {[
-                { key: 'tabel', label: 'Tabel', icon: LayoutList },
-                { key: 'foto', label: 'Foto', icon: Images },
+                { key: 'kartu', label: 'Kartu', icon: LayoutGrid },
                 { key: 'dapo', label: 'Dapo', icon: ClipboardCheck },
               ].map((v) => (
                 <button
@@ -280,20 +217,17 @@ export default function Siswa() {
 
         {/* Table with DataTable */}
         <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <CardTitle>Data Siswa</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {viewMode === 'foto' ? (
-              <SiswaFotoGrid
-                siswaList={[...siswaList, ...siswaLulus]}
-                kelasList={kelasList}
-                onSelect={setDetailSiswa}
-              />
-            ) : viewMode === 'dapo' ? (
+          <CardContent className="pt-5">
+            {viewMode === 'dapo' ? (
               <SiswaDapoView siswaList={siswaList} canEdit={isAdmin} />
             ) : (
-              <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
+              <SiswaCardList
+                siswaList={siswaList}
+                kelasList={kelasList}
+                onSelect={setDetailSiswa}
+                onPilihKontak={handlePilihKontak}
+                aktifkanKontak={canEdit}
+              />
             )}
           </CardContent>
         </Card>
@@ -325,7 +259,20 @@ export default function Siswa() {
         ]}
       />
     )}
-    {detailSiswa && <SiswaDetailDialog siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
+    {detailSiswa && (
+      <SiswaDetailDialog
+        siswa={detailSiswa}
+        onClose={() => setDetailSiswa(null)}
+        canEdit={canEdit}
+        onEdit={(s) => { setDetailSiswa(null); handleEdit(s); }}
+        onRiwayat={(s) => { setDetailSiswa(null); setRiwayatSiswa(s); }}
+        onKeluar={(s) => { setDetailSiswa(null); setKeluarSiswa(s); }}
+        onArsipkan={(s) => { setDetailSiswa(null); handleDeleteClick(s); }}
+        onPilihKontak={handlePilihKontak}
+        onLihatFoto={(s) => setFotoViewer(s)}
+      />
+    )}
+    {fotoViewer && <SiswaFotoViewer siswa={fotoViewer} onClose={() => setFotoViewer(null)} />}
     {riwayatSiswa && (
       <RiwayatUidDialog
         open

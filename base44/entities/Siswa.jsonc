@@ -131,6 +131,10 @@
       },
       "description": "Daftar kontak HP/WA orang tua/wali"
     },
+    "kontak_utama": {
+      "type": "string",
+      "description": "Nomor WA kontak utama penerima notifikasi gateway. Kosong = otomatis Ibu, lalu Ayah, lalu Wali. Dapat diubah dengan mengklik nomor kontak pada kartu/detail siswa."
+    },
     "tahun_lahir_ayah": {
       "type": "string",
       "description": "Tahun lahir ayah"

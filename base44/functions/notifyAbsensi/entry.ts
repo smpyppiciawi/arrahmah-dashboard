@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { sendFonnteWA, getFiturNotif } from '../../shared/waSender.ts';
+import { sendFonnteWA, getFiturNotif, pilihKontakOrtu } from '../../shared/waSender.ts';
 
 // Notifikasi absensi terpusat (WA + Email) untuk Siswa & Pegawai.
 // - Kontak SELALU dibaca dari data terbaru (Siswa / Guru), bukan snapshot kartu.
@@ -9,7 +9,6 @@ import { sendFonnteWA, getFiturNotif } from '../../shared/waSender.ts';
 // - Mendukung 1 absensi tunggal atau batch: { batch: [ {...}, ... ] } (maks 100).
 // - Hasil tiap kanal independen: gagal satu kanal tidak menggagalkan kanal lain.
 
-const KONTAK_URUTAN = ['Ibu', 'Ayah', 'Wali'];
 
 export default async function(req) {
   try {
@@ -115,17 +114,7 @@ async function siswaNotif(svc, personId, tanggal, jam, status, metode, jenisAbse
     return { wa: { sent: false, reason: 'not_found' }, email: { sent: false, reason: 'not_found' } };
   }
 
-  let phone = '';
-  let hubungan = '';
-  const kontakList = Array.isArray(siswa.kontak_list) ? siswa.kontak_list : [];
-  for (const hub of KONTAK_URUTAN) {
-    const c = kontakList.find((k) => (k.hubungan || '') === hub && k.no_telp);
-    if (c) { phone = c.no_telp; hubungan = hub; break; }
-  }
-  if (!phone && siswa.no_telp_ortu) {
-    phone = siswa.no_telp_ortu;
-    hubungan = 'Orang Tua/Wali';
-  }
+  const { phone, hubungan } = pilihKontakOrtu(siswa);
 
   // Hormati sakelar gateway: WA & Email jenis Siswa (Pengaturan)
   const wa = gw.wa_siswa === false

@@ -4,9 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
-import { MapPin, User, Users, Home, Phone, Calendar, FileText } from "lucide-react";
+import { getFotoAktif } from '@/lib/fotoSiswa';
+import SiswaKontakRow, { kontakUtama } from '@/components/siswa/SiswaKontakRow';
+import {
+  MapPin, User, Home, Phone, Edit2, History, LogOut, Trash2, MessageCircle,
+  Maximize2, UserCircle,
+} from "lucide-react";
 import { format as formatDateFns, parseISO } from 'date-fns';
-import { id as idLocale } from 'date-fns/locale';
 
 const formatTanggalLahir = (val) => {
   if (!val) return '';
@@ -38,33 +42,68 @@ const OrtuSection = ({ title, data, prefix, color }) => (
   </div>
 );
 
-export default function SiswaDetailDialog({ siswa, onClose }) {
+export default function SiswaDetailDialog({
+  siswa, onClose, onEdit, onRiwayat, onKeluar, onArsipkan, onPilihKontak, onLihatFoto, canEdit = false,
+}) {
   if (!siswa) return null;
-
-  const contacts = [];
-  if (siswa.kontak_list?.length > 0) siswa.kontak_list.forEach(k => { if (k.no_telp) contacts.push(k); });
-  if (siswa.no_telp_ortu && !contacts.find(c => c.no_telp === siswa.no_telp_ortu)) contacts.push({ no_telp: siswa.no_telp_ortu, hubungan: 'Ortu' });
+  const foto = getFotoAktif(siswa);
+  const nomorWA = (nomor) => window.open(`https://wa.me/${String(nomor).replace(/\D/g, '').replace(/^0/, '62')}`, '_blank');
 
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold">
-              {siswa.nama?.[0]?.toUpperCase()}
-            </div>
-            <div>
-              <span className="text-lg">{siswa.nama}</span>
+            <button
+              type="button"
+              onClick={() => onLihatFoto?.(siswa)}
+              className="relative w-16 h-20 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 group"
+              title="Lihat foto lebih besar"
+            >
+              {foto ? (
+                <img src={foto} alt={siswa.nama} className="w-full h-full object-cover" />
+              ) : (
+                <span className="w-full h-full flex items-center justify-center text-slate-300">
+                  <UserCircle className="w-8 h-8" />
+                </span>
+              )}
+              <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                <Maximize2 className="w-4 h-4 text-white" />
+              </span>
+            </button>
+            <div className="min-w-0">
+              <span className="text-lg block truncate">{siswa.nama}</span>
               <p className="text-xs text-slate-400 font-normal">NIS: {siswa.nis} • NISN: {siswa.nisn || '-'}</p>
             </div>
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-wrap gap-2 mb-2">
+        <div className="flex flex-wrap gap-2 mb-1">
           <Badge className={siswa.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{siswa.status}</Badge>
           <Badge variant="secondary" className="bg-blue-100 text-blue-700">{siswa.nama_kelas}</Badge>
           <Badge variant="secondary">{siswa.jenis_kelamin}</Badge>
           {siswa.penerima_kip === 'Ya' && <Badge className="bg-amber-100 text-amber-700">Penerima KIP</Badge>}
+        </div>
+
+        {/* Kontak WA — nomor bergaris emas = penerima notifikasi gateway, klik untuk mengganti */}
+        <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <h4 className="text-xs font-bold flex items-center gap-1.5 text-emerald-700"><Phone className="w-3.5 h-3.5" /> Kontak WA Orang Tua/Wali</h4>
+            <Button
+              size="sm" variant="outline"
+              className="h-7 text-[11px] bg-white text-emerald-700 border-emerald-200 hover:bg-emerald-50"
+              onClick={() => {
+                const nomor = kontakUtama(siswa);
+                if (nomor) nomorWA(nomor);
+              }}
+            >
+              <MessageCircle className="w-3.5 h-3.5 mr-1" /> Chat WA
+            </Button>
+          </div>
+          <SiswaKontakRow siswa={siswa} onPilih={(phone) => onPilihKontak?.(siswa, phone)} aktifkan={canEdit} max={3} />
+          <p className="text-[10px] text-emerald-700/70 mt-1.5">
+            Nomor bertanda hijau adalah penerima notifikasi gateway{canEdit ? ' — klik nomor lain untuk mengganti.' : '.'}
+          </p>
         </div>
 
         <Tabs defaultValue="diri" className="w-full">
@@ -87,16 +126,6 @@ export default function SiswaDetailDialog({ siswa, onClose }) {
               <Field label="NIK" value={siswa.nik} />
               <Field label="Penerima KIP" value={siswa.penerima_kip} />
             </div>
-            {contacts.length > 0 && (
-              <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                <h4 className="text-sm font-bold mb-2 flex items-center gap-2 text-emerald-700"><Phone className="w-4 h-4" /> Kontak WA</h4>
-                <div className="flex flex-wrap gap-2">
-                  {contacts.map((c, i) => (
-                    <Badge key={i} variant="secondary" className="bg-white">{c.hubungan}: {c.no_telp}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="alamat" className="space-y-3 mt-3">
@@ -125,7 +154,29 @@ export default function SiswaDetailDialog({ siswa, onClose }) {
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          <div className="flex flex-wrap gap-2">
+            {canEdit && onEdit && (
+              <Button size="sm" variant="outline" onClick={() => onEdit(siswa)}>
+                <Edit2 className="w-4 h-4 mr-1.5" /> Edit
+              </Button>
+            )}
+            {canEdit && onRiwayat && (
+              <Button size="sm" variant="outline" onClick={() => onRiwayat(siswa)}>
+                <History className="w-4 h-4 mr-1.5" /> Riwayat
+              </Button>
+            )}
+            {canEdit && onKeluar && (
+              <Button size="sm" variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => onKeluar(siswa)}>
+                <LogOut className="w-4 h-4 mr-1.5" /> Keluarkan
+              </Button>
+            )}
+            {canEdit && onArsipkan && (
+              <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => onArsipkan(siswa)}>
+                <Trash2 className="w-4 h-4 mr-1.5" /> Arsipkan
+              </Button>
+            )}
+          </div>
           <Button variant="outline" onClick={onClose}>Tutup</Button>
         </div>
       </DialogContent>

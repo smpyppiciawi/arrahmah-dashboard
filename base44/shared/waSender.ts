@@ -31,6 +31,21 @@ export async function sendFonnteWA(phone, message, token) {
   return { sent: true, fonnte: result };
 }
 
+// Nomor tujuan notifikasi gateway orang tua/wali.
+// Urutan: kontak_utama (dipilih manual oleh Admin/TU) → Ibu → Ayah → Wali → no_telp_ortu.
+export function pilihKontakOrtu(siswa) {
+  const list = Array.isArray(siswa?.kontak_list) ? siswa.kontak_list : [];
+  const hanyaAngka = (v) => String(v || '').replace(/\D/g, '').replace(/^0/, '62');
+  const utama = siswa?.kontak_utama ? list.find((k) => k.no_telp && hanyaAngka(k.no_telp) === hanyaAngka(siswa.kontak_utama)) : null;
+  if (utama) return { phone: utama.no_telp, hubungan: utama.hubungan || 'Kontak Utama' };
+  for (const hub of ['Ibu', 'Ayah', 'Wali']) {
+    const c = list.find((k) => (k.hubungan || '') === hub && k.no_telp);
+    if (c) return { phone: c.no_telp, hubungan: hub };
+  }
+  if (siswa?.no_telp_ortu) return { phone: siswa.no_telp_ortu, hubungan: 'Orang Tua/Wali' };
+  return { phone: '', hubungan: '' };
+}
+
 // Status sakelar gateway notifikasi PER FITUR (Pengaturan › Notifikasi Gateway).
 // Default ON bila belum diatur; bila PengaturanAplikasi gagal dibaca, kirim tetap diizinkan (fail-open).
 export async function getFiturNotif(svc) {

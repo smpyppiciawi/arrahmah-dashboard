@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { secrets } from 'base44:runtime';
-import { getFiturNotif, sendFonnteWA } from '../../shared/waSender.ts';
+import { getFiturNotif, sendFonnteWA, pilihKontakOrtu } from '../../shared/waSender.ts';
 
 // Pengingat iuran SPP otomatis setiap tanggal 10 (dijalankan workflow terjadwal).
 // - Hormati sakelar Notifikasi Gateway: fitur "Pengingat Tagihan SPP" (WhatsApp).
@@ -12,18 +12,6 @@ const BULAN = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
   'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
 ];
-const KONTAK_URUTAN = ['Ibu', 'Ayah', 'Wali'];
-
-function kontakOrtu(siswa) {
-  const list = Array.isArray(siswa.kontak_list) ? siswa.kontak_list : [];
-  for (const hub of KONTAK_URUTAN) {
-    const c = list.find((k) => (k.hubungan || '') === hub && k.no_telp);
-    if (c) return { phone: c.no_telp, hubungan: hub };
-  }
-  if (siswa.no_telp_ortu) return { phone: siswa.no_telp_ortu, hubungan: 'Orang Tua/Wali' };
-  return { phone: '', hubungan: '' };
-}
-
 async function fetchAll(query, svc, fields) {
   const out = [];
   let cursor;
@@ -115,13 +103,13 @@ export default async function (req) {
     // Dedup: satu pengingat per siswa per bulan
     const existing = await svc.entities.PengingatSpp.filter({ bulan_key: bulanKey });
     const sudahDikirim = new Set((existing || []).filter((r) => r.wa_terkirim).map((r) => r.siswa_id));
-    const target = belum.filter((s) => !sudahDikirim.has(s.id) && kontakOrtu(s).phone);
+    const target = belum.filter((s) => !sudahDikirim.has(s.id) && pilihKontakOrtu(s).phone);
 
     const hasil = [];
     for (let i = 0; i < target.length; i += 5) {
       const chunk = target.slice(i, i + 5);
       const res = await Promise.allSettled(chunk.map(async (s) => {
-        const { phone, hubungan } = kontakOrtu(s);
+        const { phone, hubungan } = pilihKontakOrtu(s);
         const nominal = nominalSpp(s);
         const pesan = `*PENGINGAT IURAN SPP*\n\n` +
           `Assalamu'alaikum Bpk/Ibu ${s.nama_ibu_kandung || s.nama_ayah_kandung || 'Orang Tua/Wali'},\n\n` +
