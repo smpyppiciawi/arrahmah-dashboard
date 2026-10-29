@@ -3,6 +3,8 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { MapPin, Home, Maximize2, Minimize2, X } from 'lucide-react';
 import MapResizer from '@/components/ui/MapResizer';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -58,8 +60,9 @@ function kategoriDibantu(hv, biayaKhususList) {
   return null;
 }
 
-export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList = [], isDark = true }) {
+export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList = [], siswaList = [], isDark = true }) {
   const [fullscreen, setFullscreen] = useState(false);
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const markers = useMemo(() => {
     return homeVisitList
@@ -127,10 +130,22 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
           subdomains={['0', '1', '2', '3']}
           attribution='&copy; Google'
         />
-        {markers.map(hv => (
+        {markers.map(hv => {
+          const siswaRec = (siswaList || []).find(s => s.id === hv.siswa_id) || null;
+          return (
           <Marker key={hv.id} position={hv.pos} icon={hv.kat ? makePinIcon(hv.kat.warna) : BLUE_PIN}>
             <Popup>
               <div className="text-xs space-y-1" style={{ minWidth: '180px' }}>
+                {siswaRec && (
+                  <button
+                    type="button"
+                    onClick={() => setDetailSiswa(siswaRec)}
+                    title="Buka detail siswa"
+                    className="block"
+                  >
+                    <SiswaFotoThumb siswa={siswaRec} className="w-16 h-20" />
+                  </button>
+                )}
                 <p className="font-bold text-sm">{hv.nama_siswa}</p>
                 <p>Kelas: {hv.nama_kelas}</p>
                 {hv.kat && (
@@ -151,7 +166,8 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
               </div>
             </Popup>
           </Marker>
-        ))}
+          );
+        })}
       </MapContainer>
     </div>
   );
@@ -208,6 +224,8 @@ export default function PenyebaranSiswaMap({ homeVisitList = [], biayaKhususList
           </div>
         </div>
       )}
+
+      {detailSiswa && <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
     </>
   );
 }

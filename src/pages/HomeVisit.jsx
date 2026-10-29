@@ -21,6 +21,7 @@ import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { useIsMobile } from "@/hooks/use-mobile";
 import AppHeader from '@/components/appui/AppHeader';
 import SummaryScroll from '@/components/appui/SummaryScroll';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 
@@ -191,6 +192,7 @@ export default function HomeVisit() {
         {markersWithCoord.map(hv => (
           <Marker key={hv.id} position={hv.pos}>
             <Popup>
+              <SiswaFotoThumb siswa={siswaListAll.find(s => s.id === hv.siswa_id) || { nama: hv.nama_siswa }} className="w-12 h-16 mb-1" />
               <strong>{hv.nama_siswa}</strong><br />
               Kelas: {hv.nama_kelas}<br />
               {hv.keadaan_rumah && <span>Rumah: {hv.keadaan_rumah}</span>}
@@ -351,7 +353,10 @@ export default function HomeVisit() {
                   return (
                     <button key={hv.id} type="button" onClick={() => setDetailData(hv)} className="text-left w-full min-w-0 p-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:bg-slate-50 transition-colors overflow-hidden">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-semibold text-slate-800 truncate">{hv.nama_siswa}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <SiswaFotoThumb siswa={siswaListAll.find(s => s.id === hv.siswa_id) || { nama: hv.nama_siswa }} className="w-8 h-10" />
+                          <span className="text-sm font-semibold text-slate-800 truncate">{hv.nama_siswa}</span>
+                        </div>
                         {status === 'complete' ? (
                           <Badge className="bg-emerald-100 text-emerald-700 gap-1 inline-flex items-center shrink-0"><CheckCircle2 className="w-3 h-3" /> Lengkap</Badge>
                         ) : status === 'partial' ? (
@@ -403,6 +408,7 @@ export default function HomeVisit() {
       {detailData && (
         <HomeVisitDetailDialog
           data={detailData}
+          siswa={siswaListAll.find(s => s.id === detailData.siswa_id) || null}
           canEdit={canEdit}
           canDelete={canDelete}
           onClose={() => setDetailData(null)}

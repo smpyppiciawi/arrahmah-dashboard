@@ -10,12 +10,15 @@ import { recomputeRaporForSiswa } from '@/lib/raporStatus';
 import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
 export default function ApprovalPoinDialog({ open, onOpenChange, pelanggaranList, siswaList, currentUser }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [kelasFilter, setKelasFilter] = useState('all');
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const pendingList = useMemo(
     () => (pelanggaranList || [])
@@ -126,10 +129,20 @@ export default function ApprovalPoinDialog({ open, onOpenChange, pelanggaranList
             {groups.map((recs) => {
               const p0 = recs[0];
               const totalPoin = recs.reduce((s, p) => s + (p.poin || 0), 0);
+              const siswaRec = (siswaList || []).find((s) => s.id === p0.siswa_id);
               return (
                 <div key={p0.siswa_id || p0.nama_siswa} className="rounded-xl border-2 border-amber-300/70 overflow-hidden">
                   <div className="flex items-center justify-between gap-2 px-3 py-2 bg-amber-100/60">
-                    <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => siswaRec && setDetailSiswa(siswaRec)}
+                      title="Lihat detail & foto siswa"
+                      className="shrink-0 rounded-lg hover:ring-2 hover:ring-amber-300 transition disabled:cursor-default"
+                      disabled={!siswaRec}
+                    >
+                      <SiswaFotoThumb siswa={siswaRec} className="w-9 h-11" />
+                    </button>
+                    <div className="min-w-0 flex-1">
                       <p className="font-semibold text-sm text-slate-800 truncate">{p0.nama_siswa}</p>
                       <p className="text-[11px] text-slate-500">{p0.nama_kelas || '-'} · {recs.length} pelanggaran menunggu</p>
                     </div>
@@ -171,6 +184,10 @@ export default function ApprovalPoinDialog({ open, onOpenChange, pelanggaranList
               );
             })}
           </div>
+        )}
+
+        {detailSiswa && (
+          <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />
         )}
       </DialogContent>
     </Dialog>

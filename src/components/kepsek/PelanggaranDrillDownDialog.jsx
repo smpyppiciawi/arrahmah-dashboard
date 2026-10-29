@@ -7,12 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
+import { resolveSiswa } from '@/lib/siswaResolve';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 import { Search, X, ExternalLink } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
-export default function PelanggaranDrillDownDialog({ open, onOpenChange, pelanggaranData, improvementData, dateLabel, isDark = true }) {
+export default function PelanggaranDrillDownDialog({ open, onOpenChange, pelanggaranData, improvementData, dateLabel, isDark = true, siswaList = [] }) {
   const [search, setSearch] = useState('');
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const c = isDark ? {
     dialog: 'bg-slate-900 border-slate-700',
@@ -69,50 +73,66 @@ export default function PelanggaranDrillDownDialog({ open, onOpenChange, pelangg
     <Table>
       <TableHeader>
         <TableRow className={c.head}>
+          <TableHead className={`${c.headCell} text-xs w-10`}>Foto</TableHead>
           {cols.map(col => <TableHead key={col.key} className={`${c.headCell} text-xs whitespace-nowrap`}>{col.label}</TableHead>)}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.map((row, idx) => (
-          <TableRow key={idx} className={c.row}>
-            {cols.map(col => <TableCell key={col.key} className={`${c.cell} text-xs whitespace-nowrap`}>{col.render ? col.render(row) : (row[col.key] || '-')}</TableCell>)}
-          </TableRow>
-        ))}
+        {rows.map((row, idx) => {
+          const siswaRow = resolveSiswa(row, siswaList);
+          return (
+            <TableRow
+              key={idx}
+              className={`${c.row} ${siswaRow ? 'cursor-pointer' : ''}`}
+              onClick={siswaRow ? () => setDetailSiswa(siswaRow) : undefined}
+            >
+              <TableCell className="py-1 pr-0">
+                {siswaRow && <SiswaFotoThumb siswa={siswaRow} className="w-8 h-10" />}
+              </TableCell>
+              {cols.map(col => <TableCell key={col.key} className={`${c.cell} text-xs whitespace-nowrap`}>{col.render ? col.render(row) : (row[col.key] || '-')}</TableCell>)}
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-4xl max-h-[80vh] overflow-hidden flex flex-col ${c.dialog}`}>
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
-            <DialogTitle className={c.text}>Laporan Pelanggaran & Improvement — {dateLabel}</DialogTitle>
-            <Link to="/CatatanSiswa?from=kepsek" onClick={() => onOpenChange(false)}>
-              <Button size="sm" variant="outline" className={`gap-1 text-xs ${c.btn}`}><ExternalLink className="w-3 h-3" /> Catatan Siswa</Button>
-            </Link>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className={`max-w-4xl max-h-[80vh] overflow-hidden flex flex-col ${c.dialog}`}>
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle className={c.text}>Laporan Pelanggaran & Improvement — {dateLabel}</DialogTitle>
+              <Link to="/CatatanSiswa?from=kepsek" onClick={() => onOpenChange(false)}>
+                <Button size="sm" variant="outline" className={`gap-1 text-xs ${c.btn}`}><ExternalLink className="w-3 h-3" /> Catatan Siswa</Button>
+              </Link>
+            </div>
+          </DialogHeader>
+          <div className="flex items-center gap-2 pb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
+              <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari siswa / kelas / pelanggaran..." className={`pl-8 pr-8 h-9 ${c.input}`} />
+              {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>}
+            </div>
           </div>
-        </DialogHeader>
-        <div className="flex items-center gap-2 pb-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari siswa / kelas / pelanggaran..." className={`pl-8 pr-8 h-9 ${c.input}`} />
-            {search && <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"><X className="w-4 h-4" /></button>}
-          </div>
-        </div>
-        <Tabs defaultValue="pelanggaran" className="flex-1 overflow-hidden flex flex-col">
-          <TabsList className={`grid w-full grid-cols-2 mb-2 ${c.tabs}`}>
-            <TabsTrigger value="pelanggaran" className={`${c.text} text-xs`}>Pelanggaran ({pelFiltered.length}) · {totalPoin} poin</TabsTrigger>
-            <TabsTrigger value="improvement" className={`${c.text} text-xs`}>Improvement ({impFiltered.length}) · -{totalPengurangan}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="pelanggaran" className="overflow-auto flex-1 mt-0">
-            {pelFiltered.length > 0 ? renderTable(pelFiltered, pelCols) : <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada pelanggaran pada periode ini'}</p></div>}
-          </TabsContent>
-          <TabsContent value="improvement" className="overflow-auto flex-1 mt-0">
-            {impFiltered.length > 0 ? renderTable(impFiltered, impCols) : <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada improvement pada periode ini'}</p></div>}
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
+          <p className={`text-[11px] pb-1 ${c.textMuted}`}>Klik baris atau foto untuk membuka detail siswa.</p>
+          <Tabs defaultValue="pelanggaran" className="flex-1 overflow-hidden flex flex-col">
+            <TabsList className={`grid w-full grid-cols-2 mb-2 ${c.tabs}`}>
+              <TabsTrigger value="pelanggaran" className={`${c.text} text-xs`}>Pelanggaran ({pelFiltered.length}) · {totalPoin} poin</TabsTrigger>
+              <TabsTrigger value="improvement" className={`${c.text} text-xs`}>Improvement ({impFiltered.length}) · -{totalPengurangan}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="pelanggaran" className="overflow-auto flex-1 mt-0">
+              {pelFiltered.length > 0 ? renderTable(pelFiltered, pelCols) : <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada pelanggaran pada periode ini'}</p></div>}
+            </TabsContent>
+            <TabsContent value="improvement" className="overflow-auto flex-1 mt-0">
+              {impFiltered.length > 0 ? renderTable(impFiltered, impCols) : <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada improvement pada periode ini'}</p></div>}
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {detailSiswa && <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
+    </>
   );
 }

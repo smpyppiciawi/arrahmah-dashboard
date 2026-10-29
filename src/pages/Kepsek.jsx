@@ -558,7 +558,7 @@ export default function Kepsek() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
           <div className="space-y-3 md:space-y-4">
             <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} />
-            <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} isDark={effIsDark} />
+            <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={effIsDark} />
           </div>
           <div className="space-y-3 md:space-y-4">
             <LaporanJenisIuranWidget
@@ -597,8 +597,8 @@ export default function Kepsek() {
       >
         {fabsShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
-      <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} />
-      <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} />
+      <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} siswaList={siswaList} />
+      <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} siswaList={siswaList} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
       <SaldoBreakdownDialog open={saldoOpen} onOpenChange={setSaldoOpen} periode={stats.saldoPeriodeData} berjalan={stats.saldoBerjalanData} formatRupiah={formatRupiah} periodLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} />
 

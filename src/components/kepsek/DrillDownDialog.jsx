@@ -5,10 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, ArrowUpDown, ExternalLink, X } from 'lucide-react';
+import { resolveSiswa } from '@/lib/siswaResolve';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
-export default function DrillDownDialog({ open, onOpenChange, title, data, columns, isDark = true, fullLink, sortFn, summary }) {
+export default function DrillDownDialog({ open, onOpenChange, title, data, columns, isDark = true, fullLink, sortFn, summary, siswaList = [] }) {
   const [search, setSearch] = useState('');
   const [sortDir, setSortDir] = useState('asc');
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const summaryColors = isDark ? {
     emerald: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30',
@@ -59,68 +63,94 @@ export default function DrillDownDialog({ open, onOpenChange, title, data, colum
     return rows;
   }, [data, search, sortDir, sortFn, sortKey, columns]);
 
+  // Kolom foto hanya muncul bila baris berisi data siswa
+  const adaSiswa = useMemo(
+    () => (processed || []).some((r) => !!resolveSiswa(r, siswaList)),
+    [processed, siswaList]
+  );
+
   const fullUrl = fullLink ? `${fullLink}${fullLink.includes('?') ? '&' : '?'}from=kepsek` : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`max-w-3xl max-h-[80vh] overflow-hidden flex flex-col ${c.dialog}`}>
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
-            <DialogTitle className={c.text}>{title} ({processed.length}{search ? ` dari ${data?.length || 0}` : ''})</DialogTitle>
-            {fullUrl && (
-              <Link to={fullUrl} onClick={() => onOpenChange(false)}>
-                <Button size="sm" variant="outline" className={`gap-1 text-xs ${c.btn}`}>
-                  <ExternalLink className="w-3 h-3" /> Lihat Data Lengkap
-                </Button>
-              </Link>
-            )}
-          </div>
-        </DialogHeader>
-        {summary && summary.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3">
-            {summary.map(s => (
-              <div key={s.label} className={`rounded-lg px-3 py-2 text-center ${summaryColors[s.color] || (isDark ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-50 text-slate-700 border border-slate-200')}`}>
-                <p className="text-xl font-bold leading-none">{s.value}</p>
-                <p className="text-[11px] font-medium opacity-80 mt-1">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-2 pb-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama / data..." className={`pl-8 pr-8 h-9 ${c.input}`} />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <Button size="sm" variant="outline" className={`h-9 gap-1 ${c.btn}`} onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}>
-            <ArrowUpDown className="w-3.5 h-3.5" /> {sortDir === 'asc' ? 'A-Z' : 'Z-A'}
-          </Button>
-        </div>
-        <div className="overflow-auto flex-1">
-          {processed.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow className={c.head}>
-                  {columns.map((col) => <TableHead key={col.key} className={`${c.headCell} text-xs`}>{col.label}</TableHead>)}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {processed.map((row, idx) => (
-                  <TableRow key={idx} className={c.row}>
-                    {columns.map((col) => <TableCell key={col.key} className={`${c.cell} text-sm`}>{col.render ? col.render(row) : (row[col.key] || '-')}</TableCell>)}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          ) : (
-            <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada data'}</p></div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className={`max-w-3xl max-h-[80vh] overflow-hidden flex flex-col ${c.dialog}`}>
+          <DialogHeader>
+            <div className="flex items-center justify-between gap-2">
+              <DialogTitle className={c.text}>{title} ({processed.length}{search ? ` dari ${data?.length || 0}` : ''})</DialogTitle>
+              {fullUrl && (
+                <Link to={fullUrl} onClick={() => onOpenChange(false)}>
+                  <Button size="sm" variant="outline" className={`gap-1 text-xs ${c.btn}`}>
+                    <ExternalLink className="w-3 h-3" /> Lihat Data Lengkap
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </DialogHeader>
+          {adaSiswa && (
+            <p className={`text-[11px] -mt-1 ${c.textMuted}`}>Klik baris atau foto untuk membuka detail siswa.</p>
           )}
-        </div>
-      </DialogContent>
-    </Dialog>
+          {summary && summary.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pb-3">
+              {summary.map(s => (
+                <div key={s.label} className={`rounded-lg px-3 py-2 text-center ${summaryColors[s.color] || (isDark ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-50 text-slate-700 border border-slate-200')}`}>
+                  <p className="text-xl font-bold leading-none">{s.value}</p>
+                  <p className="text-[11px] font-medium opacity-80 mt-1">{s.label}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 pb-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40 pointer-events-none" />
+              <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari nama / data..." className={`pl-8 pr-8 h-9 ${c.input}`} />
+              {search && (
+                <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+            <Button size="sm" variant="outline" className={`h-9 gap-1 ${c.btn}`} onClick={() => setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))}>
+              <ArrowUpDown className="w-3.5 h-3.5" /> {sortDir === 'asc' ? 'A-Z' : 'Z-A'}
+            </Button>
+          </div>
+          <div className="overflow-auto flex-1">
+            {processed.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow className={c.head}>
+                    {adaSiswa && <TableHead className={`${c.headCell} text-xs w-10`}>Foto</TableHead>}
+                    {columns.map((col) => <TableHead key={col.key} className={`${c.headCell} text-xs`}>{col.label}</TableHead>)}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processed.map((row, idx) => {
+                    const siswaRow = resolveSiswa(row, siswaList);
+                    return (
+                      <TableRow
+                        key={idx}
+                        className={`${c.row} ${siswaRow ? 'cursor-pointer' : ''}`}
+                        onClick={siswaRow ? () => setDetailSiswa(siswaRow) : undefined}
+                      >
+                        {adaSiswa && (
+                          <TableCell className="py-1 pr-0">
+                            {siswaRow && <SiswaFotoThumb siswa={siswaRow} className="w-8 h-10" />}
+                          </TableCell>
+                        )}
+                        {columns.map((col) => <TableCell key={col.key} className={`${c.cell} text-sm`}>{col.render ? col.render(row) : (row[col.key] || '-')}</TableCell>)}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-10"><p className={`${c.textMuted} text-sm`}>{search ? 'Data tidak ditemukan' : 'Tidak ada data'}</p></div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {detailSiswa && <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
+    </>
   );
 }

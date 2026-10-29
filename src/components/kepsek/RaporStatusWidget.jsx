@@ -6,6 +6,8 @@ import { ShieldAlert, AlertTriangle, ChevronRight, ArrowLeft, ClipboardList } fr
 import { Badge } from '@/components/ui/badge';
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import SiswaFotoThumb from '@/components/siswa/SiswaFotoThumb';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
 const STATUS_BADGE = {
   Pending: 'bg-amber-100 text-amber-700',
@@ -16,6 +18,7 @@ const STATUS_BADGE = {
 export default function RaporStatusWidget({ siswaList, pelanggaranImpList = [], isDark }) {
   const [open, setOpen] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const grouped = useMemo(() => {
     const g = { kuning: [], merah: [], hitam: [] };
@@ -79,9 +82,19 @@ export default function RaporStatusWidget({ siswaList, pelanggaranImpList = [], 
               {/* Daftar siswa */}
               <div className={`space-y-2 md:max-h-[55vh] md:overflow-y-auto md:pr-1 ${selectedId ? 'hidden md:block' : ''}`}>
                 {activeList.map(s => (
-                  <button key={s.id} onClick={() => setSelectedId(s.id)}
-                    className={`w-full text-left flex items-center justify-between rounded-lg border p-3 transition-colors ${selectedId === s.id ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:bg-slate-50'}`}>
-                    <div className="min-w-0">
+                  <div key={s.id} role="button" tabIndex={0}
+                    onClick={() => setSelectedId(s.id)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedId(s.id); }}
+                    className={`w-full text-left flex items-center justify-between gap-2 rounded-lg border p-3 transition-colors cursor-pointer ${selectedId === s.id ? 'border-red-300 bg-red-50' : 'border-slate-200 hover:bg-slate-50'}`}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setDetailSiswa(s); }}
+                      title="Lihat detail & foto siswa"
+                      className="shrink-0 rounded-lg hover:ring-2 hover:ring-red-300 transition"
+                    >
+                      <SiswaFotoThumb siswa={s} />
+                    </button>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-slate-800 text-sm truncate">{s.nama}</p>
                       <p className="text-xs text-slate-500">{s.nama_kelas} · NIS {s.nis}</p>
                     </div>
@@ -91,7 +104,7 @@ export default function RaporStatusWidget({ siswaList, pelanggaranImpList = [], 
                       </div>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
 
@@ -140,6 +153,10 @@ export default function RaporStatusWidget({ siswaList, pelanggaranImpList = [], 
           )}
         </DialogContent>
       </Dialog>
+
+      {detailSiswa && (
+        <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />
+      )}
     </>
   );
 }

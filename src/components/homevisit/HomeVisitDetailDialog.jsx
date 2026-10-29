@@ -3,6 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Edit2, Trash2, MapPin, Home, Clock, CheckCircle2, X } from "lucide-react";
+import SiswaFotoThumb from "@/components/siswa/SiswaFotoThumb";
+import SiswaDetailReadonly from "@/components/siswa/SiswaDetailReadonly";
 
 const FIELD_LABELS = {
   tinggal_dengan: 'Tinggal Dengan',
@@ -37,8 +39,10 @@ const FIELD_LABELS = {
 
 const formatRupiah = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
 
-export default function HomeVisitDetailDialog({ data, onClose, onEdit, onDelete, canEdit, canDelete }) {
+export default function HomeVisitDetailDialog({ data, siswa, onClose, onEdit, onDelete, canEdit, canDelete }) {
+  const [detailSiswaOpen, setDetailSiswaOpen] = React.useState(false);
   if (!data) return null;
+  const siswaRec = siswa || null;
 
   const renderValue = (key) => {
     const val = data[key];
@@ -69,9 +73,18 @@ export default function HomeVisitDetailDialog({ data, onClose, onEdit, onDelete,
 
         {/* Student header */}
         <div className="flex items-center gap-3 p-3 bg-indigo-50 rounded-xl">
-          <div className="w-12 h-12 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-bold text-lg shrink-0">
-            {data.nama_siswa?.charAt(0) || 'S'}
-          </div>
+          <button
+            type="button"
+            onClick={() => setDetailSiswaOpen(true)}
+            title="Lihat detail & foto siswa"
+            className="shrink-0 rounded-xl hover:ring-2 hover:ring-indigo-300 transition"
+          >
+            <SiswaFotoThumb
+              siswa={siswaRec || { nama: data.nama_siswa, nama_kelas: data.nama_kelas }}
+              className="w-12 h-16"
+              rounded="rounded-xl"
+            />
+          </button>
           <div className="min-w-0 flex-1">
             <p className="font-bold text-slate-800 truncate">{data.nama_siswa}</p>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -156,6 +169,10 @@ export default function HomeVisitDetailDialog({ data, onClose, onEdit, onDelete,
             </Button>
           )}
         </div>
+
+        {detailSiswaOpen && siswaRec && (
+          <SiswaDetailReadonly siswa={siswaRec} onClose={() => setDetailSiswaOpen(false)} />
+        )}
       </DialogContent>
     </Dialog>
   );
