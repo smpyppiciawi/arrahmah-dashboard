@@ -1,11 +1,12 @@
 import React from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import NotifikasiFiturTray, { FITUR_GATEWAY } from './NotifikasiFiturTray';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { MessageCircle, Mail, Users, GraduationCap, Radio } from 'lucide-react';
+import { MessageCircle, Mail, Users, GraduationCap, Radio, ChevronDown } from 'lucide-react';
 
 const ROWS = [
   { key: 'siswa', label: 'Siswa', icon: Users, desc: 'Absensi siswa & peringatan absen 3 hari ke orang tua/wali' },
@@ -21,6 +22,7 @@ const COLS = [
 export default function NotifikasiGatewayCard({ pengaturan, isAdmin }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [openRow, setOpenRow] = React.useState(null);
 
   const toggleMutation = useMutation({
     mutationFn: ({ field, value }) => {
@@ -50,6 +52,7 @@ export default function NotifikasiGatewayCard({ pengaturan, isAdmin }) {
         </div>
         <p className="text-xs text-slate-500 mt-1">
           OFF = pengiriman otomatis pada kanal &amp; jenis tersebut dijeda (pesan tidak dikirim, akan lanjut lagi saat ON). ON = berjalan baik dan tepat. Tidak memengaruhi pengiriman manual.
+          <span className="block mt-1 text-slate-400">Klik nama kategori untuk membuka rincian fitur yang tercakup.</span>
         </p>
       </CardHeader>
       <CardContent>
@@ -62,15 +65,24 @@ export default function NotifikasiGatewayCard({ pengaturan, isAdmin }) {
           ))}
           {ROWS.map((r) => (
             <React.Fragment key={r.key}>
-              <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setOpenRow((prev) => (prev === r.key ? null : r.key))}
+                className="flex items-center gap-2 min-w-0 text-left rounded-lg hover:bg-slate-50 transition-colors py-1 pr-1"
+                title="Lihat rincian fitur"
+              >
                 <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
                   <r.icon className="w-4 h-4 text-slate-500" />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-slate-700">{r.label}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                    {r.label}
+                    <span className="text-[10px] font-normal text-slate-400">({(FITUR_GATEWAY[r.key] || []).length} fitur)</span>
+                  </p>
                   <p className="text-[11px] text-slate-400 truncate">{r.desc}</p>
                 </div>
-              </div>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-400 flex-shrink-0 transition-transform ${openRow === r.key ? 'rotate-180' : ''}`} />
+              </button>
               {COLS.map((c) => {
                 const field = `notif_${c.key}_${r.key}`;
                 return (
@@ -83,6 +95,7 @@ export default function NotifikasiGatewayCard({ pengaturan, isAdmin }) {
                   </div>
                 );
               })}
+              {openRow === r.key && <NotifikasiFiturTray kategori={r.key} isOn={isOn} />}
             </React.Fragment>
           ))}
         </div>
