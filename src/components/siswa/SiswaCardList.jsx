@@ -8,11 +8,33 @@ import { daftarKontak } from '@/components/siswa/SiswaKontakRow';
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
 
 const PAGE_SIZE = 24;
+const KOLOM_KEY = 'siswa-kolom-per-baris';
+
+// Jumlah kartu per baris — kelas dibuat literal agar tidak terbuang saat build
+const GRID_KOLOM = {
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+  4: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
+  5: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5',
+  6: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6',
+  7: 'grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7',
+  8: 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
+};
 
 export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onPilihKontak, aktifkanKontak }) {
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [kolom, setKolom] = useState(() => {
+    const saved = Number(localStorage.getItem(KOLOM_KEY));
+    return GRID_KOLOM[saved] ? saved : 4;
+  });
+
+  const ubahKolom = (v) => {
+    const n = Number(v);
+    setKolom(n);
+    localStorage.setItem(KOLOM_KEY, String(n));
+  };
 
   const filtered = siswaList.filter((s) => {
     const q = search.trim().toLowerCase();
@@ -45,6 +67,16 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
             {kelasList.map((k) => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={String(kolom)} onValueChange={ubahKolom}>
+          <SelectTrigger className="w-full sm:w-32" title="Jumlah kartu per baris">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(GRID_KOLOM).map((n) => (
+              <SelectItem key={n} value={n}>{n} per baris</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span className="text-xs text-slate-400 self-center whitespace-nowrap">{filtered.length} siswa</span>
       </div>
 
@@ -55,7 +87,7 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className={`grid ${GRID_KOLOM[kolom]} ${kolom >= 6 ? 'gap-2' : 'gap-3 md:gap-4'}`}>
             {visible.map((s) => (
               <SiswaCard
                 key={s.id}
