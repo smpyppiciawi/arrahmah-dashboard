@@ -10,12 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/use-toast';
 import UangKasTab from '@/components/walikelas/UangKasTab';
 import TunggakanTab from '@/components/walikelas/TunggakanTab';
 import KontakOrtuFab from '@/components/walikelas/KontakOrtuFab';
+import SiswaCardList from '@/components/siswa/SiswaCardList';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 import { Users, Megaphone, Plus, Trash2, Building, User, Bell, Wallet, ClipboardCheck } from 'lucide-react';
 
 export default function WaliKelas() {
@@ -23,6 +24,7 @@ export default function WaliKelas() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  const [detailSiswa, setDetailSiswa] = useState(null);
   const [pengumumanOpen, setPengumumanOpen] = useState(false);
   const [pengumumanForm, setPengumumanForm] = useState({ judul: '', isi: '', penting: false });
 
@@ -186,44 +188,13 @@ export default function WaliKelas() {
                   Daftar Siswa Kelas {kelasWali.nama_kelas}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-50">
-                        <TableHead className="text-xs w-8">No</TableHead>
-                        <TableHead className="text-xs">NIS</TableHead>
-                        <TableHead className="text-xs">Nama Siswa</TableHead>
-                        <TableHead className="text-xs w-8">L/P</TableHead>
-                        <TableHead className="text-xs">Ayah / Ibu</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {siswaKelas.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center text-slate-400 py-10">
-                            Belum ada siswa di kelas ini
-                          </TableCell>
-                        </TableRow>
-                      ) : siswaKelas.map((siswa, i) => (
-                        <TableRow key={siswa.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                          <TableCell className="text-xs text-slate-400">{i + 1}</TableCell>
-                          <TableCell className="text-xs font-mono text-slate-500">{siswa.nis}</TableCell>
-                          <TableCell className="font-medium text-sm">{siswa.nama}</TableCell>
-                          <TableCell>
-                            <Badge className={siswa.jenis_kelamin === 'Laki-laki' ? 'bg-blue-100 text-blue-700 text-xs' : 'bg-pink-100 text-pink-700 text-xs'}>
-                              {siswa.jenis_kelamin === 'Laki-laki' ? 'L' : 'P'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs text-slate-500">
-                            <div>{siswa.nama_ayah_kandung || siswa.nama_ortu || '-'}</div>
-                            {siswa.nama_ibu_kandung && <div className="text-slate-400">{siswa.nama_ibu_kandung}</div>}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+              <CardContent className="p-4">
+                <SiswaCardList
+                  siswaList={siswaKelas}
+                  kelasList={[]}
+                  onSelect={setDetailSiswa}
+                  aktifkanKontak={false}
+                />
               </CardContent>
             </Card>
           </TabsContent>
@@ -331,6 +302,10 @@ export default function WaliKelas() {
       </Dialog>
 
       <KontakOrtuFab siswaList={siswaKelas} />
+
+      {detailSiswa && (
+        <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />
+      )}
     </div>
   );
 }

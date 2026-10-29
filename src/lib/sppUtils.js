@@ -303,35 +303,45 @@ export function computeStatusKeuangan({
   // --- SPP (bulanan): dua angka — jatuh tempo & setahun ---
   const sppTarif = getSppTarif(relevantTarifs, tingkat);
   if (sppTarif) {
+    // Keringanan SPP per siswa (BiayaKhusus): nominal khusus atau digratiskan.
+    // Nominal inilah yang dipakai Laporan Tunggakan, Akun Siswa, dan Wali Kelas.
+    const bkSpp = bkSiswa.find(b => b.tarif_iuran_id === sppTarif.id) || null;
+    const sppGratisPenuh = !!bkSpp?.is_gratis;
+    const nominal = sppGratisPenuh
+      ? 0
+      : (bkSpp && bkSpp.nominal_khusus != null ? bkSpp.nominal_khusus : (sppTarif.nominal || 0));
     const trans = matchIuranItemTransactions(sppTarif, payments, relevantTarifs);
-    const dibayar = trans.reduce((s, k) => s + (k.jumlah || 0), 0);
+    const dibayar = sppGratisPenuh ? 0 : trans.reduce((s, k) => s + (k.jumlah || 0), 0);
     const paidMonths = new Set();
     trans.forEach(r => (r.bulan_dibayar || []).forEach(m => paidMonths.add(m)));
-    const nominal = sppTarif.nominal || 0;
-    const nonGratis = BULAN_SPP.filter(m => !gratisSet.has(m));
-    const jatuhTempo = bulanJatuhTempo(asOf).filter(m => !gratisSet.has(m));
+    const nonGratis = sppGratisPenuh ? [] : BULAN_SPP.filter(m => !gratisSet.has(m));
+    const jatuhTempo = sppGratisPenuh ? [] : bulanJatuhTempo(asOf).filter(m => !gratisSet.has(m));
     const tagihanSetahun = nominal * nonGratis.length;
     const tagihanJatuhTempo = nominal * jatuhTempo.length;
     const sisaSetahun = Math.max(0, tagihanSetahun - dibayar);
     const sisaJatuhTempo = Math.max(0, tagihanJatuhTempo - dibayar);
-    const gratisCount = BULAN_SPP.length - nonGratis.length;
+    const gratisCount = sppGratisPenuh ? BULAN_SPP.length : (BULAN_SPP.length - nonGratis.length);
     items.push({
       key: `spp-${sppTarif.id}`,
       jenis: 'SPP',
       nama: sppTarif.nama,
       periode: sppTarif.periode,
-      gratis: false,
-      khusus: null,
+      gratis: sppGratisPenuh,
+      khusus: sppGratisPenuh
+        ? (bkSpp?.kategori || 'Gratis')
+        : (bkSpp?.nominal_khusus != null ? (bkSpp?.kategori || 'Nominal Khusus') : null),
       tagihan: tagihanSetahun,
       tagihan_jatuh_tempo: tagihanJatuhTempo,
       dibayar,
       sisa_jatuh_tempo: sisaJatuhTempo,
       sisa_setahun: sisaSetahun,
       status: statusDariSisa(tagihanJatuhTempo, dibayar, sisaJatuhTempo),
-      detail: `${paidMonths.size}/${BULAN_SPP.length} bulan${gratisCount > 0 ? ` · ${gratisCount} gratis` : ''}`,
+      detail: sppGratisPenuh
+        ? 'Gratis'
+        : `${paidMonths.size}/${BULAN_SPP.length} bulan${gratisCount > 0 ? ` · ${gratisCount} gratis` : ''}`,
       paid_months: [...paidMonths],
       nominal_per_bulan: nominal,
-      gratis_months: BULAN_SPP.filter(m => gratisSet.has(m)),
+      gratis_months: sppGratisPenuh ? [...BULAN_SPP] : BULAN_SPP.filter(m => gratisSet.has(m)),
     });
   }
 

@@ -84,7 +84,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
 
   const badgeText = (item, sisa) => item.status === 'Lunas' ? 'Lunas'
     : item.status === 'Cicilan' ? `Cicilan · Sisa ${formatRupiah(sisa)}`
-    : `Menunggak · ${formatRupiah(sisa)}`;
+    : `Belum terbayar · ${formatRupiah(sisa)}`;
 
   const riwayat = useMemo(() => {
     return [...keuanganList].sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
@@ -154,7 +154,7 @@ export default function KeuanganSection({ siswa, keuanganList = [] }) {
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-bold text-slate-800">Rekap SPP Tahun Ajaran</p>
               {sppTarif && (
-                <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2 py-1 rounded-lg">{formatRupiah(sppTarif.nominal)}/bln</span>
+                <span className="text-xs font-medium text-teal-600 bg-teal-50 px-2 py-1 rounded-lg">{formatRupiah(sppItem?.nominal_per_bulan ?? sppTarif.nominal)}/bln</span>
               )}
             </div>
             {sppItem && (

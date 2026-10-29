@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { HandHeart, Users } from 'lucide-react';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
 const KATEGORI = [
   { nama: 'Yatim/Yatim Piatu Full', warna: '#f97316' },
@@ -14,6 +15,7 @@ const KATEGORI = [
 // (BiayaKhusus). Filter jenis beasiswa lewat chip, sekaligus total per jenis.
 export default function BeasiswaDibantuWidget({ biayaKhususList = [], siswaList = [], isDark, t }) {
   const [filter, setFilter] = useState('Semua');
+  const [detailSiswa, setDetailSiswa] = useState(null);
 
   const { groups, total } = useMemo(() => {
     const siswaById = {};
@@ -85,16 +87,27 @@ export default function BeasiswaDibantuWidget({ biayaKhususList = [], siswaList 
                   <span className={`text-[10px] ${t.textMuted}`}>{g.siswa.length} siswa</span>
                 </div>
                 {[...g.siswa].sort((a, b) => (a.nama || '').localeCompare(b.nama || '', 'id')).map(s => (
-                  <div key={s.id} className={`flex items-center justify-between px-3 py-1.5 text-xs border-b border-slate-100 last:border-0 ${isDark ? 'bg-slate-800/40' : 'bg-white'}`}>
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      const rec = (siswaList || []).find(si => si.id === s.id);
+                      if (rec) setDetailSiswa(rec);
+                    }}
+                    title="Lihat detail & foto siswa"
+                    className={`w-full flex items-center justify-between px-3 py-1.5 text-xs border-b border-slate-100 last:border-0 text-left transition-colors ${isDark ? 'bg-slate-800/40 hover:bg-slate-700/60' : 'bg-white hover:bg-slate-50'}`}
+                  >
                     <span className={`font-medium ${t.text} truncate`}>{s.nama}</span>
                     {s.kelas && <Badge className="bg-slate-100 text-slate-600 shrink-0">{s.kelas}</Badge>}
-                  </div>
+                  </button>
                 ))}
               </div>
             ))}
           </div>
         </>
       )}
+
+      {detailSiswa && <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
     </div>
   );
 }

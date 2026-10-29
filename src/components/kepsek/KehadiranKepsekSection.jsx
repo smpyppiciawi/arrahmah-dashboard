@@ -3,6 +3,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Search } from 'lucide-react';
+import SiswaDetailReadonly from '@/components/siswa/SiswaDetailReadonly';
 
 const RANK_CATS = [
   { key: 'Alfa', label: 'Alfa', dot: 'bg-red-500', text: 'text-red-500' },
@@ -13,7 +14,8 @@ const RANK_CATS = [
 
 const countOf = (row, key) => (key === 'Hadir' ? (row.Hadir || 0) + (row.Terlambat || 0) : (row[key] || 0));
 
-export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoading, kelasList, isDark, t }) {
+export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoading, kelasList, isDark, t, siswaList = [] }) {
+  const [detailSiswa, setDetailSiswa] = useState(null);
   const [rankCat, setRankCat] = useState('Alfa');
   const [rankScope, setRankScope] = useState('kelas'); // kelas | siswa
   const [kelasId, setKelasId] = useState('');
@@ -176,7 +178,14 @@ export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoad
                     {kelasSiswa.length === 0 ? (
                       <TableRow><TableCell colSpan={6} className="text-center py-6 text-slate-400 text-sm">Tidak ada data siswa</TableCell></TableRow>
                     ) : kelasSiswa.map((s) => (
-                      <TableRow key={s.siswa_id} className="hover:bg-slate-50">
+                      <TableRow
+                        key={s.siswa_id}
+                        className="hover:bg-slate-50 cursor-pointer"
+                        onClick={() => {
+                          const rec = (siswaList || []).find(si => si.id === s.siswa_id);
+                          if (rec) setDetailSiswa(rec);
+                        }}
+                      >
                         <TableCell className="text-xs font-mono text-slate-500">{s.nis || '-'}</TableCell>
                         <TableCell className="font-medium text-sm">{s.nama}</TableCell>
                         <TableCell className="text-center text-xs">{s._hadir}</TableCell>
@@ -192,6 +201,8 @@ export default function KehadiranKepsekSection({ dateFrom, dateTo, rekap, isLoad
           )}
         </>
       )}
+
+      {detailSiswa && <SiswaDetailReadonly siswa={detailSiswa} onClose={() => setDetailSiswa(null)} />}
     </div>
   );
 }

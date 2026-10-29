@@ -60,13 +60,15 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
             className="pl-9"
           />
         </div>
-        <Select value={filterKelas} onValueChange={(v) => { setFilterKelas(v); setLimit(PAGE_SIZE); }}>
-          <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Kelas</SelectItem>
-            {kelasList.map((k) => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        {kelasList.length > 1 && (
+          <Select value={filterKelas} onValueChange={(v) => { setFilterKelas(v); setLimit(PAGE_SIZE); }}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Semua Kelas</SelectItem>
+              {kelasList.map((k) => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={String(kolom)} onValueChange={ubahKolom}>
           <SelectTrigger className="w-full sm:w-32" title="Jumlah kartu per baris">
             <SelectValue />

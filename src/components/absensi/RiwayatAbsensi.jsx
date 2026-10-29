@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, UserCheck, BarChart2, Search, Lock } from "lucide-react";
+import { Users, UserCheck, BarChart2, Search, Lock, CalendarDays } from "lucide-react";
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
@@ -17,6 +17,8 @@ const STATUS_BADGE = {
   'Alfa':      'bg-red-50 text-red-700 border-red-200',
   'Terlambat': 'bg-orange-50 text-orange-700 border-orange-200',
 };
+
+const LABEL_CLS = 'text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1 block';
 
 export default function RiwayatAbsensi() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -162,52 +164,67 @@ export default function RiwayatAbsensi() {
     </div>
   );
 
+  const pctHadir = (s) => (s.total > 0 ? Math.round((s.hadir / s.total) * 100) : 0);
+  const pctColor = (pct) => pct >= 90 ? 'text-emerald-600' : pct >= 75 ? 'text-amber-600' : 'text-red-600';
+
+  const chip = (label, val, cls) => (
+    <span className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-medium ${cls}`}>
+      {label} <b className="font-bold">{val}</b>
+    </span>
+  );
+
   return (
     <div className="space-y-4">
-      {/* Filter Bar */}
+      {/* Panel Filter */}
       <Card className="border-0 shadow-sm">
         <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-3 items-end">
-            {/* Mode Toggle - hide "Per Siswa" for guru */}
-            <div>
-              <Label className="text-xs text-slate-500 font-medium mb-1 block">Tampilan</Label>
-              <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
-                <button
-                  onClick={() => setViewMode('kelas')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'kelas' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
-                >
-                  <Users className="w-3.5 h-3.5" /> Per Kelas
-                </button>
-                {canViewPerSiswa && (
-                  <button
-                    onClick={() => setViewMode('siswa')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'siswa' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
-                  >
-                    <UserCheck className="w-3.5 h-3.5" /> Per Siswa
-                  </button>
-                )}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 mb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <CalendarDays className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-slate-800 leading-tight">Riwayat Absensi</p>
+                <p className="text-[11px] text-slate-400 truncate">Pilih periode & kelas untuk melihat rekap kehadiran</p>
               </div>
             </div>
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 self-start sm:self-auto shrink-0">
+              <button
+                onClick={() => setViewMode('kelas')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'kelas' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+              >
+                <Users className="w-3.5 h-3.5" /> Per Kelas
+              </button>
+              {canViewPerSiswa && (
+                <button
+                  onClick={() => setViewMode('siswa')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${viewMode === 'siswa' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}
+                >
+                  <UserCheck className="w-3.5 h-3.5" /> Per Siswa
+                </button>
+              )}
+            </div>
+          </div>
 
-            {/* Bulan & Tahun */}
-            <div>
-              <Label className="text-xs text-slate-500 font-medium mb-1 block">Bulan</Label>
+          <div className="grid grid-cols-2 lg:grid-cols-12 gap-3">
+            <div className="lg:col-span-2">
+              <span className={LABEL_CLS}>Bulan</span>
               <Select value={bulanFilter} onValueChange={setBulanFilter}>
-                <SelectTrigger className="w-36 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>{bulanOptions.map(b => <SelectItem key={b.val} value={b.val}>{b.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div>
-              <Label className="text-xs text-slate-500 font-medium mb-1 block">Tahun</Label>
+            <div className="lg:col-span-2">
+              <span className={LABEL_CLS}>Tahun</span>
               <Select value={tahunFilter} onValueChange={setTahunFilter}>
-                <SelectTrigger className="w-28 h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>{tahunOptions.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
               </Select>
             </div>
 
             {viewMode === 'kelas' && (
-              <div className="flex-1">
-                <Label className="text-xs text-slate-500 font-medium mb-1 block">Kelas</Label>
+              <div className="col-span-2 lg:col-span-8">
+                <span className={LABEL_CLS}>Kelas</span>
                 {isGuru ? (
                   waliKelas ? (
                     <div className="flex items-center gap-2 h-9 px-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -220,7 +237,7 @@ export default function RiwayatAbsensi() {
                   )
                 ) : (
                   <Select value={selectedKelas} onValueChange={setSelectedKelas}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih Kelas..." /></SelectTrigger>
                     <SelectContent>{kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}</SelectContent>
                   </Select>
                 )}
@@ -229,20 +246,20 @@ export default function RiwayatAbsensi() {
 
             {viewMode === 'siswa' && canViewPerSiswa && (
               <>
-                <div>
-                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Filter Kelas</Label>
+                <div className="col-span-2 lg:col-span-3">
+                  <span className={LABEL_CLS}>Filter Kelas</span>
                   <Select value={filterKelasForSiswa} onValueChange={(v) => { setFilterKelasForSiswa(v === 'all' ? '' : v); setSelectedSiswa(''); }}>
-                    <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Semua Kelas" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Semua Kelas</SelectItem>
                       {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex-1">
-                  <Label className="text-xs text-slate-500 font-medium mb-1 block">Cari & Pilih Siswa</Label>
+                <div className="col-span-2 lg:col-span-5">
+                  <span className={LABEL_CLS}>Cari &amp; Pilih Siswa</span>
                   <Select value={selectedSiswa} onValueChange={setSelectedSiswa}>
-                    <SelectTrigger className="h-9"><SelectValue placeholder="Pilih Siswa..." /></SelectTrigger>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Pilih Siswa..." /></SelectTrigger>
                     <SelectContent>
                       <div className="px-2 py-1.5">
                         <div className="relative">
@@ -281,53 +298,82 @@ export default function RiwayatAbsensi() {
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <StatCards stats={kelasStats} />
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50">
-                    <TableHead className="text-xs">#</TableHead>
-                    <TableHead className="text-xs">Nama Siswa</TableHead>
-                    <TableHead className="text-xs text-emerald-600">Hadir</TableHead>
-                    <TableHead className="text-xs text-amber-600">Sakit</TableHead>
-                    <TableHead className="text-xs text-blue-600">Izin</TableHead>
-                    <TableHead className="text-xs text-red-600">Alfa</TableHead>
-                    <TableHead className="text-xs text-orange-600">Terlambat</TableHead>
-                    <TableHead className="text-xs">%&nbsp;Hadir</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400 text-sm">Memuat data...</TableCell></TableRow>
-                  ) : siswaKelasRekap.length === 0 ? (
-                    <TableRow><TableCell colSpan={8} className="text-center py-10 text-slate-400 text-sm">Tidak ada data absensi di bulan ini</TableCell></TableRow>
-                  ) : siswaKelasRekap.map((s, i) => {
-                    const pct = s.total > 0 ? Math.round((s.hadir / s.total) * 100) : 0;
+
+            {isLoading ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Memuat data...</div>
+            ) : siswaKelasRekap.length === 0 ? (
+              <div className="text-center py-10 text-slate-400 text-sm">Tidak ada data absensi di bulan ini</div>
+            ) : (
+              <>
+                {/* Desktop: semua kolom dalam satu tampilan, tanpa geser */}
+                <div className="hidden md:block rounded-xl border border-slate-100 overflow-hidden">
+                  <table className="w-full table-fixed text-sm">
+                    <thead className="bg-slate-50">
+                      <tr className="text-[11px] uppercase tracking-wide text-slate-500">
+                        <th className="text-left font-semibold px-3 py-2">Siswa</th>
+                        <th className="font-semibold px-1 py-2 w-12 text-emerald-600">H</th>
+                        <th className="font-semibold px-1 py-2 w-12 text-amber-600">S</th>
+                        <th className="font-semibold px-1 py-2 w-12 text-blue-600">I</th>
+                        <th className="font-semibold px-1 py-2 w-12 text-red-600">A</th>
+                        <th className="font-semibold px-1 py-2 w-12 text-orange-600">T</th>
+                        <th className="font-semibold px-3 py-2 w-36 text-left">% Hadir</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {siswaKelasRekap.map((s) => {
+                        const pct = pctHadir(s);
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-3 py-2 min-w-0">
+                              <p className="font-medium text-slate-800 truncate">{s.nama}</p>
+                              <p className="text-[10px] text-slate-400 font-mono">{s.nis}</p>
+                            </td>
+                            <td className="text-center font-semibold text-emerald-600">{s.hadir}</td>
+                            <td className="text-center font-semibold text-amber-600">{s.sakit}</td>
+                            <td className="text-center font-semibold text-blue-600">{s.izin}</td>
+                            <td className="text-center font-semibold text-red-600">{s.alfa}</td>
+                            <td className="text-center font-semibold text-orange-600">{s.terlambat}</td>
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-slate-100 rounded-full h-1.5">
+                                  <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className={`text-xs font-semibold tabular-nums ${pctColor(pct)}`}>{pct}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile: kartu ringkas, semua data terlihat tanpa geser */}
+                <div className="md:hidden space-y-2">
+                  {siswaKelasRekap.map((s) => {
+                    const pct = pctHadir(s);
                     return (
-                      <TableRow key={s.id} className="hover:bg-slate-50 transition-colors">
-                        <TableCell className="text-xs text-slate-400">{i + 1}</TableCell>
-                        <TableCell>
-                          <p className="font-medium text-sm text-slate-800">{s.nama}</p>
-                          <p className="text-[10px] text-slate-400 font-mono">{s.nis}</p>
-                        </TableCell>
-                        <TableCell><span className="font-semibold text-emerald-600">{s.hadir}</span></TableCell>
-                        <TableCell><span className="font-semibold text-amber-600">{s.sakit}</span></TableCell>
-                        <TableCell><span className="font-semibold text-blue-600">{s.izin}</span></TableCell>
-                        <TableCell><span className="font-semibold text-red-600">{s.alfa}</span></TableCell>
-                        <TableCell><span className="font-semibold text-orange-600">{s.terlambat}</span></TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-slate-100 rounded-full h-1.5 w-16">
-                              <div className="bg-emerald-500 h-1.5 rounded-full" style={{ width: `${pct}%` }} />
-                            </div>
-                            <span className="text-xs font-medium text-slate-600">{pct}%</span>
+                      <div key={s.id} className="rounded-xl border border-slate-100 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm text-slate-800 truncate">{s.nama}</p>
+                            <p className="text-[10px] text-slate-400 font-mono">{s.nis}</p>
                           </div>
-                        </TableCell>
-                      </TableRow>
+                          <span className={`text-sm font-bold tabular-nums shrink-0 ${pctColor(pct)}`}>{pct}%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {chip('H', s.hadir, 'bg-emerald-50 border-emerald-200 text-emerald-700')}
+                          {chip('S', s.sakit, 'bg-amber-50 border-amber-200 text-amber-700')}
+                          {chip('I', s.izin, 'bg-blue-50 border-blue-200 text-blue-700')}
+                          {chip('A', s.alfa, 'bg-red-50 border-red-200 text-red-700')}
+                          {chip('T', s.terlambat, 'bg-orange-50 border-orange-200 text-orange-700')}
+                        </div>
+                      </div>
                     );
                   })}
-                </TableBody>
-              </Table>
-            </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -363,7 +409,7 @@ export default function RiwayatAbsensi() {
           </CardHeader>
           <CardContent className="px-4 pb-4">
             <StatCards stats={siswaStats} />
-            <div className="overflow-x-auto rounded-xl border border-slate-100">
+            <div className="rounded-xl border border-slate-100 overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
@@ -380,16 +426,16 @@ export default function RiwayatAbsensi() {
                     <TableRow><TableCell colSpan={4} className="text-center py-10 text-slate-400 text-sm">Tidak ada data absensi di bulan ini</TableCell></TableRow>
                   ) : absensiSiswa.map(a => (
                     <TableRow key={a.id} className="hover:bg-slate-50 transition-colors">
-                      <TableCell className="text-sm font-medium text-slate-700">
-                        {format(new Date(a.tanggal), 'EEE, dd MMM yyyy', { locale: idLocale })}
+                      <TableCell className="text-xs font-medium text-slate-700">
+                        {format(new Date(a.tanggal), 'dd MMM yyyy', { locale: idLocale })}
                       </TableCell>
                       <TableCell>
                         <Badge className={`text-xs border ${STATUS_BADGE[a.status] || 'bg-slate-50 text-slate-600'}`}>
                           {a.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-500">{a.jam_masuk || '—'}</TableCell>
-                      <TableCell className="text-sm text-slate-500">{a.keterangan || '—'}</TableCell>
+                      <TableCell className="text-xs text-slate-500">{a.jam_masuk || '—'}</TableCell>
+                      <TableCell className="text-xs text-slate-500">{a.keterangan || '—'}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

@@ -557,7 +557,7 @@ export default function Kepsek() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4 items-start">
           <div className="space-y-3 md:space-y-4">
-            <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} />
+            <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} siswaList={siswaList} />
             <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={effIsDark} />
           </div>
           <div className="space-y-3 md:space-y-4">

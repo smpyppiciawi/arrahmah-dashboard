@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History } from 'lucide-react';
+import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History, MessageCircle } from 'lucide-react';
 import { computeStatusKeuangan } from '@/lib/sppUtils';
+import KirimTunggakanDialog from '@/components/walikelas/KirimTunggakanDialog';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -26,6 +27,7 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
   const { activeAcademicYear } = useActiveAcademicYear();
   const [search, setSearch] = useState('');
   const [detailSiswa, setDetailSiswa] = useState(null);
+  const [waSiswa, setWaSiswa] = useState(null);
 
   const { data: tarifList = [] } = useQuery({
     queryKey: ['tarifIuran'],
@@ -162,9 +164,20 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
                   </TableCell>
                   <TableCell className="text-center"><Badge className={belum > 0 ? 'bg-red-100 text-red-700 border-0 text-xs' : 'bg-slate-100 text-slate-400 border-0 text-xs'}>{belum}</Badge></TableCell>
                   <TableCell>
-                    <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setDetailSiswa(siswa)}>
-                      Detail Iuran
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => setDetailSiswa(siswa)}>
+                        Detail Iuran
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 p-0 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                        title="Kirim tunggakan via WhatsApp ke orang tua"
+                        onClick={() => setWaSiswa(siswa)}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -258,6 +271,16 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
           })()}
         </DialogContent>
       </Dialog>
+
+      {waSiswa && (
+        <KirimTunggakanDialog
+          open={!!waSiswa}
+          onClose={() => setWaSiswa(null)}
+          siswa={waSiswa}
+          items={siswaStatusMap.get(waSiswa.id)?.items || []}
+          kelasWali={kelasWali}
+        />
+      )}
     </Card>
   );
 }
