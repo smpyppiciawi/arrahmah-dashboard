@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.40';
+import { getFiturNotif } from '../../shared/waSender.ts';
 
 Deno.serve(async (req) => {
   try {
@@ -34,10 +35,9 @@ Deno.serve(async (req) => {
     const subject = `Notifikasi H-2: ${events.length} Kegiatan Sekolah Lusa`;
     const body = `Pengingat: Lusa ada kegiatan sekolah:\n\n${eventDetails}\n\nMohon perhatian dan persiapan.\n\n- Sistem Informasi Sekolah YPPI ARRAHMAH`;
 
-    // Hormati sakelar gateway: Email jenis Pegawai (Pengaturan)
-    const gatewayRows = await base44.asServiceRole.entities.PengaturanAplikasi.list();
-    const gw = (gatewayRows || [])[0] || {};
-    if (gw.notif_email_pegawai === false) {
+    // Hormati sakelar gateway: Pengingat Kegiatan Kalender Akademik H-2 (Email)
+    const fiturNotif = await getFiturNotif(base44.asServiceRole);
+    if (!fiturNotif.pegawai_kalender) {
       return Response.json({
         status: 'email_off',
         date: h2DateStr,

@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { getNotifGateway, sendFonnteWA } from '../../shared/waSender.ts';
+import { getFiturNotif, sendFonnteWA } from '../../shared/waSender.ts';
 import { detectAbsen3Hari, addDays } from '../../shared/absen3Hari.ts';
 
 // Peringatan Absen 3 Hari — deteksi PER STATUS (Sakit/Izin/Alfa masing-masing) dengan 3 ketentuan:
@@ -33,14 +33,17 @@ export default async function(req) {
     // WIB (UTC+7) — konsisten dgn zona waktu sekolah
     const todayStr = new Date(Date.now() + 7 * 3600000).toISOString().slice(0, 10);
 
-    const [kalenderList, siswaList, kelasList, guruList, absensiRecords, gateway] = await Promise.all([
+    const [kalenderList, siswaList, kelasList, guruList, absensiRecords, fiturGateway] = await Promise.all([
       svc.entities.KalenderAkademik.list(),
       svc.entities.Siswa.filter({ status: 'Aktif' }),
       svc.entities.Kelas.list(),
       svc.entities.Guru.list(),
       fetchAllAbsensi(svc, addDays(todayStr, -35)),
-      getNotifGateway(svc),
+      getFiturNotif(svc),
     ]);
+
+    // Kanal per fitur: Peringatan Absen 3 Hari = WhatsApp (Pengaturan › Notifikasi Gateway)
+    const gateway = { wa_siswa: fiturGateway.siswa_absen3, email_siswa: false };
 
     const detection = detectAbsen3Hari({ absensiRecords, todayStr, kalenderList });
     const siswaById = {};

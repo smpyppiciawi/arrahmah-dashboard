@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { sendFonnteWA, normalizePhone } from '../../shared/waSender.ts';
+import { sendFonnteWA, normalizePhone, getFiturNotif } from '../../shared/waSender.ts';
 
 export default async function(req) {
   try {
@@ -16,6 +16,23 @@ export default async function(req) {
 
     if (!phone || !message) {
       return Response.json({ error: 'phone and message are required' }, { status: 400 });
+    }
+
+    // Sakelar Notifikasi Gateway untuk pengiriman MANUAL catatan siswa UKS/Izin
+    // catatan_ortu → Siswa (Kirim Orang Tua) · catatan_wali → Pegawai (Kirim Wali Kelas)
+    const fiturKode = body.fitur === 'catatan_wali' ? 'pegawai_catatan'
+      : body.fitur === 'catatan_ortu' ? 'siswa_catatan'
+      : null;
+    if (fiturKode) {
+      const fiturGateway = await getFiturNotif(base44.asServiceRole);
+      if (!fiturGateway[fiturKode]) {
+        return Response.json({
+          paused: true,
+          message: fiturKode === 'pegawai_catatan'
+            ? 'Kirim Wali Kelas sedang dijeda di Pengaturan › Notifikasi Gateway.'
+            : 'Kirim Orang Tua sedang dijeda di Pengaturan › Notifikasi Gateway.',
+        });
+      }
     }
 
     // Whitelist nomor: hanya nomor yang terdaftar pada data siswa/pegawai

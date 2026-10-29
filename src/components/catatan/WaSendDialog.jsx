@@ -38,12 +38,23 @@ export function buildWaTargets(siswa, kelas, guruList) {
 export default function WaSendDialog({ open, onOpenChange, targets, message, onSent }) {
   const [sending, setSending] = useState(null);
   const [sentStatus, setSentStatus] = useState({});
+  const [pesanJeda, setPesanJeda] = useState('');
 
   const handleSend = async (target) => {
     if (!target.phone) return;
     setSending(target.key);
     try {
-      await base44.functions.invoke('sendWANotif', { phone: target.phone, message });
+      const res = await base44.functions.invoke('sendWANotif', {
+        phone: target.phone,
+        message,
+        fitur: target.key === 'wali_kelas' ? 'catatan_wali' : 'catatan_ortu',
+      });
+      if (res?.data?.paused) {
+        setPesanJeda(res.data.message || 'Pengiriman dijeda di Notifikasi Gateway.');
+        setSentStatus(prev => ({ ...prev, [target.key]: 'paused' }));
+        return;
+      }
+      setPesanJeda('');
       setSentStatus(prev => ({ ...prev, [target.key]: 'success' }));
       onSent?.(target);
     } catch (err) {
@@ -57,6 +68,7 @@ export default function WaSendDialog({ open, onOpenChange, targets, message, onS
     if (!open) {
       setSentStatus({});
       setSending(null);
+      setPesanJeda('');
     }
     onOpenChange(open);
   };
@@ -76,6 +88,11 @@ export default function WaSendDialog({ open, onOpenChange, targets, message, onS
           {message && (
             <div className="p-3 bg-green-50 rounded-lg border border-green-100 text-sm text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
               {message}
+            </div>
+          )}
+          {pesanJeda && (
+            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-700">
+              {pesanJeda}
             </div>
           )}
           {availableTargets.length === 0 ? (
@@ -99,7 +116,7 @@ export default function WaSendDialog({ open, onOpenChange, targets, message, onS
                     <Button
                       size="sm"
                       onClick={() => handleSend(target)}
-                      disabled={isSending || status === 'success'}
+                      disabled={isSending || status === 'success' || status === 'paused'}
                       className={
                         status === 'success' ? 'bg-green-600 hover:bg-green-600' :
                         status === 'error' ? 'bg-red-600 hover:bg-red-700' :
@@ -108,6 +125,7 @@ export default function WaSendDialog({ open, onOpenChange, targets, message, onS
                     >
                       {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> :
                        status === 'success' ? <><CheckCircle2 className="w-4 h-4 mr-1" /> Terkirim</> :
+                       status === 'paused' ? 'Dijeda' :
                        status === 'error' ? <><XCircle className="w-4 h-4 mr-1" /> Coba Lagi</> :
                        <><Send className="w-4 h-4 mr-1" /> Kirim</>}
                     </Button>

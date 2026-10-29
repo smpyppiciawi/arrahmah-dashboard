@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.52';
 import { secrets } from 'base44:runtime';
-import { sendFonnteWA, getNotifGateway } from '../../shared/waSender.ts';
+import { sendFonnteWA, getFiturNotif } from '../../shared/waSender.ts';
 
 // Notifikasi absensi terpusat (WA + Email) untuk Siswa & Pegawai.
 // - Kontak SELALU dibaca dari data terbaru (Siswa / Guru), bukan snapshot kartu.
@@ -25,8 +25,15 @@ export default async function(req) {
 
     const svc = base44.asServiceRole;
     const token = secrets.get('WA_FONNTE_TOKEN');
-    // Sakelar gateway (per kanal & jenis) dari PengaturanAplikasi — dibaca sekali per panggilan
-    const gw = await getNotifGateway(svc);
+    // Sakelar gateway Per Fitur (Pengaturan › Notifikasi Gateway) — dibaca sekali per panggilan
+    // Absensi Siswa = WhatsApp; Absensi Pegawai = WhatsApp & Email.
+    const fiturNotif = await getFiturNotif(svc);
+    const gw = {
+      wa_siswa: fiturNotif.siswa_absensi,
+      email_siswa: false,
+      wa_pegawai: fiturNotif.pegawai_absensi,
+      email_pegawai: fiturNotif.pegawai_absensi,
+    };
 
     const results = [];
     // Proses per 5 paralel: cepat tapi tetap ramah batas rate Fonnte
