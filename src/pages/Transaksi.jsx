@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +28,9 @@ export default function Transaksi() {
   const [isOpen, setIsOpen] = useState(false);
   const [editingData, setEditingData] = useState(null);
   const [activeTab, setActiveTab] = useState('semua');
-  const [filterDateFrom, setFilterDateFrom] = useState('');
-  const [filterDateTo, setFilterDateTo] = useState('');
+  // Default periode = hari ini: daftar langsung ringkas sehingga halaman cepat tampil
+  const [filterDateFrom, setFilterDateFrom] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [filterDateTo, setFilterDateTo] = useState(format(new Date(), 'yyyy-MM-dd'));
   const { user: currentUser } = useAuth();
   const { activeAcademicYear } = useActiveAcademicYear();
   const queryClient = useQueryClient();
@@ -146,6 +147,8 @@ export default function Transaksi() {
     });
   }, [keuanganList, activeTab, filterDateFrom, filterDateTo]);
 
+  const filterPeriodeAktif = Boolean(filterDateFrom || filterDateTo);
+
   const totalPemasukan = keuanganList.filter(k => k.jenis === 'Pemasukan' && !k.aplikasi_iuran_muka && !k.is_saldo_awal).reduce((s, k) => s + (k.jumlah || 0), 0);
   const totalPengeluaran = keuanganList.filter(k => k.jenis === 'Pengeluaran').reduce((s, k) => s + (k.jumlah || 0), 0);
   const saldo = totalPemasukan - totalPengeluaran;
@@ -170,6 +173,23 @@ export default function Transaksi() {
 
   const handlePrint = (transaksi) => {
     setPrintDialogTransaksi(transaksi);
+  };
+
+  // Pintasan periode — memperkecil data yang dimuat sehingga halaman lebih ringan
+  const setPeriode = (mode) => {
+    const now = new Date();
+    if (mode === 'hari') {
+      const t = format(now, 'yyyy-MM-dd');
+      setFilterDateFrom(t); setFilterDateTo(t);
+    } else if (mode === 'minggu') {
+      setFilterDateFrom(format(subDays(now, 6), 'yyyy-MM-dd'));
+      setFilterDateTo(format(now, 'yyyy-MM-dd'));
+    } else if (mode === 'bulan') {
+      setFilterDateFrom(format(startOfMonth(now), 'yyyy-MM-dd'));
+      setFilterDateTo(format(endOfMonth(now), 'yyyy-MM-dd'));
+    } else {
+      setFilterDateFrom(''); setFilterDateTo('');
+    }
   };
 
   const transaksiColumns = [
@@ -310,27 +330,31 @@ export default function Transaksi() {
         {/* Filter */}
         <Card className="border-0 shadow-sm mb-4">
           <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <Filter className="w-4 h-4 text-slate-500" />
-              <span className="text-sm text-slate-600">Filter Tanggal:</span>
+              <span className="text-sm text-slate-600">Periode:</span>
               <Input
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
-                className="w-40"
+                className="w-40 h-9"
               />
               <span className="text-slate-400">s/d</span>
               <Input
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
-                className="w-40"
+                className="w-40 h-9"
               />
-              {(filterDateFrom || filterDateTo) && (
-                <Button variant="ghost" size="sm" onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); }}>
-                  Reset
-                </Button>
-              )}
+              <div className="flex flex-wrap gap-1 ml-0 sm:ml-2">
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setPeriode('hari')}>Hari Ini</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setPeriode('minggu')}>7 Hari</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setPeriode('bulan')}>Bulan Ini</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setPeriode('semua')}>Semua</Button>
+              </div>
+              <span className={`text-xs ml-auto ${filterDateFrom || filterDateTo ? 'text-slate-500' : 'text-amber-600'}`}>
+                {filterPeriodeAktif ? `${filteredTransaksi.length} transaksi pada periode ini` : 'Menampilkan seluruh data — pilih periode agar lebih cepat'}
+              </span>
             </div>
           </CardContent>
         </Card>

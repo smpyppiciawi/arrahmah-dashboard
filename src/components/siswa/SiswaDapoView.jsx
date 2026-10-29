@@ -13,7 +13,7 @@ import { Check, Eraser, ClipboardCheck, Users, CheckCircle2, CircleDashed } from
  * ditutup/dibuka kembali — tetap tidak memengaruhi data siswa lainnya.
  * Rekap total data & total terceklis mengikuti filter kelas.
  */
-export default function SiswaDapoView({ siswaList }) {
+export default function SiswaDapoView({ siswaList, canEdit = false }) {
   const [filterKelas, setFilterKelas] = useState('all');
   const queryClient = useQueryClient();
 
@@ -67,13 +67,15 @@ export default function SiswaDapoView({ siswaList }) {
   const diceklis = rows.filter(s => checked.has(s.id)).length;
   const adaCeklis = ceklisList.some(c => c.diceklis);
 
-  const toggle = (s) => toggleMutation.mutate(s);
+  // Ceklisan hanya boleh dilakukan Admin — akun lain bersifat read only
+  const toggle = (s) => { if (!canEdit) return; toggleMutation.mutate(s); };
 
   return (
     <div>
       <p className="text-xs text-slate-400 mb-3">
         Tampilan Dapo: ceklis siswa satu per satu untuk menyamakan jumlah data dengan Dapodik.
         Ceklisan tersimpan permanen (tetap ada saat halaman dibuka kembali) dan tidak memengaruhi data siswa lainnya.
+        {!canEdit && <span className="block mt-1 font-medium text-amber-600">Hanya akun Admin yang dapat melakukan ceklisan — tampilan ini hanya untuk dilihat.</span>}
       </p>
 
       {/* Filter kelas + rekap */}
@@ -96,7 +98,7 @@ export default function SiswaDapoView({ siswaList }) {
             <CircleDashed className="w-3 h-3" /> Belum Diceklis: {rows.length - diceklis}
           </Badge>
         </div>
-        {adaCeklis && (
+        {adaCeklis && canEdit && (
           <Button
             variant="ghost" size="sm"
             className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 ml-auto"
@@ -131,7 +133,7 @@ export default function SiswaDapoView({ siswaList }) {
                 return (
                   <tr
                     key={s.id}
-                    className={`cursor-pointer transition-colors ${on ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}
+                    className={`transition-colors ${on ? 'bg-emerald-50/60' : ''} ${canEdit ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                     onClick={() => toggle(s)}
                   >
                     <td className="px-3 py-2 text-xs text-slate-400">{i + 1}</td>
@@ -158,9 +160,10 @@ export default function SiswaDapoView({ siswaList }) {
                         type="button"
                         onClick={(e) => { e.stopPropagation(); toggle(s); }}
                         aria-label={`Ceklis ${s.nama}`}
+                        disabled={!canEdit}
                         className={`w-5 h-5 rounded-md border inline-flex items-center justify-center transition-colors ${
-                          on ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300 hover:border-emerald-400'
-                        }`}
+                          on ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-300'
+                        } ${canEdit ? 'hover:border-emerald-400' : 'opacity-70 cursor-default'}`}
                       >
                         {on && <Check className="w-3.5 h-3.5" />}
                       </button>

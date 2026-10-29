@@ -21,7 +21,10 @@ export default function FotoSiswa() {
     queryFn: () => base44.entities.Kelas.list('nama_kelas'),
   });
 
-  const siswaList = [...siswaAktif, ...siswaLulus];
+  // Urut abjad agar daftar pilihan siswa mudah dicari
+  const siswaList = [...siswaAktif, ...siswaLulus].sort((a, b) =>
+    (a.nama || '').localeCompare(b.nama || '', 'id', { sensitivity: 'base' })
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">

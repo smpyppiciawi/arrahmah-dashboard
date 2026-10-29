@@ -82,9 +82,13 @@ export default function BukuTamuForm({ isOpen, onClose, editingData, siswaList, 
     mutationFn: (data) => editingData
       ? base44.entities.BukuTamu.update(editingData.id, data)
       : base44.entities.BukuTamu.create({ ...data, tahun_ajaran: activeAcademicYear }),
-    onSuccess: () => {
+    onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ['bukuTamu'] });
       toast({ title: editingData ? 'Data tamu diperbarui' : 'Tamu tercatat' });
+      // Tamu Orang Tua/Wali: beri tahu pegawai yang ingin ditemui (WA / Email / akun aplikasi)
+      if (!editingData && saved?.jenis_tamu === 'Tamu Orang Tua/Wali' && saved?.ingin_bertemu_pegawai_id) {
+        base44.functions.invoke('notifyBukuTamu', { buku_tamu_id: saved.id }).catch(() => {});
+      }
       onClose();
     },
   });
@@ -156,6 +160,28 @@ export default function BukuTamuForm({ isOpen, onClose, editingData, siswaList, 
                     </div>
                   )}
                 </div>
+              </Field>
+              <Field label="Ingin Bertemu (Pegawai)" full>
+                <Select
+                  value={formData.ingin_bertemu_pegawai_id || '_none'}
+                  onValueChange={(v) => {
+                    if (v === '_none') { set('ingin_bertemu_pegawai_id', ''); set('ingin_bertemu', ''); return; }
+                    const p = (guruList || []).find((g) => g.id === v);
+                    set('ingin_bertemu_pegawai_id', v);
+                    set('ingin_bertemu', p?.nama || '');
+                  }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Pilih pegawai yang ingin ditemui" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">Tidak menentukan</SelectItem>
+                    {(guruList || []).filter((g) => g.status !== 'Keluar').map((g) => (
+                      <SelectItem key={g.id} value={g.id}>{g.nama}{g.jabatan ? ` — ${g.jabatan}` : ''}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Pegawai menerima notifikasi WA/Email dan melihat rincian tamu di akun aplikasinya.
+                </p>
               </Field>
               <Field label="Keperluan *" full><Textarea value={formData.keperluan} onChange={(e) => set('keperluan', e.target.value)} rows={2} /></Field>
               <Field label="Alamat Rumah" full><Textarea value={formData.alamat_rumah} onChange={(e) => set('alamat_rumah', e.target.value)} rows={2} /></Field>

@@ -12,7 +12,6 @@ import UidAuditDialog from "@/components/uid/UidAuditDialog";
 import { Link } from 'react-router-dom';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import ImportSiswaCSV from "@/components/siswa/ImportSiswaCSV";
-import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import SiswaKeluarDialog from "@/components/siswa/SiswaKeluarDialog";
 import SiswaDetailDialog from "@/components/siswa/SiswaDetailDialog";
 import SiswaFotoGrid from "@/components/siswa/SiswaFotoGrid";
@@ -207,56 +206,74 @@ export default function Siswa() {
       
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
-              <Users className="w-8 h-8 text-blue-500" />
-              Data Siswa
-            </h1>
-            <p className="text-slate-500 mt-1">Kelola data siswa aktif</p>
-          </div>
-          
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1 gap-1 self-start">
-            <Button size="sm" variant={viewMode === 'tabel' ? 'default' : 'ghost'} onClick={() => setViewMode('tabel')}>
-              <LayoutList className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Tabel</span>
-            </Button>
-            <Button size="sm" variant={viewMode === 'foto' ? 'default' : 'ghost'} onClick={() => setViewMode('foto')}>
-              <Images className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Foto</span>
-            </Button>
-            <Button size="sm" variant={viewMode === 'dapo' ? 'default' : 'ghost'} onClick={() => setViewMode('dapo')} title="Ceklis penyamaan data Dapodik">
-              <ClipboardCheck className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Dapo</span>
-            </Button>
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm mb-5 overflow-hidden">
+          <div className="p-4 md:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Users className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Data Siswa</h1>
+                <p className="text-xs md:text-sm text-slate-500">
+                  {isLoading ? 'Memuat data...' : `${siswaList.length} siswa aktif`} · profil, foto & mutasi
+                </p>
+              </div>
+            </div>
+
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 gap-1 self-start lg:self-auto">
+              {[
+                { key: 'tabel', label: 'Tabel', icon: LayoutList },
+                { key: 'foto', label: 'Foto', icon: Images },
+                { key: 'dapo', label: 'Dapo', icon: ClipboardCheck },
+              ].map((v) => (
+                <button
+                  key={v.key}
+                  type="button"
+                  onClick={() => setViewMode(v.key)}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    viewMode === v.key ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <v.icon className="w-4 h-4" />
+                  {v.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {canEdit && (
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
-                <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
+            <div className="px-4 md:px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex flex-wrap items-center gap-2">
+              <Button onClick={() => { setEditingData(null); setIsOpen(true); }} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="w-4 h-4 mr-1.5" /> Tambah Siswa
               </Button>
-              <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm">
-                <Archive className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Arsip</span>
+              <Button onClick={handleDownloadTemplate} variant="outline" size="sm" className="bg-white">
+                <Download className="w-4 h-4 mr-1.5" /> Template
               </Button>
-              {isAdmin && (
-                <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
-                  <DatabaseZap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
-                </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm">
-                  <ListChecks className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Audit UID</span>
-                </Button>
-              )}
+              <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm" className="bg-white">
+                <Archive className="w-4 h-4 mr-1.5" /> Arsip
+              </Button>
               <ImportSiswaCSV />
               <Link to="/DataLulusan">
-                <Button variant="outline" size="sm" className="text-amber-600 border-amber-200 hover:bg-amber-50">
-                  <GraduationCap className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Data Lulusan</span>
+                <Button variant="outline" size="sm" className="bg-white text-amber-600 border-amber-200 hover:bg-amber-50">
+                  <GraduationCap className="w-4 h-4 mr-1.5" /> Data Lulusan
                 </Button>
               </Link>
               <Link to="/SiswaKeluar">
-                <Button variant="outline" size="sm" className="text-orange-600 border-orange-200 hover:bg-orange-50">
-                  <LogOut className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Siswa Mutasi</span>
+                <Button variant="outline" size="sm" className="bg-white text-orange-600 border-orange-200 hover:bg-orange-50">
+                  <LogOut className="w-4 h-4 mr-1.5" /> Siswa Mutasi
                 </Button>
               </Link>
+
+              {isAdmin && (
+                <div className="ml-auto flex flex-wrap gap-2">
+                  <Button onClick={handleMigrasiUid} variant="outline" size="sm" className="bg-white" disabled={migrasiUidBerjalan}>
+                    <DatabaseZap className="w-4 h-4 mr-1.5" /> {migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}
+                  </Button>
+                  <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm" className="bg-white">
+                    <ListChecks className="w-4 h-4 mr-1.5" /> Audit UID
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -274,7 +291,7 @@ export default function Siswa() {
                 onSelect={setDetailSiswa}
               />
             ) : viewMode === 'dapo' ? (
-              <SiswaDapoView siswaList={siswaList} />
+              <SiswaDapoView siswaList={siswaList} canEdit={isAdmin} />
             ) : (
               <DataTable columns={siswaColumns} data={siswaList} pageSize={5} />
             )}
@@ -291,7 +308,6 @@ export default function Siswa() {
         )}
       </div>
     </div>
-    {canEdit && <FloatingAddButton onClick={() => { setEditingData(null); setIsOpen(true); }} label="Tambah Siswa" color="blue" icon={Plus} />}
     {keluarSiswa && <SiswaKeluarDialog siswa={keluarSiswa} onClose={() => setKeluarSiswa(null)} />}
     {canEdit && (
       <ArsipDialog

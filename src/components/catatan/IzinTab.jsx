@@ -40,6 +40,7 @@ export default function IzinTab({ readOnly = false }) {
     petugas_piket_id: '',
   });
   const [siswaTerpilih, setSiswaTerpilih] = useState([]);
+  const [filterKelasId, setFilterKelasId] = useState('');
   const [filterRiwayat, setFilterRiwayat] = useState({ kelas_id: 'semua', alasan: 'semua', sort: 'tanggal_desc' });
   const [pageRiwayat, setPageRiwayat] = useState(1);
   const [pageSizeRiwayat, setPageSizeRiwayat] = useState(10);
@@ -152,6 +153,7 @@ export default function IzinTab({ readOnly = false }) {
       alasan_manual: '', keterangan: '', petugas_piket: prev.petugas_piket, petugas_piket_id: prev.petugas_piket_id,
     }));
     setSiswaTerpilih([]);
+    setFilterKelasId('');
     setIsOpen(false);
   };
 
@@ -443,19 +445,33 @@ export default function IzinTab({ readOnly = false }) {
 
               {/* Kolom kanan — pencarian & siswa terpilih */}
               <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-3 sm:p-4 space-y-3">
-                <div className="flex items-center gap-2 pb-2 border-b border-amber-200/70">
+                <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-amber-200/70">
                   <Search className="w-4 h-4 text-amber-600" />
                   <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">Pilih Siswa</p>
-                  <span className="ml-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
-                    {siswaTerpilih.length} terpilih
-                  </span>
+                  <div className="ml-auto flex items-center gap-2">
+                    <Select
+                      value={filterKelasId || 'semua'}
+                      onValueChange={(v) => setFilterKelasId(v === 'semua' ? '' : v)}
+                    >
+                      <SelectTrigger className="h-7 w-[110px] text-[11px] bg-white border-amber-200">
+                        <SelectValue placeholder="Kelas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="semua">Semua Kelas</SelectItem>
+                        {kelasList.map(k => <SelectItem key={k.id} value={k.id}>{k.nama_kelas}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200">
+                      {siswaTerpilih.length} terpilih
+                    </span>
+                  </div>
                 </div>
 
                 <IzinSiswaPicker
                   siswaList={siswaList}
-                  kelasList={kelasList}
                   selected={siswaTerpilih}
                   onChange={setSiswaTerpilih}
+                  kelasFilterId={filterKelasId}
                 />
 
                 <div className="rounded-lg bg-white/80 border border-amber-200/70 p-2 text-[11px] text-amber-700 flex items-start gap-1.5">

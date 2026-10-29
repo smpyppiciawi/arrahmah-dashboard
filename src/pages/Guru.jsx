@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { DataTable } from "@/components/ui/data-table";
-import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap, Archive, History, ListChecks } from "lucide-react";
+import { GraduationCap, Plus, Edit2, Trash2, Download, Upload, LogOut, Undo2, DatabaseZap, Archive, History, ListChecks, Search } from "lucide-react";
+import GuruCard from "@/components/guru/GuruCard";
+import GuruDetailDialog from "@/components/guru/GuruDetailDialog";
 import UidMatchDialog from "@/components/uid/UidMatchDialog";
 import RiwayatUidDialog from "@/components/uid/RiwayatUidDialog";
 import UidAuditDialog from "@/components/uid/UidAuditDialog";
@@ -18,7 +20,6 @@ import ArsipDialog from "@/components/arsip/ArsipDialog";
 import { runMigrasiUid } from '@/lib/uidMigrasi';
 import { ConfirmDialog } from "@/components/ui/alert-dialog-confirm";
 import AlasanKeluarDialog from "@/components/guru/AlasanKeluarDialog";
-import FloatingAddButton from "@/components/ui/FloatingAddButton";
 import { catatRiwayatIdentitas } from "@/lib/riwayatIdentitas";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -51,6 +52,7 @@ export default function Guru() {
   const [pendingMatch, setPendingMatch] = useState(null); // { data, kandidat }
   const [riwayatGuru, setRiwayatGuru] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
+  const [detailGuru, setDetailGuru] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -102,6 +104,16 @@ export default function Guru() {
   // Pegawai Aktif vs Pegawai Keluar dipisah berdasarkan status
   const aktifList = guruList.filter(g => g.status !== 'Keluar');
   const keluarList = guruList.filter(g => g.status === 'Keluar' && !g.is_arsip);
+
+  const guruTampil = useMemo(() => {
+    const cari = searchQuery.trim().toLowerCase();
+    if (!cari) return aktifList;
+    return aktifList.filter((g) =>
+      `${g.nama || ''} ${g.nuptk || ''} ${g.jabatan || ''} ${(g.mapel || []).join(' ')} ${g.tugas_tambahan || ''}`
+        .toLowerCase()
+        .includes(cari)
+    );
+  }, [aktifList, searchQuery]);
 
   const createMutation = useMutation({
     // UID permanen otomatis untuk pegawai baru
@@ -522,53 +534,57 @@ export default function Guru() {
 
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4 md:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex items-center gap-3">
-              <GraduationCap className="w-8 h-8 text-violet-500" />
-              Data Guru & Pegawai
-            </h1>
-            <p className="text-slate-500 mt-1">Kelola data guru dan pegawai</p>
-          </div>
-
-          {canEdit && (
-            <div className="flex flex-wrap gap-2">
-              {isAdmin && (
-                <Button onClick={handleBackfill} variant="outline" size="sm" disabled={backfilling}>
-                  <DatabaseZap className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">{backfilling ? 'Menyinkronkan...' : 'Sinkron Relasi'}</span>
-                </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={handleMigrasiUid} variant="outline" size="sm" disabled={migrasiUidBerjalan}>
-                  <DatabaseZap className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">{migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}</span>
-                </Button>
-              )}
-              {isAdmin && (
-                <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm">
-                  <ListChecks className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Audit UID</span>
-                </Button>
-              )}
-              <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm">
-                <Archive className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Arsip</span>
-              </Button>
-              <Button onClick={handleDownloadTemplate} variant="outline" size="sm">
-                <Download className="w-4 h-4 sm:mr-2" /> <span className="hidden sm:inline">Template</span>
-              </Button>
-              <label>
-                <Button variant="outline" disabled={csvImporting} size="sm" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{csvImporting ? 'Importing...' : 'Import CSV'}</span>
-                  </span>
-                </Button>
-                <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
-              </label>
-
+        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm mb-5 overflow-hidden">
+          <div className="p-4 md:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center flex-shrink-0">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">Data Guru &amp; Pegawai</h1>
+                <p className="text-xs md:text-sm text-slate-500">
+                  {aktifList.length} pegawai aktif · {keluarList.length} pegawai keluar
+                </p>
+              </div>
             </div>
-          )}
+
+            {canEdit && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button onClick={() => { resetForm(); setIsOpen(true); }} size="sm" className="bg-violet-600 hover:bg-violet-700">
+                  <Plus className="w-4 h-4 mr-1.5" /> Tambah Pegawai
+                </Button>
+                <Button onClick={() => setArsipOpen(true)} variant="outline" size="sm" className="bg-white">
+                  <Archive className="w-4 h-4 mr-1.5" /> Arsip
+                </Button>
+                <Button onClick={handleDownloadTemplate} variant="outline" size="sm" className="bg-white">
+                  <Download className="w-4 h-4 mr-1.5" /> Template
+                </Button>
+                <label>
+                  <Button variant="outline" disabled={csvImporting} size="sm" className="bg-white" asChild>
+                    <span>
+                      <Upload className="w-4 h-4 mr-1.5" />
+                      {csvImporting ? 'Importing...' : 'Import CSV'}
+                    </span>
+                  </Button>
+                  <input type="file" accept=".csv" onChange={handleImportCSV} className="hidden" />
+                </label>
+
+                {isAdmin && (
+                  <div className="flex flex-wrap gap-2 lg:ml-2 lg:pl-2 lg:border-l lg:border-slate-200">
+                    <Button onClick={handleBackfill} variant="outline" size="sm" className="bg-white" disabled={backfilling}>
+                      <DatabaseZap className="w-4 h-4 mr-1.5" /> {backfilling ? 'Menyinkronkan...' : 'Sinkron Relasi'}
+                    </Button>
+                    <Button onClick={handleMigrasiUid} variant="outline" size="sm" className="bg-white" disabled={migrasiUidBerjalan}>
+                      <DatabaseZap className="w-4 h-4 mr-1.5" /> {migrasiUidBerjalan ? 'Memigrasi...' : 'Migrasi UID'}
+                    </Button>
+                    <Button onClick={() => setAuditOpen(true)} variant="outline" size="sm" className="bg-white">
+                      <ListChecks className="w-4 h-4 mr-1.5" /> Audit UID
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <Card className="border-0 shadow-sm">
@@ -593,7 +609,33 @@ export default function Guru() {
           </CardHeader>
           <CardContent>
             {activeTab === 'aktif' ? (
-              <DataTable columns={guruColumns} data={aktifList} pageSize={5} />
+              <>
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Cari nama / NUPTK / jabatan..."
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                  <span className="text-xs text-slate-500 ml-auto">
+                    {guruTampil.length} pegawai · klik kartu untuk detail
+                  </span>
+                </div>
+                {guruTampil.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400 text-sm">
+                    Tidak ada pegawai sesuai pencarian.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {guruTampil.map((g) => (
+                      <GuruCard key={g.id} guru={g} onClick={() => setDetailGuru(g)} />
+                    ))}
+                  </div>
+                )}
+              </>
             ) : (
               keluarList.length > 0 ? (
                 <DataTable columns={keluarColumns} data={keluarList} pageSize={5} />
@@ -776,7 +818,17 @@ export default function Guru() {
         </Dialog>
       </div>
     </div>
-    {canEdit && <FloatingAddButton onClick={() => setIsOpen(true)} label="Tambah Data" color="purple" icon={Plus} />}
+    {detailGuru && (
+      <GuruDetailDialog
+        guru={guruList.find((g) => g.id === detailGuru.id) || detailGuru}
+        open={!!detailGuru}
+        onClose={() => setDetailGuru(null)}
+        canEdit={canEdit}
+        onEdit={(g) => { setDetailGuru(null); handleEdit(g); }}
+        onRiwayat={(g) => { setDetailGuru(null); setRiwayatGuru(g); }}
+        onArsip={(g) => { setDetailGuru(null); handleDeleteClick(g); }}
+      />
+    )}
     {pendingMatch && (
       <UidMatchDialog
         open
