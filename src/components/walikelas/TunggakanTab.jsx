@@ -35,9 +35,10 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Kunci cache sama dengan Laporan Bendahara → angka tunggakan identik & ikut realtime
   const { data: keuanganList = [] } = useQuery({
-    queryKey: ['keuangan-tunggakan', activeAcademicYear],
-    queryFn: () => base44.entities.Keuangan.list('-tanggal', 2000),
+    queryKey: ['keuangan'],
+    queryFn: () => base44.entities.Keuangan.list('-tanggal'),
     staleTime: 60 * 1000,
   });
 
