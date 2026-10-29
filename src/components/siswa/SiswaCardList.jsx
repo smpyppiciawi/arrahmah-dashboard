@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { User, Search, ChevronDown } from 'lucide-react';
+import { User, Search, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import SiswaCard from '@/components/siswa/SiswaCard';
 import { daftarKontak } from '@/components/siswa/SiswaKontakRow';
 import { formatAlamatLengkap } from '@/lib/dapodikConstants';
@@ -21,10 +22,23 @@ const GRID_KOLOM = {
   8: 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8',
 };
 
-export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onPilihKontak, aktifkanKontak }) {
+const BARIS_KEY = 'siswa-baris-per-halaman';
+
+export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onPilihKontak, aktifkanKontak, paginasi = false }) {
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [filterKelas, setFilterKelas] = useState('all');
   const [limit, setLimit] = useState(PAGE_SIZE);
+  // Baris kartu per halaman (khusus mode paginasi) — default 2 baris di mobile
+  const [baris, setBaris] = useState(() => Number(localStorage.getItem(BARIS_KEY)) || 2);
+  const [page, setPage] = useState(1);
+
+  const ubahBaris = (v) => {
+    const n = Number(v);
+    setBaris(n);
+    localStorage.setItem(BARIS_KEY, String(n));
+    setPage(1);
+  };
   const [kolom, setKolom] = useState(() => {
     const saved = Number(localStorage.getItem(KOLOM_KEY));
     return GRID_KOLOM[saved] ? saved : 4;
@@ -46,7 +60,15 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
     const matchK = filterKelas === 'all' || s.kelas_id === filterKelas || s.nama_kelas === filterKelas;
     return matchQ && matchK;
   });
-  const visible = filtered.slice(0, limit);
+  // Jumlah kolom yang benar-benar tampil di layar → 1 baris = sekian kartu
+  const kolomEfektif = isMobile ? (kolom >= 5 ? 2 : 1) : kolom;
+  const perHalaman = baris * kolomEfektif;
+  const totalHalaman = Math.max(1, Math.ceil(filtered.length / perHalaman));
+  const halamanAktif = Math.min(page, totalHalaman);
+  const mulai = (halamanAktif - 1) * perHalaman;
+  const visible = paginasi
+    ? filtered.slice(mulai, mulai + perHalaman)
+    : filtered.slice(0, limit);
 
   return (
     <div className="space-y-4">
@@ -56,12 +78,12 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
           <Input
             placeholder="Cari nama, NIS, kelas, alamat, atau nomor WA..."
             value={search}
-            onChange={(e) => { setSearch(e.target.value); setLimit(PAGE_SIZE); }}
+            onChange={(e) => { setSearch(e.target.value); setLimit(PAGE_SIZE); setPage(1); }}
             className="pl-9"
           />
         </div>
         {kelasList.length > 1 && (
-          <Select value={filterKelas} onValueChange={(v) => { setFilterKelas(v); setLimit(PAGE_SIZE); }}>
+          <Select value={filterKelas} onValueChange={(v) => { setFilterKelas(v); setLimit(PAGE_SIZE); setPage(1); }}>
             <SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Semua Kelas</SelectItem>
@@ -100,7 +122,32 @@ export default function SiswaCardList({ siswaList, kelasList = [], onSelect, onP
               />
             ))}
           </div>
-          {filtered.length > limit && (
+          {paginasi ? (
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <Select value={String(baris)} onValueChange={ubahBaris}>
+                <SelectTrigger className="h-8 w-[104px] text-xs bg-white" title="Jumlah baris per halaman">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2, 3, 4, 6].map((n) => (
+                    <SelectItem key={n} value={String(n)}>{n} baris</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="whitespace-nowrap tabular-nums">
+                  {filtered.length === 0 ? 0 : mulai + 1}–{Math.min(filtered.length, mulai + perHalaman)} / {filtered.length}
+                </span>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={halamanAktif <= 1} onClick={() => setPage(halamanAktif - 1)}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <span className="tabular-nums text-slate-600 font-medium">{halamanAktif}/{totalHalaman}</span>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={halamanAktif >= totalHalaman} onClick={() => setPage(halamanAktif + 1)}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          ) : filtered.length > limit && (
             <div className="text-center">
               <Button variant="outline" size="sm" onClick={() => setLimit((l) => l + PAGE_SIZE)}>
                 <ChevronDown className="w-4 h-4 mr-2" /> Muat lebih banyak ({filtered.length - limit} siswa)

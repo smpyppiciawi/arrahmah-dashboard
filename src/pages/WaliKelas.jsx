@@ -194,6 +194,7 @@ export default function WaliKelas() {
                   kelasList={[]}
                   onSelect={setDetailSiswa}
                   aktifkanKontak={false}
+                  paginasi
                 />
               </CardContent>
             </Card>

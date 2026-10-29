@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ClipboardCheck, Search, CheckCircle2, XCircle, Clock, Tag, History, MessageCircle } from 'lucide-react';
 import { computeStatusKeuangan } from '@/lib/sppUtils';
 import KirimTunggakanDialog from '@/components/walikelas/KirimTunggakanDialog';
+import PaginationBar from '@/components/appui/PaginationBar';
 
 const STATUS_STYLE = {
   Lunas: 'bg-emerald-100 text-emerald-700 border-emerald-200',
@@ -28,6 +29,8 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
   const [search, setSearch] = useState('');
   const [detailSiswa, setDetailSiswa] = useState(null);
   const [waSiswa, setWaSiswa] = useState(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: tarifList = [] } = useQuery({
     queryKey: ['tarifIuran'],
@@ -114,6 +117,12 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
     )
     .sort((a, b) => (a.siswa?.nama || '').localeCompare(b.siswa?.nama || ''));
 
+  const totalHalaman = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const halamanAktif = Math.min(page, totalHalaman);
+  const mulai = (halamanAktif - 1) * pageSize;
+  const paged = filtered.slice(mulai, mulai + pageSize);
+  const jumlahLalu = (siswa) => (siswaArsipMap.get(siswa.id) || []).reduce((s, a) => s + (a.sisa_tunggakan || 0), 0);
+
   return (
     <Card className="border-0 shadow-sm">
       <CardHeader className="pb-2">
@@ -124,13 +133,18 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
           </CardTitle>
           <div className="relative">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama/NIS..." className="pl-9 h-9 w-full sm:w-64" />
+            <Input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} placeholder="Cari nama/NIS..." className="pl-9 h-9 w-full sm:w-64" />
           </div>
         </div>
-        {activeAcademicYear && <p className="text-xs text-slate-400 mt-1">Tahun Pelajaran {activeAcademicYear}</p>}
+        <div className="flex items-center justify-between gap-2 flex-wrap mt-2">
+          {activeAcademicYear
+            ? <p className="text-xs text-slate-400">Tahun Pelajaran {activeAcademicYear}</p>
+            : <span />}
+          <PaginationBar page={halamanAktif} setPage={setPage} pageSize={pageSize} setPageSize={setPageSize} total={filtered.length} pageSizes={[5, 10, 25, 50]} />
+        </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
@@ -147,9 +161,9 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow><TableCell colSpan={8} className="text-center text-slate-400 py-8">Tidak ada siswa</TableCell></TableRow>
-              ) : filtered.map(({ siswa, belum, cicil, lunas }, i) => (
+              ) : paged.map(({ siswa, belum, cicil, lunas }, i) => (
                 <TableRow key={siswa.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                  <TableCell className="text-xs text-slate-400">{i + 1}</TableCell>
+                  <TableCell className="text-xs text-slate-400">{mulai + i + 1}</TableCell>
                   <TableCell className="text-xs font-mono text-slate-500">{siswa.nis}</TableCell>
                   <TableCell className="font-medium text-sm">{siswa.nama}</TableCell>
                   <TableCell className="text-center"><Badge className="bg-emerald-100 text-emerald-700 border-0 text-xs">{lunas}</Badge></TableCell>
@@ -184,6 +198,59 @@ export default function TunggakanTab({ kelasWali, siswaKelas }) {
               ))}
             </TableBody>
           </Table>
+        </div>
+
+        {/* MOBILE: tampilan kartu, satu layer tanpa geser */}
+        <div className="md:hidden divide-y divide-slate-100">
+          {paged.length === 0 ? (
+            <p className="text-center text-slate-400 py-8 text-sm">Tidak ada siswa</p>
+          ) : paged.map(({ siswa, belum, cicil, lunas }) => {
+            const totalLalu = jumlahLalu(siswa);
+            return (
+              <div key={siswa.id} className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm text-slate-800 truncate">{siswa.nama}</p>
+                    <p className="text-[11px] font-mono text-slate-400">{siswa.nis}</p>
+                  </div>
+                  <Badge className={`border-0 text-xs shrink-0 ${belum > 0 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {belum > 0 ? `${belum} menunggak` : 'Tanpa Tunggakan'}
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 text-center">
+                  <div className="rounded-lg bg-emerald-50 py-1.5">
+                    <p className="text-sm font-bold text-emerald-700">{lunas}</p>
+                    <p className="text-[10px] text-emerald-600">Lunas</p>
+                  </div>
+                  <div className="rounded-lg bg-amber-50 py-1.5">
+                    <p className="text-sm font-bold text-amber-700">{cicil}</p>
+                    <p className="text-[10px] text-amber-600">Cicilan</p>
+                  </div>
+                  <div className="rounded-lg bg-red-50 py-1.5">
+                    <p className="text-sm font-bold text-red-700">{belum}</p>
+                    <p className="text-[10px] text-red-500">Menunggak</p>
+                  </div>
+                </div>
+                {totalLalu > 0 && (
+                  <p className="text-[11px] text-red-600 font-medium">Tunggakan tahun lalu: {formatRupiah(totalLalu)}</p>
+                )}
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="flex-1 h-8 text-xs" onClick={() => setDetailSiswa(siswa)}>
+                    Detail Iuran
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-9 p-0 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                    title="Kirim tunggakan via WhatsApp ke orang tua"
+                    onClick={() => setWaSiswa(siswa)}
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
 
