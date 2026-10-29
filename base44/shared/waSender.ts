@@ -31,6 +31,37 @@ export async function sendFonnteWA(phone, message, token) {
   return { sent: true, fonnte: result };
 }
 
+// Status sakelar gateway notifikasi PER FITUR (Pengaturan › Notifikasi Gateway).
+// Default ON bila belum diatur; bila PengaturanAplikasi gagal dibaca, kirim tetap diizinkan (fail-open).
+export async function getFiturNotif(svc) {
+  const semua = {
+    siswa_absensi: true,
+    siswa_absen3: true,
+    siswa_spp: true,
+    siswa_catatan: true,
+    pegawai_absensi: true,
+    pegawai_kalender: true,
+    pegawai_tamu: true,
+    pegawai_catatan: true,
+  };
+  try {
+    const rows = await svc.entities.PengaturanAplikasi.list();
+    const p = (rows || [])[0] || {};
+    return {
+      siswa_absensi: p.notif_siswa_absensi !== false,
+      siswa_absen3: p.notif_siswa_absen3 !== false,
+      siswa_spp: p.notif_siswa_spp !== false,
+      siswa_catatan: p.notif_siswa_catatan !== false,
+      pegawai_absensi: p.notif_pegawai_absensi !== false,
+      pegawai_kalender: p.notif_pegawai_kalender !== false,
+      pegawai_tamu: p.notif_pegawai_tamu !== false,
+      pegawai_catatan: p.notif_pegawai_catatan !== false,
+    };
+  } catch (e) {
+    return semua;
+  }
+}
+
 // Status sakelar gateway notifikasi (per kanal & jenis) dari PengaturanAplikasi.
 // Default ON bila belum diatur; jika PengaturanAplikasi gagal dibaca, kirim tetap diizinkan (fail-open).
 export async function getNotifGateway(svc) {

@@ -44,35 +44,75 @@
       "default": 1,
       "description": "Format Nilai Akhir yang aktif (GLOBAL seluruh sekolah, hanya 1 yang aktif): 1 = 70% Rerata Nilai Harian + 30% Rerata Nilai Ujian; 2 = 75% + 25%; 3 = 60% + 40%. Nilai Akhir Rapor dibulatkan ke atas."
     },
+    "notif_siswa_absensi": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Siswa: notifikasi absensi siswa ke WhatsApp orang tua/wali."
+    },
+    "notif_siswa_absen3": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Siswa: peringatan absen 3 hari (WhatsApp)."
+    },
+    "notif_siswa_spp": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Siswa: pengingat tagihan iuran SPP setiap tanggal 10 bagi siswa yang belum membayar SPP bulan berjalan (WhatsApp orang tua/wali)."
+    },
+    "notif_siswa_catatan": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Siswa: pemberitahuan catatan siswa UKS/Izin (manual, tombol Kirim Orang Tua) ke WhatsApp orang tua/wali."
+    },
+    "notif_pegawai_absensi": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Pegawai: notifikasi absensi pegawai (WhatsApp & Email)."
+    },
+    "notif_pegawai_kalender": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Pegawai: pengingat kegiatan Kalender Akademik H-2 (Email)."
+    },
+    "notif_pegawai_tamu": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Pegawai: pemberitahuan tamu Buku Tamu yang ingin bertemu pegawai terkait (WhatsApp)."
+    },
+    "notif_pegawai_catatan": {
+      "type": "boolean",
+      "default": true,
+      "description": "Notifikasi Gateway \u2014 Pegawai: pemberitahuan catatan siswa UKS/Izin (manual, tombol Kirim Wali Kelas) ke WhatsApp wali kelas."
+    },
     "notif_wa_siswa": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway WA jenis Siswa (absensi siswa, peringatan absen 3 hari). OFF = pengiriman otomatis WA jenis Siswa dijeda."
+      "description": "Lama \u2014 digantikan sakelar per fitur (notif_siswa_absensi & kawan-kawan). Dipertahankan agar workflow lama tetap berjalan."
     },
     "notif_wa_pegawai": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway WA jenis Pegawai (absensi pegawai, pengingat tugas H-1). OFF = pengiriman otomatis WA jenis Pegawai dijeda."
+      "description": "Lama \u2014 dipakai workflow Pengingat Tugas H-1 Pegawai. Dipertahankan agar workflow tetap berjalan."
     },
     "notif_wa_lainnya": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway WA jenis Lainnya (notifikasi otomatis selain Siswa & Pegawai). OFF = pengiriman otomatis WA jenis Lainnya dijeda."
+      "description": "Lama \u2014 tidak dipakai lagi."
     },
     "notif_email_siswa": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway Email jenis Siswa (konfirmasi absensi siswa). OFF = pengiriman otomatis Email jenis Siswa dijeda."
+      "description": "Lama \u2014 tidak dipakai lagi (kanal siswa hanya WhatsApp)."
     },
     "notif_email_pegawai": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway Email jenis Pegawai (konfirmasi absensi pegawai, notifikasi H-2 kalender). OFF = pengiriman otomatis Email jenis Pegawai dijeda."
+      "description": "Lama \u2014 dipakai workflow Pengingat Kalender H-2 bila sakelar baru belum diatur."
     },
     "notif_email_lainnya": {
       "type": "boolean",
       "default": true,
-      "description": "Gateway Email jenis Lainnya (notifikasi otomatis selain Siswa & Pegawai). OFF = pengiriman otomatis Email jenis Lainnya dijeda."
+      "description": "Lama \u2014 tidak dipakai lagi."
     }
   },
   "required": [

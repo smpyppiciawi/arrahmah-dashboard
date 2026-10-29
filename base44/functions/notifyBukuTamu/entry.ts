@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.54';
 import { secrets } from 'base44:runtime';
-import { getNotifGateway, sendFonnteWA } from '../../shared/waSender.ts';
+import { getFiturNotif, sendFonnteWA } from '../../shared/waSender.ts';
 
 // Notifikasi tamu Buku Tamu kepada pegawai yang ingin ditemui:
 // WA (Fonnte) + Email (hanya jika email pegawai terdaftar sebagai pengguna aplikasi).
@@ -25,16 +25,22 @@ export default async function (req) {
 
     const namaTamu = tamu.nama_ortu_wali || tamu.nama_lengkap || 'Tamu';
     const siswaText = tamu.nama_siswa ? `${tamu.nama_siswa}${tamu.nama_kelas ? ` (${tamu.nama_kelas})` : ''}` : '-';
-    const gateway = await getNotifGateway(svc);
+    const fitur = await getFiturNotif(svc);
+    if (!fitur.pegawai_tamu) {
+      return Response.json({ sent: false, reason: 'gateway_off', message: 'Notifikasi Tamu (Pegawai) dijeda di Pengaturan › Notifikasi Gateway' });
+    }
 
     const pesan = `*TAMU INGIN BERTEMU*\n\nYth. ${pegawai.nama},\nAda tamu yang ingin bertemu dengan Anda.\n\nJenis Tamu: ${tamu.jenis_tamu || '-'}\nNama Tamu: ${namaTamu}\nSiswa: ${siswaText}\nNo. HP/WA: ${tamu.no_hp_wa || '-'}\nKeperluan: ${tamu.keperluan || '-'}\nTanggal: ${tamu.tanggal || '-'}\n\nMohon konfirmasi kedatangan tamu. Terima kasih.`;
 
-    let waHasil = { sent: false, reason: 'gateway_off' };
-    if (gateway.wa_pegawai !== false && pegawai.no_telp) {
-      waHasil = await sendFonnteWA(pegawai.no_telp, pesan, secrets.get('WA_FONNTE_TOKEN'));
-    }
+    const waHasil = pegawai.no_telp
+      ? await sendFonnteWA(pegawai.no_telp, pesan, secrets.get('WA_FONNTE_TOKEN'))
+      : { sent: false, reason: 'no_contact' };
 
-    let emailTerkirim = false;
+    return Response.json({
+      sent: waHasil.sent === true,
+      wa: waHasil.sent === true,
+      pegawai: pegawai.nama,
+    });
     if (gateway.email_pegawai !== false && pegawai.email) {
       try {
         const terdaftar = await svc.entities.User.filter({ email: pegawai.email });
