@@ -12,6 +12,8 @@ import { todayWIB } from '@/lib/wib.js';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import HeatmapKehadiran from '@/components/catatan/statistik/HeatmapKehadiran';
+import DetailHarianKehadiran from '@/components/catatan/statistik/DetailHarianKehadiran';
 
 // Warna konsisten per status kehadiran (dipakai di semua grafik)
 const STATUS_COLORS = { Izin: '#f59e0b', Sakit: '#3b82f6', Alfa: '#ef4444' };
@@ -81,6 +83,7 @@ export default function StatistikTab({ readOnly }) {
   const [kelasFilter, setKelasFilter] = useState('semua');
   const [exporting, setExporting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Jaga urutan tanggal mulai <= akhir
   useEffect(() => {
@@ -89,6 +92,11 @@ export default function StatistikTab({ readOnly }) {
   useEffect(() => {
     if (tanggalAkhir < tanggalMulai) setTanggalAkhir(tanggalMulai);
   }, [tanggalMulai]);
+
+  // Tutup rincian harian saat filter berubah (tanggal terpilih bisa di luar rentang baru)
+  useEffect(() => {
+    setSelectedDate(null);
+  }, [tanggalMulai, tanggalAkhir, kelasFilter]);
 
   const rangeQuery = useMemo(() => {
     const q = { tanggal: { $gte: tanggalMulai, $lte: tanggalAkhir } };
@@ -127,18 +135,27 @@ export default function StatistikTab({ readOnly }) {
 
   const loading = absensiQuery.isLoading || pelanggaranQuery.isLoading || improvementQuery.isLoading;
 
-  // ===== Olah data (memo) =====
-  const stats = useMemo(() => {
-    // Absensi: 1 kejadian = 1 (tanggal, siswa, jenis absensi) — tidak dihitung dobel
+  // Absensi unik: 1 kejadian = 1 (tanggal, siswa, jenis absensi) — dipakai grafik, heatmap & rincian harian
+  const absensiUnik = useMemo(() => {
     const seen = new Set();
-    const absensiUnik = [];
+    const out = [];
     (absensiQuery.data || []).forEach(a => {
       const key = `${a.tanggal}|${a.siswa_id}|${a.jenis_absensi || 'Kehadiran'}`;
       if (seen.has(key)) return;
       seen.add(key);
-      absensiUnik.push(a);
+      out.push(a);
     });
+    return out;
+  }, [absensiQuery.data]);
 
+  // Rincian kehadiran pada tanggal yang dipilih dari heatmap
+  const rincianHarian = useMemo(
+    () => (selectedDate ? absensiUnik.filter(a => a.tanggal === selectedDate) : []),
+    [absensiUnik, selectedDate]
+  );
+
+  // ===== Olah data (memo) =====
+  const stats = useMemo(() => {
     const axis = bucketAxis(tanggalMulai, tanggalAkhir, periode);
     const initBucket = () => ({ Izin: 0, Sakit: 0, Alfa: 0 });
     const byBucket = new Map(axis.map(k => [k, initBucket()]));
@@ -191,6 +208,7 @@ export default function StatistikTab({ readOnly }) {
     const impRows = improvementQuery.data || [];
     return {
       totals,
+      siswaTerdampak: new Set(absensiUnik.map(a => a.siswa_id)).size,
       trenKehadiran,
       kehadiranPerKelas,
       pelanggaran: {
@@ -206,7 +224,7 @@ export default function StatistikTab({ readOnly }) {
         perKelas: poinPerKelas(impRows, 'poin_pengurangan')
       }
     };
-  }, [absensiQuery.data, pelanggaranQuery.data, improvementQuery.data, periode, tanggalMulai, tanggalAkhir]);
+  }, [absensiUnik, pelanggaranQuery.data, improvementQuery.data, periode, tanggalMulai, tanggalAkhir]);
 
   const infoFilter = {
     periode: PERIODE_LABEL[periode],
@@ -340,7 +358,7 @@ export default function StatistikTab({ readOnly }) {
             <h3 className="flex items-center gap-2 font-bold text-slate-800 mb-4">
               <BarChart3 className="w-5 h-5 text-blue-600" /> Statistik Kehadiran (Izin / Sakit / Alfa)
             </h3>
-            <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
               {STATUSES.map(s => (
                 <div key={s} className="rounded-xl border border-slate-200 p-4 text-center">
                   <p className="text-xs font-medium text-slate-500">{s}</p>
@@ -350,7 +368,24 @@ export default function StatistikTab({ readOnly }) {
                   <p className="text-[11px] text-slate-400 mt-0.5">kejadian</p>
                 </div>
               ))}
+              <div className="rounded-xl border border-rose-200 bg-rose-50/40 p-4 text-center">
+                <p className="text-xs font-medium text-slate-500">Total Ketidakhadiran</p>
+                <p className="text-2xl md:text-3xl font-bold mt-1 text-rose-600">
+                  {stats.totals.Izin + stats.totals.Sakit + stats.totals.Alfa}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{stats.siswaTerdampak} siswa terdampak</p>
+              </div>
             </div>
+
+            <div className="mb-6">
+              <HeatmapKehadiran
+                absensiUnik={absensiUnik}
+                tanggalMulai={tanggalMulai}
+                tanggalAkhir={tanggalAkhir}
+                onSelectDate={setSelectedDate}
+              />
+            </div>
+
             <div className="mb-2 text-sm font-semibold text-slate-600">Tren {PERIODE_LABEL[periode]}</div>
             <div className="h-64 md:h-72 mb-6">
               <ResponsiveContainer width="100%" height="100%">
@@ -410,6 +445,12 @@ export default function StatistikTab({ readOnly }) {
             trenLabel={`Tren Akumulasi Poin Improvement (${PERIODE_LABEL[periode]})`}
             perKelas={stats.improvement.perKelas}
             topKelasLabel="Kelas dengan Poin Improvement Tertinggi"
+          />
+
+          <DetailHarianKehadiran
+            tanggal={selectedDate}
+            rows={rincianHarian}
+            onClose={() => setSelectedDate(null)}
           />
         </>
       )}
