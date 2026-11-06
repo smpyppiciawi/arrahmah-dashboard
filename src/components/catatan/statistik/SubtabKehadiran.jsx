@@ -1,56 +1,71 @@
 import React, { useMemo, useState } from 'react';
+import { CalendarX2 } from 'lucide-react';
+import { todayWIB } from '@/lib/wib.js';
 import {
-  Bar, BarChart, CartesianGrid, Legend, Line, LineChart,
-  ResponsiveContainer, Tooltip, XAxis, YAxis,
-} from 'recharts';
-import { BarChart3, CalendarX2 } from 'lucide-react';
-import StatCard from './StatCard';
+  STATUS_KEHADIRAN, dedupeHarian, hariEfektifDari, perKelasKehadiran,
+  perSiswaKehadiran, ringkasHarian, trenKehadiran,
+} from '@/lib/kehadiranUtils';
+import KpiKehadiran from './KpiKehadiran';
+import TrenKehadiranChart from './TrenKehadiranChart';
+import DonutStatusKehadiran from './DonutStatusKehadiran';
+import PerbandinganKelasChart from './PerbandinganKelasChart';
+import KomposisiKelasChart from './KomposisiKelasChart';
 import HeatmapKehadiran from './HeatmapKehadiran';
+import TabelMonitoringSiswa from './TabelMonitoringSiswa';
 import DetailHarianKehadiran from './DetailHarianKehadiran';
-import {
-  PERIODE_LABEL, STATUSES, STATUS_COLORS,
-  bucketAxis, bucketKey, bucketLabel, firstDateOfBucket,
-} from '@/lib/statistikUtils';
 
 export default function SubtabKehadiran({
-  absensiUnik = [], loading, periode, tanggalMulai, tanggalAkhir, siswaAktif = 0,
+  absensiUnik = [], loading, periode = 'harian', tanggalMulai, tanggalAkhir,
+  siswaAktif = 0, siswaPerKelas = {}, tanggalAbsensi = [], hariLibur,
 }) {
   const [selectedDate, setSelectedDate] = useState(null);
+  const hariIni = todayWIB();
+
+  const hariEfektif = useMemo(
+    () => hariEfektifDari({ tanggalAbsensi, tanggalMulai, tanggalAkhir, hariLibur, hariIni }),
+    [tanggalAbsensi, tanggalMulai, tanggalAkhir, hariLibur, hariIni]
+  );
+  const setEfektif = useMemo(() => new Set(hariEfektif), [hariEfektif]);
+
+  // Hanya kejadian pada hari efektif, satu siswa satu tanggal
+  const absensiHarian = useMemo(
+    () => dedupeHarian(absensiUnik.filter((a) => setEfektif.has(a.tanggal))),
+    [absensiUnik, setEfektif]
+  );
+
+  const ringkasan = useMemo(
+    () => ringkasHarian({ absensi: absensiHarian, siswaAktif, hariEfektif }),
+    [absensiHarian, siswaAktif, hariEfektif]
+  );
+  const perTanggal = useMemo(
+    () => new Map(ringkasan.harian.map((h) => [h.tanggal, h])),
+    [ringkasan.harian]
+  );
+  const tren = useMemo(() => trenKehadiran({ harian: ringkasan.harian, periode }), [ringkasan.harian, periode]);
+  const kelasRows = useMemo(
+    () => perKelasKehadiran({ absensi: absensiHarian, siswaPerKelas, hariEfektif }),
+    [absensiHarian, siswaPerKelas, hariEfektif]
+  );
+  const siswaRows = useMemo(
+    () => perSiswaKehadiran({ absensi: absensiHarian, hariEfektif }),
+    [absensiHarian, hariEfektif]
+  );
+
+  const refHari = useMemo(() => {
+    if (!hariEfektif.length) return null;
+    const tanggal = setEfektif.has(hariIni) ? hariIni : hariEfektif[hariEfektif.length - 1];
+    return perTanggal.get(tanggal) || null;
+  }, [hariEfektif, setEfektif, hariIni, perTanggal]);
+
+  const distribusi = useMemo(
+    () => STATUS_KEHADIRAN.map((s) => ({ name: s, value: ringkasan.total[s] || 0 })),
+    [ringkasan.total]
+  );
 
   const rincianHarian = useMemo(
     () => (selectedDate ? absensiUnik.filter((a) => a.tanggal === selectedDate) : []),
     [absensiUnik, selectedDate]
   );
-
-  const stats = useMemo(() => {
-    const axis = bucketAxis(tanggalMulai, tanggalAkhir, periode);
-    const initBucket = () => ({ Izin: 0, Sakit: 0, Alfa: 0 });
-    const byBucket = new Map(axis.map((k) => [k, initBucket()]));
-    const byKelas = new Map();
-    const totals = { Izin: 0, Sakit: 0, Alfa: 0 };
-
-    absensiUnik.forEach((a) => {
-      const b = byBucket.get(bucketKey(a.tanggal, periode));
-      if (b && b[a.status] !== undefined) b[a.status] += 1;
-      const k = a.nama_kelas || '-';
-      if (!byKelas.has(k)) byKelas.set(k, initBucket());
-      if (byKelas.get(k)[a.status] !== undefined) byKelas.get(k)[a.status] += 1;
-      if (totals[a.status] !== undefined) totals[a.status] += 1;
-    });
-
-    return {
-      totals,
-      total: totals.Izin + totals.Sakit + totals.Alfa,
-      siswaTerdampak: new Set(absensiUnik.map((a) => a.siswa_id)).size,
-      tren: axis.map((k) => ({
-        label: bucketLabel(firstDateOfBucket(k, periode), periode),
-        ...byBucket.get(k),
-      })),
-      perKelas: Array.from(byKelas.entries())
-        .map(([nama_kelas, v]) => ({ nama_kelas, ...v, total: v.Izin + v.Sakit + v.Alfa }))
-        .sort((a, b) => b.total - a.total || a.nama_kelas.localeCompare(b.nama_kelas, 'id')),
-    };
-  }, [absensiUnik, periode, tanggalMulai, tanggalAkhir]);
 
   if (loading) {
     return (
@@ -62,78 +77,46 @@ export default function SubtabKehadiran({
 
   return (
     <div className="space-y-5">
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
-        <h3 className="flex items-center gap-2 font-bold text-slate-800 mb-4">
-          <BarChart3 className="w-5 h-5 text-blue-600" /> Ringkasan Kehadiran
-        </h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          <StatCard label="Siswa Aktif" value={siswaAktif} hint="sesuai filter kelas" tone="slate" />
-          {STATUSES.map((s) => (
-            <StatCard key={s} label={s} value={stats.totals[s]} hint="kejadian" tone={
-              s === 'Izin' ? 'amber' : s === 'Sakit' ? 'blue' : 'rose'
-            } />
-          ))}
-          <StatCard
-            label="Total Ketidakhadiran"
-            value={stats.total}
-            hint={`${stats.siswaTerdampak} siswa terdampak`}
-            tone="indigo"
-          />
+      {hariEfektif.length === 0 && (
+        <div className="flex flex-col items-center gap-1 py-8 text-slate-400 border border-dashed border-slate-200 rounded-2xl bg-white">
+          <CalendarX2 className="w-6 h-6" />
+          <p className="text-xs">Belum ada entri absensi pada rentang tanggal dan filter ini</p>
         </div>
+      )}
 
-        {stats.total === 0 && (
-          <div className="flex flex-col items-center gap-1 py-8 mt-4 text-slate-400 border border-dashed border-slate-200 rounded-xl">
-            <CalendarX2 className="w-6 h-6" />
-            <p className="text-xs">Tidak ada catatan ketidakhadiran pada periode dan filter ini</p>
-          </div>
-        )}
+      <KpiKehadiran
+        siswaAktif={siswaAktif}
+        ringkasan={ringkasan}
+        refHari={refHari}
+        jumlahHari={hariEfektif.length}
+      />
 
-        <div className="mt-6">
-          <HeatmapKehadiran
-            absensiUnik={absensiUnik}
-            tanggalMulai={tanggalMulai}
-            tanggalAkhir={tanggalAkhir}
-            onSelectDate={setSelectedDate}
-          />
+      <TrenKehadiranChart data={tren} periode={periode} />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <DonutStatusKehadiran distribusi={distribusi} pctKehadiran={ringkasan.pctPeriode} />
+        <div className="lg:col-span-2">
+          <PerbandinganKelasChart rows={kelasRows} />
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
-        <div className="mb-2 text-sm font-semibold text-slate-600">Tren {PERIODE_LABEL[periode]}</div>
-        <div className="h-64 md:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={stats.tren} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
-              {STATUSES.map((s) => (
-                <Line key={s} type="monotone" dataKey={s} stroke={STATUS_COLORS[s]}
-                  strokeWidth={2} dot={{ r: 3 }} connectNulls />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <KomposisiKelasChart rows={kelasRows} />
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 md:p-6">
-        <div className="mb-2 text-sm font-semibold text-slate-600">Perbandingan per Kelas</div>
-        <div className="h-64 md:h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={stats.perKelas} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="nama_kelas" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Legend />
-              {STATUSES.map((s) => (
-                <Bar key={s} dataKey={s} fill={STATUS_COLORS[s]} radius={[3, 3, 0, 0]} />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <HeatmapKehadiran
+        perTanggal={perTanggal}
+        hariEfektif={setEfektif}
+        hariLibur={hariLibur}
+        tanggalMulai={tanggalMulai}
+        tanggalAkhir={tanggalAkhir}
+        siswaAktif={siswaAktif}
+        onSelectDate={setSelectedDate}
+      />
+
+      <TabelMonitoringSiswa
+        rows={siswaRows}
+        absensi={absensiHarian}
+        jumlahHari={hariEfektif.length}
+      />
 
       <DetailHarianKehadiran
         tanggal={selectedDate}

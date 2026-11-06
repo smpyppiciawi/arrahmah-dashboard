@@ -8,6 +8,7 @@ import { todayWIB } from '@/lib/wib.js';
 import {
   STATUSES, fetchFiltered, quickRange, semesterOf, semesterRange,
 } from '@/lib/statistikUtils';
+import { kumpulanHariLibur } from '@/lib/kehadiranUtils';
 import StatistikFilters from '@/components/catatan/statistik/StatistikFilters';
 import SubtabKehadiran from '@/components/catatan/statistik/SubtabKehadiran';
 import PoinDashboard from '@/components/catatan/statistik/PoinDashboard';
@@ -71,7 +72,7 @@ export default function StatistikTab() {
     queryFn: () => fetchFiltered(
       base44.entities.Absensi,
       { ...rangeQuery, status: { $in: STATUSES } },
-      ['tanggal', 'siswa_id', 'nama_siswa', 'nama_kelas', 'status', 'jenis_absensi']
+      ['tanggal', 'siswa_id', 'nama_siswa', 'nama_kelas', 'status', 'jenis_absensi', 'keterangan']
     ),
   });
 
@@ -105,6 +106,48 @@ export default function StatistikTab() {
         base44.entities.Siswa.count({ ...base, is_arsip: true }),
       ]);
       return Math.max((total || 0) - (arsip || 0), 0);
+    },
+  });
+
+  // Semua tanggal yang punya entri absensi → acuan hari efektif (libur & tanggal mendatang disaring di bawah)
+  const { data: tanggalAbsensi = [] } = useQuery({
+    queryKey: ['statistik-tanggal-absensi', refreshKey],
+    queryFn: async () => {
+      const out = [];
+      let cursor;
+      do {
+        const page = await base44.entities.Absensi.list({ distinct: 'tanggal', limit: 1000, cursor });
+        out.push(...(page.items || []));
+        cursor = page.has_more ? page.next_cursor : undefined;
+      } while (cursor);
+      return out.filter((t) => typeof t === 'string' && t);
+    },
+  });
+
+  // Hari libur dari Kalender Akademik (Hari Libur Nasional / Libur Sekolah)
+  const { data: kalenderAkademik = [] } = useQuery({
+    queryKey: ['statistik-kalender-akademik'],
+    queryFn: () => base44.entities.KalenderAkademik.list(),
+  });
+  const hariLibur = useMemo(() => kumpulanHariLibur(kalenderAkademik), [kalenderAkademik]);
+
+  // Siswa aktif per kelas (dikurangi yang diarsipkan) — dasar persentase kehadiran per kelas
+  const { data: siswaPerKelas = {} } = useQuery({
+    queryKey: ['statistik-siswa-per-kelas', namaKelasFilter ? namaKelasFilter.join(',') : 'semua', refreshKey],
+    queryFn: async () => {
+      const [semua, arsip] = await Promise.all([
+        base44.entities.Siswa.aggregate({ query: { status: 'Aktif' }, groupBy: 'nama_kelas' }),
+        base44.entities.Siswa.aggregate({ query: { status: 'Aktif', is_arsip: true }, groupBy: 'nama_kelas' }),
+      ]);
+      const arsipMap = new Map((arsip.rows || []).map((r) => [r.nama_kelas, r.count]));
+      const out = {};
+      (semua.rows || []).forEach((r) => {
+        const nama = r.nama_kelas || '-';
+        if (namaKelasFilter && !namaKelasFilter.includes(nama)) return;
+        const jumlah = (r.count || 0) - (arsipMap.get(r.nama_kelas) || 0);
+        if (jumlah > 0) out[nama] = jumlah;
+      });
+      return out;
     },
   });
 
@@ -265,6 +308,9 @@ export default function StatistikTab() {
             tanggalMulai={range.mulai}
             tanggalAkhir={range.akhir}
             siswaAktif={siswaAktif}
+            siswaPerKelas={siswaPerKelas}
+            tanggalAbsensi={tanggalAbsensi}
+            hariLibur={hariLibur}
           />
         </TabsContent>
 
