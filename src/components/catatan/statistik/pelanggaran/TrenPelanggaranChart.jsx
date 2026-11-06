@@ -48,7 +48,7 @@ export default function TrenPelanggaranChart({
         <div>
           {adaMA && (
             <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-              <p className="text-[10px] text-slate-400">MA {maJendela} titik data berisi input · garis putus-putus</p>
+              <p className="text-[10px] text-slate-400">MA {maJendela} titik data · weekend & hari libur tidak dihitung</p>
               <KontrolTrenMA
                 arah={trenArah}
                 perubahan={trenPerubahan}

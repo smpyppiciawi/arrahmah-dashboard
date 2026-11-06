@@ -6,7 +6,7 @@ import { potong } from '@/lib/improvementStatUtils';
 
 export default function KpiImprovement({
   totalKejadian = 0, totalSiswa = 0, totalPoin = 0, jenisTeratas,
-  hariInput = 0, rataPoinHarian = 0, rataKejadianHarian = 0,
+  hariKerja = 0, rataPoinHarian = 0, rataKejadianHarian = 0,
 }) {
   return (
     <KartuStatistik
@@ -25,15 +25,15 @@ export default function KpiImprovement({
           tone="amber"
         />
         <StatCard
-          label="Rata-rata Poin/Hari Input"
+          label="Rata-rata Poin/Hari Kerja"
           value={rataPoinHarian}
-          hint={hariInput ? `${hariInput} hari input` : 'Belum ada hari input'}
+          hint={hariKerja ? `${hariKerja} hari kerja efektif` : 'Belum ada hari kerja'}
           tone="emerald"
         />
         <StatCard
-          label="Rata-rata Kejadian/Hari Input"
+          label="Rata-rata Kejadian/Hari Kerja"
           value={rataKejadianHarian}
-          hint={hariInput ? 'Tanggal tanpa input diabaikan' : 'Belum ada hari input'}
+          hint={hariKerja ? 'Weekend & hari libur dikecualikan' : 'Belum ada hari kerja'}
           tone="indigo"
         />
       </div>

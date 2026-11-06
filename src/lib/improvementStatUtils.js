@@ -1,6 +1,7 @@
 import { addDays, format, parseISO } from 'date-fns';
 import { bucketAxis, bucketKey, bucketLabel, firstDateOfBucket } from '@/lib/statistikUtils';
 import { hitungMovingAverage } from '@/lib/trenMovingAverage';
+import { hariKerjaEfektif } from '@/lib/kehadiranUtils';
 
 // Warna konsisten dashboard improvement
 export const WARNA_POIN = '#059669';
@@ -32,9 +33,14 @@ const hariSebelum = (tgl) => format(addDays(parseISO(tgl), -1), 'yyyy-MM-dd');
 
 // Setiap record improvement dihitung (multi-kegiatan pada hari yang sama tetap tercatat)
 export function ringkasImprovement({
-  rows = [], periode = 'harian', tanggalMulai, tanggalAkhir, siswaPerKelas = {},
+  rows = [], periode = 'harian', tanggalMulai, tanggalAkhir, siswaPerKelas = {}, hariLibur = new Set(),
 }) {
-  const axis = tanggalMulai && tanggalAkhir ? bucketAxis(tanggalMulai, tanggalAkhir, periode) : [];
+  // Hari kerja efektif — weekend & hari libur Kalender Akademik tidak dihitung
+  const hariKerja = hariKerjaEfektif({ tanggalMulai, tanggalAkhir, hariLibur });
+  const hariKerjaSet = new Set(hariKerja);
+  const axis = periode === 'harian'
+    ? hariKerja
+    : (tanggalMulai && tanggalAkhir ? bucketAxis(tanggalMulai, tanggalAkhir, periode) : []);
   const trenMap = new Map(axis.map((k) => [k, { poin: 0, kejadian: 0 }]));
   const kelasMap = new Map();
   const jenisMap = new Map();
@@ -48,11 +54,14 @@ export function ringkasImprovement({
     const keySiswa = r.siswa_id || r.nama_siswa;
     if (keySiswa) siswaSet.add(keySiswa);
 
-    const bucket = bucketKey(r.tanggal, periode);
-    const tren = trenMap.get(bucket);
-    if (tren) {
-      tren.poin += poin;
-      tren.kejadian += 1;
+    // Tren hanya memakai hari kerja efektif (weekend & hari libur dikecualikan)
+    if (hariKerjaSet.has(r.tanggal)) {
+      const bucket = bucketKey(r.tanggal, periode);
+      const tren = trenMap.get(bucket);
+      if (tren) {
+        tren.poin += poin;
+        tren.kejadian += 1;
+      }
     }
 
     const kelas = r.nama_kelas || '-';
@@ -129,7 +138,7 @@ export function ringkasImprovement({
   // Moving Average dihitung hanya dari titik yang memiliki penginputan
   const ma = hitungMovingAverage(trenDasar);
   const tren = trenDasar.map((t, i) => ({ ...t, ma: ma.nilai[i] }));
-  const hariInput = tanggalMap.size;
+  const jumlahHariKerja = hariKerja.length;
 
   return {
     totalKejadian: rows.length,
@@ -142,9 +151,9 @@ export function ringkasImprovement({
     maJendela: ma.jendela,
     trenArah: ma.arah,
     trenPerubahan: ma.perubahan,
-    hariInput,
-    rataPoinHarian: hariInput ? bulat1(totalPoin / hariInput) : 0,
-    rataKejadianHarian: hariInput ? bulat1(rows.length / hariInput) : 0,
+    hariKerja: jumlahHariKerja,
+    rataPoinHarian: jumlahHariKerja ? bulat1(totalPoin / jumlahHariKerja) : 0,
+    rataKejadianHarian: jumlahHariKerja ? bulat1(rows.length / jumlahHariKerja) : 0,
     top: jenisList.slice(0, 10),
     perTanggal: Array.from(tanggalMap.values()).sort((a, b) => a.tanggal.localeCompare(b.tanggal)),
   };

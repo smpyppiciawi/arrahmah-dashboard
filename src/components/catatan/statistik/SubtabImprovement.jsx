@@ -13,7 +13,7 @@ const totalPoin = (list) => bulat1(list.reduce((s, r) => s + (Number(r.poin_peng
 
 export default function SubtabImprovement({
   rows = [], loading, periode = 'harian', tanggalMulai, tanggalAkhir,
-  siswaPerKelas = {}, onTerapkanKelas, onTerapkanTanggal,
+  siswaPerKelas = {}, hariLibur = new Set(), onTerapkanKelas, onTerapkanTanggal,
 }) {
   const [trenPeriode, setTrenPeriode] = useState(periode);
   const [metricKelas, setMetricKelas] = useState('poin');
@@ -23,8 +23,8 @@ export default function SubtabImprovement({
   useEffect(() => { setTrenPeriode(periode); }, [periode]);
 
   const stats = useMemo(
-    () => ringkasImprovement({ rows, periode: trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas }),
-    [rows, trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas]
+    () => ringkasImprovement({ rows, periode: trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur }),
+    [rows, trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur]
   );
   const topSiswa = useMemo(() => perSiswaImprovement(rows).slice(0, 10), [rows]);
 
@@ -74,7 +74,7 @@ export default function SubtabImprovement({
         totalSiswa={stats.totalSiswa}
         totalPoin={stats.totalPoin}
         jenisTeratas={stats.jenisTeratas}
-        hariInput={stats.hariInput}
+        hariKerja={stats.hariKerja}
         rataPoinHarian={stats.rataPoinHarian}
         rataKejadianHarian={stats.rataKejadianHarian}
       />

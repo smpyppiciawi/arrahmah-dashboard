@@ -1,6 +1,7 @@
 import { addDays, format, parseISO } from 'date-fns';
 import { bucketAxis, bucketKey, bucketLabel, firstDateOfBucket } from '@/lib/statistikUtils';
 import { hitungMovingAverage } from '@/lib/trenMovingAverage';
+import { hariKerjaEfektif } from '@/lib/kehadiranUtils';
 
 // Warna konsisten dashboard pelanggaran
 export const WARNA_POIN = '#ef4444';
@@ -40,9 +41,14 @@ export function dedupePelanggaran(rows = []) {
 const hariSebelum = (tgl) => format(addDays(parseISO(tgl), -1), 'yyyy-MM-dd');
 
 export function ringkasPelanggaran({
-  rows = [], periode = 'harian', tanggalMulai, tanggalAkhir, siswaPerKelas = {},
+  rows = [], periode = 'harian', tanggalMulai, tanggalAkhir, siswaPerKelas = {}, hariLibur = new Set(),
 }) {
-  const axis = tanggalMulai && tanggalAkhir ? bucketAxis(tanggalMulai, tanggalAkhir, periode) : [];
+  // Hari kerja efektif — weekend & hari libur Kalender Akademik tidak dihitung
+  const hariKerja = hariKerjaEfektif({ tanggalMulai, tanggalAkhir, hariLibur });
+  const hariKerjaSet = new Set(hariKerja);
+  const axis = periode === 'harian'
+    ? hariKerja
+    : (tanggalMulai && tanggalAkhir ? bucketAxis(tanggalMulai, tanggalAkhir, periode) : []);
   const trenMap = new Map(axis.map((k) => [k, { poin: 0, kejadian: 0 }]));
   const kelasMap = new Map();
   const kodeMap = new Map();
@@ -57,11 +63,14 @@ export function ringkasPelanggaran({
     const keySiswa = r.siswa_id || r.nama_siswa;
     if (keySiswa) siswaSet.add(keySiswa);
 
-    const bucket = bucketKey(r.tanggal, periode);
-    const tren = trenMap.get(bucket);
-    if (tren) {
-      tren.poin += poin;
-      tren.kejadian += 1;
+    // Tren hanya memakai hari kerja efektif (weekend & hari libur dikecualikan)
+    if (hariKerjaSet.has(r.tanggal)) {
+      const bucket = bucketKey(r.tanggal, periode);
+      const tren = trenMap.get(bucket);
+      if (tren) {
+        tren.poin += poin;
+        tren.kejadian += 1;
+      }
     }
 
     const kelas = r.nama_kelas || '-';
@@ -138,7 +147,7 @@ export function ringkasPelanggaran({
   // Moving Average dihitung hanya dari titik yang memiliki penginputan
   const ma = hitungMovingAverage(trenDasar);
   const tren = trenDasar.map((t, i) => ({ ...t, ma: ma.nilai[i] }));
-  const hariInput = tanggalMap.size;
+  const jumlahHariKerja = hariKerja.length;
 
   const top = Array.from(kodeMap.values())
     .map((t) => ({
@@ -160,9 +169,9 @@ export function ringkasPelanggaran({
     maJendela: ma.jendela,
     trenArah: ma.arah,
     trenPerubahan: ma.perubahan,
-    hariInput,
-    rataPoinHarian: hariInput ? bulat1(totalPoin / hariInput) : 0,
-    rataKejadianHarian: hariInput ? bulat1(rows.length / hariInput) : 0,
+    hariKerja: jumlahHariKerja,
+    rataPoinHarian: jumlahHariKerja ? bulat1(totalPoin / jumlahHariKerja) : 0,
+    rataKejadianHarian: jumlahHariKerja ? bulat1(rows.length / jumlahHariKerja) : 0,
     top,
     perTanggal: Array.from(tanggalMap.values()).sort((a, b) => a.tanggal.localeCompare(b.tanggal)),
   };

@@ -1,6 +1,7 @@
 import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { bucketKey, bucketLabel, firstDateOfBucket } from '@/lib/statistikUtils';
+import { todayWIB } from '@/lib/wib.js';
 
 // Urutan & warna konsisten untuk seluruh dashboard kehadiran
 export const STATUS_KEHADIRAN = ['Hadir', 'Sakit', 'Izin', 'Alfa'];
@@ -38,6 +39,31 @@ export function kumpulanHariLibur(kalender = []) {
       }
     });
   return set;
+}
+
+// Hari kerja efektif = Senin–Jumat, bukan libur Kalender Akademik, bukan tanggal mendatang
+export function hariKerjaEfektif({ tanggalMulai, tanggalAkhir, hariLibur = new Set(), hariIni = todayWIB() }) {
+  if (!tanggalMulai || !tanggalAkhir) return [];
+  const batas = hariIni < tanggalAkhir ? hariIni : tanggalAkhir;
+  const out = [];
+  let cur = tanggalMulai;
+  let guard = 0;
+  while (cur <= batas && guard < 2000) {
+    const dow = parseISO(cur).getDay(); // 0 = Minggu, 6 = Sabtu
+    if (dow !== 0 && dow !== 6 && !hariLibur.has(cur)) out.push(cur);
+    const d = parseISO(cur);
+    d.setDate(d.getDate() + 1);
+    cur = format(d, 'yyyy-MM-dd');
+    guard += 1;
+  }
+  return out;
+}
+
+// Hari kerja (bukan Sabtu/Minggu, bukan hari libur kalender)
+export function adalahHariKerja(tanggal, hariLibur = new Set()) {
+  if (!tanggal) return false;
+  const dow = parseISO(tanggal).getDay();
+  return dow !== 0 && dow !== 6 && !hariLibur.has(tanggal);
 }
 
 // Hari efektif = tanggal yang punya entri absensi, di dalam rentang, bukan libur, bukan tanggal mendatang

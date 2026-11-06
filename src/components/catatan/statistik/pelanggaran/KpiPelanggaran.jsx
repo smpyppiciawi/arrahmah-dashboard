@@ -6,7 +6,7 @@ import { bulat1 } from '@/lib/pelanggaranStatUtils';
 
 export default function KpiPelanggaran({
   totalKejadian = 0, totalSiswa = 0, totalPoin = 0, kategoriTeratas,
-  hariInput = 0, rataPoinHarian = 0, rataKejadianHarian = 0,
+  hariKerja = 0, rataPoinHarian = 0, rataKejadianHarian = 0,
 }) {
   return (
     <KartuStatistik
@@ -25,15 +25,15 @@ export default function KpiPelanggaran({
           tone="amber"
         />
         <StatCard
-          label="Rata-rata Poin/Hari Input"
+          label="Rata-rata Poin/Hari Kerja"
           value={rataPoinHarian}
-          hint={hariInput ? `${hariInput} hari input` : 'Belum ada hari input'}
+          hint={hariKerja ? `${hariKerja} hari kerja efektif` : 'Belum ada hari kerja'}
           tone="rose"
         />
         <StatCard
-          label="Rata-rata Kejadian/Hari Input"
+          label="Rata-rata Kejadian/Hari Kerja"
           value={rataKejadianHarian}
-          hint={hariInput ? 'Tanggal tanpa input diabaikan' : 'Belum ada hari input'}
+          hint={hariKerja ? 'Weekend & hari libur dikecualikan' : 'Belum ada hari kerja'}
           tone="amber"
         />
       </div>

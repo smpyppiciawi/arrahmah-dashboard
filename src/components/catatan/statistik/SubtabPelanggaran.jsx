@@ -24,7 +24,7 @@ const FIELD_SISWA = [
 
 export default function SubtabPelanggaran({
   rows = [], loading, periode = 'harian', tanggalMulai, tanggalAkhir,
-  siswaPerKelas = {}, onTerapkanKelas, onTerapkanTanggal,
+  siswaPerKelas = {}, hariLibur = new Set(), onTerapkanKelas, onTerapkanTanggal,
 }) {
   const [trenPeriode, setTrenPeriode] = useState(periode);
   const [metricKelas, setMetricKelas] = useState('poin');
@@ -35,8 +35,8 @@ export default function SubtabPelanggaran({
 
   const unik = useMemo(() => dedupePelanggaran(rows), [rows]);
   const stats = useMemo(
-    () => ringkasPelanggaran({ rows: unik, periode: trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas }),
-    [unik, trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas]
+    () => ringkasPelanggaran({ rows: unik, periode: trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur }),
+    [unik, trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur]
   );
   const topSiswa = useMemo(() => perSiswaPelanggaran(unik).slice(0, 10), [unik]);
   const idSiswa = useMemo(() => topSiswa.map((s) => s.siswa_id).filter(Boolean), [topSiswa]);
@@ -118,7 +118,7 @@ export default function SubtabPelanggaran({
         totalSiswa={stats.totalSiswa}
         totalPoin={stats.totalPoin}
         kategoriTeratas={stats.kategoriTeratas}
-        hariInput={stats.hariInput}
+        hariKerja={stats.hariKerja}
         rataPoinHarian={stats.rataPoinHarian}
         rataKejadianHarian={stats.rataKejadianHarian}
       />

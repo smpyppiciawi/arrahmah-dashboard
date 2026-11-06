@@ -336,6 +336,7 @@ export default function StatistikTab() {
             tanggalMulai={range.mulai}
             tanggalAkhir={range.akhir}
             siswaPerKelas={siswaPerKelas}
+            hariLibur={hariLibur}
             onTerapkanKelas={terapkanKelas}
             onTerapkanTanggal={terapkanRentang}
           />
@@ -349,6 +350,7 @@ export default function StatistikTab() {
             tanggalMulai={range.mulai}
             tanggalAkhir={range.akhir}
             siswaPerKelas={siswaPerKelas}
+            hariLibur={hariLibur}
             onTerapkanKelas={terapkanKelas}
             onTerapkanTanggal={terapkanRentang}
           />
