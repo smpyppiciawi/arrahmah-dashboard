@@ -118,6 +118,9 @@ export default function SubtabPelanggaran({
         totalSiswa={stats.totalSiswa}
         totalPoin={stats.totalPoin}
         kategoriTeratas={stats.kategoriTeratas}
+        hariInput={stats.hariInput}
+        rataPoinHarian={stats.rataPoinHarian}
+        rataKejadianHarian={stats.rataKejadianHarian}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -127,6 +130,9 @@ export default function SubtabPelanggaran({
             periode={trenPeriode}
             onPeriode={setTrenPeriode}
             onPilih={(row) => bukaRentang(row.mulai, row.akhir, `Tren ${row.label}`)}
+            trenArah={stats.trenArah}
+            trenPerubahan={stats.trenPerubahan}
+            maJendela={stats.maJendela}
           />
         </div>
         <DonutKategoriPelanggaran

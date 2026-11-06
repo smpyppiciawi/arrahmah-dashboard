@@ -1,9 +1,11 @@
 import { addDays, format, parseISO } from 'date-fns';
 import { bucketAxis, bucketKey, bucketLabel, firstDateOfBucket } from '@/lib/statistikUtils';
+import { hitungMovingAverage } from '@/lib/trenMovingAverage';
 
 // Warna konsisten dashboard improvement
 export const WARNA_POIN = '#059669';
 export const WARNA_KEJADIAN = '#0ea5e9';
+export const WARNA_MA = '#8b5cf6';
 
 export const METRIK_KELAS = [
   { key: 'poin', label: 'Total Poin' },
@@ -110,7 +112,7 @@ export function ringkasImprovement({
     })
     .sort((a, b) => b.poin - a.poin || a.nama_kelas.localeCompare(b.nama_kelas, 'id'));
 
-  const tren = axis.map((k, i) => {
+  const trenDasar = axis.map((k, i) => {
     const mulaiBucket = firstDateOfBucket(k, periode);
     const nextMulai = i < axis.length - 1 ? firstDateOfBucket(axis[i + 1], periode) : null;
     const akhirBucket = nextMulai ? hariSebelum(nextMulai) : tanggalAkhir;
@@ -124,6 +126,11 @@ export function ringkasImprovement({
     };
   });
 
+  // Moving Average dihitung hanya dari titik yang memiliki penginputan
+  const ma = hitungMovingAverage(trenDasar);
+  const tren = trenDasar.map((t, i) => ({ ...t, ma: ma.nilai[i] }));
+  const hariInput = tanggalMap.size;
+
   return {
     totalKejadian: rows.length,
     totalPoin: bulat1(totalPoin),
@@ -132,6 +139,12 @@ export function ringkasImprovement({
     jenis: jenisList,
     perKelas,
     tren,
+    maJendela: ma.jendela,
+    trenArah: ma.arah,
+    trenPerubahan: ma.perubahan,
+    hariInput,
+    rataPoinHarian: hariInput ? bulat1(totalPoin / hariInput) : 0,
+    rataKejadianHarian: hariInput ? bulat1(rows.length / hariInput) : 0,
     top: jenisList.slice(0, 10),
     perTanggal: Array.from(tanggalMap.values()).sort((a, b) => a.tanggal.localeCompare(b.tanggal)),
   };

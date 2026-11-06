@@ -74,6 +74,9 @@ export default function SubtabImprovement({
         totalSiswa={stats.totalSiswa}
         totalPoin={stats.totalPoin}
         jenisTeratas={stats.jenisTeratas}
+        hariInput={stats.hariInput}
+        rataPoinHarian={stats.rataPoinHarian}
+        rataKejadianHarian={stats.rataKejadianHarian}
       />
 
       <TrenImprovementChart
@@ -81,6 +84,9 @@ export default function SubtabImprovement({
         periode={trenPeriode}
         onPeriode={setTrenPeriode}
         onPilih={(row) => bukaRentang(row.mulai, row.akhir, `Tren ${row.label}`)}
+        trenArah={stats.trenArah}
+        trenPerubahan={stats.trenPerubahan}
+        maJendela={stats.maJendela}
       />
 
       <PerbandinganKelasImprovementChart
