@@ -12,6 +12,7 @@ import { kumpulanHariLibur } from '@/lib/kehadiranUtils';
 import StatistikFilters from '@/components/catatan/statistik/StatistikFilters';
 import SubtabKehadiran from '@/components/catatan/statistik/SubtabKehadiran';
 import PoinDashboard from '@/components/catatan/statistik/PoinDashboard';
+import SubtabPelanggaran from '@/components/catatan/statistik/SubtabPelanggaran';
 
 const SUBTABS = [
   { value: 'kehadiran', label: 'Kehadiran', icon: CalendarCheck, active: 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-md' },
@@ -50,8 +51,10 @@ export default function StatistikTab() {
     return Array.from(new Set(list.map((k) => k.nama_kelas).filter(Boolean))).sort();
   }, [kelasData, tingkat]);
 
-  // Ganti tingkat → pilihan kelas kembali ke semua
-  useEffect(() => { setKelasFilter('semua'); }, [tingkat]);
+  // Ganti tingkat → kelas yang tidak ada di tingkat tersebut kembali ke semua
+  useEffect(() => {
+    setKelasFilter((prev) => (prev === 'semua' || kelasOptions.includes(prev) ? prev : 'semua'));
+  }, [kelasOptions]);
 
   const namaKelasFilter = useMemo(() => {
     if (kelasFilter !== 'semua') return [kelasFilter];
@@ -81,7 +84,7 @@ export default function StatistikTab() {
     queryFn: () => fetchFiltered(
       base44.entities.PelanggaranImprovement,
       { ...rangeQuery, status: { $nin: ['Dibatalkan', 'Pending'] } },
-      ['tanggal', 'siswa_id', 'nama_siswa', 'nama_kelas', 'poin', 'kode', 'kategori_utama', 'uraian_pelanggaran']
+      ['tanggal', 'siswa_id', 'nama_siswa', 'nama_kelas', 'poin', 'kode', 'kategori_utama', 'uraian_pelanggaran', 'poin_min', 'tindak_lanjut']
     ),
   });
 
@@ -173,6 +176,17 @@ export default function StatistikTab() {
   const handleQuick = (key) => {
     setRange(quickRange(key));
     setQuickAktif(key);
+  };
+
+  // Terapkan filter dari rincian chart pelanggaran
+  const terapkanKelas = (nama) => {
+    if (tingkat !== 'semua' && !kelasOptions.includes(nama)) setTingkat('semua');
+    setKelasFilter(nama);
+  };
+
+  const terapkanRentang = (mulai, akhir) => {
+    setRange({ mulai, akhir });
+    setQuickAktif(null);
   };
 
   const handleTanggalMulai = (value) => {
@@ -315,13 +329,15 @@ export default function StatistikTab() {
         </TabsContent>
 
         <TabsContent value="pelanggaran" className="mt-4">
-          <PoinDashboard
-            variant="pelanggaran"
+          <SubtabPelanggaran
             rows={pelanggaranQuery.data || []}
             loading={pelanggaranQuery.isLoading}
             periode={periode}
             tanggalMulai={range.mulai}
             tanggalAkhir={range.akhir}
+            siswaPerKelas={siswaPerKelas}
+            onTerapkanKelas={terapkanKelas}
+            onTerapkanTanggal={terapkanRentang}
           />
         </TabsContent>
 
