@@ -11,7 +11,7 @@ import {
 import { kumpulanHariLibur } from '@/lib/kehadiranUtils';
 import StatistikFilters from '@/components/catatan/statistik/StatistikFilters';
 import SubtabKehadiran from '@/components/catatan/statistik/SubtabKehadiran';
-import PoinDashboard from '@/components/catatan/statistik/PoinDashboard';
+import SubtabImprovement from '@/components/catatan/statistik/SubtabImprovement';
 import SubtabPelanggaran from '@/components/catatan/statistik/SubtabPelanggaran';
 
 const SUBTABS = [
@@ -342,13 +342,15 @@ export default function StatistikTab() {
         </TabsContent>
 
         <TabsContent value="improvement" className="mt-4">
-          <PoinDashboard
-            variant="improvement"
+          <SubtabImprovement
             rows={improvementQuery.data || []}
             loading={improvementQuery.isLoading}
             periode={periode}
             tanggalMulai={range.mulai}
             tanggalAkhir={range.akhir}
+            siswaPerKelas={siswaPerKelas}
+            onTerapkanKelas={terapkanKelas}
+            onTerapkanTanggal={terapkanRentang}
           />
         </TabsContent>
       </Tabs>
