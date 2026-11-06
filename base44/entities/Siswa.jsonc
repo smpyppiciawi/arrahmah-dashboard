@@ -269,15 +269,31 @@
     },
     "rapor_kuning_tanggal": {
       "type": "string",
-      "description": "Timestamp (ISO) saat Status Rapor Kuning ditetapkan (poin bersih mencapai 300). Berlaku 40 hari kalender; setelah itu status hilang. Null jika tidak aktif."
+      "description": "Timestamp (ISO) saat Status Rapor Kuning ditetapkan. Null jika tidak aktif."
+    },
+    "rapor_kuning_berakhir": {
+      "type": "string",
+      "description": "Timestamp (ISO) batas akhir masa berlaku Status Rapor Kuning, dihitung dari masa berlaku yang berlaku saat status ditetapkan."
+    },
+    "rapor_kuning_basis_poin": {
+      "type": "number",
+      "description": "Poin bersih saat Status Rapor Kuning mulai aktif \u2014 dasar perhitungan poin baru untuk kenaikan ke Rapor Merah"
     },
     "rapor_merah_tanggal": {
       "type": "string",
-      "description": "Timestamp (ISO) saat Status Rapor Merah ditetapkan (poin bersih mencapai 600). Berlaku 120 hari kalender; setelah itu status hilang. Null jika tidak aktif."
+      "description": "Timestamp (ISO) saat Status Rapor Merah ditetapkan. Null jika tidak aktif."
+    },
+    "rapor_merah_berakhir": {
+      "type": "string",
+      "description": "Timestamp (ISO) batas akhir masa berlaku Status Rapor Merah, dihitung dari masa berlaku yang berlaku saat status ditetapkan."
+    },
+    "rapor_merah_basis_poin": {
+      "type": "number",
+      "description": "Poin bersih saat Status Rapor Merah mulai aktif \u2014 dasar perhitungan poin baru untuk kenaikan ke Rapor Hitam"
     },
     "rapor_hitam_tanggal": {
       "type": "string",
-      "description": "Timestamp (ISO) saat Status Rapor Hitam ditetapkan (poin bersih mencapai 1000). Permanen sampai dianulir."
+      "description": "Timestamp (ISO) saat Status Rapor Hitam ditetapkan. Permanen sampai dianulir."
     },
     "rapor_hitam_aktif": {
       "type": "boolean",

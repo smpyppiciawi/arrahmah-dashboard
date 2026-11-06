@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { Settings, Power } from "lucide-react";
+import RaporLimitSettings from "./RaporLimitSettings";
 
-export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmin, canKelola }) {
+export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmin, canKelola, currentUser }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [pengaturanId, setPengaturanId] = useState(null);
@@ -67,7 +68,7 @@ export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-emerald-700">
             <Settings className="w-5 h-5" /> Pengaturan Improvement
@@ -140,6 +141,9 @@ export default function PengaturanImprovementDialog({ open, onOpenChange, isAdmi
                 </div>
               </div>
             )}
+
+            {/* Atur Limit Rapor Tata Tertib */}
+            <RaporLimitSettings canEdit={!!canKelola} currentUser={currentUser} />
 
             <div className="flex gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Batal</Button>

@@ -57,6 +57,8 @@ export default function ApprovalPoinDialog({ open, onOpenChange, pelanggaranList
   const invalidateAllRelated = () => {
     queryClient.invalidateQueries({ predicate: (q) => String(q.queryKey[0] || '').toLowerCase().includes('pelanggaran') });
     queryClient.invalidateQueries({ queryKey: ['siswa'] });
+    queryClient.invalidateQueries({ queryKey: ['riwayat-rapor-pending'] });
+    queryClient.invalidateQueries({ queryKey: ['riwayat-rapor'] });
   };
 
   const approveMutation = useMutation({

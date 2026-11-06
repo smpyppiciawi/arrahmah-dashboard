@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, TrendingDown, BarChart3 } from "lucide-react";
+import { ClipboardList, Award, AlertTriangle, Heart, Search, Calendar, FileText, Scale, BarChart3 } from "lucide-react";
 import AppHeader from "@/components/appui/AppHeader";
 import PrestasiTab from '../components/catatan/PrestasiTab';
 import PelanggaranTab from '../components/catatan/PelanggaranTab';
@@ -72,8 +72,8 @@ export default function CatatanSiswa() {
               value="improvement"
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm data-[state=active]:bg-emerald-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-emerald-500/25 transition-all"
             >
-              <TrendingDown className="w-4 h-4" />
-              <span className="hidden sm:inline">Improvement</span>
+              <Scale className="w-4 h-4" />
+              <span className="hidden sm:inline">Tata Tertib</span>
             </TabsTrigger>
             <TabsTrigger
               value="uks"

@@ -1,0 +1,195 @@
+{
+  "name": "RiwayatRapor",
+  "type": "object",
+  "properties": {
+    "siswa_id": {
+      "type": "string",
+      "description": "ID siswa pemilik riwayat rapor"
+    },
+    "nis": {
+      "type": "string"
+    },
+    "nama_siswa": {
+      "type": "string"
+    },
+    "nama_kelas": {
+      "type": "string",
+      "description": "Kelas siswa saat peristiwa terjadi"
+    },
+    "dari_status": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Kuning",
+        "Merah",
+        "Hitam"
+      ],
+      "description": "Status rapor sebelum peristiwa"
+    },
+    "ke_status": {
+      "type": "string",
+      "enum": [
+        "Normal",
+        "Kuning",
+        "Merah",
+        "Hitam"
+      ],
+      "description": "Status rapor setelah peristiwa"
+    },
+    "tanggal": {
+      "type": "string",
+      "description": "Timestamp ISO saat peristiwa terjadi / permintaan dibuat"
+    },
+    "poin_saat_ini": {
+      "type": "number",
+      "default": 0,
+      "description": "Poin bersih saat peristiwa terjadi (menjadi basis perhitungan tingkat berikutnya)"
+    },
+    "poin_pemicu": {
+      "type": "number",
+      "default": 0,
+      "description": "Jumlah poin baru yang memicu kenaikan status"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "Otomatis",
+        "Persetujuan"
+      ],
+      "default": "Otomatis",
+      "description": "Mekanisme kenaikan status yang berlaku saat peristiwa terjadi"
+    },
+    "status_permintaan": {
+      "type": "string",
+      "enum": [
+        "Otomatis",
+        "Menunggu",
+        "Disetujui",
+        "Ditolak",
+        "Dianulir"
+      ],
+      "default": "Otomatis",
+      "description": "Otomatis = langsung diterapkan sistem; Menunggu = menunggu persetujuan admin/kesiswaan/kurikulum; Disetujui/Ditolak = hasil peninjauan; Dianulir = status rapor dianulir"
+    },
+    "alasan": {
+      "type": "string",
+      "description": "Alasan / keterangan peristiwa kenaikan status"
+    },
+    "dibuat_oleh": {
+      "type": "string",
+      "description": "Nama pengguna / sistem yang membuat catatan"
+    },
+    "diproses_oleh": {
+      "type": "string",
+      "description": "Nama pengguna yang menyetujui / menolak / menganulir"
+    },
+    "diproses_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat permintaan diproses"
+    },
+    "tahun_ajaran": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "siswa_id",
+    "dari_status",
+    "ke_status",
+    "tanggal",
+    "status_permintaan"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "operator"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "piket"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "yayasan"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -22,6 +22,50 @@
       "default": false,
       "description": "Switch ON = Poin Pelanggaran Lama (modul Pelanggaran lama) diakumulasi dengan Poin Pelanggaran Baru (PelanggaranImprovement) dan masuk ke Poin Bersih. Catatan pelanggaran lama tetap ditampilkan di Cari Record Siswa tab Improvement, disatukan dengan yang baru."
     },
+    "rapor_kuning_poin": {
+      "type": "number",
+      "default": 300,
+      "description": "Batas akumulasi poin bersih untuk memperoleh Status Rapor Kuning"
+    },
+    "rapor_merah_poin": {
+      "type": "number",
+      "default": 600,
+      "description": "Batas akumulasi poin bersih untuk memperoleh Status Rapor Merah"
+    },
+    "rapor_hitam_poin": {
+      "type": "number",
+      "default": 1000,
+      "description": "Batas akumulasi poin bersih untuk memperoleh Status Rapor Hitam"
+    },
+    "rapor_naik_kuning_merah_poin": {
+      "type": "number",
+      "default": 100,
+      "description": "Tambahan poin pelanggaran baru selama masa Rapor Kuning yang menaikkan status menjadi Rapor Merah"
+    },
+    "rapor_naik_merah_hitam_poin": {
+      "type": "number",
+      "default": 100,
+      "description": "Tambahan poin pelanggaran baru selama masa Rapor Merah yang menaikkan status menjadi Rapor Hitam"
+    },
+    "rapor_kuning_hari": {
+      "type": "number",
+      "default": 40,
+      "description": "Masa berlaku Status Rapor Kuning dalam hari kalender"
+    },
+    "rapor_merah_hari": {
+      "type": "number",
+      "default": 120,
+      "description": "Masa berlaku Status Rapor Merah dalam hari kalender"
+    },
+    "rapor_mode_kenaikan": {
+      "type": "string",
+      "enum": [
+        "Otomatis",
+        "Persetujuan"
+      ],
+      "default": "Otomatis",
+      "description": "Otomatis = kenaikan status langsung diterapkan sistem setelah batas poin tercapai; Persetujuan = kenaikan menjadi permintaan tertunda yang harus disetujui admin/kesiswaan/kurikulum"
+    },
     "tahun_ajaran": {
       "type": "string"
     },

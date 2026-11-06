@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Printer, BarChart3, History, Search, Filter, X, ListOrdered } from "lucide-react";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 import { sumPoinPelanggaranAktif, getRaporStatus, RAPOR_BADGE_CLASS } from '@/lib/raporStatus';
+import { getNamaPencatat } from '@/lib/pelanggaranMeta';
 
 // Rentang akumulasi Poin Bersih
 const RENTANG_POIN = [
@@ -383,11 +384,21 @@ export default function RekapPoinTab({ pelanggaranImprovementList, improvementLi
 }
 
 function RiwayatDialog({ siswa, riwayat, onClose }) {
+  // Riwayat perubahan status rapor siswa (audit)
+  const { data: raporHistory = [] } = useQuery({
+    queryKey: ['riwayat-rapor', siswa?.id],
+    queryFn: async () => {
+      const rows = await base44.entities.RiwayatRapor.filter({ siswa_id: siswa.id });
+      return (rows || []).sort((a, b) => String(b.tanggal || '').localeCompare(String(a.tanggal || '')));
+    },
+    enabled: !!siswa?.id,
+  });
+
   // Cetak rekap detail satu siswa (identitas + poin + riwayat pelanggaran & improvement)
   const handlePrintSiswa = () => {
     if (!siswa) return;
     const now = format(new Date(), 'd MMMM yyyy HH:mm', { locale: idLocale });
-    const pelHtml = (riwayat?.pelanggaran || []).map(p => `<tr><td>${p.tanggal || '-'}</td><td>${p.kode || '-'}</td><td>${p.kategori_utama || '-'}</td><td>${p.uraian_pelanggaran || ''}</td><td style="text-align:right">${p.poin}</td><td>${p.status}</td></tr>`).join('');
+    const pelHtml = (riwayat?.pelanggaran || []).map(p => `<tr><td>${p.tanggal || '-'}</td><td>${p.kode || '-'}</td><td>${p.kategori_utama || '-'}</td><td>${p.uraian_pelanggaran || ''}</td><td style="text-align:right">${p.poin}</td><td>${p.rincian || '-'}</td><td>${getNamaPencatat(p) || '-'}</td><td>${p.status}</td></tr>`).join('');
     const impHtml = (riwayat?.improvement || []).map(i => `<tr><td>${i.tanggal || '-'}</td><td>${i.kegiatan_pembinaan_nama || i.uraian || ''}</td><td style="text-align:right">−${i.poin_pengurangan}</td><td>${i.validator_nama || '-'}</td></tr>`).join('');
     const html = `<!DOCTYPE html><html><head><title>Rekap Detail Siswa</title><style>
       body { font-family: Arial, sans-serif; color: #1f2937; padding: 24px; }
@@ -407,7 +418,7 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
         <tr class="idrow"><td style="font-weight:bold">Poin Pelanggaran</td><td>${siswa.poinPelanggaran}</td><td style="font-weight:bold">Poin Improvement</td><td>${siswa.poinImprovement}</td></tr>
       </table>
       <h2>Riwayat Pelanggaran (${(riwayat?.pelanggaran || []).length})</h2>
-      ${(riwayat?.pelanggaran || []).length ? `<table><tr><th>Tanggal</th><th>Kode</th><th>Kategori Utama</th><th>Uraian</th><th>Poin</th><th>Status</th></tr>${pelHtml}</table>` : '<p style="font-size:11px">Tidak ada pelanggaran tercatat</p>'}
+      ${(riwayat?.pelanggaran || []).length ? `<table><tr><th>Tanggal</th><th>Kode</th><th>Kategori</th><th>Uraian</th><th>Poin</th><th>Rincian</th><th>Pencatat</th><th>Status</th></tr>${pelHtml}</table>` : '<p style="font-size:11px">Tidak ada pelanggaran tercatat</p>'}
       <h2>Riwayat Improvement (${(riwayat?.improvement || []).length})</h2>
       ${(riwayat?.improvement || []).length ? `<table><tr><th>Tanggal</th><th>Kegiatan</th><th>Poin</th><th>Validator</th></tr>${impHtml}</table>` : '<p style="font-size:11px">Tidak ada improvement tercatat</p>'}
     </body></html>`;
@@ -457,6 +468,12 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
                   <Badge className="bg-blue-100 text-blue-700 text-[10px]">{p.status}</Badge>
                 </div>
                 <p className="text-xs text-slate-600 mt-0.5">{p.uraian_pelanggaran}</p>
+                {p.rincian && (
+                  <p className="text-[11px] text-slate-500 mt-1 whitespace-pre-wrap border-l-2 border-slate-200 pl-2">
+                    <span className="font-medium text-slate-600">Rincian: </span>{p.rincian}
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 mt-0.5">Pencatat: {getNamaPencatat(p) || '-'}</p>
               </div>
               <Badge className="bg-red-100 text-red-700 text-[10px] shrink-0">{p.poin} poin</Badge>
             </div>
@@ -477,6 +494,28 @@ function RiwayatDialog({ siswa, riwayat, onClose }) {
                 <p className="text-xs text-slate-600 mt-0.5">{i.kegiatan_pembinaan_nama || i.uraian}</p>
               </div>
               <Badge className="bg-emerald-100 text-emerald-700 text-[10px] shrink-0">−{i.poin_pengurangan} poin</Badge>
+            </div>
+          ))}
+        </div>
+
+        <h4 className="text-xs font-semibold text-slate-700 mb-1.5 mt-4">Riwayat Status Rapor ({raporHistory.length})</h4>
+        <div className="space-y-1.5">
+          {raporHistory.length === 0 ? (
+            <p className="text-xs text-slate-400">Belum ada perubahan status rapor</p>
+          ) : raporHistory.map(r => (
+            <div key={r.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge className={RAPOR_BADGE_CLASS[String(r.dari_status || '').toLowerCase()] || RAPOR_BADGE_CLASS.normal}>{r.dari_status}</Badge>
+                <span className="text-[10px] text-slate-400">→</span>
+                <Badge className={RAPOR_BADGE_CLASS[String(r.ke_status || '').toLowerCase()] || RAPOR_BADGE_CLASS.normal}>{r.ke_status}</Badge>
+                <span className="text-[10px] text-slate-400">{r.tanggal ? format(parseISO(r.tanggal), 'd MMM yyyy HH:mm', { locale: idLocale }) : '-'}</span>
+                <Badge variant="outline" className="text-[10px] bg-white">{r.status_permintaan}</Badge>
+              </div>
+              <p className="text-[11px] text-slate-600 mt-0.5">{r.alasan}</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {r.poin_pemicu ? `+${r.poin_pemicu} poin baru · ` : ''}{r.mode}
+                {r.diproses_oleh ? ` · oleh ${r.diproses_oleh}` : ''}
+              </p>
             </div>
           ))}
         </div>

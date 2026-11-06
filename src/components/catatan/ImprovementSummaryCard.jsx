@@ -68,17 +68,24 @@ export default function ImprovementSummaryCard({ pelanggaranImprovementList, imp
     return { poinPelanggaran, poinPelanggaranBaru, poinPelanggaranLama, poinImprovement, poinBersih: poinPelanggaran - poinImprovement, usedMingguan, limitMingguan };
   }, [selectedSiswa, pelanggaranImprovementList, improvementList, mingguKeyNow, pengaturan, akumulasiLama, pelanggaranLamaList]);
 
-  const raporStatus = useMemo(() => selectedSiswa ? getRaporStatus(selectedSiswa, stats?.poinBersih ?? 0) : null, [selectedSiswa, stats]);
+  const raporStatus = useMemo(() => selectedSiswa ? getRaporStatus(selectedSiswa, stats?.poinBersih ?? 0, pengaturan) : null, [selectedSiswa, stats, pengaturan]);
 
   // Recompute & persist status rapor (Kuning/Merah/Hitam) ke record Siswa saat poin bersih berubah
   useEffect(() => {
     if (!selectedSiswa || stats == null) return;
     let active = true;
-    recomputeRaporStatus(selectedSiswa, stats.poinBersih)
-      .then((res) => { if (active && res?.written) queryClient.invalidateQueries({ queryKey: ['siswa'] }); })
+    recomputeRaporStatus(selectedSiswa, stats.poinBersih, { config: pengaturan })
+      .then((res) => {
+        if (!active) return;
+        if (res?.written) queryClient.invalidateQueries({ queryKey: ['siswa'] });
+        if (res?.pendingCreated) {
+          queryClient.invalidateQueries({ queryKey: ['riwayat-rapor-pending'] });
+          queryClient.invalidateQueries({ queryKey: ['riwayat-rapor'] });
+        }
+      })
       .catch(() => {});
     return () => { active = false; };
-  }, [selectedSiswa, stats]);
+  }, [selectedSiswa, stats, pengaturan]);
 
   return (
     <Card className={`border shadow-sm bg-gradient-to-br ${RAPOR_CARD_CLASS[raporStatus?.level || 'normal']}`}>

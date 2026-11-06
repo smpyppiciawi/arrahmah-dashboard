@@ -1,0 +1,85 @@
+{
+  "name": "RiwayatPengaturanRapor",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "description": "Timestamp ISO saat pengaturan diubah"
+    },
+    "diubah_oleh": {
+      "type": "string",
+      "description": "Nama pengguna yang mengubah pengaturan"
+    },
+    "ringkasan": {
+      "type": "string",
+      "description": "Ringkasan perubahan dalam bahasa manusia"
+    },
+    "sebelum": {
+      "type": "object",
+      "description": "Nilai parameter sebelum perubahan"
+    },
+    "sesudah": {
+      "type": "object",
+      "description": "Nilai parameter sesudah perubahan"
+    }
+  },
+  "required": [
+    "tanggal",
+    "ringkasan"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "guru"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "tu"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

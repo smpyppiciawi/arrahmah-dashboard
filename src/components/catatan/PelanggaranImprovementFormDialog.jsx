@@ -88,7 +88,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.PelanggaranImprovement.create(data),
     onSuccess: (_d, vars) => {
-      if (vars?.siswa_id) { recomputeRaporForSiswa(vars.siswa_id).catch(() => {}); }
+      if (vars?.siswa_id) { recomputeRaporForSiswa(vars.siswa_id).then(() => queryClient.invalidateQueries({ queryKey: ['riwayat-rapor-pending'] })).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       // Notifikasi Pelanggaran Berulang: siswa tercatat dengan kode yang sama >= 3x (termasuk record ini)
@@ -122,7 +122,7 @@ export default function PelanggaranImprovementFormDialog({ open, onOpenChange, s
     mutationFn: ({ id, data }) => base44.entities.PelanggaranImprovement.update(id, data),
     onSuccess: (_d, vars) => {
       const sid = vars?.data?.siswa_id || vars?.id;
-      if (sid) { recomputeRaporForSiswa(sid).catch(() => {}); }
+      if (sid) { recomputeRaporForSiswa(sid).then(() => queryClient.invalidateQueries({ queryKey: ['riwayat-rapor-pending'] })).catch(() => {}); }
       queryClient.invalidateQueries({ queryKey: ['pelanggaran-improvement'] });
       queryClient.invalidateQueries({ queryKey: ['siswa'] });
       handleClose();

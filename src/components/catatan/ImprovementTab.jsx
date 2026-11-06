@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock, BarChart3, Camera } from "lucide-react";
+import { Filter, Trash2, Edit2, TrendingDown, AlertTriangle, Database, BookOpen, Plus, Clock, BarChart3, Camera, Scale } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import CatatanCompactTable from "./CatatanCompactTable";
 import { getNamaPelapor, getNamaPencatat } from '@/lib/pelanggaranMeta';
@@ -22,6 +22,8 @@ import KelolaKegiatanPembinaanDialog from "./KelolaKegiatanPembinaanDialog";
 import ApprovalPoinDialog from "./ApprovalPoinDialog";
 import RekapPoinTab from "./RekapPoinTab";
 import FotoGalleryDialog from "./FotoGalleryDialog";
+import RincianCell from "./RincianCell";
+import ApprovalRaporDialog from "./ApprovalRaporDialog";
 
 const KATEGORI_COLOR = {
   "Hukum & Keselamatan": "bg-red-100 text-red-700",
@@ -52,6 +54,7 @@ export default function ImprovementTab({ readOnly = false }) {
   const [kelolaKodeOpen, setKelolaKodeOpen] = useState(false);
   const [kelolaKegiatanOpen, setKelolaKegiatanOpen] = useState(false);
   const [approvalOpen, setApprovalOpen] = useState(false);
+  const [approvalRaporOpen, setApprovalRaporOpen] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteType, setDeleteType] = useState(null);
@@ -76,14 +79,18 @@ export default function ImprovementTab({ readOnly = false }) {
   const { data: kegiatanList = [] } = useQuery({ queryKey: ['kegiatan-pembinaan'], queryFn: () => base44.entities.KegiatanPembinaan.list('no') });
   const { data: pengaturan } = useQuery({ queryKey: ['pengaturan-improvement'], queryFn: async () => { const l = await base44.entities.PengaturanImprovement.list(); return l[0] || null; } });
   const { data: jadwalPiketList = [] } = useQuery({ queryKey: ['jadwal-piket'], queryFn: () => base44.entities.JadwalPiket.list('hari') });
+  const { data: raporPendingList = [] } = useQuery({ queryKey: ['riwayat-rapor-pending'], queryFn: () => base44.entities.RiwayatRapor.filter({ status_permintaan: 'Menunggu' }) });
 
   // Hak akses WAKA (Waka Kesiswaan/Kurikulum): Approval Poin, Kelola Data & Hapus record Improvement
   const myGuru = useMemo(() => (guruList || []).find(g => g.email && g.email === currentUser?.email), [guruList, currentUser]);
   const isWaka = !!myGuru && /waka\s*(kesiswa*n|kurikulum)/i.test(myGuru.tugas_tambahan || '');
   const canApprove = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
+  // Persetujuan kenaikan status rapor: ADMIN, Waka Kesiswaan, Waka Kurikulum
+  const canApproveRapor = currentUser?.role === 'admin' || isWaka;
   const canKelolaData = ['admin', 'tu', 'kepsek'].includes(currentUser?.role) || isWaka;
   const canDelete = ['admin', 'tu'].includes(currentUser?.role) || isWaka;
   const pendingApprovalCount = useMemo(() => (pelanggaranImprovementList || []).filter(p => p.status === 'Pending').length, [pelanggaranImprovementList]);
+  const pendingRaporCount = useMemo(() => (raporPendingList || []).filter(r => r.status_permintaan === 'Menunggu').length, [raporPendingList]);
 
   const siswaMap = useMemo(() => Object.fromEntries(siswaList.map(s => [s.id, s])), [siswaList]);
 
@@ -169,7 +176,7 @@ export default function ImprovementTab({ readOnly = false }) {
     ) }
   ];
 
-  const pelanggaranSearchKeys = ['tanggal','nama_siswa','nis','nama_kelas','kode','kategori_utama','uraian_pelanggaran','tindak_lanjut','pelapor_nama','status'];
+  const pelanggaranSearchKeys = ['tanggal','nama_siswa','nis','nama_kelas','kode','kategori_utama','uraian_pelanggaran','rincian','tindak_lanjut','pelapor_nama','pencatat_nama','status'];
   const pelanggaranColumns = [
     { key: 'tanggal', label: 'Tanggal', className: 'whitespace-nowrap text-slate-600', headClassName: 'w-28' },
     { key: 'nama_siswa', label: 'Siswa', headClassName: 'w-44', render: (r) => (
@@ -178,7 +185,7 @@ export default function ImprovementTab({ readOnly = false }) {
         <Badge variant="secondary" className="bg-blue-100 text-blue-700 mt-0.5">{r.nama_kelas}</Badge>
       </div>
     ) },
-    { key: 'kode', label: 'Pelanggaran', headClassName: 'w-64', render: (r) => (
+    { key: 'kode', label: 'Pelanggaran', headClassName: 'w-52', render: (r) => (
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <Badge className="bg-slate-700 text-white font-mono text-xs">{r.kode}</Badge>
@@ -192,8 +199,9 @@ export default function ImprovementTab({ readOnly = false }) {
         )}
       </div>
     ) },
-    { key: 'poin', label: 'Poin', headClassName: 'w-24', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
-    { key: 'pelapor', label: 'Pelapor', headClassName: 'w-32', className: 'text-slate-600 truncate', render: (r) => getNamaPelapor(r) },
+    { key: 'poin', label: 'Poin', headClassName: 'w-20', render: (r) => <Badge className="bg-red-100 text-red-700">{r.poin} poin</Badge> },
+    { key: 'rincian', label: 'Rincian', headClassName: 'w-56', render: (r) => <RincianCell rincian={r.rincian} /> },
+    { key: 'pelapor', label: 'Pelapor', headClassName: 'w-28', className: 'text-slate-600 truncate', render: (r) => getNamaPelapor(r) },
     { key: 'pencatat', label: 'Pencatat', headClassName: 'w-32', className: 'text-slate-600 truncate', render: (r) => getNamaPencatat(r) },
     { key: 'status', label: 'Status', headClassName: 'w-24', render: (r) => <Badge className={r.status === 'Pending' ? 'bg-amber-100 text-amber-700' : r.status === 'Selesai' ? 'bg-emerald-100 text-emerald-700' : r.status === 'Dibatalkan' ? 'bg-slate-200 text-slate-500 line-through' : 'bg-blue-100 text-blue-700'}>{r.status}</Badge> },
     { key: 'aksi', label: 'Aksi', sortable: false, headClassName: 'w-20', render: (r) => (
@@ -249,6 +257,16 @@ export default function ImprovementTab({ readOnly = false }) {
           )}
         </Button>
         )}
+        {canApproveRapor && (
+        <Button variant="outline" onClick={() => setApprovalRaporOpen(true)} className="border-indigo-400 text-indigo-700 hover:bg-indigo-50">
+          <Scale className="w-4 h-4 mr-2" /> Approval Rapor
+          {pendingRaporCount > 0 && (
+            <span className="ml-1 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-xs font-bold">
+              {pendingRaporCount}
+            </span>
+          )}
+        </Button>
+        )}
         {canKelolaData && (
         <Button variant="outline" onClick={() => setKelolaKodeOpen(true)} className="border-slate-300 text-slate-700 hover:bg-slate-50">
           <Database className="w-4 h-4 mr-2" /> Kelola Kode Pelanggaran
@@ -283,7 +301,7 @@ export default function ImprovementTab({ readOnly = false }) {
             <CardHeader className="pb-3">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <CardTitle className="flex items-center gap-2 text-red-700">
-                  <AlertTriangle className="w-5 h-5" /> Pelanggaran Siswa (Sistem Improvement)
+                  <AlertTriangle className="w-5 h-5" /> Pelanggaran Siswa (Tata Tertib)
                 </CardTitle>
                 <div className="flex items-center gap-2">
                   {!readOnly && (
@@ -363,7 +381,14 @@ export default function ImprovementTab({ readOnly = false }) {
         pelanggaranImprovementExisting={pelanggaranImprovementList}
       />
 
-      <PengaturanImprovementDialog open={pengaturanOpen} onOpenChange={setPengaturanOpen} isAdmin={isAdmin} canKelola={canKelolaData} />
+      <PengaturanImprovementDialog open={pengaturanOpen} onOpenChange={setPengaturanOpen} isAdmin={isAdmin} canKelola={canKelolaData} currentUser={currentUser} />
+
+      <ApprovalRaporDialog
+        open={approvalRaporOpen}
+        onOpenChange={setApprovalRaporOpen}
+        requests={raporPendingList}
+        currentUser={currentUser}
+      />
 
       <KelolaKodePelanggaranDialog open={kelolaKodeOpen} onOpenChange={setKelolaKodeOpen} />
       <KelolaKegiatanPembinaanDialog open={kelolaKegiatanOpen} onOpenChange={setKelolaKegiatanOpen} />
