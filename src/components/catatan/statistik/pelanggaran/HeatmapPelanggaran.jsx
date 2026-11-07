@@ -15,9 +15,10 @@ const LEGENDA = [
   { label: 'Sedang', cls: 'bg-rose-300 border-rose-300' },
   { label: 'Tinggi', cls: 'bg-rose-400 border-rose-400' },
   { label: 'Tertinggi', cls: 'bg-rose-600 border-rose-600' },
+  { label: 'Libur', cls: 'bg-slate-100 border-slate-200' },
 ];
 
-export default function HeatmapPelanggaran({ perTanggal = [], tanggalMulai, tanggalAkhir, onPilih }) {
+export default function HeatmapPelanggaran({ perTanggal = [], tanggalMulai, tanggalAkhir, onPilih, hariLibur = new Set() }) {
   const bulanList = useMemo(() => {
     if (!tanggalMulai || !tanggalAkhir) return [];
     const out = [];
@@ -107,6 +108,7 @@ export default function HeatmapPelanggaran({ perTanggal = [], tanggalMulai, tang
           if (!dalamBulan || !dalamFilter) {
             return <div key={kunci} className="aspect-square rounded-md" />;
           }
+          const libur = hariLibur.has(kunci);
           return (
             <button
               key={kunci}
@@ -114,8 +116,10 @@ export default function HeatmapPelanggaran({ perTanggal = [], tanggalMulai, tang
               onMouseEnter={() => setHover({ tanggal: d, kejadian: info?.kejadian || 0, poin: info?.poin || 0 })}
               onFocus={() => setHover({ tanggal: d, kejadian: info?.kejadian || 0, poin: info?.poin || 0 })}
               onClick={() => info && onPilih && onPilih(kunci)}
-              className={`aspect-square rounded-md border flex items-center justify-center text-[10px] font-semibold transition-transform hover:scale-[1.06] ${band(info?.kejadian || 0)}`}
-              title={`${format(d, 'EEE, dd MMM', { locale: idLocale })} · ${info?.kejadian || 0} kejadian · ${info?.poin || 0} poin`}
+              className={`aspect-square rounded-md border flex items-center justify-center text-[10px] font-semibold transition-transform hover:scale-[1.06] ${
+                libur ? 'bg-slate-100 border-slate-200 text-slate-400' : band(info?.kejadian || 0)
+              }`}
+              title={`${format(d, 'EEE, dd MMM', { locale: idLocale })} · ${info?.kejadian || 0} kejadian · ${info?.poin || 0} poin${libur ? ' · Libur' : ''}`}
             >
               {format(d, 'd')}
             </button>

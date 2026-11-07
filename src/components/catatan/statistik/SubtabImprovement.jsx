@@ -16,7 +16,6 @@ export default function SubtabImprovement({
   siswaPerKelas = {}, hariLibur = new Set(), onTerapkanKelas, onTerapkanTanggal,
 }) {
   const [trenPeriode, setTrenPeriode] = useState(periode);
-  const [metricKelas, setMetricKelas] = useState('poin');
   const [rincian, setRincian] = useState(null);
   const [riwayat, setRiwayat] = useState(null);
 
@@ -26,7 +25,8 @@ export default function SubtabImprovement({
     () => ringkasImprovement({ rows, periode: trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur }),
     [rows, trenPeriode, tanggalMulai, tanggalAkhir, siswaPerKelas, hariLibur]
   );
-  const topSiswa = useMemo(() => perSiswaImprovement(rows).slice(0, 10), [rows]);
+  // Seluruh siswa terlibat — jumlah baris diatur pada tabel monitoring (10/20/30)
+  const semuaSiswa = useMemo(() => perSiswaImprovement(rows), [rows]);
 
   const aksiFilter = (label, fn) => (fn ? [{ label, onClick: () => { fn(); setRincian(null); } }] : []);
 
@@ -89,12 +89,7 @@ export default function SubtabImprovement({
         maJendela={stats.maJendela}
       />
 
-      <PerbandinganKelasImprovementChart
-        data={stats.perKelas}
-        metric={metricKelas}
-        onMetric={setMetricKelas}
-        onPilih={bukaKelas}
-      />
+      <PerbandinganKelasImprovementChart data={stats.perKelas} onPilih={bukaKelas} />
 
       <Top10Improvement data={stats.top} onPilih={bukaJenis} />
 
@@ -102,10 +97,11 @@ export default function SubtabImprovement({
         perTanggal={stats.perTanggal}
         tanggalMulai={tanggalMulai}
         tanggalAkhir={tanggalAkhir}
+        hariLibur={hariLibur}
         onPilih={(tgl) => bukaRentang(tgl, tgl, `Tanggal ${tgl}`)}
       />
 
-      <TabelSiswaImprovement rows={topSiswa} onRiwayat={setRiwayat} />
+      <TabelSiswaImprovement rows={semuaSiswa} onRiwayat={setRiwayat} />
 
       <RincianImprovementDialog rincian={rincian} onClose={() => setRincian(null)} />
       <RiwayatImprovementDialog siswa={riwayat} records={rows} onClose={() => setRiwayat(null)} />

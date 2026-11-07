@@ -1,14 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { History, Users } from 'lucide-react';
 import KartuStatistik from '@/components/catatan/statistik/KartuStatistik';
+import PilihanBatasBaris from '@/components/catatan/statistik/PilihanBatasBaris';
 import { RAPOR_BADGE_CLASS, RAPOR_LEVEL_NAMA } from '@/lib/raporStatus';
 
 export default function TabelSiswaPelanggaran({ rows = [], onRiwayat }) {
+  const [batas, setBatas] = useState(10);
+  const tampil = rows.slice(0, batas);
+
   return (
     <KartuStatistik
       title="Monitoring Siswa"
       icon={Users}
-      sub="Siswa dengan poin pelanggaran tertinggi pada periode dan filter terpilih"
+      sub={`Menampilkan ${tampil.length} dari ${rows.length} siswa dengan poin pelanggaran tertinggi`}
+      action={<PilihanBatasBaris value={batas} onChange={setBatas} />}
     >
       <div className="grid grid-cols-[1fr_44px_40px_86px_74px] items-center gap-2 px-2 pb-1.5 border-b border-slate-100">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Siswa</span>
@@ -18,11 +23,11 @@ export default function TabelSiswaPelanggaran({ rows = [], onRiwayat }) {
         <span />
       </div>
 
-      {rows.length === 0 ? (
+      {tampil.length === 0 ? (
         <p className="text-xs text-slate-400 text-center py-8">Tidak ada siswa terlibat pada periode ini</p>
       ) : (
         <div className="divide-y divide-slate-100">
-          {rows.map((r) => {
+          {tampil.map((r) => {
             const level = r.status?.level || 'normal';
             return (
               <div

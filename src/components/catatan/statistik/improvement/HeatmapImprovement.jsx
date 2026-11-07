@@ -15,9 +15,10 @@ const LEGENDA = [
   { label: 'Sedang', cls: 'bg-emerald-300 border-emerald-300' },
   { label: 'Tinggi', cls: 'bg-emerald-400 border-emerald-400' },
   { label: 'Tertinggi', cls: 'bg-emerald-600 border-emerald-600' },
+  { label: 'Libur', cls: 'bg-slate-100 border-slate-200' },
 ];
 
-export default function HeatmapImprovement({ perTanggal = [], tanggalMulai, tanggalAkhir, onPilih }) {
+export default function HeatmapImprovement({ perTanggal = [], tanggalMulai, tanggalAkhir, onPilih, hariLibur = new Set() }) {
   const bulanList = useMemo(() => {
     if (!tanggalMulai || !tanggalAkhir) return [];
     const out = [];
@@ -109,6 +110,7 @@ export default function HeatmapImprovement({ perTanggal = [], tanggalMulai, tang
           }
           const kejadian = info?.kejadian || 0;
           const poin = info?.poin || 0;
+          const libur = hariLibur.has(kunci);
           return (
             <button
               key={kunci}
@@ -116,8 +118,10 @@ export default function HeatmapImprovement({ perTanggal = [], tanggalMulai, tang
               onMouseEnter={() => setHover({ tanggal: d, kejadian, poin })}
               onFocus={() => setHover({ tanggal: d, kejadian, poin })}
               onClick={() => info && onPilih && onPilih(kunci)}
-              className={`aspect-square rounded-md border flex items-center justify-center text-[10px] font-semibold transition-transform hover:scale-[1.06] ${band(kejadian)}`}
-              title={`${format(d, 'EEE, dd MMM', { locale: idLocale })} · ${kejadian} kejadian · ${poin} poin`}
+              className={`aspect-square rounded-md border flex items-center justify-center text-[10px] font-semibold transition-transform hover:scale-[1.06] ${
+                libur ? 'bg-slate-100 border-slate-200 text-slate-400' : band(kejadian)
+              }`}
+              title={`${format(d, 'EEE, dd MMM', { locale: idLocale })} · ${kejadian} kejadian · ${poin} poin${libur ? ' · Libur' : ''}`}
             >
               {format(d, 'd')}
             </button>

@@ -4,33 +4,21 @@ import {
 } from 'recharts';
 import { Building2 } from 'lucide-react';
 import KartuStatistik from '@/components/catatan/statistik/KartuStatistik';
-import { METRIK_KELAS, WARNA_POIN } from '@/lib/pelanggaranStatUtils';
+import { WARNA_KEJADIAN, WARNA_POIN } from '@/lib/pelanggaranStatUtils';
 
-export default function PerbandinganKelasPelanggaranChart({ data = [], metric = 'poin', onMetric, onPilih }) {
-  const [sembunyi, setSembunyi] = useState(false);
-  const label = METRIK_KELAS.find((m) => m.key === metric)?.label || 'Total Poin';
+export default function PerbandinganKelasPelanggaranChart({ data = [], onPilih }) {
+  const [sembunyi, setSembunyi] = useState([]);
+  const aktif = (key) => !sembunyi.includes(key);
+  const toggle = (key) => {
+    if (!key) return;
+    setSembunyi((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
 
   return (
     <KartuStatistik
       title="Perbandingan per Kelas"
       icon={Building2}
-      sub="Klik batang untuk rincian kelas dan menerapkan filter"
-      action={onMetric ? (
-        <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
-          {METRIK_KELAS.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              onClick={() => onMetric(m.key)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
-                metric === m.key ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      sub="Klik legenda untuk menampilkan total poin, kejadian, atau keduanya · klik batang untuk rincian kelas"
     >
       {data.length === 0 ? (
         <p className="text-xs text-slate-400 text-center py-16">Belum ada data kelas pada periode ini</p>
@@ -39,7 +27,7 @@ export default function PerbandinganKelasPelanggaranChart({ data = [], metric = 
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={data}
-              margin={{ top: 18, right: 10, left: -12, bottom: 0 }}
+              margin={{ top: 18, right: 4, left: -12, bottom: 0 }}
               onClick={(e) => {
                 const nama = e?.activeLabel;
                 if (nama && onPilih) onPilih(nama);
@@ -47,7 +35,13 @@ export default function PerbandinganKelasPelanggaranChart({ data = [], metric = 
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis dataKey="nama_kelas" tick={{ fontSize: 10 }} interval={0} angle={-35} textAnchor="end" height={48} />
-              <YAxis tick={{ fontSize: 10 }} />
+              <YAxis yAxisId="poin" tick={{ fontSize: 10 }} />
+              <YAxis
+                yAxisId="kejadian"
+                orientation="right"
+                width={26}
+                tick={{ fontSize: 9, fill: WARNA_KEJADIAN }}
+              />
               <Tooltip
                 cursor={{ fill: 'rgba(148,163,184,0.08)' }}
                 content={({ active, payload, label: kelas }) => {
@@ -65,19 +59,35 @@ export default function PerbandinganKelasPelanggaranChart({ data = [], metric = 
                 }}
               />
               <Legend
-                onClick={() => setSembunyi((v) => !v)}
+                payload={[
+                  { value: 'Total Poin', dataKey: 'poin', color: WARNA_POIN, type: 'square' },
+                  { value: 'Kejadian', dataKey: 'kejadian', color: WARNA_KEJADIAN, type: 'square' },
+                ]}
+                onClick={(e) => toggle(e?.dataKey)}
                 wrapperStyle={{ fontSize: 11, paddingTop: 4, cursor: 'pointer' }}
-                formatter={() => <span style={{ opacity: sembunyi ? 0.35 : 1 }}>{label}</span>}
+                formatter={(value, entry) => <span style={{ opacity: aktif(entry?.dataKey) ? 1 : 0.35 }}>{value}</span>}
               />
               <Bar
-                dataKey={metric}
-                name={label}
+                yAxisId="poin"
+                dataKey="poin"
+                name="Total Poin"
                 fill={WARNA_POIN}
                 radius={[3, 3, 0, 0]}
-                maxBarSize={26}
-                hide={sembunyi}
+                maxBarSize={20}
+                hide={!aktif('poin')}
               >
-                <LabelList dataKey={metric} position="top" style={{ fontSize: 9, fill: '#64748b' }} />
+                <LabelList dataKey="poin" position="top" style={{ fontSize: 9, fill: '#64748b' }} />
+              </Bar>
+              <Bar
+                yAxisId="kejadian"
+                dataKey="kejadian"
+                name="Kejadian"
+                fill={WARNA_KEJADIAN}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={20}
+                hide={!aktif('kejadian')}
+              >
+                <LabelList dataKey="kejadian" position="top" style={{ fontSize: 9, fill: '#64748b' }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>

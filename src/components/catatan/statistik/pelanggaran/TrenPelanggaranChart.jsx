@@ -5,7 +5,7 @@ import {
 import { TrendingUp } from 'lucide-react';
 import KartuStatistik from '@/components/catatan/statistik/KartuStatistik';
 import KontrolTrenMA from '@/components/catatan/statistik/KontrolTrenMA';
-import { PERIODE_TREN, WARNA_MA, WARNA_POIN } from '@/lib/pelanggaranStatUtils';
+import { PERIODE_TREN, WARNA_KEJADIAN, WARNA_MA, WARNA_POIN } from '@/lib/pelanggaranStatUtils';
 
 function Pilihan({ value, onChange, items }) {
   return (
@@ -30,16 +30,21 @@ export default function TrenPelanggaranChart({
   data = [], periode = 'harian', onPeriode, onPilih,
   trenArah = 'Stabil', trenPerubahan = 0, maJendela = 0,
 }) {
-  const [sembunyi, setSembunyi] = useState(false);
+  const [sembunyi, setSembunyi] = useState([]);
   const [tampilMA, setTampilMA] = useState(true);
   const kosong = !data.some((d) => d.poin > 0 || d.kejadian > 0);
   const adaMA = maJendela > 0 && data.some((d) => d.ma !== null && d.ma !== undefined);
+  const aktif = (key) => !sembunyi.includes(key);
+  const toggle = (key) => {
+    if (!key) return;
+    setSembunyi((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  };
 
   return (
     <KartuStatistik
       title="Tren Poin Pelanggaran"
       icon={TrendingUp}
-      sub="Total poin per periode + Moving Average adaptif — klik titik untuk melihat rincian"
+      sub="Total poin & jumlah kejadian per periode + Moving Average adaptif — klik titik untuk melihat rincian"
       action={onPeriode ? <Pilihan value={periode} onChange={onPeriode} items={PERIODE_TREN} /> : null}
     >
       {kosong ? (
@@ -65,7 +70,7 @@ export default function TrenPelanggaranChart({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={data}
-                margin={{ top: 8, right: 12, left: -12, bottom: 0 }}
+                margin={{ top: 8, right: 4, left: -12, bottom: 0 }}
                 onClick={(e) => {
                   const row = e?.activePayload?.[0]?.payload;
                   if (row && onPilih) onPilih(row);
@@ -73,7 +78,13 @@ export default function TrenPelanggaranChart({
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis dataKey="label" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={16} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <YAxis yAxisId="poin" tick={{ fontSize: 10 }} />
+                <YAxis
+                  yAxisId="kejadian"
+                  orientation="right"
+                  width={26}
+                  tick={{ fontSize: 9, fill: WARNA_KEJADIAN }}
+                />
                 <Tooltip
                   content={({ active, payload }) => {
                     if (!active || !payload?.length) return null;
@@ -92,11 +103,16 @@ export default function TrenPelanggaranChart({
                   }}
                 />
                 <Legend
-                  onClick={() => setSembunyi((v) => !v)}
+                  payload={[
+                    { value: 'Total Poin', dataKey: 'poin', color: WARNA_POIN, type: 'line' },
+                    { value: 'Total Kejadian', dataKey: 'kejadian', color: WARNA_KEJADIAN, type: 'line' },
+                  ]}
+                  onClick={(e) => toggle(e?.dataKey)}
                   wrapperStyle={{ fontSize: 11, paddingTop: 4, cursor: 'pointer' }}
-                  formatter={() => <span style={{ opacity: sembunyi ? 0.35 : 1 }}>Total Poin</span>}
+                  formatter={(value, entry) => <span style={{ opacity: aktif(entry?.dataKey) ? 1 : 0.35 }}>{value}</span>}
                 />
                 <Line
+                  yAxisId="poin"
                   type="monotone"
                   dataKey="poin"
                   name="Total Poin"
@@ -104,10 +120,23 @@ export default function TrenPelanggaranChart({
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}
-                  hide={sembunyi}
+                  hide={!aktif('poin')}
+                />
+                <Line
+                  yAxisId="kejadian"
+                  type="monotone"
+                  dataKey="kejadian"
+                  name="Total Kejadian"
+                  stroke={WARNA_KEJADIAN}
+                  strokeWidth={2}
+                  strokeDasharray="4 3"
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                  hide={!aktif('kejadian')}
                 />
                 {adaMA && (
                   <Line
+                    yAxisId="poin"
                     type="monotone"
                     dataKey="ma"
                     name={`MA ${maJendela}`}

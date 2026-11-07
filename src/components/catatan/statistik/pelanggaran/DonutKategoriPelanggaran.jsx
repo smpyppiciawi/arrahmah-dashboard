@@ -9,6 +9,10 @@ export default function DonutKategoriPelanggaran({ data = [], totalKejadian = 0,
   const nonaktif = (nama) => sembunyi.includes(nama);
   const warna = (nama) => PALET_KATEGORI[Math.max(data.findIndex((d) => d.nama === nama), 0) % PALET_KATEGORI.length];
 
+  // Kategori yang disembunyikan dikeluarkan dari irisan — pie menyesuaikan ukuran
+  const tampil = data.filter((d) => !nonaktif(d.nama));
+  const totalTampil = tampil.reduce((s, d) => s + d.kejadian, 0);
+
   const toggle = (nama) => {
     if (!nama) return;
     setSembunyi((prev) => (prev.includes(nama) ? prev.filter((n) => n !== nama) : [...prev, nama]));
@@ -25,46 +29,58 @@ export default function DonutKategoriPelanggaran({ data = [], totalKejadian = 0,
       ) : (
         <div className="flex flex-col items-center gap-2">
           <div className="text-center">
-            <p className="text-2xl font-bold text-slate-800 leading-none tabular-nums">{totalKejadian}</p>
-            <p className="text-[10px] uppercase tracking-wide text-slate-400 mt-1">Total Kejadian</p>
+            <p className="text-2xl font-bold text-slate-800 leading-none tabular-nums">{totalTampil}</p>
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 mt-1">
+              Total Kejadian
+              {sembunyi.length > 0 && <span className="normal-case tracking-normal"> · dari {totalKejadian}</span>}
+            </p>
           </div>
 
           <div className="h-56 w-56 max-w-full sm:h-60 sm:w-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="kejadian"
-                  nameKey="nama"
-                  innerRadius="60%"
-                  outerRadius="94%"
-                  paddingAngle={2}
-                  strokeWidth={0}
-                >
-                  {data.map((d) => (
-                    <Cell
-                      key={d.nama}
-                      fill={nonaktif(d.nama) ? '#e2e8f0' : warna(d.nama)}
-                      className="cursor-pointer"
-                      onClick={() => onPilih && onPilih(d.nama)}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (!active || !payload?.length) return null;
-                    const row = payload[0].payload;
-                    return (
-                      <div className="bg-white border border-slate-200 rounded-lg shadow-md px-2.5 py-2 text-[11px]">
-                        <p className="font-semibold text-slate-700">{row.nama}</p>
-                        <p className="text-rose-600">{row.kejadian} kejadian</p>
-                        <p className="text-slate-500">{bulat1(row.pct)}% · {row.poin} poin</p>
-                      </div>
-                    );
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {tampil.length === 0 ? (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-xs text-slate-400 text-center px-4">
+                  Semua kategori disembunyikan — klik legenda untuk menampilkan
+                </p>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={tampil}
+                    dataKey="kejadian"
+                    nameKey="nama"
+                    innerRadius="60%"
+                    outerRadius="94%"
+                    paddingAngle={2}
+                    strokeWidth={0}
+                  >
+                    {tampil.map((d) => (
+                      <Cell
+                        key={d.nama}
+                        fill={warna(d.nama)}
+                        className="cursor-pointer"
+                        onClick={() => onPilih && onPilih(d.nama)}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (!active || !payload?.length) return null;
+                      const row = payload[0].payload;
+                      const pct = totalTampil ? (row.kejadian / totalTampil) * 100 : 0;
+                      return (
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-md px-2.5 py-2 text-[11px]">
+                          <p className="font-semibold text-slate-700">{row.nama}</p>
+                          <p className="text-rose-600">{row.kejadian} kejadian</p>
+                          <p className="text-slate-500">{bulat1(pct)}% · {row.poin} poin</p>
+                        </div>
+                      );
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 w-full">

@@ -8,12 +8,6 @@ export const WARNA_POIN = '#059669';
 export const WARNA_KEJADIAN = '#0ea5e9';
 export const WARNA_MA = '#8b5cf6';
 
-export const METRIK_KELAS = [
-  { key: 'poin', label: 'Total Poin' },
-  { key: 'kejadian', label: 'Jumlah Kegiatan' },
-  { key: 'rata', label: 'Rata-rata/Siswa' },
-];
-
 export const PERIODE_TREN = [
   { key: 'harian', label: 'Harian' },
   { key: 'mingguan', label: 'Mingguan' },
@@ -38,9 +32,16 @@ export function ringkasImprovement({
   // Hari kerja efektif — weekend & hari libur Kalender Akademik tidak dihitung
   const hariKerja = hariKerjaEfektif({ tanggalMulai, tanggalAkhir, hariLibur });
   const hariKerjaSet = new Set(hariKerja);
-  const axis = periode === 'harian'
+  const axisDasar = periode === 'harian'
     ? hariKerja
     : (tanggalMulai && tanggalAkhir ? bucketAxis(tanggalMulai, tanggalAkhir, periode) : []);
+  // Mingguan/bulanan: bucket yang seluruhnya weekend atau hari libur Kalender Akademik dibuang
+  const axis = periode === 'harian' ? axisDasar : axisDasar.filter((k, i) => {
+    const mulaiBucket = firstDateOfBucket(k, periode);
+    const nextMulai = i < axisDasar.length - 1 ? firstDateOfBucket(axisDasar[i + 1], periode) : null;
+    const akhirBucket = nextMulai ? hariSebelum(nextMulai) : tanggalAkhir;
+    return hariKerja.some((t) => t >= mulaiBucket && t <= akhirBucket);
+  });
   const trenMap = new Map(axis.map((k) => [k, { poin: 0, kejadian: 0 }]));
   const kelasMap = new Map();
   const jenisMap = new Map();

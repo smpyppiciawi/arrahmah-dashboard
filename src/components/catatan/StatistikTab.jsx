@@ -127,10 +127,19 @@ export default function StatistikTab() {
     },
   });
 
-  // Hari libur dari Kalender Akademik (Hari Libur Nasional / Libur Sekolah)
+  // Hari libur dari Kalender Akademik (Hari Libur Nasional / Libur Sekolah) — seluruh halaman
   const { data: kalenderAkademik = [] } = useQuery({
-    queryKey: ['statistik-kalender-akademik'],
-    queryFn: () => base44.entities.KalenderAkademik.list(),
+    queryKey: ['statistik-kalender-akademik', refreshKey],
+    queryFn: async () => {
+      const out = [];
+      let cursor;
+      do {
+        const page = await base44.entities.KalenderAkademik.list({ limit: 500, cursor });
+        out.push(...(page.items || []));
+        cursor = page.has_more ? page.next_cursor : undefined;
+      } while (cursor);
+      return out;
+    },
   });
   const hariLibur = useMemo(() => kumpulanHariLibur(kalenderAkademik), [kalenderAkademik]);
 
