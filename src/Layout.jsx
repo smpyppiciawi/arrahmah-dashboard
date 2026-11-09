@@ -20,6 +20,7 @@ import LiveClock from '@/components/ui/LiveClock';
 import BellAlarmSystem from '@/components/dashboard/BellAlarmSystem';
 import { PengingatMengajarProvider } from '@/components/guru/PengingatMengajar';
 import KepsekBackButton from '@/components/kepsek/KepsekBackButton';
+import PelacakLokasiPegawai from '@/components/pegawai/PelacakLokasiPegawai';
 import { canAksesCatatanKeuangan } from '@/lib/catatanKeuanganUtils';
 
 const CATATAN_KEUANGAN_MENU = {
@@ -562,6 +563,7 @@ export default function Layout({ children, currentPageName }) {
       <main className={`${sidebarHidden ? 'lg:ml-0' : 'lg:ml-64'} pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen bg-slate-50 transition-all duration-300`}>
         <PengingatMengajarProvider>
           <KepsekBackButton />
+          <PelacakLokasiPegawai />
           {children}
         </PengingatMengajarProvider>
       </main>

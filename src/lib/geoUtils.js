@@ -29,7 +29,7 @@ export function parseCoord(coordStr) {
  * Validasi geofence: ambil posisi GPS saat ini, bandingkan dengan koordinat sekolah
  * dari ProfilSekolah. Mengembalikan { ok, distance, radius, coords, message }.
  */
-export async function validateGeofence() {
+export async function validateGeofence(opts = {}) {
   // Ambil profil sekolah (asumsi 1 record aktif)
   const profilList = await base44.entities.ProfilSekolah.list('-updated_date', 1);
   const profil = profilList[0];
@@ -48,7 +48,7 @@ export async function validateGeofence() {
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
       (err) => reject(new Error(err.message || 'Gagal mengambil lokasi GPS.')),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: opts.timeout ?? 10000, maximumAge: opts.maximumAge ?? 30000 }
     );
   });
 

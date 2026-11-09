@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { ScanFace, MapPin, Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw, UserCheck } from 'lucide-react';
+import { ScanFace, MapPin, Loader2, CheckCircle, XCircle, AlertTriangle, RefreshCw, UserCheck, Navigation } from 'lucide-react';
 import FaceRecognition, { invalidateFaceDataCache } from '@/components/absensi/FaceRecognition';
 import { validateGeofence } from '@/lib/geoUtils';
+import { catatLokasiMasuk, hentikanLokasi } from '@/lib/lokasiPegawai';
 
 const HARI_ID = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
@@ -53,6 +54,13 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
   const { data: existingToday = [] } = useQuery({
     queryKey: ['absensi-mandiri-today', myGuru?.id, today],
     queryFn: () => (myGuru ? base44.entities.AbsensiPegawai.filter({ guru_id: myGuru.id, tanggal: today }) : []),
+    enabled: !!myGuru && open,
+  });
+
+  // Titik lokasi aktif hari ini (dipantau selama hadir)
+  const { data: lokasiAktif = [] } = useQuery({
+    queryKey: ['lokasi-aktif-mandiri', myGuru?.id, today],
+    queryFn: () => base44.entities.LokasiPegawai.filter({ guru_id: myGuru.id, tanggal: today, aktif: true }),
     enabled: !!myGuru && open,
   });
 
@@ -200,6 +208,8 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
             jam_keluar: now, status: 'Pulang', metode: 'FaceRecognition',
           });
         }
+        // Pelacakan dihentikan — titik hilang dari peta Dashboard Kepsek
+        await hentikanLokasi(myGuru.id, today);
         toast({ title: 'Absensi pulang tercatat', description: `${myGuru.nama} — Pulang — ${now}` });
         kirimNotif('Pulang', now);
       } else {
@@ -208,18 +218,49 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
           setDone(true);
           return;
         }
+        // GPS diambil ulang tepat saat wajah terverifikasi — titik divalidasi ke radius sekolah
+        let geoBaru = null;
+        let gpsError = '';
+        try {
+          geoBaru = await validateGeofence({ maximumAge: 0 });
+        } catch (e) {
+          gpsError = e.message;
+        }
+        const diLuarRadius = geoBaru && !geoBaru.ok && geoBaru.reason !== 'no_profile' && geoBaru.reason !== 'invalid_coord';
+        if (diLuarRadius) {
+          setGeoState(geoBaru);
+          toast({ title: 'Absensi diblokir', description: geoBaru.message, variant: 'destructive' });
+          return;
+        }
+
         const isLate = isToleransiAktif() ? now > lateThreshold : false;
         const status = isLate ? 'Terlambat' : 'Hadir';
-        await base44.entities.AbsensiPegawai.create({
+        const absensiBaru = await base44.entities.AbsensiPegawai.create({
           tanggal: today, guru_id: myGuru.id, nip: myGuru.nuptk,
           nama_pegawai: myGuru.nama, jabatan: myGuru.jabatan,
           jam_masuk: now, status, metode: 'FaceRecognition',
         });
-        toast({ title: 'Absensi masuk tercatat', description: `${myGuru.nama} — ${status} — ${now}` });
+
+        if (geoBaru && geoBaru.ok && geoBaru.coords) {
+          setGeoState(geoBaru);
+          await catatLokasiMasuk({
+            guru: myGuru, absensiId: absensiBaru?.id, tanggal: today,
+            status, jamMasuk: now, geo: geoBaru,
+          });
+          toast({ title: 'Absensi masuk tercatat', description: `${myGuru.nama} — ${status} — ${now} · lokasi terpantau (${geoBaru.distance}m)` });
+        } else {
+          toast({
+            title: 'Absensi tercatat tanpa validasi lokasi',
+            description: gpsError || geoBaru?.message || 'GPS tidak tersedia — titik lokasi tidak dipantau.',
+            variant: 'destructive',
+          });
+        }
         kirimNotif(status, now);
       }
       queryClient.invalidateQueries({ queryKey: ['absensi-pegawai-rekap'] });
       queryClient.invalidateQueries({ queryKey: ['absensi-mandiri-today'] });
+      queryClient.invalidateQueries({ queryKey: ['lokasi-aktif-mandiri'] });
+      queryClient.invalidateQueries({ queryKey: ['lokasiPegawai-aktif'] });
       setDone(true);
     } catch (e) {
       toast({ title: 'Gagal mencatat absensi', description: e.message, variant: 'destructive' });
@@ -234,6 +275,12 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
     setRegistering(false);
     setDone(false);
     onClose();
+  };
+
+  const jamUpdate = (iso) => {
+    if (!iso) return '-';
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? '-' : format(d, 'HH:mm');
   };
 
   return (
@@ -333,6 +380,18 @@ export default function AbsensiMandiriDialog({ open, onClose, currentUser }) {
                 </div>
               )}
             </div>
+
+            {lokasiAktif.length > 0 && (
+              <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <Navigation className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-700">
+                  <p className="font-medium">Lokasi sedang dipantau</p>
+                  <p className="mt-0.5 leading-snug">
+                    Titik aktif diperbarui otomatis selama Anda hadir. Update terakhir {jamUpdate(lokasiAktif[0].terakhir_update)} — titik hilang dari peta saat absen pulang.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <Button variant="ghost" className="w-full" onClick={handleClose}>Batal</Button>
           </div>

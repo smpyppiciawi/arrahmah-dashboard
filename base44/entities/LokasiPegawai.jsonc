@@ -1,0 +1,145 @@
+{
+  "name": "LokasiPegawai",
+  "type": "object",
+  "properties": {
+    "tanggal": {
+      "type": "string",
+      "format": "date",
+      "description": "Tanggal absensi terkait"
+    },
+    "guru_id": {
+      "type": "string",
+      "description": "ID pegawai pemilik titik lokasi aktif"
+    },
+    "nip": {
+      "type": "string",
+      "description": "NIP/NUPTK pegawai"
+    },
+    "nama_pegawai": {
+      "type": "string",
+      "description": "Nama pegawai"
+    },
+    "jabatan": {
+      "type": "string",
+      "description": "Jabatan pegawai"
+    },
+    "absensi_id": {
+      "type": "string",
+      "description": "ID AbsensiPegawai hasil verifikasi wajah yang menjadi dasar pelacakan"
+    },
+    "status_absensi": {
+      "type": "string",
+      "enum": [
+        "Hadir",
+        "Terlambat"
+      ],
+      "description": "Status kehadiran saat pelacakan dimulai"
+    },
+    "metode": {
+      "type": "string",
+      "enum": [
+        "FaceRecognition"
+      ],
+      "default": "FaceRecognition",
+      "description": "Metode absensi pemicu pelacakan (tahap awal hanya verifikasi wajah)"
+    },
+    "lat": {
+      "type": "number",
+      "description": "Lintang posisi terakhir"
+    },
+    "lng": {
+      "type": "number",
+      "description": "Bujur posisi terakhir"
+    },
+    "akurasi": {
+      "type": "number",
+      "description": "Akurasi GPS dalam meter"
+    },
+    "jarak_sekolah": {
+      "type": "number",
+      "description": "Jarak titik absen ke koordinat sekolah (meter)"
+    },
+    "aktif": {
+      "type": "boolean",
+      "default": true,
+      "description": "True = sedang dipantau dan tampil di peta Dashboard Kepsek; false saat pegawai absen pulang"
+    },
+    "jam_masuk": {
+      "type": "string",
+      "description": "Jam absen masuk (HH:mm)"
+    },
+    "dimulai_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat pelacakan dimulai"
+    },
+    "terakhir_update": {
+      "type": "string",
+      "description": "Timestamp ISO pembaruan lokasi terakhir \u2014 dipakai menandai data kedaluwarsa"
+    },
+    "selesai_at": {
+      "type": "string",
+      "description": "Timestamp ISO saat pelacakan dihentikan (absen pulang)"
+    }
+  },
+  "required": [
+    "tanggal",
+    "guru_id",
+    "nama_pegawai",
+    "aktif"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "kepsek"
+          }
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "created_by_id": "{{user.id}}"
+        }
+      ]
+    }
+  }
+}

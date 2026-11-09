@@ -27,6 +27,7 @@ import KepsekKalender from '@/components/kepsek/KepsekKalender';
 import DrillDownDialog from '@/components/kepsek/DrillDownDialog';
 import PelanggaranDrillDownDialog from '@/components/kepsek/PelanggaranDrillDownDialog';
 import PenyebaranSiswaMap from '@/components/kepsek/PenyebaranSiswaMap';
+import PetaLokasiPegawai from '@/components/kepsek/PetaLokasiPegawai';
 import GuruContactFab from '@/components/kepsek/GuruContactFab';
 import KepsekMenuDrawer from '@/components/kepsek/KepsekMenuDrawer';
 import AktivitasHariIni from '@/components/kepsek/AktivitasHariIni';
@@ -559,6 +560,7 @@ export default function Kepsek() {
           <div className="space-y-3 md:space-y-4">
             <KehadiranKepsekSection dateFrom={dateFrom} dateTo={dateTo} rekap={rekapSiswa} isLoading={rekapSiswaLoading} kelasList={kelasList} isDark={effIsDark} t={t} siswaList={siswaList} />
             <PenyebaranSiswaMap homeVisitList={homeVisitList} biayaKhususList={biayaKhususList} siswaList={siswaList} isDark={effIsDark} />
+            <PetaLokasiPegawai isDark={effIsDark} />
           </div>
           <div className="space-y-3 md:space-y-4">
             <LaporanJenisIuranWidget
