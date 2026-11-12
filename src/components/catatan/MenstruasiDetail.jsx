@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Heart, CheckCircle, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart, CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, parseISO, isSameDay } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
 
@@ -15,20 +15,23 @@ export default function MenstruasiDetail({ siswa, onClose }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Objek siswa dari daftar rekap memakai siswa_id (bukan id) — wajib ditangani agar riwayat termuat
+  const siswaId = siswa?.siswa_id || siswa?.id;
+
   useEffect(() => {
-    if (!siswa?.id) return;
+    if (!siswaId) return;
     setLoading(true);
-    base44.entities.Menstruasi.filter({ siswa_id: siswa.id })
-      .then(data => { setRecords(data); setLoading(false); })
+    base44.entities.Menstruasi.filter({ siswa_id: siswaId })
+      .then(data => { setRecords(data || []); setLoading(false); })
       .catch(() => setLoading(false));
 
     const unsubscribe = base44.entities.Menstruasi.subscribe((event) => {
-      if (event.data?.siswa_id === siswa.id) {
-        base44.entities.Menstruasi.filter({ siswa_id: siswa.id }).then(setRecords);
+      if (event.data?.siswa_id === siswaId) {
+        base44.entities.Menstruasi.filter({ siswa_id: siswaId }).then(d => setRecords(d || []));
       }
     });
     return unsubscribe;
-  }, [siswa?.id]);
+  }, [siswaId]);
 
   const monthDays = useMemo(() => {
     const start = startOfMonth(currentMonth);
@@ -73,9 +76,22 @@ export default function MenstruasiDetail({ siswa, onClose }) {
   const hasShortPeriod = periods.some(p => p.duration < 3);
   const healthStatus = totalHaidDays === 0 ? null : (hasLongPeriod ? 'perlu_perhatian' : 'normal');
 
+  // Riwayat pencatatan seluruh bulan (tanggal unik, terbaru lebih dulu)
+  const riwayat = useMemo(() => {
+    const seen = new Set();
+    return [...records]
+      .filter(r => r.tanggal)
+      .sort((a, b) => (a.tanggal < b.tanggal ? 1 : a.tanggal > b.tanggal ? -1 : 0))
+      .filter(r => {
+        if (seen.has(r.tanggal)) return false;
+        seen.add(r.tanggal);
+        return true;
+      });
+  }, [records]);
+
   return (
     <Dialog open={true} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Heart className="w-5 h-5 text-pink-500" />
@@ -183,10 +199,38 @@ export default function MenstruasiDetail({ siswa, onClose }) {
         )}
 
         {totalHaidDays === 0 && !loading && (
-          <div className="text-center py-4 text-slate-400 text-sm">
-            Belum ada catatan menstruasi pada bulan ini
-          </div>
+          <p className="text-center text-slate-400 text-sm">
+            Tidak ada catatan menstruasi pada bulan ini
+          </p>
         )}
+
+        {/* Riwayat Pencatatan — seluruh catatan, lintas bulan */}
+        <div className="mt-2 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">Riwayat Pencatatan</p>
+            <Badge className="bg-slate-100 text-slate-600 text-[10px]">{riwayat.length} catatan</Badge>
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-4 text-slate-400 text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" /> Memuat riwayat...
+            </div>
+          ) : riwayat.length === 0 ? (
+            <p className="text-center py-4 text-slate-400 text-sm">Belum ada catatan menstruasi</p>
+          ) : (
+            <div className="max-h-48 overflow-y-auto overscroll-contain divide-y divide-slate-100 border border-slate-200 rounded-lg">
+              {riwayat.map(r => (
+                <div key={r.id || r.tanggal} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm text-slate-700 min-w-0">
+                    <Heart className="w-3.5 h-3.5 text-pink-500 shrink-0" />
+                    <span className="truncate">{format(parseISO(r.tanggal), 'EEEE, d MMMM yyyy', { locale: idLocale })}</span>
+                  </span>
+                  <span className="text-xs text-slate-400 shrink-0">{r.nama_kelas || siswa?.nama_kelas || '-'}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

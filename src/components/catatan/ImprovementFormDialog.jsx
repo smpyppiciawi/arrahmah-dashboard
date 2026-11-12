@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/components/ui/use-toast";
+import InlinePicker from '@/components/catatan/InlinePicker';
 import { Switch } from "@/components/ui/switch";
 import { Search, TrendingDown, Lock, ImagePlus, X, Loader2, Check } from "lucide-react";
 import { compressImage } from '@/lib/imageCompress';
@@ -39,6 +38,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   // Pencatatan Kolektif: satu improvement yang sama dicatat untuk banyak siswa dalam 1 kelas
   const [kolektif, setKolektif] = useState(false);
   const [selectedSiswaIds, setSelectedSiswaIds] = useState([]);
+  const [searchKolektif, setSearchKolektif] = useState('');
   const [filterKelas, setFilterKelas] = useState('');
 
   const isGuru = currentUser?.role === 'guru';
@@ -117,7 +117,7 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
       validator_id: '', validator_nama: '', tahun_ajaran: '', catatan: '', status: 'Aktif', foto_urls: []
     });
     setOpenSiswaSearch(false); setSearchSiswa(''); setOpenKegiatanSearch(false); setSearchKegiatan('');
-    setKolektif(false); setSelectedSiswaIds([]);
+    setKolektif(false); setSelectedSiswaIds([]); setSearchKolektif('');
     onOpenChange(false);
   };
 
@@ -127,16 +127,35 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
     activeSiswa.forEach(s => { if (s.kelas_id) map.set(s.kelas_id, s.nama_kelas || ''); });
     return [...map.entries()].map(([id, nama]) => ({ id, nama })).sort((a, b) => a.nama.localeCompare(b.nama));
   }, [activeSiswa]);
-  const siswaKelas = useMemo(() => {
-    if (!filterKelas) return [];
-    return activeSiswa.filter(s => s.kelas_id === filterKelas).sort((a, b) => a.nama.localeCompare(b.nama));
-  }, [activeSiswa, filterKelas]);
+  const siswaById = useMemo(() => {
+    const map = {};
+    activeSiswa.forEach(s => { map[s.id] = s; });
+    return map;
+  }, [activeSiswa]);
+
+  // Pencarian siswa — aktif pada mode tunggal maupun kolektif
   const filteredSiswa = useMemo(() => {
     const byKelas = filterKelas ? activeSiswa.filter(s => s.kelas_id === filterKelas) : activeSiswa;
-    if (!searchSiswa) return [...byKelas].sort((a, b) => a.nama.localeCompare(b.nama));
-    const q = searchSiswa.toLowerCase();
-    return byKelas.filter(s => s.nama?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.nama_kelas?.toLowerCase().includes(q)).sort((a, b) => a.nama.localeCompare(b.nama));
+    const q = (searchSiswa || '').toLowerCase().trim();
+    const list = q
+      ? byKelas.filter(s => s.nama?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.nama_kelas?.toLowerCase().includes(q))
+      : byKelas;
+    return [...list].sort((a, b) => a.nama.localeCompare(b.nama));
   }, [activeSiswa, searchSiswa, filterKelas]);
+
+  // Daftar pilihan kolektif: seluruh siswa aktif (kelas hanya mempersempit pilihan)
+  const siswaKolektif = useMemo(() => {
+    const byKelas = filterKelas ? activeSiswa.filter(s => s.kelas_id === filterKelas) : activeSiswa;
+    const q = (searchKolektif || '').toLowerCase().trim();
+    const list = q
+      ? byKelas.filter(s => s.nama?.toLowerCase().includes(q) || s.nis?.toLowerCase().includes(q) || s.nama_kelas?.toLowerCase().includes(q))
+      : byKelas;
+    return [...list].sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [activeSiswa, filterKelas, searchKolektif]);
+
+  const selectedSiswa = useMemo(() => selectedSiswaIds.map(id => siswaById[id]).filter(Boolean), [selectedSiswaIds, siswaById]);
+
+  const toggleSelectedSiswa = (id) => setSelectedSiswaIds(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
 
   const aktifKegiatan = useMemo(() => (kegiatanList || []).filter(k => k.aktif !== false), [kegiatanList]);
   const filteredKegiatan = useMemo(() => {
@@ -146,6 +165,8 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
   }, [aktifKegiatan, searchKegiatan]);
 
   const handleSelectSiswa = (siswa) => {
+    // Mode kolektif: klik siswa menambah/menghapus dari daftar siswa terpilih
+    if (kolektif && !editing) { toggleSelectedSiswa(siswa.id); return; }
     setFormData(f => ({ ...f, siswa_id: siswa.id, nis: siswa.nis, nama_siswa: siswa.nama, kelas_id: siswa.kelas_id, nama_kelas: siswa.nama_kelas }));
     setOpenSiswaSearch(false); setSearchSiswa('');
   };
@@ -205,9 +226,8 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
 
     // Kolektif: satu improvement dicatat untuk semua siswa terpilih di kelas
     if (kolektif && !editing) {
-      if (!filterKelas) { toast({ title: "Pilih kelas untuk pencatatan kolektif", variant: "destructive" }); return; }
-      if (!selectedSiswaIds.length) { toast({ title: "Centang siswa yang mengikuti improvement", variant: "destructive" }); return; }
-      const terpilih = siswaKelas.filter(s => selectedSiswaIds.includes(s.id));
+      if (!selectedSiswa.length) { toast({ title: "Centang siswa yang mengikuti improvement", variant: "destructive" }); return; }
+      const terpilih = selectedSiswa;
       const lewat = terpilih.filter(s => used(s.id) + poin > limit);
       if (lewat.length) {
         toast({
@@ -275,111 +295,148 @@ export default function ImprovementFormDialog({ open, onOpenChange, siswaList, g
               </div>
             </div>
           )}
-          {kolektif && !editing && !filterKelas && (
-            <p className="text-xs text-amber-600 -mt-2">Pilih kelas dulu untuk menampilkan daftar siswa kolektif.</p>
-          )}
-
-          {/* Mode kolektif: ceklis banyak siswa 1 kelas. Mode biasa: cari 1 siswa */}
-          {kolektif && !editing ? (
-            <div>
-              <Label>Daftar Siswa Kelas <span className="text-xs text-slate-400">(centang siswa yang mengikuti)</span></Label>
-              <div className="mt-1 border border-slate-200 rounded-lg max-h-56 overflow-y-auto divide-y divide-slate-100">
-                {siswaKelas.length === 0 ? (
-                  <p className="px-3 py-4 text-xs text-slate-400 text-center">Pilih kelas terlebih dahulu untuk menampilkan daftar siswa.</p>
-                ) : siswaKelas.map(s => {
-                  const on = selectedSiswaIds.includes(s.id);
-                  return (
-                    <button
-                      type="button"
-                      key={s.id}
-                      onClick={() => setSelectedSiswaIds(p => on ? p.filter(x => x !== s.id) : [...p, s.id])}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-50"
-                    >
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'}`}>
-                        {on && <Check className="w-3 h-3 text-white" />}
-                      </span>
-                      <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{s.nama}</span>
-                      <Badge variant="outline" className="text-[10px]">{s.nis}</Badge>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-between mt-1.5">
-                <p className="text-xs text-slate-500">{selectedSiswaIds.length} siswa dipilih</p>
-                {siswaKelas.length > 0 && (
+          {/* Pencarian siswa — tetap aktif saat mode Kolektif dihidupkan */}
+          <div>
+            <Label>Cari Nama Siswa / Kelas</Label>
+            <InlinePicker
+              triggerText={
+                kolektif && !editing
+                  ? (selectedSiswa.length ? `${selectedSiswa.length} siswa terpilih — tambah lagi...` : 'Ketik nama siswa atau kelas...')
+                  : (formData.nama_siswa ? `${formData.nama_siswa} — ${formData.nama_kelas}` : 'Ketik nama siswa atau kelas...')
+              }
+              placeholder="Cari nama / NIS / kelas..."
+              search={searchSiswa}
+              onSearch={setSearchSiswa}
+              open={openSiswaSearch}
+              onToggle={() => setOpenSiswaSearch(v => !v)}
+              emptyText="Siswa tidak ditemukan"
+            >
+              {filteredSiswa.length > 0 && filteredSiswa.map(s => {
+                const terpilih = kolektif && !editing && selectedSiswaIds.includes(s.id);
+                return (
                   <button
                     type="button"
-                    onClick={() => setSelectedSiswaIds(selectedSiswaIds.length === siswaKelas.length ? [] : siswaKelas.map(s => s.id))}
-                    className="text-xs font-medium text-emerald-700 hover:underline"
+                    key={s.id}
+                    onClick={() => handleSelectSiswa(s)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
                   >
-                    {selectedSiswaIds.length === siswaKelas.length ? 'Batal pilih semua' : 'Pilih semua'}
+                    <span className="flex items-center gap-2 min-w-0">
+                      {kolektif && !editing && (
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${terpilih ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'}`}>
+                          {terpilih && <Check className="w-3 h-3 text-white" />}
+                        </span>
+                      )}
+                      <span className="text-sm text-slate-700 truncate">{s.nama}</span>
+                    </span>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{s.nama_kelas}</Badge>
                   </button>
-                )}
+                );
+              })}
+            </InlinePicker>
+          </div>
+
+          {/* Mode kolektif: daftar siswa pilihan (semua kelas) + bar siswa terpilih */}
+          {kolektif && !editing && (
+            <>
+              <div>
+                <Label>Daftar Siswa Pilihan Kolektif <span className="text-xs text-slate-400">({selectedSiswa.length} siswa)</span></Label>
+                <div className="mt-1 border border-emerald-200 bg-emerald-50/60 rounded-lg p-2 min-h-[46px]">
+                  {selectedSiswa.length === 0 ? (
+                    <p className="text-xs text-slate-500 px-1 py-1">Belum ada siswa dipilih. Gunakan pencarian atau daftar di bawah.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedSiswa.map(s => (
+                        <span key={s.id} className="inline-flex items-center gap-1 bg-white border border-emerald-200 rounded-full pl-2 pr-1 py-0.5 text-xs text-slate-700">
+                          <span className="truncate max-w-[150px]">{s.nama}</span>
+                          <span className="text-[10px] text-slate-400">{s.nama_kelas}</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectedSiswa(s.id)}
+                            className="p-0.5 rounded-full text-slate-400 hover:text-emerald-700 hover:bg-emerald-100"
+                            title="Hapus dari pilihan"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                      <button type="button" onClick={() => setSelectedSiswaIds([])} className="text-xs text-emerald-700 hover:underline px-1">Kosongkan</button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : (
-            <div>
-              <Label>Cari Nama Siswa / Kelas</Label>
-              <Popover open={openSiswaSearch} onOpenChange={setOpenSiswaSearch}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <Search className="w-4 h-4 mr-2 text-slate-400" />
-                    {formData.nama_siswa ? `${formData.nama_siswa} — ${formData.nama_kelas}` : "Ketik nama siswa atau kelas..."}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[500px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Cari nama / NIS / kelas..." value={searchSiswa} onValueChange={setSearchSiswa} />
-                    <CommandList className="max-h-72">
-                      <CommandEmpty>Tidak ditemukan</CommandEmpty>
-                      <CommandGroup heading={`Siswa Aktif (${filteredSiswa.length})`}>
-                        {filteredSiswa.map(s => (
-                          <CommandItem key={s.id} value={`${s.nama} ${s.nis} ${s.nama_kelas}`} onSelect={() => handleSelectSiswa(s)} className="cursor-pointer">
-                            <div className="flex items-center justify-between w-full">
-                              <span className="font-medium">{s.nama}</span>
-                              <Badge variant="outline" className="text-xs">{s.nama_kelas}</Badge>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
+
+              <div>
+                <Label>Daftar Siswa <span className="text-xs text-slate-400">(semua kelas — centang siswa yang mengikuti)</span></Label>
+                <div className="relative mt-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input className="pl-9 h-9 text-sm" placeholder="Cari nama / NIS / kelas..." value={searchKolektif} onChange={(e) => setSearchKolektif(e.target.value)} />
+                </div>
+                <div className="mt-1.5 border border-slate-200 rounded-lg max-h-56 overflow-y-auto overscroll-contain divide-y divide-slate-100">
+                  {siswaKolektif.length === 0 ? (
+                    <p className="px-3 py-4 text-xs text-slate-400 text-center">Siswa tidak ditemukan.</p>
+                  ) : siswaKolektif.map(s => {
+                    const on = selectedSiswaIds.includes(s.id);
+                    return (
+                      <button
+                        type="button"
+                        key={s.id}
+                        onClick={() => toggleSelectedSiswa(s.id)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-slate-50"
+                      >
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${on ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'}`}>
+                          {on && <Check className="w-3 h-3 text-white" />}
+                        </span>
+                        <span className="flex-1 min-w-0 text-sm text-slate-700 truncate">{s.nama}</span>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{s.nama_kelas}</Badge>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center justify-between mt-1.5">
+                  <p className="text-xs text-slate-500">{selectedSiswa.length} siswa dipilih</p>
+                  {siswaKolektif.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allOn = siswaKolektif.every(s => selectedSiswaIds.includes(s.id));
+                        setSelectedSiswaIds(allOn ? [] : [...new Set([...selectedSiswaIds, ...siswaKolektif.map(s => s.id)])]);
+                      }}
+                      className="text-xs font-medium text-emerald-700 hover:underline"
+                    >
+                      {siswaKolektif.every(s => selectedSiswaIds.includes(s.id)) ? 'Batal pilih semua' : `Pilih semua (${siswaKolektif.length})`}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
           )}
 
           {/* Cari Kegiatan Pembinaan */}
           <div>
             <Label>Kegiatan Pembinaan (dari database Sheet 3)</Label>
-            <Popover open={openKegiatanSearch} onOpenChange={setOpenKegiatanSearch}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  <Search className="w-4 h-4 mr-2 text-slate-400" />
-                  {formData.kegiatan_pembinaan_nama ? formData.kegiatan_pembinaan_nama : "Ketik untuk mencari kegiatan pembinaan..."}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[500px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Cari kegiatan pembinaan..." value={searchKegiatan} onValueChange={setSearchKegiatan} />
-                  <CommandList className="max-h-72">
-                    <CommandEmpty>Tidak ditemukan</CommandEmpty>
-                    <CommandGroup heading={`Kegiatan Pembinaan (${filteredKegiatan.length})`}>
-                      {filteredKegiatan.map(k => (
-                        <CommandItem key={k.id} value={k.kegiatan} onSelect={() => handleSelectKegiatan(k)} className="cursor-pointer">
-                          <div className="flex items-center justify-between w-full">
-                            <span className="text-sm">{k.kegiatan}</span>
-                            <Badge className={k.sesuai_penetapan ? 'bg-amber-100 text-amber-700 text-xs' : 'bg-emerald-100 text-emerald-700 text-xs'}>
-                              {k.sesuai_penetapan ? 'Sesuai Penetapan' : `${k.ip} IP`}
-                            </Badge>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <InlinePicker
+              triggerText={formData.kegiatan_pembinaan_nama ? formData.kegiatan_pembinaan_nama : 'Ketik untuk mencari kegiatan pembinaan...'}
+              placeholder="Cari kegiatan pembinaan..."
+              search={searchKegiatan}
+              onSearch={setSearchKegiatan}
+              open={openKegiatanSearch}
+              onToggle={() => setOpenKegiatanSearch(v => !v)}
+              emptyText="Kegiatan pembinaan tidak ditemukan"
+            >
+              {filteredKegiatan.length > 0 && filteredKegiatan.map(k => (
+                <button
+                  type="button"
+                  key={k.id}
+                  onClick={() => handleSelectKegiatan(k)}
+                  className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                >
+                  <span className="text-sm text-slate-700 min-w-0 truncate">{k.kegiatan}</span>
+                  <Badge className={k.sesuai_penetapan ? 'bg-amber-100 text-amber-700 text-xs shrink-0' : 'bg-emerald-100 text-emerald-700 text-xs shrink-0'}>
+                    {k.sesuai_penetapan ? 'Sesuai Penetapan' : `${k.ip} IP`}
+                  </Badge>
+                </button>
+              ))}
+            </InlinePicker>
           </div>
 
           {/* Poin Pengurangan */}

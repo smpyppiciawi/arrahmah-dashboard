@@ -86,9 +86,12 @@ export default function MenstruasiTab({ readOnly = false }) {
     return unsubscribe;
   }, [selectedDate, selectedKelas, queryClient, toast]);
 
+  // Daftar siswa selalu berurutan abjad (A–Z)
   const filteredSiswa = useMemo(() => {
-    if (!searchQuery) return siswaList;
-    return siswaList.filter(s => s.nama?.toLowerCase().includes(searchQuery.toLowerCase()));
+    const list = searchQuery
+      ? siswaList.filter(s => s.nama?.toLowerCase().includes(searchQuery.toLowerCase()))
+      : siswaList;
+    return [...list].sort((a, b) => (a.nama || '').localeCompare(b.nama || ''));
   }, [siswaList, searchQuery]);
 
   const toggleHaid = async (siswa) => {
