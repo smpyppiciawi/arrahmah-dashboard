@@ -22,6 +22,11 @@
         "Izin",
         "Alfa"
       ],
+      "enumColors": [
+        "yellow",
+        "blue",
+        "red"
+      ],
       "description": "Status absensi pemicu (dihitung per status masing-masing)"
     },
     "kriteria": {
@@ -30,6 +35,11 @@
         "Beruntun 3 Hari",
         "Akumulasi 3 Hari/Minggu",
         "Sama Hari 3 Minggu"
+      ],
+      "enumColors": [
+        "red",
+        "yellow",
+        "purple"
       ],
       "description": "Ketentuan yang terpenuhi"
     },
@@ -46,6 +56,10 @@
       "format": "date",
       "description": "Tanggal terakhir yang melengkapi kriteria"
     },
+    "dicek_at": {
+      "type": "string",
+      "description": "Timestamp ISO pemeriksaan terakhir untuk pemicu ini"
+    },
     "wa_terkirim": {
       "type": "boolean",
       "default": false,
@@ -54,15 +68,46 @@
     "email_terkirim": {
       "type": "boolean",
       "default": false,
-      "description": "Email gateway berhasil terkirim ke minimal satu penerima"
+      "description": "Email gateway berhasil terkirim ke minimal satu penerima (riwayat lama)"
     },
     "penerima_wa": {
       "type": "string",
-      "description": "Nama penerima WA (wali kelas / waka)"
+      "description": "Ringkasan nama penerima WA yang berhasil (wali kelas / waka)"
     },
     "penerima_email": {
       "type": "string",
-      "description": "Nama penerima email (wali kelas / waka)"
+      "description": "Nama penerima email (riwayat lama)"
+    },
+    "penerima_wa_detail": {
+      "type": "array",
+      "description": "Status pengiriman WA terpisah per penerima (Wali Kelas, Waka Kesiswaan, Waka Kurikulum) agar keberhasilan satu penerima tidak menutupi kegagalan penerima lain",
+      "items": {
+        "type": "object",
+        "properties": {
+          "peran": {
+            "type": "string",
+            "description": "Peran penerima: Wali Kelas / Waka Kesiswaan / Waka Kurikulum"
+          },
+          "nama": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "terkirim": {
+            "type": "boolean",
+            "default": false
+          },
+          "waktu": {
+            "type": "string",
+            "description": "Timestamp ISO saat WA berhasil terkirim"
+          },
+          "catatan": {
+            "type": "string",
+            "description": "Alasan bila belum terkirim (tanpa nomor, gateway mati, gagal kirim, dsb)"
+          }
+        }
+      }
     }
   },
   "required": [

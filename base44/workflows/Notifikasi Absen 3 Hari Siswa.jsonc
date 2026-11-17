@@ -1,13 +1,13 @@
 {
   "name": "Notifikasi Absen 3 Hari Siswa",
-  "description": "Setiap jam sekolah (Senin-Jumat, 07:00-15:00 WIB) evaluasi Peringatan Absen 3 Hari secara PER STATUS (Sakit/Izin/Alfa dihitung masing-masing): Beruntun 3 Hari, Akumulasi 3 Hari/Minggu, dan Sama Hari 3 Minggu (hari yang sama di 3 minggu berbeda). Notifikasi WA + Email otomatis ke Wali Kelas, Waka Kesiswaan & Waka Kurikulum dari data Guru terkini (dedup per siswa/status/kriteria/minggu; gagal kirim diulang run berikutnya; menghormati sakelar gateway WA & Email jenis Siswa). Panel Absen 3 Hari di Dashboard Kepsek menampilkan hasilnya real-time.",
+  "description": "Pemantauan harian Peringatan Absen Siswa: setiap hari belajar (Senin-Jumat, 15:00 WIB) mengevaluasi absensi periode 1 November 2026 sampai hari itu secara PER STATUS (Sakit/Izin/Alfa dihitung masing-masing) dengan tiga ketentuan: Beruntun 3 Hari, Akumulasi 3 Hari/Minggu, dan Sama Hari 3 Minggu. Pemicu selalu disimpan ke laporan Dashboard Kepsek walau pengiriman gagal, lalu WA dikirim via Fonnte ke Wali Kelas, Waka Kesiswaan, dan Waka Kurikulum dengan status terpisah per penerima (penerima yang sudah berhasil tidak dikirimi ulang; hari libur dilewati otomatis oleh fungsi).",
   "trigger": {
     "condition": null,
     "config": {
       "trigger_type": "scheduled",
       "events": [],
       "schedule_mode": "recurring",
-      "cron_expression": "0 7-15 * * 1-5",
+      "cron_expression": "0 15 * * 1-5",
       "one_time_date": null,
       "timezone": "Asia/Jakarta",
       "interval_value": null,
@@ -22,7 +22,7 @@
     "document": {
       "dsl": "1.0.0",
       "name": "notif_absen_3hari",
-      "version": "1.1",
+      "version": "1.2",
       "namespace": "base44"
     },
     "do": [
@@ -34,8 +34,8 @@
           },
           "then": "end",
           "x-base44": {
-            "title": "Evaluasi & Kirim Notifikasi Absen 3 Hari",
-            "description": "Deteksi per status (Beruntun \u00b7 Akumulasi \u00b7 Hari Sama) lalu kirim WA & Email ke Wali Kelas dan Waka"
+            "title": "Evaluasi & Kirim Notifikasi Absen Siswa",
+            "description": "Periode 1 Nov s/d hari ini \u00b7 simpan pemicu \u00b7 WA per penerima (Wali Kelas & Waka)"
           }
         }
       }

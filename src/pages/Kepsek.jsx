@@ -41,6 +41,7 @@ import { buildSaldoSumberDana } from '@/lib/saldoSumberDana';
 import KehadiranKepsekSection from '@/components/kepsek/KehadiranKepsekSection';
 import KehadiranPegawaiSection from '@/components/kepsek/KehadiranPegawaiSection';
 import { useAbsen3Hari, getSchoolWeek } from '@/hooks/useAbsen3Hari';
+import Absen3HariDialog from '@/components/kepsek/Absen3HariDialog';
 import { wibNow } from '@/lib/wib';
 import { getRaporStatus } from '@/lib/raporStatus';
 import LaporanJenisIuranWidget from '@/components/kepsek/LaporanJenisIuranWidget';
@@ -70,6 +71,7 @@ export default function Kepsek() {
   const [pelanggaranDrill, setPelanggaranDrill] = useState(false);
   const [approveOpen, setApproveOpen] = useState(false);
   const [saldoOpen, setSaldoOpen] = useState(false);
+  const [absen3Open, setAbsen3Open] = useState(false);
 
   // Jam & tanggal selalu WIB (waktu sekolah) — konsisten di semua perangkat
   useEffect(() => { const timer = setInterval(() => setNow(wibNow()), 1000); return () => clearInterval(timer); }, []);
@@ -110,8 +112,10 @@ export default function Kepsek() {
   const { data: bukuTamuList = [] } = useQuery({ queryKey: ['bukuTamu-kepsek'], queryFn: () => base44.entities.BukuTamu.list('-tanggal') });
   const { data: tarifList = [] } = useQuery({ queryKey: ['tarifIuran'], queryFn: () => base44.entities.TarifIuran.list(), staleTime: 300000 });
   const { data: biayaKhususList = [] } = useQuery({ queryKey: ['biayaKhusus-kepsek'], queryFn: () => base44.entities.BiayaKhusus.list(), staleTime: 300000 });
-  // Alert 3 hari: query khusus + persistensi "tampil hingga ada perubahan"
-  const { data: absen3Hari = [], isLoading: loadingAbsen3Hari } = useAbsen3Hari(siswaList, kalenderList);
+  // Peringatan Absen Siswa: dihitung server dengan mesin deteksi yang sama dengan fungsi notifikasi.
+  // Periode 1 November 2026 s/d hari ini (WIB) — batas akhir bergerak maju setiap hari.
+  const { data: absen3Laporan, isLoading: loadingAbsen3Hari, error: absen3Error, refetch: refetchAbsen3 } = useAbsen3Hari();
+  const absen3Hari = useMemo(() => absen3Laporan?.rows || [], [absen3Laporan]);
   // Rekap kehadiran teragregasi server-side (akurat untuk 7 hari / bulan / tahun / kustom)
   const { data: rekapSiswa, isLoading: rekapSiswaLoading } = useQuery({
     queryKey: ['rekapKehadiran-siswa', dateFrom, dateTo],
@@ -437,7 +441,7 @@ export default function Kepsek() {
 
   const statCards = [
     { label: 'Kehadiran', value: `${stats.persenHadir}%`, subtitle: `${stats.hadirHariIni}/${stats.absensiHariIni} siswa`, icon: Calendar, gradient: 'from-emerald-500 to-emerald-600', alert: stats.alfaHariIni, onClick: () => openDrillDown('kehadiran') },
-    { label: 'Absen 3 Hari', value: absen3Hari.length, subtitle: loadingAbsen3Hari ? 'memuat...' : 'Pemantauan otomatis aktif (WIB)', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: absen3Hari.length, onClick: () => openDrillDown('alfa3') },
+    { label: 'Absen 3 Hari', value: absen3Hari.length, subtitle: loadingAbsen3Hari ? 'memuat...' : absen3Error ? 'gagal memuat — klik detail' : 'Periode 1 Nov s/d hari ini (WIB)', icon: AlertTriangle, gradient: 'from-red-500 to-red-600', alert: absen3Hari.length, onClick: () => setAbsen3Open(true) },
     { label: 'Pelanggaran', value: stats.pelanggaranImpPeriod.length, subtitle: 'catatan periode', icon: AlertTriangle, gradient: 'from-orange-500 to-red-500', alert: stats.pelanggaranImpPeriod.length, onClick: () => setPelanggaranDrill(true) },
     { label: 'Saldo', value: formatRupiah(stats.saldoPeriode).replace('Rp', '').trim(), subtitle: `+${formatRupiah(stats.pemasukanPeriode).replace('Rp','').trim()} / -${formatRupiah(stats.pengeluaranPeriode).replace('Rp','').trim()}`, icon: Wallet, gradient: stats.saldoPeriode >= 0 ? 'from-teal-500 to-cyan-600' : 'from-red-500 to-red-600', onClick: () => setSaldoOpen(true) },
     { label: 'Pegawai Hadir', value: stats.pegawaiHadirHariIni.length, subtitle: activeDayStr === todayStr ? 'hari ini' : format(parseISO(activeDayStr), 'd MMM', { locale: idLocale }), icon: UserCheck, gradient: 'from-teal-500 to-emerald-600', onClick: () => openDrillDown('pegawaiHadir') },
@@ -599,6 +603,18 @@ export default function Kepsek() {
       >
         {fabsShown ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
+      <Absen3HariDialog
+        open={absen3Open}
+        onOpenChange={setAbsen3Open}
+        rows={absen3Hari}
+        periode={absen3Laporan?.periode}
+        ringkasan={absen3Laporan?.ringkasan}
+        isLoading={loadingAbsen3Hari}
+        error={absen3Error}
+        onRetry={() => refetchAbsen3()}
+        onWhatsApp={handleWhatsApp}
+        isDark={effIsDark}
+      />
       <DrillDownDialog open={!!drillDown} onOpenChange={(v) => !v && setDrillDown(null)} title={drillDown?.title} data={drillDown?.data} columns={drillDown?.columns} isDark={effIsDark} fullLink={drillDown?.fullLink} sortFn={drillDown?.sortFn} summary={drillDown?.summary} siswaList={siswaList} />
       <PelanggaranDrillDownDialog open={pelanggaranDrill} onOpenChange={setPelanggaranDrill} pelanggaranData={stats.pelanggaranImpPeriod} improvementData={stats.improvementPeriod} dateLabel={dateFrom === dateTo ? format(parseISO(dateFrom), 'd MMM yyyy', { locale: idLocale }) : `${format(parseISO(dateFrom), 'd MMM', { locale: idLocale })} - ${format(parseISO(dateTo), 'd MMM yyyy', { locale: idLocale })}`} isDark={effIsDark} siswaList={siswaList} />
       <ApprovalPoinDialog open={approveOpen} onOpenChange={setApproveOpen} pelanggaranList={pelanggaranImpList} siswaList={siswaList} currentUser={currentUser} />
